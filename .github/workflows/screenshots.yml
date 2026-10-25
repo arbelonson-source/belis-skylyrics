@@ -1,12 +1,11 @@
 # Starts the real game on a virtual screen with the demo song and takes pictures of the lyrics and the
-# settings (.github/scripts/screenshots.sh). Run it from the Actions tab, or push to a "shots/..." branch.
+# settings (.github/scripts/screenshots.sh). Start it by hand: Actions tab → screenshots → Run workflow
+# (pick the branch to photograph), or `gh workflow run screenshots.yml --ref <branch>`.
 # The pictures are saved as an artifact and on the "ci-screenshots" branch, one folder per run.
 
 name: screenshots
 on:
   workflow_dispatch:
-  push:
-    branches: ['shots/**']
 
 permissions:
   contents: write
