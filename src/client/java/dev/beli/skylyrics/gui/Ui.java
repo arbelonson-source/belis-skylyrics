@@ -2,6 +2,9 @@ package dev.beli.skylyrics.gui;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.locale.Language;
+import net.minecraft.network.chat.FormattedText;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 
@@ -22,6 +25,14 @@ final class Ui {
 	static final int CONTROL_HOVER = 0xFF372F45;
 
 	private Ui() {
+	}
+
+	/**
+	 * Text in the order it is drawn: right-to-left words (Hebrew) reversed into place. Drawing a plain String
+	 * skips this, which wrote the Hebrew settings backwards.
+	 */
+	static FormattedCharSequence visual(String text) {
+		return Language.getInstance().getVisualOrder(FormattedText.of(text));
 	}
 
 	/** Filled rectangle with rounded corners, drawn without overlapping fills so alpha stays even. */

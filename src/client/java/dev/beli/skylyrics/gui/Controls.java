@@ -77,12 +77,12 @@ final class Controls {
 		void render(Frame f) {
 			int textW = w - 20 - controlWidth(f.font()) - 8;
 			if (desc == null) {
-				f.g().drawString(f.font(), Ui.clip(f.font(), label, textW), x + 10, y + 8, Ui.TEXT, false);
+				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 8, Ui.TEXT, false);
 			} else {
 				String d = desc.get();
-				f.g().drawString(f.font(), Ui.clip(f.font(), label, textW), x + 10, y + 7, Ui.TEXT, false);
+				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 7, Ui.TEXT, false);
 				descClipped = f.font().width(d) > textW;
-				f.g().drawString(f.font(), Ui.clip(f.font(), d, textW), x + 10, y + 18, Ui.MUTED, false);
+				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), d, textW)), x + 10, y + 18, Ui.MUTED, false);
 			}
 			renderControl(f);
 		}
@@ -194,7 +194,7 @@ final class Controls {
 			int kh = 10 + Math.round(knobAnim * 2);
 			Ui.rect(f.g(), sx + filled - kw / 2, cy - kh / 2, kw, kh, 2, 0xFFFFFFFF);
 			String text = format.apply(v);
-			f.g().drawString(f.font(), text, sx - 8 - f.font().width(text), cy - 4, dragging ? Ui.TEXT : Ui.MUTED, false);
+			f.g().drawString(f.font(), Ui.visual(text), sx - 8 - f.font().width(text), cy - 4, dragging ? Ui.TEXT : Ui.MUTED, false);
 		}
 
 		@Override
@@ -289,7 +289,7 @@ final class Controls {
 				int ow = optionWidth(font, i);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), ox, by, ow, 16);
 				int color = i == selected ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
-				f.g().drawString(font, options[i], ox + 6, by + 4, color, false);
+				f.g().drawString(font, Ui.visual(options[i]), ox + 6, by + 4, color, false);
 				ox += ow;
 			}
 		}
@@ -352,10 +352,10 @@ final class Controls {
 			boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, by, bw, 16);
 			Ui.rect(f.g(), bx, by, bw, 16, 4, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			boolean leftHalf = f.mx() < bx + bw / 2;
-			f.g().drawString(font, "‹", bx + 6, by + 4, hover && leftHalf ? Ui.ACCENT : Ui.MUTED, false);
-			f.g().drawString(font, "›", bx + bw - 6 - font.width("›"), by + 4, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED, false);
+			f.g().drawString(font, Ui.visual("‹"), bx + 6, by + 4, hover && leftHalf ? Ui.ACCENT : Ui.MUTED, false);
+			f.g().drawString(font, Ui.visual("›"), bx + bw - 6 - font.width("›"), by + 4, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED, false);
 			String value = labels.get(Mth.clamp(get.getAsInt(), 0, labels.size() - 1));
-			f.g().drawCenteredString(font, value, bx + bw / 2, by + 4, Ui.TEXT);
+			f.g().drawCenteredString(font, Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
 		}
 
 		@Override
@@ -507,7 +507,7 @@ final class Controls {
 		@Override
 		void renderControl(Frame f) {
 			String text = Ui.clip(f.font(), value.get(), 160);
-			f.g().drawString(f.font(), text, x + w - 10 - f.font().width(text), centerY() - 4, Ui.MUTED, false);
+			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), centerY() - 4, Ui.MUTED, false);
 		}
 	}
 
@@ -571,6 +571,6 @@ final class Controls {
 			fg = hover ? 0xFFFFFFFF : Ui.TEXT;
 		}
 		Ui.rect(f.g(), x, y, w, h, 4, bg);
-		f.g().drawCenteredString(f.font(), text, x + w / 2, y + (h - 8) / 2, fg);
+		f.g().drawCenteredString(f.font(), Ui.visual(text), x + w / 2, y + (h - 8) / 2, fg);
 	}
 }
