@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import java.text.Bidi;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -175,7 +176,7 @@ public final class LyricsRenderer {
 
 	private void drawContent(Draw draw, SkyLyricsConfig cfg, long time, long now) {
 		if (shown.instrumental()) {
-			draw.line(INSTRUMENTAL, 0, 1, visibility, 0.6f, 1, -1);
+			draw.line(INSTRUMENTAL, 0, 1, visibility, 0.6f, 1, -1, -1);
 		} else {
 			drawLines(draw, cfg, time, now);
 		}
@@ -208,6 +209,13 @@ public final class LyricsRenderer {
 				arrangement(draw, cfg, index, time, 0, visibility * Math.min(1, p * 2f), pop, now);
 			}
 			case TYPEWRITER -> arrangement(draw, cfg, index, time, 0, visibility, 1, now);
+			case WORDS -> {
+				// The old line fades away while the new one's words come in one after another
+				if (p < 1 && previousIndex != Integer.MIN_VALUE) {
+					arrangement(draw, cfg, previousIndex, time, 0, visibility * (1 - easeInOut(Math.min(1, p * 1.6f))), 1, now);
+				}
+				arrangement(draw, cfg, index, time, 0, visibility, 1, now);
+			}
 		}
 	}
 
@@ -227,7 +235,7 @@ public final class LyricsRenderer {
 		if (alpha <= 0.01f) {
 			return;
 		}
-		record Item(String text, float r, float scale, float alpha, float highlight, float sung, int maxChars) {
+		record Item(String text, float r, float scale, float alpha, float highlight, float sung, int maxChars, float wordsT) {
 		}
 		List<Item> items = new ArrayList<>();
 		for (int i = center - 2; i <= center + 2; i++) {
@@ -275,7 +283,11 @@ public final class LyricsRenderer {
 			if (cfg.animation == Animation.TYPEWRITER && i == center && lastIndex == center) {
 				maxChars = (int) ((now - changedAt) / 28_000_000L);
 			}
-			items.add(new Item(text, r, scale, a * alpha, highlight, sung, maxChars));
+			float wordsT = -1;
+			if (cfg.animation == Animation.WORDS && i == center && lastIndex == center && previousIndex != Integer.MIN_VALUE) {
+				wordsT = (now - changedAt) / 1e9f - 0.06f; // a beat after the old line starts fading
+			}
+			items.add(new Item(text, r, scale, a * alpha, highlight, sung, maxChars, wordsT));
 		}
 		if (items.isEmpty()) {
 			return;
@@ -303,7 +315,7 @@ public final class LyricsRenderer {
 		}
 		for (int k = 0; k < items.size(); k++) {
 			Item it = items.get(k);
-			draw.line(it.text, centers[k] - focus, it.scale, it.alpha, it.highlight, it.sung, it.maxChars);
+			draw.line(it.text, centers[k] - focus, it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT);
 		}
 	}
 
@@ -400,73 +412,191 @@ public final class LyricsRenderer {
 		 * @param highlight 1 for the current line, 0 for the dim neighbours
 		 * @param sung      0..1, how much of the line has been sung (karaoke fill)
 		 * @param maxChars  typewriter limit, or -1
+		 * @param wordsT    seconds since the line came in, for the word-by-word fade-in, or -1
 		 */
-		void line(String text, float y, float scale, float alpha, float highlight, float sung, int maxChars) {
+		void line(String text, float y, float scale, float alpha, float highlight, float sung, int maxChars, float wordsT) {
 			alpha *= cfg.opacity;
 			if (alpha <= 0.01f) {
 				return;
 			}
 			List<String> rows = rows(text);
-			int total = 0;
+			int total = 0, words = 0;
 			for (String row : rows) {
 				total += row.codePointCount(0, row.length());
+				words += wordCount(row);
 			}
 			float sungChars = sung * total;
+			float stagger = Math.min(WORD_STAGGER, 0.7f / Math.max(1, words));
 
 			int bright = mix(color, 0xFFFFFF, 0.55f);
 			int dim = mix(color, 0x000000, 0.45f);
 			int secondary = mix(color, 0xFFFFFF, 0.25f);
-			int a = Math.round(alpha * 255);
+			float glowAlpha = cfg.glow * alpha * (0.25f + 0.75f * highlight);
 
 			canvas.push(y, scale);
 			float top = -rows.size() * ROW_H / 2;
-			int charIndex = 0;
+			int charIndex = 0, wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
 				String row = rows.get(r);
+				Display d = Display.of(row);
+				int n = d.cps.length;
+				// How visible each character is: typewriter cuts the line off, words fade in one at a time
+				float[] reveal = new float[n];
+				int[] rank = wordRanks(row);
+				for (int v = 0; v < n; v++) {
+					int ci = charIndex + d.logical[v];
+					float f = 1;
+					if (maxChars >= 0 && ci >= maxChars) {
+						f = 0;
+					} else if (wordsT >= 0) {
+						f = Mth.clamp((wordsT - (wordIndex + rank[d.logical[v]]) * stagger) / WORD_FADE, 0, 1);
+					}
+					reveal[v] = f;
+				}
 				float x = -LyricsFont.width(font, base, row) / 2f;
 				float ry = top + r * ROW_H + 1;
-				int start = charIndex;
-				FormattedCharSequence seq = sink -> {
-					int ci = start;
-					for (int off = 0; off < row.length(); ) {
-						int cp = row.codePointAt(off);
-						if (maxChars >= 0 && ci >= maxChars) {
+				// Draw runs of characters that share the same visibility; normally that's the whole row
+				for (int from = 0; from < n; ) {
+					int to = from + 1;
+					while (to < n && (reveal[to] == reveal[from] || d.cps[to] == ' ')) {
+						to++;
+					}
+					float f = reveal[from];
+					if (f > 0.004f) {
+						float sx = x + (from == 0 ? 0 : LyricsFont.width(font, base, new String(d.cps, 0, from)));
+						float e = 1 - (1 - f) * (1 - f);
+						float sy = ry + (wordsT >= 0 ? (1 - e) * 3 : 0);
+						int start = charIndex;
+						int a0 = from, a1 = to;
+						FormattedCharSequence seq = sink -> {
+							for (int v = a0; v < a1; v++) {
+								float fill = Mth.clamp(sungChars - (start + d.logical[v]), 0, 1);
+								int c = mix(secondary, mix(dim, bright, fill), highlight);
+								if (!sink.accept(v, base.withColor(c), d.cps[v])) {
+									return false;
+								}
+							}
 							return true;
+						};
+						float ga = glowAlpha * f;
+						if (ga > 0.02f) {
+							FormattedCharSequence glowSeq = sink -> {
+								for (int v = a0; v < a1; v++) {
+									if (!sink.accept(v, base, d.cps[v])) {
+										return false;
+									}
+								}
+								return true;
+							};
+							for (int ring = 1; ring <= 2; ring++) {
+								float radius = ring * 0.85f;
+								int alphaByte = Math.round(ga * (ring == 1 ? 0.16f : 0.08f) * 255);
+								if (alphaByte < 2) {
+									continue;
+								}
+								int glowColor = alphaByte << 24 | color;
+								for (int k = 0; k < 8; k++) {
+									float ang = k * Mth.PI / 4 + (ring == 2 ? Mth.PI / 8 : 0);
+									canvas.text(sx + Mth.cos(ang) * radius, sy + Mth.sin(ang) * radius,
+											glowSeq, false, glowColor, true);
+								}
+							}
 						}
-						float fill = Mth.clamp(sungChars - ci, 0, 1);
-						int c = mix(dim, bright, fill);
-						c = mix(secondary, c, highlight);
-						if (!sink.accept(off, base.withColor(c), cp)) {
-							return false;
-						}
-						off += Character.charCount(cp);
-						ci++;
+						canvas.text(sx, sy, seq, cfg.shadow, Math.max(4, Math.round(alpha * f * 255)) << 24 | 0xFFFFFF, false);
 					}
-					return true;
-				};
-
-				float glowAlpha = cfg.glow * alpha * (0.25f + 0.75f * highlight);
-				if (glowAlpha > 0.02f) {
-					FormattedCharSequence glowSeq = maxChars < 0 ? FormattedCharSequence.forward(row, base) : seq;
-					for (int ring = 1; ring <= 2; ring++) {
-						float radius = ring * 0.85f;
-						int ga = Math.round(glowAlpha * (ring == 1 ? 0.16f : 0.08f) * 255);
-						if (ga < 2) {
-							continue;
-						}
-						int glowColor = ga << 24 | color;
-						for (int k = 0; k < 8; k++) {
-							float ang = k * Mth.PI / 4 + (ring == 2 ? Mth.PI / 8 : 0);
-							canvas.text(x + Mth.cos(ang) * radius, ry + Mth.sin(ang) * radius,
-									glowSeq, false, glowColor, true);
-						}
-					}
+					from = to;
 				}
-				canvas.text(x, ry, seq, cfg.shadow, a << 24 | 0xFFFFFF, false);
-				charIndex += row.codePointCount(0, row.length());
+				charIndex += n;
+				wordIndex += wordCount(row);
 			}
 			canvas.pop();
 		}
+	}
+
+	private static final float WORD_STAGGER = 0.07f;
+	private static final float WORD_FADE = 0.25f;
+
+	/** A row in display order: right-to-left runs (Hebrew, Arabic) reversed, with each character's logical index. */
+	record Display(int[] cps, int[] logical) {
+		static Display of(String row) {
+			int[] cps = row.codePoints().toArray();
+			int n = cps.length;
+			int[] logical = new int[n];
+			for (int i = 0; i < n; i++) {
+				logical[i] = i;
+			}
+			if (!Bidi.requiresBidi(row.toCharArray(), 0, row.length())) {
+				return new Display(cps, logical);
+			}
+			int[] charToCp = new int[row.length() + 1];
+			for (int off = 0, i = 0; off < row.length(); i++) {
+				int len = Character.charCount(row.codePointAt(off));
+				for (int k = 0; k < len; k++) {
+					charToCp[off + k] = i;
+				}
+				off += len;
+			}
+			charToCp[row.length()] = n;
+			Bidi bidi = new Bidi(row, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
+			int runs = bidi.getRunCount();
+			byte[] levels = new byte[runs];
+			Integer[] order = new Integer[runs];
+			for (int i = 0; i < runs; i++) {
+				levels[i] = (byte) bidi.getRunLevel(i);
+				order[i] = i;
+			}
+			Bidi.reorderVisually(levels, 0, order, 0, runs);
+			int[] outCps = new int[n];
+			int[] outLogical = new int[n];
+			int v = 0;
+			for (int run : order) {
+				int from = charToCp[bidi.getRunStart(run)], to = charToCp[bidi.getRunLimit(run)];
+				boolean rtl = (bidi.getRunLevel(run) & 1) == 1;
+				for (int k = 0; k < to - from; k++) {
+					int i = rtl ? to - 1 - k : from + k;
+					outCps[v] = rtl ? mirror(cps[i]) : cps[i];
+					outLogical[v++] = i;
+				}
+			}
+			return new Display(outCps, outLogical);
+		}
+
+		private static int mirror(int cp) {
+			return switch (cp) {
+				case '(' -> ')';
+				case ')' -> '(';
+				case '[' -> ']';
+				case ']' -> '[';
+				case '{' -> '}';
+				case '}' -> '{';
+				case '<' -> '>';
+				case '>' -> '<';
+				default -> cp;
+			};
+		}
+	}
+
+	/** Which word (0, 1, 2, …) each code point of the row belongs to; spaces count with the word before. */
+	private static int[] wordRanks(String row) {
+		int[] cps = row.codePoints().toArray();
+		int[] rank = new int[cps.length];
+		int w = -1;
+		boolean inWord = false;
+		for (int i = 0; i < cps.length; i++) {
+			boolean space = cps[i] == ' ';
+			if (!space && !inWord) {
+				w++;
+			}
+			inWord = !space;
+			rank[i] = Math.max(0, w);
+		}
+		return rank;
+	}
+
+	private static int wordCount(String row) {
+		int[] rank = wordRanks(row);
+		boolean any = row.chars().anyMatch(c -> c != ' ');
+		return any ? rank[rank.length - 1] + 1 : 0;
 	}
 
 	static List<String> wrap(Font font, Style style, String text, float maxWidth) {

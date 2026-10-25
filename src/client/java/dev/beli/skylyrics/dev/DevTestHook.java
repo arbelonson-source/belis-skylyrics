@@ -78,6 +78,11 @@ public final class DevTestHook {
 					}
 				}
 				case "close" -> client.setScreen(null);
+				case "scroll" -> {
+					if (client.screen != null) {
+						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
+					}
+				}
 				case "hud" -> client.options.hideGui = arg.equals("off");
 				case "cmd" -> {
 					MinecraftServer server = client.getSingleplayerServer();

@@ -133,8 +133,8 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.showNext, v -> cfg.showNext = v);
 		Row karaoke = new Toggle("Karaoke fill", "Words light up as they are sung",
 				() -> cfg.karaoke, v -> cfg.karaoke = v);
-		Row animation = new Segmented("Animation", "How a new line comes in",
-				new String[] {"Fade", "Rise", "Pop", "Type"}, () -> cfg.animation.ordinal(),
+		Row animation = new Segmented("Animation", "How lines come in",
+				new String[] {"Words", "Fade", "Rise", "Pop", "Type"}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i]);
 		Row capitals = new Toggle("CAPITALS", "Write every lyric in capital letters",
 				() -> cfg.uppercase, v -> cfg.uppercase = v);

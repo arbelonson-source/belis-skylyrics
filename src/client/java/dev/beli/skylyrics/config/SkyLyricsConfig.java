@@ -46,7 +46,7 @@ public final class SkyLyricsConfig {
 	}
 
 	public enum Animation {
-		FADE, RISE, POP, TYPEWRITER
+		WORDS, FADE, RISE, POP, TYPEWRITER
 	}
 
 	public enum Layer {
@@ -68,7 +68,7 @@ public final class SkyLyricsConfig {
 	public boolean showNext = true;
 	public boolean karaoke = true;
 	public boolean uppercase = false;
-	public Animation animation = Animation.RISE;
+	public Animation animation = Animation.WORDS;
 	/** Positive shows lyrics earlier (if they lag behind the song), in milliseconds. */
 	public int syncOffsetMs = 0;
 	public boolean showPlainLyrics = true;
