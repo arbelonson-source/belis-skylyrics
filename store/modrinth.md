@@ -46,13 +46,13 @@ It's free and open source, and it always will be.
 
 ### Features
 
-- **Lyrics in the sky**, line by line, in time with the song. Show the previous and next lines too if you like.
+- **Lyrics in the sky**, in time with the song. Pick a layout: **Arc** puts the line being sung on a gentle curve, **Lines** shows the previous and next lines too, and **World** places each word in the world around you as it's sung.
 - **Word-by-word animation**: words appear as they are sung. Or pick Fade, Rise, Pop or Type, plus a karaoke fill and a small pulse on each new line.
-- **A top bar** with the album cover, the song name and the line being sung.
-- **Three letter styles**: Smooth, Handwritten or the Minecraft font.
-- **Colours** taken from the album cover, a colour you pick, or rainbow. Glow, shadow and opacity are all adjustable.
+- **A top bar** with the album cover, the song name and the line being sung, a clock on its left and your frames per second and ping on its right.
+- **Four letter styles**: Bold, Smooth, Handwritten or the Minecraft font, with an optional **Depth** edge that makes the letters look 3D.
+- **Colours**: a soft periwinkle to start with, other colours you pick, the album cover's colour, or rainbow. Glow, shadow and opacity are all adjustable.
 - **Stays bright with shaders**: the lyrics can be drawn on top of the finished picture, so shader packs, clouds, rain and fog don't dim them.
-- **Night skies**: an aurora or a nebula behind the lyrics at night.
+- **Night skies**: an aurora, a nebula, a synthwave sky with a striped retro sun, or an eclipse behind the lyrics at night, plus optional constellations.
 - **Per-song timing**: if a song's lyrics run early or late, nudge them and the fix is remembered for that song.
 - **Music controls**: play, pause, skip and see the song's progress from the settings screen or with keys you choose.
 - **English and Hebrew** settings screen, following your Minecraft language.

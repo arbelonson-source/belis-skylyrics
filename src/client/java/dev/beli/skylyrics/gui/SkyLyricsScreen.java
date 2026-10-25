@@ -25,6 +25,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.gui.Controls.Button;
@@ -72,9 +73,15 @@ public final class SkyLyricsScreen extends Screen {
 		};
 	}
 	private static final int MUSIC_TAB = 2;
+	/** The soft colours of the new look first (periwinkle, pink, lavender, sky blue, cream), then brighter ones. */
 	private static final int[] SWATCHES = {
-			0xB57BFF, 0xFF6EC7, 0xFF5A5A, 0xFFA24C, 0xFFE066, 0x6BFF8E, 0x4FE3FF, 0x5B8CFF, 0xFFFFFF,
+			0xC7D0F4, 0xEEBAE8, 0xAE90F6, 0x8CDAFF, 0xC8B29C,
+			0xFF6EC7, 0xFF5A5A, 0xFFA24C, 0xFFE066, 0x6BFF8E, 0xFFFFFF,
 	};
+	/** Night sky choices in {@link SkyEffect} order. Five names don't fit side by side, so this is a Cycle. */
+	private static List<String> skyNames() {
+		return List.of(Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula"), Tr.t("Synthwave"), Tr.t("Eclipse"));
+	}
 	/** Part of the player name to look for, next to the name shown; the first one is Auto. */
 	private static final String[] PLAYER_KEYS = SkyLyricsClient.windows()
 			? new String[] {"", "spotify", "chrom", "edge", "firefox", "media player"}
@@ -136,14 +143,24 @@ public final class SkyLyricsScreen extends Screen {
 	// ---- Tabs -------------------------------------------------------------------------------------
 
 	private List<Card> lyricsTab() {
+		Row layout = new Segmented(Tr.t("Layout"), null,
+				new String[] {Tr.t("Arc"), Tr.t("Lines"), Tr.t("World")}, () -> cfg.layout.ordinal(),
+				i -> cfg.layout = Layout.values()[i])
+				.describe(() -> switch (cfg.layout) {
+					case ARC -> Tr.t("One line on a gentle curve");
+					case LINES -> Tr.t("The last, current and next line");
+					case WORLD -> Tr.t("Words appear around you");
+				});
+		// World words appear around wherever you look, so sky or floating and a compass direction don't apply
 		Row placement = new Segmented(Tr.t("Placement"), Tr.t("Far up in the sky, or close by"),
 				new String[] {Tr.t("Sky"), Tr.t("Floating")}, () -> cfg.placement.ordinal(),
-				i -> cfg.placement = Placement.values()[i]);
+				i -> cfg.placement = Placement.values()[i])
+				.when(() -> cfg.layout != Layout.WORLD);
 		Row direction = new Segmented(Tr.t("Direction"), Tr.t("Follow keeps them where you look"),
 				new String[] {Tr.t("Follow"), Tr.t("N"), Tr.t("E"), Tr.t("S"), Tr.t("W")},
 				() -> cfg.direction == Direction.FOLLOW ? 0 : cfg.direction.ordinal() + 1,
 				i -> cfg.direction = i == 0 ? Direction.FOLLOW : Direction.values()[i - 1])
-				.when(() -> cfg.placement == Placement.SKY);
+				.when(() -> cfg.placement == Placement.SKY && cfg.layout != Layout.WORLD);
 		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°");
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
@@ -152,9 +169,11 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.size, v -> cfg.size = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v));
 
 		Row previous = new Toggle(Tr.t("Previous line"), Tr.t("The line that just ended, faded"),
-				() -> cfg.showPrevious, v -> cfg.showPrevious = v);
+				() -> cfg.showPrevious, v -> cfg.showPrevious = v)
+				.when(() -> cfg.layout == Layout.LINES);
 		Row next = new Toggle(Tr.t("Next line"), Tr.t("What's coming up, dimmed"),
-				() -> cfg.showNext, v -> cfg.showNext = v);
+				() -> cfg.showNext, v -> cfg.showNext = v)
+				.when(() -> cfg.layout == Layout.LINES);
 		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung"),
 				() -> cfg.karaoke, v -> cfg.karaoke = v);
 		Row grow = new Toggle(Tr.t("Bigger current word"), Tr.t("The word being sung grows a little"),
@@ -169,7 +188,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), placement, direction, height, distance, size),
+				new Card(Tr.t("Position"), layout, placement, direction, height, distance, size),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 
@@ -191,13 +210,19 @@ public final class SkyLyricsScreen extends Screen {
 			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 
+		// Four choices over three switches: Bold and Smooth are both the smooth font, with or without boldFont
 		Row font = new Segmented(Tr.t("Font"), Tr.t("Letter style"),
-				new String[] {Tr.t("Smooth"), Tr.t("Handwritten"), Tr.t("Minecraft")},
-				() -> !cfg.smoothFont ? 2 : cfg.scriptFont ? 1 : 0,
+				new String[] {Tr.t("Bold"), Tr.t("Smooth"), Tr.t("Handwritten"), Tr.t("Minecraft")},
+				() -> !cfg.smoothFont ? 3 : cfg.scriptFont ? 2 : cfg.boldFont ? 0 : 1,
 				i -> {
-					cfg.smoothFont = i != 2;
-					cfg.scriptFont = i == 1;
+					cfg.smoothFont = i != 3;
+					cfg.scriptFont = i == 2;
+					if (i < 2) {
+						cfg.boldFont = i == 0;
+					}
 				});
+		Row depth = new Toggle(Tr.t("Depth"), Tr.t("A solid edge that makes the letters look 3D"),
+				() -> cfg.depth, v -> cfg.depth = v);
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
@@ -213,17 +238,18 @@ public final class SkyLyricsScreen extends Screen {
 					case WORLD -> 2;
 				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD);
 
-		Row night = new Segmented(Tr.t("Night sky"), Tr.t("Shows at night with music"),
-				new String[] {Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula")}, () -> cfg.sky.ordinal(),
-				i -> cfg.sky = SkyEffect.values()[i]);
+		Row night = new Cycle(Tr.t("Night sky"), Tr.t("Shows at night with music"), skyNames(),
+				() -> cfg.sky.ordinal(), i -> cfg.sky = SkyEffect.values()[i]);
 		Row skyStrength = new Slider(Tr.t("Strength"), null, 0.1, 1, 0.05,
 				() -> cfg.skyStrength, v -> cfg.skyStrength = (float) v, SkyLyricsScreen::percent)
 				.when(() -> cfg.sky != SkyEffect.OFF);
+		Row constellations = new Toggle(Tr.t("Constellations"), Tr.t("Star patterns joined by thin lines"),
+				() -> cfg.constellations, v -> cfg.constellations = v);
 
 		return List.of(
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
-				new Card(Tr.t("Style"), font, glow, shadow, opacity, seeThrough, layer),
-				new Card(Tr.t("Sky"), night, skyStrength));
+				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
+				new Card(Tr.t("Sky"), night, skyStrength, constellations));
 	}
 
 	private List<Card> musicTab() {
@@ -296,6 +322,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row clock = new Toggle(Tr.t("Clock"), Tr.t("The time on the left of the bar"),
 				() -> cfg.barClock, v -> cfg.barClock = v)
 				.when(() -> cfg.nowPlayingHud);
+		Row stats = new Toggle(Tr.t("Stats"), Tr.t("Frames per second and ping, right of the bar"),
+				() -> cfg.barStats, v -> cfg.barStats = v)
+				.when(() -> cfg.nowPlayingHud);
 		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
@@ -306,7 +335,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused),
-				new Card(Tr.t("Top bar"), card, barLyrics, clock, onlyOnChange),
+				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange),
 				new Card(Tr.t("Keys"), openKey, controls));
 	}
 

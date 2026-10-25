@@ -80,9 +80,9 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 ## What can I change about the look?
 
-- **Lyrics tab:** in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines, the karaoke fill, a bigger current word, the animation (Words, Fade, Rise, Pop or Type), the pulse when a new line starts, and capital letters.
-- **Look tab:** colour from the album cover, your own colour or rainbow; the letter style (Smooth, Handwritten or Minecraft); glow, shadow and opacity; and the night sky (Off, Aurora or Nebula) with its strength.
-- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, turn the top bar on or off, and add a clock to it.
+- **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (Words, Fade, Rise, Pop or Type), the pulse when a new line starts, and capital letters.
+- **Look tab:** your own colour (a soft periwinkle at first), the album cover's colour or rainbow; the letter style (Bold, Smooth, Handwritten or Minecraft); **Depth** for a solid 3D edge on the letters; glow, shadow and opacity; the night sky (Off, Aurora, Nebula, Synthwave or Eclipse) with its strength; and **Constellations**, star patterns joined by thin lines.
+- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right.
 
 ## Is the mod in Hebrew?
 

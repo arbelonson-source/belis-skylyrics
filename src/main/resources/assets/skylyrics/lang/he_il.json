@@ -161,5 +161,20 @@
   "skylyrics.ui.the_time_on_the_left_of_the_bar": "השעה בצד שמאל של הסרגל",
   "skylyrics.ui.on_macos_the_mod_asks_the_spotify_and_music_apps": "ב-macOS המוד שואל את האפליקציות Spotify ו\"מוזיקה\" מה מתנגן. בפעם הראשונה macOS ישאל אם Minecraft רשאי לשלוט בהן: לחץ על אישור. ב-Mac אי אפשר לראות דפדפנים ונגנים אחרים. המילים מגיעות מ-LRCLIB, ספריית מילים קהילתית חינמית, ונשמרות במחשב לפעם הבאה.",
   "skylyrics.ui.allow_minecraft_to_control_s_in_system_settings": "תן ל-Minecraft לשלוט ב-%s בהגדרות המערכת ← פרטיות ואבטחה ← אוטומציה",
-  "skylyrics.ui.waiting_for_spotify_or_music_if_macos_asks_to_le": "ממתין ל-Spotify או ל\"מוזיקה\". אם macOS שואל אם לתת ל-Minecraft לשלוט בהן, לחץ על אישור"
+  "skylyrics.ui.waiting_for_spotify_or_music_if_macos_asks_to_le": "ממתין ל-Spotify או ל\"מוזיקה\". אם macOS שואל אם לתת ל-Minecraft לשלוט בהן, לחץ על אישור",
+  "skylyrics.ui.layout": "פריסה",
+  "skylyrics.ui.arc": "קשת",
+  "skylyrics.ui.world": "עולם",
+  "skylyrics.ui.one_line_on_a_gentle_curve": "שורה אחת בקשת עדינה",
+  "skylyrics.ui.the_last_current_and_next_line": "השורה הקודמת, הנוכחית והבאה",
+  "skylyrics.ui.words_appear_around_you": "המילים מופיעות סביבך",
+  "skylyrics.ui.bold": "מודגש",
+  "skylyrics.ui.depth": "עומק",
+  "skylyrics.ui.a_solid_edge_that_makes_the_letters_look_3d": "שוליים מלאים שנותנים לאותיות מראה תלת־ממדי",
+  "skylyrics.ui.synthwave": "סינתווייב",
+  "skylyrics.ui.eclipse": "ליקוי חמה",
+  "skylyrics.ui.constellations": "קבוצות כוכבים",
+  "skylyrics.ui.star_patterns_joined_by_thin_lines": "כוכבים שמחוברים בקווים דקים",
+  "skylyrics.ui.stats": "נתונים",
+  "skylyrics.ui.frames_per_second_and_ping_right_of_the_bar": "פריימים לשנייה ופינג, מימין לסרגל"
 }

@@ -13,13 +13,14 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 - Sees what's playing on your PC: Spotify, a browser tab, or any other player that shows up in your media controls. Works on Linux and on Windows 10 and 11. On macOS it works with the Spotify and Apple Music apps.
 - Gets the synced lyrics from [LRCLIB](https://lrclib.net) and shows them line by line, in time with the song.
+- Three layouts. **Arc** shows the line being sung on a gentle curve, each word tilted a little. **Lines** shows the previous, current and next lines, straight and centred. **World** places each word or two in the world around you as it's sung.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
-- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. It can show a clock too.
+- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left and your frames per second and ping on its right. Each can be turned off.
 - The word being sung can grow a little in the sky (optional).
-- Three letter styles for the sky lyrics: Smooth, Handwritten or the Minecraft font.
-- Takes its colour from the album cover. You can also pick your own colour, or use rainbow.
-- At night, a soft aurora or nebula can glow in the sky behind the lyrics while music plays.
+- Four letter styles for the sky lyrics: Bold, Smooth, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
+- A soft periwinkle colour at first, with more soft colours to pick from. It can also take its colour from the album cover, or use rainbow.
+- At night, a sky of your choice can fill in behind the lyrics while music plays: an aurora, a nebula, **Synthwave** (a purple sky with a striped retro sun) or **Eclipse** (a dark sun with a glowing ring). **Constellations** join some of the stars with thin lines.
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.

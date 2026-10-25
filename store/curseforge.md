@@ -54,13 +54,13 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 
 ## Features
 
-- **Lyrics in the sky**, line by line, in time with the song, with the previous and next lines if you want them
+- **Lyrics in the sky**, in time with the song, in three layouts: **Arc** (the line being sung on a gentle curve), **Lines** (with the previous and next lines) or **World** (each word appears in the world around you as it's sung)
 - **Word-by-word animation**, or Fade, Rise, Pop and Type, plus a karaoke fill and a small pulse on each new line
-- **Top bar** with the album cover, the song name and the line being sung
-- **Three letter styles**: Smooth, Handwritten and the Minecraft font
-- **Colours** from the album cover, a colour you pick, or rainbow, with adjustable glow, shadow and opacity
+- **Top bar** with the album cover, the song name and the line being sung, a clock on its left and your frames per second and ping on its right
+- **Four letter styles**: Bold, Smooth, Handwritten and the Minecraft font, with an optional **Depth** edge that makes the letters look 3D
+- **Colours**: a soft periwinkle to start with, other colours you pick, the album cover's colour, or rainbow, with adjustable glow, shadow and opacity
 - **Stays bright with shaders**: lyrics can be drawn on top of the finished picture, so shader packs, clouds, rain and fog don't dim them
-- **Night skies**: an aurora or a nebula behind the lyrics at night
+- **Night skies**: an aurora, a nebula, a synthwave sky with a striped retro sun, or an eclipse behind the lyrics at night, plus optional constellations
 - **Per-song timing**: nudge a song's lyrics earlier or later, and the fix is remembered for that song
 - **Music controls**: play, pause and skip from the settings screen or with keys you choose
 - **English and Hebrew** settings screen, following your Minecraft language

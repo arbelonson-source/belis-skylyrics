@@ -161,5 +161,20 @@
   "skylyrics.ui.the_time_on_the_left_of_the_bar": "The time on the left of the bar",
   "skylyrics.ui.on_macos_the_mod_asks_the_spotify_and_music_apps": "On macOS the mod asks the Spotify and Music apps what's playing. The first time, macOS asks if Minecraft may control them: click OK. Browsers and other players can't be seen on a Mac. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time.",
   "skylyrics.ui.allow_minecraft_to_control_s_in_system_settings": "Allow Minecraft to control %s in System Settings → Privacy & Security → Automation",
-  "skylyrics.ui.waiting_for_spotify_or_music_if_macos_asks_to_le": "Waiting for Spotify or Music. If macOS asks to let Minecraft control them, click OK"
+  "skylyrics.ui.waiting_for_spotify_or_music_if_macos_asks_to_le": "Waiting for Spotify or Music. If macOS asks to let Minecraft control them, click OK",
+  "skylyrics.ui.layout": "Layout",
+  "skylyrics.ui.arc": "Arc",
+  "skylyrics.ui.world": "World",
+  "skylyrics.ui.one_line_on_a_gentle_curve": "One line on a gentle curve",
+  "skylyrics.ui.the_last_current_and_next_line": "The last, current and next line",
+  "skylyrics.ui.words_appear_around_you": "Words appear around you",
+  "skylyrics.ui.bold": "Bold",
+  "skylyrics.ui.depth": "Depth",
+  "skylyrics.ui.a_solid_edge_that_makes_the_letters_look_3d": "A solid edge that makes the letters look 3D",
+  "skylyrics.ui.synthwave": "Synthwave",
+  "skylyrics.ui.eclipse": "Eclipse",
+  "skylyrics.ui.constellations": "Constellations",
+  "skylyrics.ui.star_patterns_joined_by_thin_lines": "Star patterns joined by thin lines",
+  "skylyrics.ui.stats": "Stats",
+  "skylyrics.ui.frames_per_second_and_ping_right_of_the_bar": "Frames per second and ping, right of the bar"
 }
