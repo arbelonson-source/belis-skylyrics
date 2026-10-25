@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
+
 class SkyEffectsTest {
 	@Test
 	void visibilityNeedsDarkClearSkyAndStrength() {
@@ -64,5 +66,20 @@ class SkyEffectsTest {
 		assertEquals(0xFFFFFF, SkyEffects.mix(0x000000, 0xFFFFFF, 1));
 		assertEquals(0x808080, SkyEffects.mix(0x000000, 0xFFFFFF, 0.5f));
 		assertEquals(0xFF0000, SkyEffects.mix(0xFF0000, 0x0000FF, -3));
+	}
+
+	@Test
+	void farShapesStayInsideTheFog() {
+		for (int chunks = 2; chunks <= 32; chunks++) {
+			float blocks = chunks * 16;
+			assertTrue(SkyEffects.farRadius(chunks) < blocks - Math.min(64, Math.max(4, blocks / 10)));
+			assertTrue(SkyEffects.farRadius(chunks) > SkyEffects.radius(chunks));
+		}
+	}
+
+	@Test
+	void sunsFaceTheLyricsDirection() {
+		assertEquals(0, SkyEffects.baseYaw(Direction.SOUTH));
+		assertEquals(SkyEffects.FOLLOW_YAW, SkyEffects.baseYaw(Direction.FOLLOW));
 	}
 }
