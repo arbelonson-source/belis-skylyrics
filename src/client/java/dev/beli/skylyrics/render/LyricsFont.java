@@ -14,6 +14,8 @@ import dev.beli.skylyrics.config.SkyLyricsConfig;
  */
 public final class LyricsFont {
 	public static final FontDescription SMOOTH = new FontDescription.Resource(SkyLyricsClient.id("lyrics"));
+	/** Heavier letters, like big sung words on posters (assets/skylyrics/font/bold.json). */
+	public static final FontDescription BOLD = new FontDescription.Resource(SkyLyricsClient.id("bold"));
 	/** Handwritten brush letters for the sky lyrics (assets/skylyrics/font/script.json). */
 	public static final FontDescription SCRIPT = new FontDescription.Resource(SkyLyricsClient.id("script"));
 

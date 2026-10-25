@@ -1,0 +1,7 @@
+{
+  "providers": [
+    {"type": "ttf", "file": "skylyrics:poppins_bold.ttf", "size": 10.5, "oversample": 6.0, "shift": [0.0, 0.5]},
+    {"type": "ttf", "file": "skylyrics:noto_sans_hebrew_medium.ttf", "size": 10.5, "oversample": 6.0, "shift": [0.0, 0.5]},
+    {"type": "reference", "id": "minecraft:default"}
+  ]
+}

@@ -1,11 +1,12 @@
 Fonts bundled in Beli's SkyLyrics
 
 poppins_semibold.ttf        Poppins SemiBold, Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins)
+poppins_bold.ttf            Poppins Bold, Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins)
 noto_sans_hebrew_medium.ttf Noto Sans Hebrew Medium, Copyright 2024 The Noto Project Authors (https://github.com/notofonts/hebrew)
 kaushan_script.ttf          Kaushan Script, Copyright (c) 2011 Pablo Impallari (www.impallari.com), Copyright (c) 2011 Igino Marini (www.ikern.com),
                             with Reserved Font Name Kaushan Script.
 
-All three are licensed under the SIL Open Font License, Version 1.1:
+All four are licensed under the SIL Open Font License, Version 1.1:
 
 SIL OPEN FONT LICENSE
 
