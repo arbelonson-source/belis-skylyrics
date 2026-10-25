@@ -21,6 +21,8 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
+import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
@@ -328,6 +330,24 @@ public final class SkyLyricsScreen extends Screen {
 		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
+		Row barPosition = new Segmented(Tr.t("Bar position"), Tr.t("Bottom sits just above the hotbar"),
+				new String[] {Tr.t("Top"), Tr.t("Bottom")}, () -> cfg.barPosition.ordinal(),
+				i -> cfg.barPosition = BarPosition.values()[i]).when(() -> cfg.nowPlayingHud);
+		Row barSize = new Slider(Tr.t("Bar size"), null, 0.75, 1.5, 0.05,
+				() -> cfg.barSize, v -> cfg.barSize = (float) v, SkyLyricsScreen::percent).when(() -> cfg.nowPlayingHud);
+		Row barBackground = new Slider(Tr.t("Background"), Tr.t("How dark the bar is"), 0, 1, 0.05,
+				() -> cfg.barBackground, v -> cfg.barBackground = (float) v, SkyLyricsScreen::percent).when(() -> cfg.nowPlayingHud);
+		Row barAccent = new Segmented(Tr.t("Accent colour"), Tr.t("Word highlight and equaliser"),
+				new String[] {Tr.t("Album"), Tr.t("Lyrics"), Tr.t("Pick")}, () -> cfg.barAccent.ordinal(),
+				i -> cfg.barAccent = BarAccent.values()[i]).when(() -> cfg.nowPlayingHud);
+		Row barSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
+				() -> cfg.barAccent == BarAccent.FIXED ? cfg.barAccentColor : -1,
+				c -> { cfg.barAccentColor = c; cfg.barAccent = BarAccent.FIXED; })
+				.when(() -> cfg.nowPlayingHud && cfg.barAccent == BarAccent.FIXED);
+		Row barArt = new Toggle(Tr.t("Album picture"), Tr.t("The round cover on the left"),
+				() -> cfg.barArt, v -> cfg.barArt = v).when(() -> cfg.nowPlayingHud);
+		Row barEq = new Toggle(Tr.t("Equaliser"), Tr.t("Bars that move with the music"),
+				() -> cfg.barEqualiser, v -> cfg.barEqualiser = v).when(() -> cfg.nowPlayingHud);
 
 		Row openKey = new Info(Tr.t("Open settings"), null, () -> keyName(mod.openSettingsKey()));
 		Row controls = new Buttons(Tr.t("More keys"), Tr.t("Toggle lyrics, play/pause, skip songs"),
@@ -335,7 +355,8 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused),
-				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange),
+				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, barPosition, barSize,
+						barBackground, barAccent, barSwatches, barArt, barEq),
 				new Card(Tr.t("Keys"), openKey, controls));
 	}
 

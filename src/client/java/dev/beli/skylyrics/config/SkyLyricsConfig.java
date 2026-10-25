@@ -74,6 +74,17 @@ public final class SkyLyricsConfig {
 		ECLIPSE
 	}
 
+	public enum BarPosition {
+		TOP,
+		BOTTOM
+	}
+
+	public enum BarAccent {
+		ALBUM,
+		LYRICS,
+		FIXED
+	}
+
 	public enum Layer {
 		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
 		AUTO,
@@ -145,6 +156,14 @@ public final class SkyLyricsConfig {
 	public boolean barClock = true;
 	/** Frames per second and ping, right of the top bar. */
 	public boolean barStats = true;
+	public BarPosition barPosition = BarPosition.TOP;
+	public float barSize = 1f;
+	/** How dark the bar's background is, from transparent to opaque. */
+	public float barBackground = 1f;
+	public BarAccent barAccent = BarAccent.FIXED;
+	public int barAccentColor = 0x926CDE;
+	public boolean barArt = true;
+	public boolean barEqualiser = true;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */
@@ -185,11 +204,15 @@ public final class SkyLyricsConfig {
 		if (layer == null) layer = d.layer;
 		if (sky == null) sky = d.sky;
 		if (layout == null) layout = d.layout;
+		if (barPosition == null) barPosition = d.barPosition;
+		if (barAccent == null) barAccent = d.barAccent;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);
 		skyStrength = clamp(skyStrength, 0, 1);
 		size = clamp(size, 0.3f, 3);
+		barSize = clamp(barSize, 0.75f, 1.5f);
+		barBackground = clamp(barBackground, 0, 1);
 		height = clamp(height, -10, 80);
 		distance = clamp(distance, 8, 160);
 		syncOffsetMs = Math.max(-5000, Math.min(5000, syncOffsetMs));
@@ -199,6 +222,7 @@ public final class SkyLyricsConfig {
 		songOffsets.values().removeIf(v -> v == null || v == 0);
 		songOffsets.replaceAll((k, v) -> Math.max(-MAX_SONG_OFFSET, Math.min(MAX_SONG_OFFSET, v)));
 		color &= 0xFFFFFF;
+		barAccentColor &= 0xFFFFFF;
 	}
 
 	private static Path file() {

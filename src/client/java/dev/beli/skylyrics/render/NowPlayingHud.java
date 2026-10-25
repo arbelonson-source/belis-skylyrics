@@ -35,7 +35,10 @@ import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 
 import dev.beli.skylyrics.Tr;
+import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
+import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
@@ -118,7 +121,7 @@ public final class NowPlayingHud {
 	private @Nullable Content old;
 	private long swappedAt;
 	/** The pill's width, tweened from {@link #widthFrom} to {@link #widthTo} since {@link #resizedAt}. */
-	private float width = -1, widthFrom, widthTo;
+	private float width = -1, widthFrom, widthTo, widthSpeed;
 	private long resizedAt;
 	/** Where the bar's top edge is, eased: below any boss bars. */
 	private float top = -1;
@@ -171,6 +174,7 @@ public final class NowPlayingHud {
 			content = null;
 			old = null;
 			width = -1;
+			widthSpeed = 0;
 			top = -1;
 			return;
 		}
@@ -200,20 +204,30 @@ public final class NowPlayingHud {
 		float target = TopBarLayout.pillFor(contentWidth(font, style, textScale, next), fit.pill());
 		if (width < 0) {
 			width = widthFrom = widthTo = target;
+			widthSpeed = 0;
 		} else if (Math.abs(target - widthTo) > 0.25f) {
-			widthFrom = width;
 			widthTo = target;
-			resizedAt = now;
 		}
-		float r = Mth.clamp((now - resizedAt) / (float) RESIZE_NS, 0, 1);
-		width = widthFrom + (widthTo - widthFrom) * easeOutCubic(r);
+		float spring = 15;
+		int steps = Math.max(1, (int) Math.ceil(dt * 240));
+		float step = dt / steps;
+		for (int i = 0; i < steps; i++) {
+			widthSpeed += (spring * spring * (widthTo - width) - 2 * spring * widthSpeed) * step;
+			width += widthSpeed * step;
+		}
 
 		float x = (g.guiWidth() - width) / 2f;
-		float topTarget = topBelowBossBars(mc, g.guiHeight());
+		float topTarget = cfg.barPosition == BarPosition.BOTTOM
+				? g.guiHeight() - 54 - PILL_H
+				: topBelowBossBars(mc, g.guiHeight());
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
 
+		float barSize = cfg.barSize;
+		g.pose().pushMatrix();
+		g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * y);
+		g.pose().scale(barSize, barSize);
 		drawPill(g, mc, x, y, now, dt);
 		float midY = y + PILL_H / 2f;
 		if (fit.clock()) {
@@ -223,6 +237,7 @@ public final class NowPlayingHud {
 			drawStats(g, mc, font, style, textScale, x + width + STATS_GAP, midY);
 		}
 		drawText(g, font, style, textScale, x, midY, now, dt);
+		g.pose().popMatrix();
 	}
 
 	/**
@@ -267,15 +282,17 @@ public final class NowPlayingHud {
 		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(width * s), ph = Math.round(PILL_H * s);
 		float b = Math.max(1, Math.round(BORDER_W * s));
 		roundRect(g, px, py, pw, ph, ph / 2, ARGB.color(Math.round(a * 255), BORDER));
-		roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, ph / 2 - b, ARGB.color(Math.round(a * FILL_ALPHA), FILL));
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, ph / 2 - b,
+				ARGB.color(Math.round(a * FILL_ALPHA * cfg.barBackground), FILL));
 
 		int artPx = Math.round(ART * s);
 		int artX = Math.round(px + ART_INSET * s), artY = Math.round(py + (ph - artPx) / 2);
-		if (art.hasTexture()) {
+		if (cfg.barArt && art.hasTexture()) {
 			// The texture is already cut round (AlbumArt)
 			g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, artX, artY, 0, 0, artPx, artPx,
 					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a * dim));
-		} else {
+		} else if (cfg.barArt) {
 			roundRect(g, artX, artY, artPx, artPx, artPx / 2f, ARGB.color(Math.round(a * dim * 255), NO_ART));
 		}
 
@@ -291,11 +308,13 @@ public final class NowPlayingHud {
 			}
 			eq[i] += (target - eq[i]) * Math.min(1, dt * 16);
 			float bh = Math.round(Math.max(barW, (EQ_MIN + (EQ_MAX - EQ_MIN) * eq[i]) * s));
-			roundRect(g, Math.round(eqX + i * (barW + barGap)), Math.round(py + (ph - bh) / 2), barW, bh, barW / 2,
-					ARGB.color(Math.round(a * dim * 255), EQ_COLOR));
+			if (cfg.barEqualiser) {
+				roundRect(g, Math.round(eqX + i * (barW + barGap)), Math.round(py + (ph - bh) / 2), barW, bh, barW / 2,
+						ARGB.color(Math.round(a * dim * 255), accent(cfg)));
+			}
 		}
 		g.pose().popMatrix();
-		if (!art.hasTexture()) {
+		if (cfg.barArt && !art.hasTexture()) {
 			Font font = mc.font;
 			g.pose().pushMatrix();
 			g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
@@ -332,7 +351,7 @@ public final class NowPlayingHud {
 		float bottom = Math.round((midY + SIGNAL_BOTTOM) * s);
 		for (int i = 0; i < SIGNAL_H.length; i++) {
 			float h = Math.max(barW, Math.round(SIGNAL_H[i] * s));
-			int color = i < lit ? EQ_COLOR : SIGNAL_OFF;
+			int color = i < lit ? accent(SkyLyricsConfig.get()) : SIGNAL_OFF;
 			roundRect(g, Math.round(x * s + i * pitch), bottom - h, barW, h, barW / 2, ARGB.color(Math.round(a * 255), color));
 		}
 		g.pose().popMatrix();
@@ -426,7 +445,8 @@ public final class NowPlayingHud {
 			hlRight += (right - hlRight) * hk;
 			float x0 = rtl ? start - hlRight : start + hlLeft;
 			float hw = hlRight - hlLeft;
-			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS, ARGB.color(Math.round(a * 255), HIGHLIGHT));
+			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS,
+					ARGB.color(Math.round(a * 255), accent(SkyLyricsConfig.get())));
 		}
 
 		int sung = fade(a, SUNG), upcoming = fade(a, UPCOMING);
@@ -482,6 +502,14 @@ public final class NowPlayingHud {
 
 	private static int fade(float a, int rgb) {
 		return ARGB.color(Math.max(4, Math.round(a * 255)), rgb);
+	}
+
+	private static int accent(SkyLyricsConfig cfg) {
+		return switch (cfg.barAccent) {
+			case ALBUM -> SkyLyricsClient.get().art().color();
+			case LYRICS -> SkyLyricsClient.get().renderer().color();
+			case FIXED -> cfg.barAccentColor;
+		};
 	}
 
 	private long lyricsTime(SkyLyricsConfig cfg) {

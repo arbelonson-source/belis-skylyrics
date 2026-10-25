@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
@@ -93,7 +94,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::render);
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
-		HudElementRegistry.addLast(id("now_playing"), hud::render);
+		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
+		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
@@ -208,6 +210,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	/** The key that opens the settings, so the screen can close on it too. */
 	public KeyMapping openSettingsKey() {
 		return openSettings;
+	}
+
+	public LyricsRenderer renderer() {
+		return renderer;
 	}
 
 	public NowPlayingHud hud() {
