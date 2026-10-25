@@ -99,6 +99,18 @@ sleep 3
 shot settings-display
 hook "close"
 
+# The settings and the top bar in Hebrew, which reads right to left
+hook "lang he_il"
+sleep 15 # reloading the game's resources takes a while on a software screen
+hook "gui 0"
+sleep 4
+shot hebrew-settings-lyrics
+hook "gui 2"
+sleep 3
+shot hebrew-settings-music
+hook "close" "lang en_us"
+sleep 10
+
 kill "$GAME" 2>/dev/null || true
 pkill -f 'net.fabricmc' 2>/dev/null || true
 cp "$RUN"/screenshots/*.png "$OUT"/
