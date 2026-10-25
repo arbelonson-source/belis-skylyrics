@@ -161,6 +161,8 @@ public final class SkyLyricsScreen extends Screen {
 			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : "no cover art";
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 
+		Row font = new Segmented("Font", "Smooth letters, or Minecraft's pixel font",
+				new String[] {"Smooth", "Minecraft"}, () -> cfg.smoothFont ? 0 : 1, i -> cfg.smoothFont = i == 0);
 		Row glow = new Slider("Glow", "Soft light around the letters", 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
 		Row shadow = new Toggle("Shadow", "A dark edge so text reads on bright skies",
@@ -172,7 +174,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card("Colour", mode, swatches, albumColor),
-				new Card("Style", glow, shadow, opacity, seeThrough));
+				new Card("Style", font, glow, shadow, opacity, seeThrough));
 	}
 
 	private List<Card> musicTab() {

@@ -67,6 +67,8 @@ public final class SkyLyricsConfig {
 	// Style
 	public ColorMode colorMode = ColorMode.ALBUM;
 	public int color = 0xB57BFF;
+	/** The bundled smooth font; off uses Minecraft's pixel font. */
+	public boolean smoothFont = true;
 	public float glow = 0.7f;
 	public boolean shadow = true;
 	public float opacity = 1f;

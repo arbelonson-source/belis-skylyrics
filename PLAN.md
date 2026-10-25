@@ -52,3 +52,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25: core + GUI built, 14 unit tests green. Checklist caught up.
 - 2026-10-25: first in-game check on the headless screen: demo lyrics glow in the night sky (Sky mode, no shaders). Added `shot <name>` to DevTestHook so screenshots skip desktop pop-ups. Note: hideWithF1 hides lyrics with F1, so screenshots keep the HUD on.
 - 2026-10-25: owner asked to see progress on GitHub now and to use AGPL-3.0. Uploaded as a public work-in-progress repo; push after every session from now on.
+- 2026-10-25 17:51: smooth lyrics font (Poppins SemiBold + Noto Sans Hebrew, both OFL) with a Font switch in the Style card; checked in the sky with Iris on. Still to fix: clouds draw over the lyrics and shaders make the text dark.

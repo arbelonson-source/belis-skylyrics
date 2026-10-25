@@ -60,6 +60,7 @@ public final class LyricsRenderer {
 	private long changedAt;
 	private final Map<String, List<String>> wrapCache = new HashMap<>();
 	private float wrapCacheWidth;
+	private boolean wrapCacheSmooth;
 
 	public LyricsRenderer(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -115,9 +116,10 @@ public final class LyricsRenderer {
 		float angular = (sky ? 3.4f : 2.6f) * cfg.size;
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
-		if (wrapWidth != wrapCacheWidth) {
+		if (wrapWidth != wrapCacheWidth || cfg.smoothFont != wrapCacheSmooth) {
 			wrapCache.clear();
 			wrapCacheWidth = wrapWidth;
+			wrapCacheSmooth = cfg.smoothFont;
 		}
 
 		Quaternionf orientation = new Quaternionf().rotationYXZ(Mth.PI - anchorYaw * DEG, -anchorPitch * DEG, 0);
@@ -282,6 +284,7 @@ public final class LyricsRenderer {
 		final int color;
 		final float wrapWidth;
 		final Font.DisplayMode mode;
+		final Style base;
 
 		Draw(SubmitNodeCollector out, PoseStack pose, Font font, SkyLyricsConfig cfg, int color, float wrapWidth) {
 			this.out = out;
@@ -291,10 +294,11 @@ public final class LyricsRenderer {
 			this.color = color;
 			this.wrapWidth = wrapWidth;
 			this.mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
+			this.base = LyricsFont.base(cfg);
 		}
 
 		List<String> rows(String text) {
-			return wrapCache.computeIfAbsent(text, t -> wrap(font, t, wrapWidth));
+			return wrapCache.computeIfAbsent(text, t -> wrap(font, base, t, wrapWidth));
 		}
 
 		/**
@@ -326,7 +330,7 @@ public final class LyricsRenderer {
 			int charIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
 				String row = rows.get(r);
-				float x = -font.width(row) / 2f;
+				float x = -LyricsFont.width(font, base, row) / 2f;
 				float ry = top + r * ROW_H + 1;
 				int start = charIndex;
 				FormattedCharSequence seq = sink -> {
@@ -339,7 +343,7 @@ public final class LyricsRenderer {
 						float fill = Mth.clamp(sungChars - ci, 0, 1);
 						int c = mix(dim, bright, fill);
 						c = mix(secondary, c, highlight);
-						if (!sink.accept(off, Style.EMPTY.withColor(c), cp)) {
+						if (!sink.accept(off, base.withColor(c), cp)) {
 							return false;
 						}
 						off += Character.charCount(cp);
@@ -350,7 +354,7 @@ public final class LyricsRenderer {
 
 				float glowAlpha = cfg.glow * alpha * (0.25f + 0.75f * highlight);
 				if (glowAlpha > 0.02f) {
-					FormattedCharSequence glowSeq = maxChars < 0 ? FormattedCharSequence.forward(row, Style.EMPTY) : seq;
+					FormattedCharSequence glowSeq = maxChars < 0 ? FormattedCharSequence.forward(row, base) : seq;
 					pose.pushPose();
 					pose.translate(0, 0, -0.35f);
 					for (int ring = 1; ring <= 2; ring++) {
@@ -375,22 +379,22 @@ public final class LyricsRenderer {
 		}
 	}
 
-	static List<String> wrap(Font font, String text, float maxWidth) {
+	static List<String> wrap(Font font, Style style, String text, float maxWidth) {
 		List<String> rows = new ArrayList<>();
-		if (font.width(text) <= maxWidth) {
+		if (LyricsFont.width(font, style, text) <= maxWidth) {
 			rows.add(text);
 			return rows;
 		}
 		// Balance the rows: aim for even widths instead of a long row and a one-word orphan
-		int rowsNeeded = (int) Math.ceil(font.width(text) / maxWidth);
-		float target = Math.min(maxWidth, font.width(text) / (float) rowsNeeded + 12);
+		int rowsNeeded = (int) Math.ceil(LyricsFont.width(font, style, text) / maxWidth);
+		float target = Math.min(maxWidth, LyricsFont.width(font, style, text) / (float) rowsNeeded + 12);
 		StringBuilder row = new StringBuilder();
 		for (String word : text.split(" ")) {
 			if (word.isEmpty()) {
 				continue;
 			}
 			String candidate = row.isEmpty() ? word : row + " " + word;
-			if (!row.isEmpty() && font.width(candidate) > target) {
+			if (!row.isEmpty() && LyricsFont.width(font, style, candidate) > target) {
 				rows.add(row.toString());
 				row.setLength(0);
 				row.append(word);
