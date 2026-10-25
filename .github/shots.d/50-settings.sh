@@ -41,9 +41,9 @@ sleep 15 # reloading the game's resources takes a while on a software screen
 hook "gui 1"
 sleep 4
 shot hebrew-settings-look
-hook "scroll -20"
+hook "set sky SYNTHWAVE" "scroll -20" # the longest sky name, and the arrows around it
 sleep 2
 shot hebrew-settings-look-end
-hook "close" "lang en_us"
+hook "close" "lang en_us" "set sky AURORA"
 sleep 10
 hook "guiscale 2"

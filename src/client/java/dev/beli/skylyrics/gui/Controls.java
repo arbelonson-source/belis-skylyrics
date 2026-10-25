@@ -352,8 +352,9 @@ final class Controls {
 			boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, by, bw, 16);
 			Ui.rect(f.g(), bx, by, bw, 16, 4, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			boolean leftHalf = f.mx() < bx + bw / 2;
-			f.g().drawString(font, Ui.visual("‹"), bx + 6, by + 4, hover && leftHalf ? Ui.ACCENT : Ui.MUTED, false);
-			f.g().drawString(font, Ui.visual("›"), bx + bw - 6 - font.width("›"), by + 4, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED, false);
+			// Plain strings: in Hebrew the visual order mirrors ‹ and ›, so both arrows pointed inwards
+			f.g().drawString(font, "‹", bx + 6, by + 4, hover && leftHalf ? Ui.ACCENT : Ui.MUTED, false);
+			f.g().drawString(font, "›", bx + bw - 6 - font.width("›"), by + 4, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED, false);
 			String value = labels.get(Mth.clamp(get.getAsInt(), 0, labels.size() - 1));
 			f.g().drawCenteredString(font, Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
 		}
