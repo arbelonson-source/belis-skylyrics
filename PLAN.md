@@ -43,7 +43,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 
 ### Release
 - [ ] Screenshots + videos in docs/ (shaders on/off, GUI)
-- [ ] README with install steps for normal people
+- [x] README with install steps for normal people
 - [ ] GitHub repo arbelonson-source/belis-skylyrics, release jar, CI build
 - [ ] Install into the owner's "donut" instance
 
@@ -59,3 +59,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 18:41: new default animation "Words": the old line fades out while the new line's words fade and slide in one after another, like the Neon Lyrics videos. Right-to-left lines (Hebrew) are now put in display order before drawing, so they no longer come out backwards in the sky (unit test DisplayOrderTest). Added a `scroll` command to the dev test hook.
 - 2026-10-25 18:47: timing can now be fixed per song. A "This song" slider under Music, plus two keys (unbound by default, set them in Controls) that nudge the playing song by 0.1 s and say so above the hotbar. Each song keeps its own timing on top of the general one (last 500 songs remembered). Unit test SongOffsetTest.
 - 2026-10-25 18:53: new "Pulse" switch (on by default, Lyrics > Lines): the glow swells and the letters brighten for a moment when a line starts; with the Words animation each word flares as it lands. Also fixed a one-frame flash of the whole new line before its words faded in. Unit test PulseTest.
+- 2026-10-25 18:56: README rewritten for normal players: what it does now (top bar, Words animation, pulse, per-song timing, shader-safe lyrics), install steps for Prism Launcher and the official launcher, where the keys are, and what to check when no lyrics show.
