@@ -1,0 +1,2 @@
+pid=3462 display=:99 auth=/tmp/xvfb-run.Sc9mi2/Xauthority windows=[] -> 640x480
+pid=3462 display=:99 auth=/tmp/xvfb-run.Sc9mi2/Xauthority windows=[] -> 1600x900
