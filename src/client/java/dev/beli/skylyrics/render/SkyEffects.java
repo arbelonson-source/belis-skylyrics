@@ -4,13 +4,20 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
+import dev.beli.skylyrics.config.SkyLyricsConfig.SkyColors;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
+import dev.beli.skylyrics.lyrics.LyricLine;
+import dev.beli.skylyrics.lyrics.Lyrics;
+import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
+import java.util.Random;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.attribute.EnvironmentAttributes;
@@ -18,8 +25,9 @@ import net.minecraft.world.level.dimension.DimensionType.Skybox;
 import net.minecraft.world.level.material.FogType;
 
 /**
- * Night sky effects while music plays: a soft aurora or nebula tinted by the lyrics colour, a synthwave
- * sky with a striped retro sun, or an eclipse under a milky way, plus constellations with any of them.
+ * Night sky effects while music plays: a soft aurora or nebula (or both) tinted by the lyrics colour, a synthwave
+ * sky with a striped retro sun, or an eclipse under a milky way, plus constellations, shooting stars and sparkles
+ * round the lyrics with any of them.
  * Drawn camera-relative through Minecraft's own pipelines (additive like lightning, or plain blending like
  * name tag backgrounds), so it needs no shader support and works with Iris and Sodium.
  */
@@ -36,6 +44,10 @@ public final class SkyEffects {
 	private static final int BLOBS = 7;
 	private static final int SLICES = 24;
 	private static final int DOTS = 60;
+	private static final int SPARKLES = 26;
+	private static final int METEORS = 3;
+	/** Shooting stars per second while the song is calm: about one every fifteen seconds. */
+	static final float METEOR_RATE = 1 / 15f;
 	private static final float DEG = (float) (Math.PI / 180);
 	/** At the default strength the synthwave sky and the suns show fully; lower strengths fade them. */
 	private static final float FULL_STRENGTH = 0.7f;
@@ -45,7 +57,11 @@ public final class SkyEffects {
 	private static final float CONSTELLATION_LAYER = 0.87f;
 
 	private final LyricsRenderer lyrics;
+	private final LyricsService service;
+	private final AlbumArt art;
 	private final MediaTracker tracker;
+	private final SubmitNodeCollector.CustomGeometryRenderer drawer = this::draw;
+	private final Random random = new Random();
 	private float presence;
 	private float clock;
 	private long last;
@@ -56,6 +72,11 @@ public final class SkyEffects {
 
 	private SkyEffect effect;
 	private boolean starPatterns;
+	// Basis of the spot being drawn: its centre, and right and up directions across the sky there
+	private float bx, by, bz, rx, rz, ux, uy, uz;
+
+	private boolean aurora, nebula, sparkles;
+	private float sparkleShow, sparkleSpread;
 	private float radius;
 	private float far;
 	private float fade;
@@ -70,8 +91,24 @@ public final class SkyEffects {
 	private final Constellations constellations = new Constellations();
 	private final Target light = new Target(false), paint = new Target(true);
 
-	public SkyEffects(LyricsRenderer lyrics, MediaTracker tracker) {
+	private float cloudAlpha;
+	private int auroraLow, auroraHigh, starColor, meteorColor;
+	private final int[] clouds = new int[3];
+	private float albumR = -1, albumG, albumB;
+
+	private float anchorYaw = Float.NaN, anchorPitch;
+	private boolean following;
+
+	private final float[] meteorYaw = new float[METEORS], meteorElev = new float[METEORS];
+	private final float[] meteorAngle = new float[METEORS], meteorSpeed = new float[METEORS];
+	private final float[] meteorLength = new float[METEORS];
+	private final float[] meteorAge = new float[METEORS], meteorLife = new float[METEORS];
+	private int meteorsAlive;
+
+	public SkyEffects(LyricsRenderer lyrics, LyricsService service, AlbumArt art, MediaTracker tracker) {
 		this.lyrics = lyrics;
+		this.service = service;
+		this.art = art;
 		this.tracker = tracker;
 	}
 
@@ -127,6 +164,28 @@ public final class SkyEffects {
 		return r << 16 | g << 8 | bl;
 	}
 
+	/**
+	 * Shooting stars per second: a gentle base rate, up to three times as many while lyric lines rush by.
+	 * {@code lineSeconds} is how long the current line lasts, 0 for none or an instrumental break.
+	 */
+	static float meteorRate(float lineSeconds) {
+		if (lineSeconds <= 0) {
+			return METEOR_RATE;
+		}
+		return METEOR_RATE * (1 + 2 * clamp01((5 - lineSeconds) / 3));
+	}
+
+	/** A sparkle's brightness, 0..1: mostly dim, with a short sharp glint. */
+	static float glint(float wave) {
+		float w = 0.5f + 0.5f * wave;
+		return w * w * w;
+	}
+
+	/** A shooting star fades in fast and out more slowly over its {@code life}. */
+	static float meteorEnvelope(float age, float life) {
+		return smooth(age / 0.12f) * smooth((life - age) / 0.35f);
+	}
+
 	private static float clamp01(float v) {
 		return v < 0 ? 0 : Math.min(v, 1);
 	}
@@ -141,11 +200,11 @@ public final class SkyEffects {
 		long now = System.nanoTime();
 		float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
 		last = now;
-		boolean any = cfg.sky != SkyEffect.OFF || cfg.constellations;
-		boolean on = any && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg);
+		boolean wanted = cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
+		boolean on = wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg);
 		presence = step(presence, on, dt);
 		ClientLevel level = mc.level;
-		if (presence <= 0 || !any || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
+		if (presence <= 0 || !wanted || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
 			return;
 		}
 		Camera camera = mc.gameRenderer.getMainCamera();
@@ -158,7 +217,7 @@ public final class SkyEffects {
 		if (fade < 0.01f) {
 			return;
 		}
-		clock += dt;
+		clock += dt * cfg.skySpeed.factor;
 		effect = cfg.sky;
 		starPatterns = cfg.constellations;
 		radius = radius(mc.options.getEffectiveRenderDistance());
@@ -168,6 +227,23 @@ public final class SkyEffects {
 		// One screen pixel as a tangent of its angle, so lines stay about a pixel wide at any size
 		pixel = 2 * (float) Math.tan(mc.options.fov().get() * DEG / 2) / Math.max(1, mc.getWindow().getHeight());
 		tint = lyrics.color();
+		radius = radius(mc.options.getEffectiveRenderDistance());
+		aurora = cfg.sky == SkyEffect.AURORA || cfg.sky == SkyEffect.BOTH;
+		nebula = cfg.sky == SkyEffect.NEBULA || cfg.sky == SkyEffect.BOTH;
+		// Under an aurora the clouds step back so the two together don't wash out
+		cloudAlpha = aurora ? 0.55f : 1;
+		// Sparkles gather round the lyrics, so they come and go with them
+		sparkleShow = step(sparkleShow, cfg.twinkle && lyrics.visible(), dt);
+		sparkles = sparkleShow > 0;
+		updateColors(cfg, dt);
+		if (sparkles) {
+			updateAnchor(cfg, camera, dt);
+			sparkleSpread = Mth.clamp(cfg.size, 0.6f, 1.6f) * (cfg.placement == Placement.SKY ? 1 : 0.8f);
+		}
+		updateMeteors(cfg, dt);
+		if (effect == SkyEffect.OFF && !starPatterns && !sparkles && meteorsAlive == 0) {
+			return;
+		}
 
 		// The synthwave sky has to cover the vanilla one and the eclipse disc has to be black, so those
 		// blend normally; the rest adds light. Each render type gets its shapes far to near, so the
@@ -176,11 +252,12 @@ public final class SkyEffects {
 		pose.pushPose();
 		if (effect == SkyEffect.SYNTHWAVE) {
 			context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
-		} else {
-			context.commandQueue().submitCustomGeometry(pose, RenderTypes.lightning(), this::drawGlowing);
-			if (effect == SkyEffect.ECLIPSE) {
-				context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
-			}
+		}
+		if (effect != SkyEffect.SYNTHWAVE || sparkles || meteorsAlive > 0) {
+			context.commandQueue().submitCustomGeometry(pose, RenderTypes.lightning(), drawer);
+		}
+		if (effect == SkyEffect.ECLIPSE) {
+			context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
 		}
 		pose.popPose();
 	}
@@ -199,24 +276,134 @@ public final class SkyEffects {
 		eclipse.drawDisc(paint, far, baseYaw, amount);
 	}
 
-	/** Added light: the eclipse, the constellations and the aurora or nebula, far to near. */
-	private void drawGlowing(PoseStack.Pose pose, VertexConsumer vc) {
+
+	private void updateColors(SkyLyricsConfig cfg, float dt) {
+		tint = lyrics.color();
+		if (cfg.skyColors == SkyColors.ALBUM) {
+			// The cover's colour jumps when the song changes, so ease towards it
+			int target = art.color();
+			float k = albumR < 0 ? 1 : 1 - (float) Math.exp(-dt * 2.5f);
+			albumR = Math.max(albumR, 0) + ((target >> 16 & 255) - Math.max(albumR, 0)) * k;
+			albumG += ((target >> 8 & 255) - albumG) * k;
+			albumB += ((target & 255) - albumB) * k;
+			tint = Math.round(albumR) << 16 | Math.round(albumG) << 8 | Math.round(albumB);
+		}
+		float follow = cfg.skyColors == SkyColors.CLASSIC ? 0 : SkyPalette.follow(tint);
+		int teal = SkyPalette.recolor(TEAL, TEAL, tint, follow);
+		int violet = SkyPalette.recolor(VIOLET, TEAL, tint, follow);
+		auroraLow = mix(mix(teal, tint, 0.3f), teal, 0.35f);
+		auroraHigh = mix(mix(violet, tint, 0.5f), auroraLow, 0.2f);
+		for (int k = 0; k < clouds.length; k++) {
+			int base = k == 0 ? VIOLET : k == 1 ? DEEP_BLUE : MAGENTA;
+			clouds[k] = mix(SkyPalette.recolor(base, VIOLET, tint, follow), tint, 0.4f);
+		}
+		starColor = mix(0xFFFFFF, tint, 0.35f);
+		meteorColor = mix(0xFFFFFF, tint, 0.2f);
+	}
+
+	/** Where the lyrics hang, by the same rules as {@link LyricsRenderer}, so the sparkles can gather round. */
+	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
+		float camYaw = camera.yRot();
+		if (Float.isNaN(anchorYaw)) {
+			anchorYaw = camYaw;
+			anchorPitch = -cfg.height;
+		}
+		float targetYaw;
+		float targetPitch = -cfg.height;
+		float speed;
+		if (cfg.placement == Placement.FLOATING) {
+			targetYaw = camYaw;
+			targetPitch = Mth.clamp(camera.xRot() - Math.min(cfg.height, 30) * 0.5f, -85, 85);
+			speed = 5f;
+		} else if (cfg.direction == Direction.FOLLOW) {
+			float diff = Mth.wrapDegrees(camYaw - anchorYaw);
+			if (Math.abs(diff) > 38) {
+				following = true;
+			} else if (Math.abs(diff) < 4) {
+				following = false;
+			}
+			targetYaw = following ? camYaw : anchorYaw;
+			speed = 2.2f;
+		} else {
+			targetYaw = cfg.direction.yaw;
+			speed = 3f;
+		}
+		float k = dt == 0 ? 1 : 1 - (float) Math.exp(-dt * speed);
+		anchorYaw += Mth.wrapDegrees(targetYaw - anchorYaw) * k;
+		anchorPitch += (targetPitch - anchorPitch) * k;
+	}
+
+	private void updateMeteors(SkyLyricsConfig cfg, float dt) {
+		meteorsAlive = 0;
+		int free = -1;
+		for (int i = 0; i < METEORS; i++) {
+			meteorAge[i] = cfg.shootingStars ? meteorAge[i] + dt : meteorLife[i];
+			if (meteorAge[i] < meteorLife[i]) {
+				meteorsAlive++;
+			} else {
+				free = i;
+			}
+		}
+		// Roll against the busiest rate first, so the lyrics are only looked at on the rare frames that might launch
+		float busiest = 3 * METEOR_RATE;
+		if (free >= 0 && cfg.shootingStars && random.nextFloat() < busiest * dt
+				&& random.nextFloat() * busiest < meteorRate(lineSeconds(cfg))) {
+			launch(free);
+			meteorsAlive++;
+		}
+	}
+
+	/** How long the line being sung lasts, or 0 between lines and without synced lyrics. */
+	private float lineSeconds(SkyLyricsConfig cfg) {
+		Lyrics shown = service.lyrics();
+		if (shown == null || !shown.synced() || shown.isEmpty()) {
+			return 0;
+		}
+		int index = shown.indexAt(tracker.positionMs() + cfg.offsetFor(tracker.track()));
+		LyricLine line = shown.get(index);
+		if (line == null || line.isBreak()) {
+			return 0;
+		}
+		return (shown.endOf(index, line.timeMs() + 5000) - line.timeMs()) / 1000f;
+	}
+
+	private void launch(int i) {
+		meteorYaw[i] = random.nextFloat() * Mth.TWO_PI;
+		meteorElev[i] = (42 + random.nextFloat() * 28) * DEG;
+		// Falling at a slant, to the left or the right
+		float slant = (0.12f + random.nextFloat() * 0.3f) * Mth.PI;
+		meteorAngle[i] = random.nextBoolean() ? -slant : slant - Mth.PI;
+		meteorSpeed[i] = (20 + random.nextFloat() * 10) * DEG;
+		meteorLength[i] = (7 + random.nextFloat() * 5) * DEG;
+		meteorLife[i] = 0.6f + random.nextFloat() * 0.5f;
+		meteorAge[i] = 0;
+	}
+
+	/** Added light, far to near: the eclipse, the constellations, the nebula and aurora, sparkles, shooting stars. */
+	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
 		light.begin(pose, vc);
 		if (effect == SkyEffect.ECLIPSE) {
 			eclipse.draw(light, far, baseYaw, amount, clock);
 		}
-		if (starPatterns) {
+		if (starPatterns && effect != SkyEffect.SYNTHWAVE) {
 			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
 		}
-		if (effect == SkyEffect.AURORA) {
-			for (int k = 0; k < RIBBONS; k++) {
-				ribbon(pose, vc, k);
-			}
-		} else if (effect == SkyEffect.NEBULA) {
+		if (nebula) {
 			for (int k = 0; k < BLOBS; k++) {
 				blob(pose, vc, k);
 			}
 			dots(pose, vc);
+		}
+		if (aurora) {
+			for (int k = 0; k < RIBBONS; k++) {
+				ribbon(pose, vc, k);
+			}
+		}
+		if (sparkles) {
+			sparkles(pose, vc);
+		}
+		if (meteorsAlive > 0) {
+			meteors(pose, vc);
 		}
 	}
 
@@ -257,8 +444,8 @@ public final class SkyEffects {
 		float centre = (k * 2.1f + 0.6f) + t * 0.004f * (k % 2 == 0 ? 1 : -1);
 		float span = (100 + 20 * k) * DEG;
 		float baseElev = (27 + 9 * k) * DEG;
-		int low = mix(mix(TEAL, tint, 0.3f), TEAL, 0.35f);
-		int high = mix(mix(VIOLET, tint, 0.5f), low, 0.2f);
+		int low = auroraLow;
+		int high = auroraHigh;
 		float peak = 0.85f * fade;
 		float prevYaw = 0, prevBase = 0, prevTop = 0, prevB = 0;
 		for (int i = 0; i <= SEGMENTS; i++) {
@@ -307,9 +494,8 @@ public final class SkyEffects {
 		float vx = dy * uz, vy = dz * ux - dx * uz, vz = -dy * ux;
 		float cx = dx * dist, cy = dy * dist, cz = dz * dist;
 		float size = dist * (0.36f + 0.08f * Mth.sin(k * 1.9f)) * (1 + 0.06f * Mth.sin(t * 0.12f + k));
-		int base = k % 3 == 0 ? VIOLET : k % 3 == 1 ? DEEP_BLUE : MAGENTA;
-		int hue = mix(base, tint, 0.4f);
-		float alpha = 0.7f * fade * (0.8f + 0.2f * Mth.sin(t * 0.15f + k * 2));
+		int hue = clouds[k % 3];
+		float alpha = 0.7f * fade * cloudAlpha * (0.8f + 0.2f * Mth.sin(t * 0.15f + k * 2));
 		int centreC = argb(mix(hue, 0xFFFFFF, 0.15f), alpha);
 		int midC = argb(mix(hue, DEEP_BLUE, 0.3f), alpha * 0.45f);
 		int edgeC = argb(hue, 0);
@@ -343,7 +529,7 @@ public final class SkyEffects {
 
 	private void dots(PoseStack.Pose pose, VertexConsumer vc) {
 		float t = clock;
-		int white = mix(0xFFFFFF, tint, 0.35f);
+		int white = starColor;
 		for (int i = 0; i < DOTS; i++) {
 			float yaw = i * 2.399963f;
 			float elev = (22 + 40 * (Mth.sin(i * 12.9898f) * 0.5f + 0.5f)) * DEG;
@@ -358,6 +544,87 @@ public final class SkyEffects {
 			point(vc, pose, x + rx, y + s, z + rz, c);
 			point(vc, pose, x - rx, y + s, z - rz, c);
 		}
+	}
+
+	/** Soft four-pointed sparkles scattered round the lyrics, each glinting now and then. */
+	private void sparkles(PoseStack.Pose pose, VertexConsumer vc) {
+		float t = clock;
+		float r = radius * 0.92f;
+		float centreYaw = (anchorYaw + 180) * DEG, centreElev = -anchorPitch * DEG;
+		int clear = argb(starColor, 0);
+		for (int i = 0; i < SPARKLES; i++) {
+			float tw = glint(Mth.sin(t * (0.8f + (i % 7) * 0.13f) + i * 2.7f));
+			float alpha = fade * smooth(sparkleShow) * tw;
+			if (alpha < 0.01f) {
+				continue;
+			}
+			// A golden-angle spiral in a wide oval, kept clear of the middle where the words are
+			float a = i * 2.399963f;
+			float ring = (0.45f + 0.55f * Mth.sqrt((i + 0.5f) / SPARKLES)) * sparkleSpread;
+			float elev = centreElev + Mth.sin(a) * ring * 20 * DEG;
+			float yaw = centreYaw + Mth.cos(a) * ring * 62 * DEG / Math.max(0.4f, Mth.cos(elev));
+			basis(yaw, elev, r);
+			float s = r * 0.011f * (0.55f + 0.45f * tw) * (0.75f + 0.25f * Mth.sin(i * 7.3f));
+			float arm = s * 2.4f, thin = s * 0.22f;
+			int c = argb(starColor, alpha);
+			at(vc, pose, -arm, 0, clear);
+			at(vc, pose, 0, thin, c);
+			at(vc, pose, arm, 0, clear);
+			at(vc, pose, 0, -thin, c);
+			at(vc, pose, 0, -arm, clear);
+			at(vc, pose, thin, 0, c);
+			at(vc, pose, 0, arm, clear);
+			at(vc, pose, -thin, 0, c);
+			int core = argb(starColor, alpha * 0.6f);
+			at(vc, pose, -thin * 2.5f, 0, core);
+			at(vc, pose, 0, thin * 2.5f, core);
+			at(vc, pose, thin * 2.5f, 0, core);
+			at(vc, pose, 0, -thin * 2.5f, core);
+		}
+	}
+
+	/** Each shooting star is one tapered quad: a bright head and a tail that fades to nothing. */
+	private void meteors(PoseStack.Pose pose, VertexConsumer vc) {
+		float r = radius * 0.95f;
+		int clear = argb(meteorColor, 0);
+		for (int i = 0; i < METEORS; i++) {
+			float age = meteorAge[i];
+			if (age >= meteorLife[i]) {
+				continue;
+			}
+			float alpha = fade * meteorEnvelope(age, meteorLife[i]);
+			float ca = Mth.cos(meteorAngle[i]), sa = Mth.sin(meteorAngle[i]);
+			float stretch = 1 / Math.max(0.3f, Mth.cos(meteorElev[i]));
+			float head = age * meteorSpeed[i];
+			float tail = Math.max(0, head - meteorLength[i]);
+			basis(meteorYaw[i] + ca * tail * stretch, meteorElev[i] + sa * tail, r);
+			float tx = bx, ty = by, tz = bz;
+			basis(meteorYaw[i] + ca * head * stretch, meteorElev[i] + sa * head, r);
+			float w = r * 0.003f;
+			int c = argb(meteorColor, alpha);
+			at(vc, pose, -sa * w, ca * w, c);
+			at(vc, pose, ca * w * 2.5f, sa * w * 2.5f, c);
+			at(vc, pose, sa * w, -ca * w, c);
+			point(vc, pose, tx, ty, tz, clear);
+		}
+	}
+
+	/** Sets the spot on the sky sphere ({@code yaw}, {@code elev}, distance {@code r}) that {@link #at} draws round. */
+	private void basis(float yaw, float elev, float r) {
+		float sy = Mth.sin(yaw), cy = Mth.cos(yaw), se = Mth.sin(elev), ce = Mth.cos(elev);
+		bx = r * ce * sy;
+		by = r * se;
+		bz = -r * ce * cy;
+		rx = cy;
+		rz = sy;
+		ux = -se * sy;
+		uy = ce;
+		uz = se * cy;
+	}
+
+	/** A corner {@code right} and {@code up} away from the spot set by {@link #basis}. */
+	private void at(VertexConsumer vc, PoseStack.Pose pose, float right, float up, int color) {
+		point(vc, pose, bx + rx * right + ux * up, by + uy * up, bz + rz * right + uz * up, color);
 	}
 
 	/** Collects four corners, then emits the quad twice (both windings), as the pipeline culls back faces. */

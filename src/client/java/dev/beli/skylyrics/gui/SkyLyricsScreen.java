@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
+import java.util.function.BooleanSupplier;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
@@ -29,7 +30,9 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
+import dev.beli.skylyrics.config.SkyLyricsConfig.SkyColors;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
+import dev.beli.skylyrics.config.SkyLyricsConfig.SkySpeed;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.gui.Controls.Button;
 import dev.beli.skylyrics.gui.Controls.Buttons;
@@ -83,7 +86,7 @@ public final class SkyLyricsScreen extends Screen {
 	};
 	/** Night sky choices in {@link SkyEffect} order. Five names don't fit side by side, so this is a Cycle. */
 	private static List<String> skyNames() {
-		return List.of(Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula"), Tr.t("Synthwave"), Tr.t("Eclipse"));
+		return List.of(Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula"), Tr.t("Synthwave"), Tr.t("Eclipse"), Tr.t("Aurora + nebula"));
 	}
 	/** Part of the player name to look for, next to the name shown; the first one is Auto. */
 	private static final String[] PLAYER_KEYS = SkyLyricsClient.windows()
@@ -243,9 +246,20 @@ public final class SkyLyricsScreen extends Screen {
 
 		Row night = new Cycle(Tr.t("Night sky"), Tr.t("Shows at night with music"), skyNames(),
 				() -> cfg.sky.ordinal(), i -> cfg.sky = SkyEffect.values()[i]);
+		BooleanSupplier anySky = () -> cfg.sky != SkyEffect.OFF || cfg.shootingStars || cfg.twinkle;
+		Row shootingStars = new Toggle(Tr.t("Shooting stars"), Tr.t("Now and then, more when the lyrics are busy"),
+				() -> cfg.shootingStars, v -> cfg.shootingStars = v);
+		Row twinkle = new Toggle(Tr.t("Twinkling stars"), Tr.t("Soft sparkles around the lyrics"),
+				() -> cfg.twinkle, v -> cfg.twinkle = v);
+		Row skyColors = new Segmented(Tr.t("Sky colours"), null,
+				new String[] {Tr.t("Classic"), Tr.t("Album"), Tr.t("Lyrics")}, () -> cfg.skyColors.ordinal(),
+				i -> cfg.skyColors = SkyColors.values()[i]).when(anySky);
+		Row skySpeed = new Segmented(Tr.t("Sky speed"), null,
+				new String[] {Tr.t("Slow"), Tr.t("Normal"), Tr.t("Fast")}, () -> cfg.skySpeed.ordinal(),
+				i -> cfg.skySpeed = SkySpeed.values()[i]).when(() -> cfg.sky != SkyEffect.OFF || cfg.twinkle);
 		Row skyStrength = new Slider(Tr.t("Strength"), null, 0.1, 1, 0.05,
 				() -> cfg.skyStrength, v -> cfg.skyStrength = (float) v, SkyLyricsScreen::percent)
-				.when(() -> cfg.sky != SkyEffect.OFF);
+				.when(anySky);
 		Row constellations = new Toggle(Tr.t("Constellations"), Tr.t("Star patterns joined by thin lines"),
 				() -> cfg.constellations, v -> cfg.constellations = v);
 
@@ -253,7 +267,7 @@ public final class SkyLyricsScreen extends Screen {
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
 				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
-				new Card(Tr.t("Sky"), night, skyStrength, constellations));
+				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength));
 	}
 
 	private List<Card> musicTab() {

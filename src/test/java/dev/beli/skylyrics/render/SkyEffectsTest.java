@@ -82,4 +82,35 @@ class SkyEffectsTest {
 		assertEquals(0, SkyEffects.baseYaw(Direction.SOUTH));
 		assertEquals(SkyEffects.FOLLOW_YAW, SkyEffects.baseYaw(Direction.FOLLOW));
 	}
+
+	@Test
+	void shootingStarsAreGentleWhenCalm() {
+		assertEquals(SkyEffects.METEOR_RATE, SkyEffects.meteorRate(0), 1e-6f);
+		assertEquals(SkyEffects.METEOR_RATE, SkyEffects.meteorRate(8), 1e-6f);
+		assertEquals(SkyEffects.METEOR_RATE, SkyEffects.meteorRate(5), 1e-6f);
+		assertTrue(SkyEffects.METEOR_RATE < 0.1f, "about one every ten seconds or less");
+	}
+
+	@Test
+	void shootingStarsTripleWhenLinesRushBy() {
+		assertEquals(3 * SkyEffects.METEOR_RATE, SkyEffects.meteorRate(2), 1e-6f);
+		assertEquals(3 * SkyEffects.METEOR_RATE, SkyEffects.meteorRate(0.5f), 1e-6f);
+		float mid = SkyEffects.meteorRate(3.5f);
+		assertTrue(mid > 1.9f * SkyEffects.METEOR_RATE && mid < 2.1f * SkyEffects.METEOR_RATE, "halfway " + mid);
+	}
+
+	@Test
+	void shootingStarFadesInAndOut() {
+		assertEquals(0, SkyEffects.meteorEnvelope(0, 1), 1e-6f);
+		assertEquals(1, SkyEffects.meteorEnvelope(0.5f, 1), 1e-6f);
+		assertEquals(0, SkyEffects.meteorEnvelope(1, 1), 1e-6f);
+		assertTrue(SkyEffects.meteorEnvelope(0.1f, 1) > SkyEffects.meteorEnvelope(0.9f, 1), "quick in, slow out");
+	}
+
+	@Test
+	void glintIsMostlyDimWithAShortPeak() {
+		assertEquals(1, SkyEffects.glint(1), 1e-6f);
+		assertEquals(0, SkyEffects.glint(-1), 1e-6f);
+		assertEquals(0.125f, SkyEffects.glint(0), 1e-6f);
+	}
 }

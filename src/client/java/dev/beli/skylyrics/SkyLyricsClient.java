@@ -90,7 +90,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker.start(500);
 
 		registerKeys();
-		sky = new SkyEffects(renderer, tracker);
+		sky = new SkyEffects(renderer, lyrics, art, tracker);
 		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::render);
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);

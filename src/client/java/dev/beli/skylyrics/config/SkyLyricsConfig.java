@@ -71,7 +71,9 @@ public final class SkyLyricsConfig {
 		/** A purple gradient with a striped retro sun low in the sky. */
 		SYNTHWAVE,
 		/** A black sun with a glowing ring and a flare, under a faint milky way. */
-		ECLIPSE
+		ECLIPSE,
+		/** The aurora over a softer nebula. */
+		BOTH
 	}
 
 	public enum BarPosition {
@@ -88,6 +90,25 @@ public final class SkyLyricsConfig {
 		ALBUM,
 		LYRICS,
 		FIXED
+	}
+
+	public enum SkyColors {
+		/** The aurora's own greens and violets with a touch of the lyrics colour. */
+		CLASSIC,
+		/** Recoloured to the album cover's colour. */
+		ALBUM,
+		/** Recoloured to the lyrics colour. */
+		LYRICS
+	}
+
+	public enum SkySpeed {
+		SLOW(0.5f), NORMAL(1f), FAST(2f);
+
+		public final float factor;
+
+		SkySpeed(float factor) {
+			this.factor = factor;
+		}
 	}
 
 	public enum Layer {
@@ -139,6 +160,10 @@ public final class SkyLyricsConfig {
 	public float skyStrength = 0.7f;
 	/** Star patterns joined by thin lines in the night sky. */
 	public boolean constellations = true;
+	public SkyColors skyColors = SkyColors.CLASSIC;
+	public SkySpeed skySpeed = SkySpeed.NORMAL;
+	public boolean shootingStars = false;
+	public boolean twinkle = false;
 
 	// Display
 	public float size = 1f;
@@ -219,6 +244,8 @@ public final class SkyLyricsConfig {
 		if (barPosition == null) barPosition = d.barPosition;
 		if (barAccent == null) barAccent = d.barAccent;
 		if (barShow == null) barShow = d.barShow;
+		if (skyColors == null) skyColors = d.skyColors;
+		if (skySpeed == null) skySpeed = d.skySpeed;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);
