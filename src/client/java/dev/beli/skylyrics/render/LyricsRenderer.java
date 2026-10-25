@@ -69,6 +69,14 @@ public final class LyricsRenderer {
 	/** Each line sits this many degrees left or right of where you look, and this many above the crosshair. */
 	private static final float ARC_SIDE = 6f, ARC_ABOVE_MIN = 5f, ARC_ABOVE_MAX = 8f;
 	private static final int SALT_SIDE = 101, SALT_UP = 102;
+	/**
+	 * A line further than this many degrees left/right or up/down from where you look (near the screen's edge or
+	 * past it), for this long, moves to where you look now.
+	 */
+	private static final float ARC_LOST_YAW = 35f, ARC_LOST_PITCH = 25f;
+	private static final long ARC_LOST_NS = 1_000_000_000L;
+	/** A line that moved to a new spot fades in there over this long. */
+	private static final long ARC_ARRIVE_NS = 300_000_000L;
 	/** Depth copies: the dark one this far down, the light one this far up (text units, about 0.1 and 0.05 em). */
 	private static final float DEPTH_DOWN = 1.05f, DEPTH_UP = 0.5f;
 	/** The dark copy's brightness by night and by day (against a bright sky it needs to be darker to show). */
@@ -108,8 +116,8 @@ public final class LyricsRenderer {
 	private final WorldWords worldWords = new WorldWords();
 	/** Arc layouts of the lines on show, keyed by line number and text. */
 	private final Map<String, ArcText> arcCache = new HashMap<>();
-	/** Where in the sky each arc line was put when it started: yaw and pitch, by line number. */
-	private final Map<Integer, float[]> arcAnchors = new HashMap<>();
+	/** Where in the sky each arc line was put, by line number. */
+	private final Map<Integer, ArcAnchor> arcAnchors = new HashMap<>();
 
 	/** A frame laid out by the world pass, waiting for the HUD pass to draw it on screen. */
 	private record Pending(List<Spot> spots, float scale, float wrapWidth, long time, long now) {}
@@ -117,8 +125,18 @@ public final class LyricsRenderer {
 	/** One block of text and where it sits around the camera; {@code arc} is null for the stacked lines. */
 	private record Spot(Vector3f offset, Quaternionf orientation, @Nullable ArcShot arc) {}
 
-	/** An arc line to draw: which line, and how far it is through leaving (or -1 while it's being sung). */
-	private record ArcShot(int index, float leave) {}
+	/**
+	 * An arc line to draw: which line, how far it is through leaving (or -1 while it's being sung), and how far
+	 * through fading in at its spot (0..1).
+	 */
+	private record ArcShot(int index, float leave, float arrive) {}
+
+	/** An arc line's spot in the sky, and since when it's been there or out of view. */
+	private static final class ArcAnchor {
+		float yaw, pitch;
+		long placed;
+		long lostSince = -1;
+	}
 
 	/** A line cut into words and placed for the arc layout. */
 	private record ArcText(String[] words, float[] widths, int[] firstChar, int total, List<ArcLayout.Group> groups) {}
@@ -202,8 +220,8 @@ public final class LyricsRenderer {
 		List<Spot> spots = new ArrayList<>();
 		if (cfg.layout == Layout.ARC && !shown.instrumental()) {
 			for (ArcShot shot : arcShots(cfg, camera, time, now)) {
-				float[] at = arcAnchors.get(shot.index());
-				spots.add(spot(at[0], at[1], distance, shot));
+				ArcAnchor at = arcAnchors.get(shot.index());
+				spots.add(spot(at.yaw, at.pitch, distance, shot));
 			}
 		} else {
 			spots.add(spot(anchorYaw, anchorPitch, distance, null));
@@ -280,12 +298,10 @@ public final class LyricsRenderer {
 		float leave = (now - changedAt) / (float) ARC_LEAVE_NS;
 		int previous = previousIndex;
 		if (previous != index && leave < 1 && sungLine(previous)) {
-			arcAnchor(cfg, camera, previous);
-			shots.add(new ArcShot(previous, leave));
+			shots.add(new ArcShot(previous, leave, arrival(arcAnchor(cfg, camera, previous, now, false), now)));
 		}
 		if (sungLine(index)) {
-			arcAnchor(cfg, camera, index);
-			shots.add(new ArcShot(index, -1));
+			shots.add(new ArcShot(index, -1, arrival(arcAnchor(cfg, camera, index, now, true), now)));
 		}
 		arcAnchors.keySet().removeIf(i -> i != index && i != previous);
 		return shots;
@@ -295,18 +311,46 @@ public final class LyricsRenderer {
 		return index >= 0 && index < shown.lines().size() && !shown.get(index).isBreak();
 	}
 
-	private void arcAnchor(SkyLyricsConfig cfg, Camera camera, int index) {
-		arcAnchors.computeIfAbsent(index, i -> {
-			long seed = ArcLayout.seed(i, shown.get(i).text());
+	private static float arrival(ArcAnchor anchor, long now) {
+		return Mth.clamp((now - anchor.placed) / (float) ARC_ARRIVE_NS, 0, 1);
+	}
+
+	/**
+	 * The line's spot: where you're looking when it starts, a little above the crosshair, and then it stays put
+	 * like the clouds. A line you've turned well away from for a moment comes back to where you look now, so a
+	 * long line isn't lost behind you. With a fixed compass direction the lines keep to it instead.
+	 */
+	private ArcAnchor arcAnchor(SkyLyricsConfig cfg, Camera camera, int index, long now, boolean follow) {
+		boolean fixed = cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW;
+		ArcAnchor anchor = arcAnchors.get(index);
+		if (anchor != null && !fixed && follow) {
+			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW
+					|| Math.abs(anchor.pitch - camera.xRot()) > ARC_LOST_PITCH) {
+				if (anchor.lostSince < 0) {
+					anchor.lostSince = now;
+				} else if (now - anchor.lostSince > ARC_LOST_NS) {
+					anchor = null;
+				}
+			} else {
+				anchor.lostSince = -1;
+			}
+		}
+		if (anchor == null) {
+			long seed = ArcLayout.seed(index, shown.get(index).text());
 			float side = (ArcLayout.unit(seed, 0, SALT_SIDE) * 2 - 1) * ARC_SIDE;
 			float up = ARC_ABOVE_MIN + ArcLayout.unit(seed, 0, SALT_UP) * (ARC_ABOVE_MAX - ARC_ABOVE_MIN);
-			if (cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW) {
-				// A fixed compass direction: lines keep to it, at the chosen height, spread around it a little
-				return new float[] {cfg.direction.yaw + side, -cfg.height - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2)};
+			anchor = new ArcAnchor();
+			anchor.placed = now;
+			if (fixed) {
+				anchor.yaw = cfg.direction.yaw + side;
+				anchor.pitch = -cfg.height - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
+			} else {
+				anchor.yaw = camera.yRot() + side;
+				anchor.pitch = Mth.clamp(camera.xRot() - up, -85, 85);
 			}
-			// New lines appear where you're looking, a little above the crosshair, then stay put
-			return new float[] {camera.yRot() + side, Mth.clamp(camera.xRot() - up, -85, 85)};
-		});
+			arcAnchors.put(index, anchor);
+		}
+		return anchor;
 	}
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
@@ -671,7 +715,7 @@ public final class LyricsRenderer {
 			ArcText arc = arcCache.computeIfAbsent(index + "\n" + text, k -> arcText(index, text));
 			boolean leaving = shot.leave() >= 0;
 			float leave = leaving ? shot.leave() : 0;
-			float alpha = visibility * cfg.opacity * (1 - leave);
+			float alpha = visibility * cfg.opacity * (1 - leave) * shot.arrive();
 			if (alpha <= 0.01f) {
 				return;
 			}

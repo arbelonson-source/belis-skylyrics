@@ -176,6 +176,7 @@ final class ArcLayout {
 		int rows = rowStarts.length;
 		float flip = unit(seed, 0, SALT_FLIP) < 0.5f ? 1 : -1;
 		int groupNo = 0;
+		float rowY = 0, above = 0;
 		for (int r = 0; r < rows; r++) {
 			int from = rowStarts[r], to = r + 1 < rows ? rowStarts[r + 1] : n;
 			// Split the row into groups and measure them
@@ -188,13 +189,19 @@ final class ArcLayout {
 			float[] scale = new float[spans.size()];
 			float[] advance = new float[spans.size()];
 			float rowWidth = GAP * (spans.size() - 1);
+			float biggest = 0;
 			for (int g = 0; g < spans.size(); g++) {
 				int[] s = spans.get(g);
 				scale[g] = groupScale(seed, s[0]);
+				biggest = Math.max(biggest, scale[g]);
 				advance[g] = width(widths, s[0], s[1], space) * (1 + (scale[g] - 1) * PUSH);
 				rowWidth += advance[g];
 			}
-			float rowY = (r - (rows - 1) / 2f) * ROW_PITCH;
+			// Big words need more room between the rows, or the row below runs into them
+			if (r > 0) {
+				rowY += ROW_PITCH * Math.max(1, (above + biggest) / 2);
+			}
+			above = biggest;
 			float x = -rowWidth / 2;
 			// y = rowY - curve * x², rising by the row's rise at its ends
 			float half = Math.max(1, rowWidth / 2);
