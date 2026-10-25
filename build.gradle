@@ -79,6 +79,11 @@ tasks.register("runProductionClient", net.fabricmc.loom.task.prod.ClientProducti
 		mods.from(configurations.productionMods)
 	}
 	jvmArgs.add("-Dskylyrics.testHook=true")
+	// -PwindowSize=1600x900 sets the game window's size
+	if (project.hasProperty("windowSize")) {
+		def (w, h) = project.property("windowSize").toString().tokenize("x")
+		programArgs.addAll("--width", w, "--height", h)
+	}
 	// -PquickPlay=WorldName opens that world straight away
 	if (project.hasProperty("quickPlay")) {
 		programArgs.addAll("--quickPlaySingleplayer", project.property("quickPlay").toString())

@@ -1,0 +1,51 @@
+# Starts the real game on a virtual screen with the demo song and takes pictures of the lyrics and the
+# settings (.github/scripts/screenshots.sh). Run it from the Actions tab, or push to a "shots/..." branch.
+# The pictures are saved as an artifact and on the "ci-screenshots" branch, one folder per run.
+
+name: screenshots
+on:
+  workflow_dispatch:
+  push:
+    branches: ['shots/**']
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: install a virtual screen
+        run: sudo apt-get update -q && sudo apt-get install -y -q xvfb libgl1-mesa-dri mesa-utils jq
+      - name: build the mod
+        run: chmod +x ./gradlew && ./gradlew remapJar
+      - name: play the demo song and take pictures
+        run: OUT=shots bash .github/scripts/screenshots.sh
+      - name: keep the pictures
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: screenshots
+          path: |
+            shots/
+            game.log
+      - name: put the pictures on the ci-screenshots branch
+        run: |
+          dir="$GITHUB_RUN_ID-${GITHUB_SHA::7}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin ci-screenshots && git worktree add pics origin/ci-screenshots || {
+            git worktree add --detach pics && git -C pics checkout --orphan ci-screenshots && git -C pics rm -rfq .
+          }
+          mkdir -p "pics/$dir" && cp shots/* "pics/$dir/"
+          git -C pics add "$dir"
+          git -C pics commit -qm "Screenshots from $GITHUB_REF_NAME ${GITHUB_SHA::7}"
+          git -C pics push origin HEAD:ci-screenshots

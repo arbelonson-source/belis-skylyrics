@@ -19,8 +19,9 @@ import dev.beli.skylyrics.gui.SkyLyricsScreen;
  * Development-only remote control, so the mod can be checked on a hidden screen without a keyboard.
  * Write commands, one per line, to {@code skylyrics-test.txt} in the game folder; the file is read
  * once and deleted. Commands: {@code look <yaw> <pitch>}, {@code gui [tab]}, {@code preview},
- * {@code close}, {@code hud on|off}, {@code cmd <server command>}, {@code shot <name>} (saves the
- * game frame alone to {@code screenshots/<name>.png}, without anything the desktop draws on top).
+ * {@code close}, {@code hud on|off}, {@code cmd <server command>}, {@code guiscale <n>} (0 = auto),
+ * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
+ * the desktop draws on top).
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -121,6 +122,10 @@ public final class DevTestHook {
 					}
 				}
 				case "hud" -> client.options.hideGui = arg.equals("off");
+				case "guiscale" -> {
+					client.options.guiScale().set(Integer.parseInt(arg));
+					client.resizeDisplay();
+				}
 				case "cmd" -> {
 					MinecraftServer server = client.getSingleplayerServer();
 					if (server != null) {
