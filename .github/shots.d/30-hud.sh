@@ -36,10 +36,20 @@ done
 
 # A small window: the pill narrows and a long line scrolls to keep the word being sung in view
 if sudo apt-get install -y -q xdotool > /dev/null 2>&1; then
-	# xvfb-run gave the game its own display and key; find both (the script runs with set -e, so no failures)
-	x_display=":$(ls /tmp/.X11-unix 2>/dev/null | sed -n 's/^X//p' | head -1 || true)"
-	x_auth=$(ls /tmp/xvfb-run.*/Xauthority 2>/dev/null | head -1 || true)
-	resize() { DISPLAY=$x_display XAUTHORITY=$x_auth xdotool search --name "Minecraft" windowsize %@ "$1" "$2" || true; }
+	# xvfb-run gave the game its own display and key: read both from the game's environment (the script runs
+	# with set -e, so nothing here may fail). What happened goes to hud-xdotool.txt next to the pictures.
+	game_pid=$(pgrep -f net.fabricmc | head -1 || true)
+	x_env() { tr '\0' '\n' < "/proc/$game_pid/environ" 2>/dev/null | sed -n "s/^$1=//p" | head -1 || true; }
+	x_display=$(x_env DISPLAY)
+	x_auth=$(x_env XAUTHORITY)
+	resize() {
+		local ids
+		ids=$(DISPLAY=$x_display XAUTHORITY=$x_auth xdotool search --onlyvisible --name "Minecraft" 2>&1 || true)
+		echo "pid=$game_pid display=$x_display auth=$x_auth windows=[$ids] -> $1x$2" >> "$OUT/hud-xdotool.txt"
+		for id in $ids; do
+			DISPLAY=$x_display XAUTHORITY=$x_auth xdotool windowsize "$id" "$1" "$2" >> "$OUT/hud-xdotool.txt" 2>&1 || true
+		done
+	}
 	resize 640 480
 	hook "guiscale 2" "set uppercase true"
 	sleep 4
