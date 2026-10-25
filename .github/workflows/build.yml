@@ -31,6 +31,13 @@ jobs:
         run: chmod +x ./gradlew
       - name: build
         run: ./gradlew build
+      - name: check the music helper tests really ran
+        # Each system skips exactly one: Linux the real Windows test, Windows the "no Windows media" test.
+        # More skips would mean PowerShell wasn't found and the helper went untested.
+        run: |
+          report=build/test-results/test/TEST-dev.beli.skylyrics.media.WindowsMediaSourceTest.xml
+          grep -o '<testsuite [^>]*>' "$report"
+          grep -q 'skipped="1"' "$report" && grep -q 'failures="0"' "$report" && grep -q 'errors="0"' "$report"
       - name: capture build artifacts
         if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
