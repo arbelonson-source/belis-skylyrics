@@ -43,14 +43,18 @@ if sudo apt-get install -y -q xdotool > /dev/null 2>&1; then
 	x_display=$(x_env DISPLAY)
 	x_auth=$(x_env XAUTHORITY)
 	resize() {
-		local ids
-		ids=$(DISPLAY=$x_display XAUTHORITY=$x_auth xdotool search --onlyvisible --name "Minecraft" 2>&1 || true)
-		echo "pid=$game_pid display=$x_display auth=$x_auth windows=[$ids] -> $1x$2" >> "$OUT/hud-xdotool.txt"
+		local ids id size
+		# Every window on the virtual screen; the game's is the one as big as the game (its title can vary)
+		ids=$(DISPLAY=$x_display XAUTHORITY=$x_auth xdotool search --name '.*' 2>/dev/null || true)
 		for id in $ids; do
-			DISPLAY=$x_display XAUTHORITY=$x_auth xdotool windowsize "$id" "$1" "$2" >> "$OUT/hud-xdotool.txt" 2>&1 || true
+			size=$(DISPLAY=$x_display XAUTHORITY=$x_auth xdotool getwindowgeometry "$id" 2>/dev/null | sed -n 's/.*Geometry: //p' || true)
+			echo "display=$x_display window $id size $size -> $1x$2" >> "$OUT/hud-xdotool.txt"
+			if [ "$size" = "$3" ]; then
+				DISPLAY=$x_display XAUTHORITY=$x_auth xdotool windowsize "$id" "$1" "$2" >> "$OUT/hud-xdotool.txt" 2>&1 || true
+			fi
 		done
 	}
-	resize 640 480
+	resize 640 480 1600x900
 	hook "guiscale 2" "set uppercase true"
 	sleep 4
 	hud_at 33300 # early in the longest line
@@ -59,7 +63,7 @@ if sudo apt-get install -y -q xdotool > /dev/null 2>&1; then
 	shot hud-small-long-end
 	hud_at 37500
 	shot hud-small-between
-	resize 1600 900
+	resize 1600 900 640x480
 	hook "set uppercase false"
 	sleep 4
 else
