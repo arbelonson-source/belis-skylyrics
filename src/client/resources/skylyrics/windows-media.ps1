@@ -6,10 +6,13 @@
 #
 # The mod writes one numbered command per line. Each one gets exactly one line of JSON back,
 # carrying the same number:
-#   7 poll           -> {"seq":7,"ok":true,"sessions":[{...}, ...]}
-#   8 toggle ID      -> {"seq":8,"ok":true}       (also: next ID, prev ID)
-#   9 seek MS ID     -> {"seq":9,"ok":true}
-# A problem answers {"seq":N,"ok":false,"error":"..."}. When the game closes our input, we stop.
+#   7 poll                -> {"seq":7,"ok":true,"sessions":[{"index":0,"id":"Spotify.exe",...}, ...]}
+#   8 toggle INDEX ID     -> {"seq":8,"ok":true}       (also: next, prev)
+#   9 seek MS INDEX ID    -> {"seq":9,"ok":true}
+# INDEX is the player's place in the last poll: browsers give every tab the same ID, so the ID alone
+# can't say which tab is meant. A problem answers {"seq":N,"ok":false,"error":"..."}.
+# When the game closes our input, we stop. If Windows' media controls stop working for good, we exit
+# with code 2 so the mod starts a fresh helper.
 #
 # Keep this file ASCII: Windows PowerShell reads a script without a BOM in the local code page.
 
@@ -34,6 +37,7 @@ try {
 $seq = 0
 # Filled in when we talk to the real Windows: a helper to wait on its operations, and their result types
 $asTask = $null
+$ManagerType = $null
 $PropertiesType = $null
 $StreamType = $null
 
@@ -49,14 +53,29 @@ function Fail($message) {
 	Reply ('"ok":false,"error":' + (J $message))
 }
 
-# Waits for a Windows operation (or, in the tests, a .NET task) and returns its result
-function Await($operation, [Type]$resultType) {
-	if ($operation -is [System.Threading.Tasks.Task]) {
-		$task = $operation
-	} else {
-		$task = $script:asTask.MakeGenericMethod($resultType).Invoke($null, @($operation))
+# The useful part of an error: .NET wraps the real one in "One or more errors occurred."
+function Why($exception) {
+	while ($null -ne $exception.InnerException) {
+		$exception = $exception.InnerException
 	}
-	if (-not $task.Wait(1500)) {
+	return $exception.Message
+}
+
+# Turns a Windows operation (or, in the tests, a .NET task) into a .NET task without waiting for it
+function Start-Op($operation, [Type]$resultType) {
+	if ($operation -is [System.Management.Automation.PSObject]) {
+		$operation = $operation.psobject.BaseObject
+	}
+	if ($operation -is [System.Threading.Tasks.Task]) {
+		return $operation
+	}
+	return $script:asTask.MakeGenericMethod($resultType).Invoke($null, @($operation))
+}
+
+# Waits for a Windows operation and returns its result
+function Await($operation, [Type]$resultType, [int]$timeoutMs = 1500) {
+	$task = Start-Op $operation $resultType
+	if (-not $task.Wait($timeoutMs)) {
 		throw 'Windows took too long to answer'
 	}
 	return $task.Result
@@ -74,17 +93,31 @@ function Unix([DateTimeOffset]$time) {
 	return $time.ToUnixTimeMilliseconds()
 }
 
-# Covers are saved as files the mod can open. Song key -> file ('' = none could be read)
+# Covers are saved as files the mod can open. Song key -> file. Players often switch the title a moment
+# before the cover, so a new song's cover is only read once it has been playing for a little while.
 $covers = @{}
 $coverOrder = New-Object System.Collections.Generic.Queue[string]
 $coverCount = 0
+$firstSeen = @{}
+$coverTries = @{}
 
 function Cover($media, [string]$key) {
 	if ($covers.ContainsKey($key)) {
 		return $covers[$key]
 	}
 	if ($null -eq $media.Thumbnail -or -not $CoverDir) {
-		return '' # not remembered: browsers often add the cover a moment after the title
+		return '' # browsers often add the cover a moment after the title
+	}
+	$now = [DateTime]::UtcNow
+	if (-not $firstSeen.ContainsKey($key)) {
+		if ($firstSeen.Count -gt 200) {
+			$firstSeen.Clear()
+			$coverTries.Clear()
+		}
+		$firstSeen[$key] = $now
+	}
+	if (($now - $firstSeen[$key]).TotalMilliseconds -lt 1500) {
+		return ''
 	}
 	$path = ''
 	try {
@@ -99,38 +132,92 @@ function Cover($media, [string]$key) {
 			$file.Dispose()
 			$source.Dispose()
 		}
+		if ((Get-Item -LiteralPath $path).Length -eq 0) {
+			Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue
+			$path = ''
+		}
 	} catch {
 		$path = ''
 	}
-	if ($covers.Count -gt 200) {
-		$covers.Clear() # only failed lookups pile up; the files themselves are capped below
+	if (-not $path) {
+		# Try again on the next polls; give up on this song after a few tries
+		$coverTries[$key] = 1 + [int]$coverTries[$key]
+		if ($coverTries[$key] -ge 3) {
+			$covers[$key] = ''
+		}
+		return ''
 	}
 	$covers[$key] = $path
-	if ($path) {
-		$coverOrder.Enqueue($key)
-		while ($coverOrder.Count -gt 6) {
-			$old = $coverOrder.Dequeue()
-			if ($covers[$old]) {
-				Remove-Item -LiteralPath $covers[$old] -ErrorAction SilentlyContinue
-			}
-			$covers.Remove($old)
+	$coverOrder.Enqueue($key)
+	while ($coverOrder.Count -gt 6) {
+		$old = $coverOrder.Dequeue()
+		if ($covers[$old]) {
+			Remove-Item -LiteralPath $covers[$old] -ErrorAction SilentlyContinue
 		}
+		$covers.Remove($old)
+	}
+	if ($covers.Count -gt 200) {
+		$covers.Clear() # only songs without covers pile up here; files are capped above
+		$coverOrder.Clear()
 	}
 	return $path
 }
 
+# The players right now. If Windows' media controls stopped answering, ask for them again once;
+# if that fails too, exit so the mod starts a fresh helper.
+function Sessions {
+	try {
+		return , @($script:Manager.GetSessions())
+	} catch {
+		if ($null -eq $script:ManagerType) {
+			throw
+		}
+	}
+	try {
+		$script:Manager = Await ($script:ManagerType::RequestAsync()) $script:ManagerType 10000
+		return , @($script:Manager.GetSessions())
+	} catch {
+		Fail ("Windows' media controls stopped answering: " + (Why $_.Exception))
+		exit 2
+	}
+}
+
 function Poll {
-	$items = New-Object System.Collections.Generic.List[string]
-	foreach ($session in $Manager.GetSessions()) {
+	$sessions = Sessions
+	# Ask every player at once and wait for all of them together, so one slow player can't hold up the rest
+	$tasks = New-Object 'System.Threading.Tasks.Task[]' $sessions.Count
+	for ($i = 0; $i -lt $sessions.Count; $i++) {
 		try {
-			$media = Await ($session.TryGetMediaPropertiesAsync()) $PropertiesType
+			$tasks[$i] = Start-Op ($sessions[$i].TryGetMediaPropertiesAsync()) $PropertiesType
+		} catch {
+			# A player that went away while we asked
+		}
+	}
+	$started = @($tasks | Where-Object { $null -ne $_ })
+	if ($started.Count -gt 0) {
+		try {
+			$null = [System.Threading.Tasks.Task]::WaitAll([System.Threading.Tasks.Task[]]$started, 1500)
+		} catch {
+			# Some failed; the ones that answered are still used below
+		}
+	}
+	$items = New-Object System.Collections.Generic.List[string]
+	for ($i = 0; $i -lt $sessions.Count; $i++) {
+		$task = $tasks[$i]
+		if ($null -eq $task -or [string]$task.Status -ne 'RanToCompletion') {
+			continue
+		}
+		try {
+			$session = $sessions[$i]
+			$media = $task.Result
 			if ($null -eq $media -or [string]::IsNullOrEmpty($media.Title)) {
 				continue
 			}
 			$timeline = $session.GetTimelineProperties()
 			$id = [string]$session.SourceAppUserModelId
 			$cover = Cover $media ($id + '|' + $media.Artist + '|' + $media.Title)
-			$json = '{"id":' + (J $id) +
+			$json = '{"index":' + $i +
+				',"id":' + (J $id) +
 				',"title":' + (J $media.Title) +
 				',"artist":' + (J $media.Artist) +
 				',"album":' + (J $media.AlbumTitle) +
@@ -148,25 +235,38 @@ function Poll {
 	Reply ('"ok":true,"sessions":[' + ($items -join ',') + ']')
 }
 
-function Control([string]$action, [string]$id, [long]$ms) {
-	$session = $null
-	foreach ($s in $Manager.GetSessions()) {
-		if ($s.SourceAppUserModelId -eq $id) {
-			$session = $s
+# The player at INDEX if it is still the same app; else that app's playing (or first) player; else Windows' pick
+function Find([int]$index, [string]$id) {
+	$sessions = Sessions
+	if ($index -ge 0 -and $index -lt $sessions.Count -and $sessions[$index].SourceAppUserModelId -eq $id) {
+		return $sessions[$index]
+	}
+	$same = @($sessions | Where-Object { $_.SourceAppUserModelId -eq $id })
+	foreach ($s in $same) {
+		if ([string]$s.GetPlaybackInfo().PlaybackStatus -eq 'Playing') {
+			return $s
 		}
 	}
-	if ($null -eq $session) {
-		$session = $Manager.GetCurrentSession()
+	if ($same.Count -gt 0) {
+		return $same[0]
 	}
+	return $Manager.GetCurrentSession()
+}
+
+function Control([string]$action, [int]$index, [string]$id, [long]$ms) {
+	$session = Find $index $id
 	if ($null -eq $session) {
 		Fail 'Nothing is playing'
 		return
 	}
-	$operation = switch ($action) {
-		'toggle' { $session.TryTogglePlayPauseAsync() }
-		'next' { $session.TrySkipNextAsync() }
-		'prev' { $session.TrySkipPreviousAsync() }
-		'seek' { $session.TryChangePlaybackPositionAsync($session.GetTimelineProperties().StartTime.Ticks + $ms * 10000) }
+	if ($action -eq 'toggle') {
+		$operation = $session.TryTogglePlayPauseAsync()
+	} elseif ($action -eq 'next') {
+		$operation = $session.TrySkipNextAsync()
+	} elseif ($action -eq 'prev') {
+		$operation = $session.TrySkipPreviousAsync()
+	} else {
+		$operation = $session.TryChangePlaybackPositionAsync($session.GetTimelineProperties().StartTime.Ticks + $ms * 10000)
 	}
 	$null = Await $operation ([bool])
 	Reply '"ok":true'
@@ -182,9 +282,10 @@ if ($null -eq $Manager) {
 		$ManagerType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager,Windows.Media.Control,ContentType=WindowsRuntime]
 		$PropertiesType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties,Windows.Media.Control,ContentType=WindowsRuntime]
 		$StreamType = [Windows.Storage.Streams.IRandomAccessStreamWithContentType,Windows.Storage.Streams,ContentType=WindowsRuntime]
-		$Manager = Await ($ManagerType::RequestAsync()) $ManagerType
+		# The first request after boot can be slow while Windows wakes its media service
+		$Manager = Await ($ManagerType::RequestAsync()) $ManagerType 10000
 	} catch {
-		$stdout.WriteLine('{"ready":false,"error":' + (J ("Windows' media controls aren't available: " + $_.Exception.Message)) + '}')
+		$stdout.WriteLine('{"ready":false,"error":' + (J ("Windows' media controls aren't available: " + (Why $_.Exception))) + '}')
 		exit 1
 	}
 }
@@ -205,16 +306,19 @@ while ($true) {
 		continue
 	}
 	try {
-		switch ($parts[1]) {
-			'poll' { Poll }
-			'seek' {
-				$args2 = $parts[2].Split([char[]]' ', 2)
-				Control 'seek' $args2[1] ([long]$args2[0])
-			}
-			{ $_ -in 'toggle', 'next', 'prev' } { Control $parts[1] $parts[2] 0 }
-			default { Fail ('Unknown command ' + $parts[1]) }
+		$command = $parts[1]
+		if ($command -eq 'poll') {
+			Poll
+		} elseif ($command -eq 'seek') {
+			$rest = $parts[2].Split([char[]]' ', 3)
+			Control 'seek' ([int]$rest[1]) $rest[2] ([long]$rest[0])
+		} elseif ($command -in 'toggle', 'next', 'prev') {
+			$rest = $parts[2].Split([char[]]' ', 2)
+			Control $command ([int]$rest[0]) $rest[1] 0
+		} else {
+			Fail ('Unknown command ' + $command)
 		}
 	} catch {
-		Fail $_.Exception.Message
+		Fail (Why $_.Exception)
 	}
 }

@@ -58,6 +58,8 @@ $broken | Add-Member ScriptMethod TryGetMediaPropertiesAsync { throw 'this playe
 $sessions = @(
 	(FakeSession 'Spotify.exe' 'Song One' 'Made Up Band' 'Playing' 61000 200000),
 	(FakeSession 'MSEdge' 'Made Up Band - Video Song (Official Video)' 'Made Up Band' 'Paused' 5000 180000),
+	# A second tab: browsers give every tab the same id, so controls must reach the right one
+	(FakeSession 'MSEdge' 'Other Tab Song' 'Someone Else' 'Paused' 1000 120000),
 	(FakeSession 'Silent.exe' '' '' 'Playing' 0 0),
 	$broken
 )

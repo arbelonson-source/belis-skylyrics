@@ -9,6 +9,14 @@ OUT=${OUT:-shots}
 RUN=run-prod
 mkdir -p "$OUT" "$RUN/saves" "$RUN/config"
 
+# Stops with an error annotation carrying the end of a log, readable through GitHub's API
+fail() { # message, log file
+	local tail=""
+	[ -f "${2:-}" ] && tail=$(tail -n 40 "$2" | sed 's/%/%25/g; s/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')
+	echo "::error title=screenshots::$1%0A$tail"
+	exit 1
+}
+
 # A world to stand in. A dedicated server makes one (its worlds open fine in single player).
 if [ ! -d "$RUN/saves/World" ]; then
 	manifest=$(curl -sSf https://piston-meta.mojang.com/mc/game/version_manifest_v2.json)
@@ -18,8 +26,11 @@ if [ ! -d "$RUN/saves/World" ]; then
 	curl -sSfo server.jar "$server_url"
 	echo "eula=true" > eula.txt
 	printf 'level-name=World\nlevel-seed=skylyrics\nonline-mode=false\nview-distance=4\n' > server.properties
-	echo stop | timeout 600 java -Xmx2G -jar server.jar --nogui > server.log 2>&1 || { tail -50 server.log; exit 1; }
+	# Keep the server's input open until the world is ready, then tell it to stop
+	( for _ in $(seq 400); do grep -q 'Done (' server.log 2>/dev/null && break; sleep 2; done; echo stop; sleep 10 ) \
+		| timeout 900 java -Xmx2G -jar server.jar --nogui > server.log 2>&1 || true
 	cd ..
+	[ -f server/World/level.dat ] || fail "the server didn't make a world" server/server.log
 	cp -r server/World "$RUN/saves/World"
 fi
 
@@ -48,20 +59,20 @@ GAME=$!
 wait_for() { # pattern, seconds
 	for _ in $(seq "$2"); do
 		if grep -q "$1" "$LOG" 2>/dev/null; then return 0; fi
-		if ! kill -0 "$GAME" 2>/dev/null; then echo "game stopped"; tail -80 game.log; exit 1; fi
+		if ! kill -0 "$GAME" 2>/dev/null; then fail "the game stopped" game.log; fi
 		sleep 1
 	done
-	echo "timed out waiting for: $1"; tail -80 game.log; exit 1
+	fail "timed out waiting for: $1" "$LOG"
 }
 hook() { # commands, one per argument; waits until the game has read them
 	printf '%s\n' "$@" > "$RUN/skylyrics-test.txt"
 	for _ in $(seq 30); do [ -f "$RUN/skylyrics-test.txt" ] || return 0; sleep 1; done
-	echo "the game didn't read: $*"; exit 1
+	fail "the game didn't read: $*" "$LOG"
 }
 shot() { # name, then waits for the file
 	hook "shot $1"
 	for _ in $(seq 30); do [ -f "$RUN/screenshots/$1.png" ] && return 0; sleep 1; done
-	echo "no picture: $1"; exit 1
+	fail "no picture: $1" "$LOG"
 }
 
 wait_for "joined the game" 900

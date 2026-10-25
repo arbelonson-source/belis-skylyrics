@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.BlockingQueue;
@@ -45,6 +46,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private static final long REPLY_TIMEOUT_MS = 4_000;
 	/** After the helper fails to start, wait before trying again instead of starting PowerShell on every poll. */
 	private static final long RETRY_NS = 15_000_000_000L;
+	/** A helper that stops this soon after starting counts as failing to start. */
+	private static final long EARLY_EXIT_NS = 10_000_000_000L;
 	/** Unanswered questions in a row before the helper counts as stuck and is restarted. */
 	private static final int MAX_MISSED = 3;
 	/** Firefox shows up under a hash of its install folder instead of a name. */
@@ -61,6 +64,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private final Supplier<String> preferredPlayer;
 	private final Path dir;
 	private final Launcher launcher;
+	private final long startTimeoutMs;
+	private final long replyTimeoutMs;
 
 	private volatile @Nullable Process process;
 	private volatile @Nullable Writer input;
@@ -68,35 +73,49 @@ public final class WindowsMediaSource implements MediaSource {
 	private long seq;
 	private int missed;
 	private long retryAt;
+	private long startedAt;
 	private String startError = "";
+	/** The followed player: {@link Session#key()} for choosing, the rest for the controls. */
 	private @Nullable String current;
+	private @Nullable Session currentSession;
 	private String currentDisplayName = "";
 
 	/** @param dir where the helper script and the covers it saves go */
 	public WindowsMediaSource(Supplier<String> preferredPlayer, Path dir) {
-		this(preferredPlayer, dir, WindowsMediaSource::powershell);
+		this(preferredPlayer, dir, WindowsMediaSource::powershell, START_TIMEOUT_MS, REPLY_TIMEOUT_MS);
 	}
 
-	WindowsMediaSource(Supplier<String> preferredPlayer, Path dir, Launcher launcher) {
+	/** Tests use a stand-in launcher, and longer timeouts for slow test machines. */
+	WindowsMediaSource(Supplier<String> preferredPlayer, Path dir, Launcher launcher, long startTimeoutMs, long replyTimeoutMs) {
 		this.preferredPlayer = preferredPlayer;
 		this.dir = dir;
 		this.launcher = launcher;
+		this.startTimeoutMs = startTimeoutMs;
+		this.replyTimeoutMs = replyTimeoutMs;
 	}
 
-	/** One player as the helper reports it. */
-	record Session(String id, Track track, long positionMs, boolean playing) {
+	/**
+	 * One player as the helper reports it.
+	 *
+	 * @param index its place in the helper's list; browsers give every tab the same {@code id}, so this tells them apart
+	 */
+	record Session(int index, String id, Track track, long positionMs, boolean playing) {
+		String key() {
+			return id + "#" + index;
+		}
 	}
 
 	@Override
 	public synchronized Snapshot poll() throws Exception {
 		List<Session> sessions = sessions(request("poll"), System.currentTimeMillis());
-		Session chosen = PlayerPicker.choose(sessions, Session::id, s -> s.track().player(), Session::playing,
+		Session chosen = PlayerPicker.choose(sessions, Session::key, s -> s.track().player(), Session::playing,
 				preferredPlayer.get(), current);
+		currentSession = chosen;
 		if (chosen == null) {
 			current = null;
 			return Snapshot.NOTHING;
 		}
-		current = chosen.id();
+		current = chosen.key();
 		currentDisplayName = prettyName(chosen.track().player());
 		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), System.nanoTime());
 	}
@@ -123,7 +142,7 @@ public final class WindowsMediaSource implements MediaSource {
 			long length = Math.max(0, number(o, "endMs") - start);
 			long position = position(number(o, "positionMs") - start, number(o, "updatedMs"), playing, length, nowMs);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
-			out.add(new Session(id, TitleCleaner.clean(track), position, playing));
+			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing));
 		}
 		return out;
 	}
@@ -205,12 +224,17 @@ public final class WindowsMediaSource implements MediaSource {
 			stop();
 			throw new IOException("The Windows media helper stopped");
 		}
-		long deadline = System.nanoTime() + REPLY_TIMEOUT_MS * 1_000_000;
+		long deadline = System.nanoTime() + replyTimeoutMs * 1_000_000;
 		while (true) {
 			long left = deadline - System.nanoTime();
 			String line = left > 0 ? queue.poll(left, TimeUnit.NANOSECONDS) : null;
 			if (line == END) {
 				stop();
+				if (System.nanoTime() - startedAt < EARLY_EXIT_NS) {
+					// Starting it again straight away would most likely end the same way
+					startError = "The Windows media helper keeps stopping (see windows-media.log)";
+					retryAt = System.nanoTime() + RETRY_NS;
+				}
 				throw new IOException("The Windows media helper stopped");
 			}
 			if (line == null) {
@@ -259,15 +283,24 @@ public final class WindowsMediaSource implements MediaSource {
 		Files.createDirectories(covers);
 		deleteFilesIn(covers); // left over from the last game
 		Path script = dir.resolve(SCRIPT);
+		byte[] bytes;
 		try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
 			if (in == null) {
 				throw new IOException(SCRIPT + " is missing from the mod");
 			}
-			Files.copy(in, script, StandardCopyOption.REPLACE_EXISTING);
+			bytes = in.readAllBytes();
+		}
+		// Rewriting an unchanged file can collide with an antivirus scanning it
+		if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
+			Path tmp = dir.resolve(SCRIPT + ".tmp");
+			Files.write(tmp, bytes);
+			Files.move(tmp, script, StandardCopyOption.REPLACE_EXISTING);
 		}
 
 		ProcessBuilder builder = new ProcessBuilder(launcher.command(script, covers));
 		builder.redirectError(dir.resolve("windows-media.log").toFile());
+		// A game started from PowerShell 7 hands down its module path, which confuses Windows PowerShell 5.1
+		builder.environment().remove("PSModulePath");
 		Process p;
 		try {
 			p = builder.start();
@@ -281,8 +314,9 @@ public final class WindowsMediaSource implements MediaSource {
 		Thread reader = new Thread(() -> read(p, queue), "SkyLyrics Windows media");
 		reader.setDaemon(true);
 		reader.start();
+		startedAt = System.nanoTime();
 
-		String first = queue.poll(START_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+		String first = queue.poll(startTimeoutMs, TimeUnit.MILLISECONDS);
 		JsonObject hello = first == null || first == END ? null : parse(first);
 		if (hello == null || !hello.has("ready") || !hello.get("ready").getAsBoolean()) {
 			String error = hello == null ? "" : string(hello, "error");
@@ -309,12 +343,30 @@ public final class WindowsMediaSource implements MediaSource {
 		queue.offer(END);
 	}
 
+	/** Ends the helper and waits for it, so its log file is let go of (Windows can't delete open files). */
 	private void stop() {
 		Process p = process;
+		Writer w = input;
 		process = null;
 		input = null;
-		if (p != null) {
-			p.destroy();
+		if (p == null) {
+			return;
+		}
+		try {
+			if (w != null) {
+				w.close(); // the script ends by itself when its input closes
+			}
+		} catch (IOException e) {
+			// Already gone
+		}
+		try {
+			if (!p.waitFor(500, TimeUnit.MILLISECONDS)) {
+				p.destroyForcibly();
+				p.waitFor(2, TimeUnit.SECONDS);
+			}
+		} catch (InterruptedException e) {
+			p.destroyForcibly();
+			Thread.currentThread().interrupt();
 		}
 	}
 
@@ -332,8 +384,12 @@ public final class WindowsMediaSource implements MediaSource {
 		}
 	}
 
-	/** Windows PowerShell 5.1 comes with every Windows 10 and 11. */
-	private static List<String> powershell(Path script, Path coverDir) {
+	/**
+	 * Windows PowerShell 5.1 comes with every Windows 10 and 11. The script is read in and run as a command
+	 * rather than with -File: school and work PCs often only allow signed script files, and -File also trips
+	 * over folder names with [brackets], which modpacks like.
+	 */
+	static List<String> powershell(Path script, Path coverDir) {
 		String exe = "powershell.exe";
 		String root = System.getenv("SystemRoot");
 		if (root != null) {
@@ -342,17 +398,26 @@ public final class WindowsMediaSource implements MediaSource {
 				exe = full.toString();
 			}
 		}
-		return List.of(exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-				"-WindowStyle", "Hidden", "-File", script.toString(), "-CoverDir", coverDir.toString());
+		return command(exe, script, coverDir);
+	}
+
+	static List<String> command(String exe, Path script, Path coverDir) {
+		String run = "& ([scriptblock]::Create([IO.File]::ReadAllText(" + quote(script) + "))) -CoverDir " + quote(coverDir);
+		return List.of(exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", run);
+	}
+
+	/** A PowerShell string literal: single quotes, with any ' inside doubled. */
+	static String quote(Path path) {
+		return "'" + path.toString().replace("'", "''") + "'";
 	}
 
 	private synchronized void control(String command) {
-		String id = current;
-		if (id == null) {
+		Session s = currentSession;
+		if (s == null) {
 			return;
 		}
 		try {
-			request(command + " " + id);
+			request(command + " " + s.index() + " " + s.id());
 		} catch (Exception e) {
 			LOG.debug("Player control failed: {}", e.toString());
 		}

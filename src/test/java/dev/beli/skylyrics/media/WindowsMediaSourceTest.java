@@ -17,10 +17,13 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 class WindowsMediaSourceTest {
 	private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
+	/** Test machines can be slow to start PowerShell (antivirus scans, cold caches); the game uses 20 s and 4 s. */
+	private static final long START_MS = 60_000, REPLY_MS = 15_000;
 
 	@TempDir
 	Path dir;
@@ -38,6 +41,11 @@ class WindowsMediaSourceTest {
 		assertEquals("someplayer", WindowsMediaSource.playerKey("C:\\Program Files\\Some Player\\SomePlayer.exe"));
 		assertEquals("Media Player", WindowsMediaSource.prettyName("media player"));
 		assertEquals("Someplayer", WindowsMediaSource.prettyName("someplayer"));
+	}
+
+	@Test
+	void pathsAreQuotedForPowerShell() {
+		assertEquals("'C:\\Users\\O''Brien\\[modpack] 1.21'", WindowsMediaSource.quote(Path.of("C:\\Users\\O'Brien\\[modpack] 1.21")));
 	}
 
 	@Test
@@ -81,6 +89,7 @@ class WindowsMediaSourceTest {
 
 	/** Runs the real helper script against a made-up media manager (windows-media-fake.ps1). */
 	@Test
+	@Timeout(180)
 	void talksToTheHelper() throws Exception {
 		String shell = powershell();
 		assumeTrue(shell != null, "PowerShell isn't installed");
@@ -88,12 +97,15 @@ class WindowsMediaSourceTest {
 		String[] preferred = {""};
 		WindowsMediaSource source = new WindowsMediaSource(() -> preferred[0], dir, (script, covers) -> List.of(
 				shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString()));
+				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString()), START_MS, REPLY_MS);
 		try {
+			long before = System.currentTimeMillis();
 			Snapshot s = source.poll();
+			long took = System.currentTimeMillis() - before;
 			assertEquals("Song One", s.track().title(), "follows the player that is playing");
 			assertTrue(s.playing());
-			assertTrue(s.positionMs() >= 61_000 && s.positionMs() < 75_000, "position " + s.positionMs());
+			// The fake's song was at 61 s when PowerShell started it, and has kept playing since
+			assertTrue(s.positionMs() >= 61_000 && s.positionMs() <= 61_000 + took + 1_000, "position " + s.positionMs() + " after " + took + " ms");
 			assertEquals("Spotify", source.displayName());
 			assertTrue(Files.isRegularFile(dir.resolve("windows-media.ps1")));
 
@@ -109,6 +121,7 @@ class WindowsMediaSourceTest {
 			s = source.poll();
 			assertEquals("Video Song", s.track().title());
 			assertEquals("Edge", source.displayName());
+			// Both Edge tabs are called "MSEdge"; this must skip the song in the tab being followed, not the other one
 			source.next();
 			assertEquals("Song Two", source.poll().track().title());
 
@@ -122,11 +135,13 @@ class WindowsMediaSourceTest {
 
 	/** Away from Windows the helper can't load the Windows media API; the error says so, and we don't retry at once. */
 	@Test
+	@Timeout(180)
 	void explainsWhenWindowsMediaIsMissing() {
 		String shell = powershell();
 		assumeTrue(shell != null && !WINDOWS, "needs PowerShell on a system without the Windows media API");
-		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> List.of(
-				shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-File", script.toString(), "-CoverDir", covers.toString()));
+		// Started the way the game starts it on Windows
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir,
+				(script, covers) -> WindowsMediaSource.command(shell, script, covers), START_MS, REPLY_MS);
 		IOException first = assertThrows(IOException.class, source::poll);
 		assertTrue(first.getMessage().contains("media controls aren't available"), first.getMessage());
 		long before = System.nanoTime();
@@ -138,9 +153,10 @@ class WindowsMediaSourceTest {
 
 	/** On Windows itself (CI), the real thing: starts the helper and asks what's playing. */
 	@Test
+	@Timeout(180)
 	void readsTheRealWindowsMediaControls() throws Exception {
 		assumeTrue(WINDOWS, "Windows only");
-		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir);
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS);
 		try {
 			source.poll(); // nothing may be playing; it just must not fail
 		} finally {
