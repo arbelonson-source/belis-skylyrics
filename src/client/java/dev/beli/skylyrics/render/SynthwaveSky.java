@@ -1,18 +1,24 @@
 package dev.beli.skylyrics.render;
 
+import java.util.Arrays;
+
 import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
 
 /**
  * The synthwave night: a purple sky fading to magenta at the horizon, a dark swirl with faint rings
  * overhead, sparse stars and a big striped retro sun low in the sky with a hot pink glow.
- * Drawn with ordinary blending, back to front, so it covers the vanilla night sky. Every shape is
- * worked out once; a frame only places the corners.
+ * <p>
+ * It covers the vanilla night sky, so it blends normally, and that pipeline drops nearly transparent
+ * pixels: soft see-through overlays would end in a hard edge. So the swirl, the glow and the halo are
+ * not overlays; one function gives the finished sky colour in every direction, and each mesh paints it
+ * fully opaque, finely where it changes. Meshes and colours are worked out once, for lyrics facing
+ * south; a frame only turns them to the lyrics' direction.
  */
 final class SynthwaveSky {
 	private static final float DEG = (float) (Math.PI / 180);
 
 	/** How far each layer sits, as a share of the sky radius. Nearer layers draw over farther ones. */
-	static final float DOME = 1f, SWIRL = 0.975f, STARS = 0.95f, HALO = 0.93f, GLOW = 0.91f, DISC = 0.89f;
+	static final float DOME = 1f, SWIRL = 0.975f, SUN_SKY = 0.95f, STARS = 0.93f, DISC = 0.91f;
 
 	/** Sun position: right of where the lyrics face, its middle just above the horizon. */
 	static final float SUN_YAW = 26, SUN_ELEV = 6.5f;
@@ -29,7 +35,7 @@ final class SynthwaveSky {
 	 * end of the loaded world, and covering that would hide distant land seen from up high.
 	 */
 	static final float HORIZON_FADE = 3;
-	/** Dome rows (degrees of height) and columns, fine where the colour changes fast. */
+	/** Dome rows (degrees of height, including every gradient stop) and columns. */
 	private static final float[] DOME_ROWS = {-HORIZON_FADE, 0, 3, 6, 10, 15, 21, 26, 32, 42, 56, 70, 90};
 	private static final int DOME_COLUMNS = 36;
 
@@ -38,11 +44,13 @@ final class SynthwaveSky {
 	private static final float SWIRL_DARK = 0.75f, SWIRL_REACH = 38;
 	/** Ring spacing in degrees, sampled four times per ring so the vertex colours can show it. */
 	private static final float RING_PERIOD = 2.8f, RING_DEPTH = 0.28f;
-	private static final int SWIRL_RINGS = 56, SWIRL_SEGMENTS = 40;
+	private static final int SWIRL_RINGS = 57, SWIRL_SEGMENTS = 40;
 	private static final float SWIRL_STEP = RING_PERIOD / 4;
 
 	private static final int STAR_COUNT = 320;
 	private static final int STAR_RGB = 0xF4ECFF;
+	/** No stars this close to the sun's middle, in sun radii (they would show through the stripe gaps). */
+	private static final float STAR_CLEAR = 1.3f;
 
 	// Sun face, top to bottom (measured): #FFD677, then orange and coral, to #FF5389
 	private static final float[] FACE_AT = {0, 0.25f, 0.5f, 1};
@@ -60,76 +68,66 @@ final class SynthwaveSky {
 	private static final float GLOW_SOLID = 1.06f, GLOW_HALF = 0.26f, GLOW_END = 1.8f;
 	/** The halo tints the sky out to about three radii. */
 	private static final float HALO_PEAK = 0.45f, HALO_END = 3.2f;
-	/** Ring spacing, in sun radii, fine enough that the fades show no steps. */
+	/** Ring spacing round the sun, in sun radii: fine through the glow, coarser through the halo. */
 	private static final float GLOW_STEP = 0.05f, HALO_STEP = 0.1f;
-	private static final float[] GLOW_R, GLOW_A, HALO_R, HALO_A;
-	private static final int ROUND_SEGMENTS = 48;
+	private static final int SUN_SEGMENTS = 48;
 
-	private static final int[] DOME_RGB = new int[DOME_ROWS.length];
-	private static final float[] SWIRL_TAN = new float[SWIRL_RINGS + 1];
-	private static final float[] SWIRL_ALPHA = new float[SWIRL_RINGS + 1];
-	private static final float[] SWIRL_COS = new float[SWIRL_SEGMENTS + 1], SWIRL_SIN = new float[SWIRL_SEGMENTS + 1];
-	private static final float[] ROUND_COS = new float[ROUND_SEGMENTS + 1], ROUND_SIN = new float[ROUND_SEGMENTS + 1];
+	private static final float TAN_SUN = (float) Math.tan(SUN_RADIUS * DEG);
+	private static final SkyFrame SUN_FRAME = new SkyFrame().aim(SUN_YAW, SUN_ELEV);
+	private static final SkyFrame SWIRL_FRAME = new SkyFrame().aim(0, SWIRL_ELEV);
+
+	private static final Mesh DOME_MESH, SWIRL_MESH, SUN_MESH;
 	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
 	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
+	private static final int[] STAR_SKY = new int[STAR_COUNT];
 	/** Face rows from top (0) to bottom (1); a row is drawn when FACE_FILL is set, else it is a gap. */
 	static final float[] FACE_T;
 	static final boolean[] FACE_FILL;
 	private static final int[] FACE_ROW_RGB;
 
 	static {
+		DOME_MESH = new Mesh(DOME_ROWS.length, DOME_COLUMNS + 1);
 		for (int i = 0; i < DOME_ROWS.length; i++) {
-			DOME_RGB[i] = SkyColors.ramp(SKY_AT, SKY_RGB, DOME_ROWS[i]);
+			double e = DOME_ROWS[i] * DEG;
+			// Plain gradient: where the dome meets the swirl and the sun, their own meshes paint over it
+			int rgb = skyColor(DOME_ROWS[i]);
+			for (int j = 0; j <= DOME_COLUMNS; j++) {
+				double yaw = 2 * Math.PI * j / DOME_COLUMNS;
+				DOME_MESH.set(i, j, (float) (-Math.cos(e) * Math.sin(yaw)), (float) Math.sin(e),
+						(float) (Math.cos(e) * Math.cos(yaw)), rgb);
+			}
 		}
-		GLOW_R = rings(0.95f, GLOW_END, GLOW_STEP);
-		GLOW_A = new float[GLOW_R.length];
-		for (int i = 0; i < GLOW_R.length; i++) {
-			GLOW_A[i] = glow(GLOW_R[i]);
-		}
-		HALO_R = rings(1, HALO_END, HALO_STEP);
-		HALO_A = new float[HALO_R.length];
-		for (int i = 0; i < HALO_R.length; i++) {
-			HALO_A[i] = halo(HALO_R[i]);
-		}
+		float[] swirlRings = new float[SWIRL_RINGS + 1];
 		for (int i = 0; i <= SWIRL_RINGS; i++) {
-			float r = i * SWIRL_STEP;
-			SWIRL_TAN[i] = (float) Math.tan(r * DEG);
-			SWIRL_ALPHA[i] = swirl(r);
+			swirlRings[i] = (float) Math.tan(i * SWIRL_STEP * DEG);
 		}
-		for (int j = 0; j <= SWIRL_SEGMENTS; j++) {
-			double a = 2 * Math.PI * j / SWIRL_SEGMENTS;
-			SWIRL_COS[j] = (float) Math.cos(a);
-			SWIRL_SIN[j] = (float) Math.sin(a);
-		}
-		for (int j = 0; j <= ROUND_SEGMENTS; j++) {
-			double a = 2 * Math.PI * j / ROUND_SEGMENTS;
-			ROUND_COS[j] = (float) Math.cos(a);
-			ROUND_SIN[j] = (float) Math.sin(a);
-		}
+		SWIRL_MESH = polar(SWIRL_FRAME, swirlRings, SWIRL_SEGMENTS);
+		SUN_MESH = polar(SUN_FRAME, sunRings(), SUN_SEGMENTS);
+
+		SkyFrame f = new SkyFrame();
+		float lo = (float) Math.sin(10 * DEG), hi = (float) Math.sin(80 * DEG);
 		for (int i = 0; i < STAR_COUNT; i++) {
 			STAR_YAW[i] = SkyColors.hash(i * 3 + 101) * 360;
 			// Even spread over the dome between 10 and 80 degrees up
-			float lo = (float) Math.sin(10 * DEG), hi = (float) Math.sin(80 * DEG);
 			STAR_ELEV[i] = (float) Math.toDegrees(Math.asin(lo + (hi - lo) * SkyColors.hash(i * 3 + 102)));
 			float k = SkyColors.hash(i * 3 + 103);
 			STAR_SIZE[i] = 0.9f + 0.7f * k;
-			STAR_ALPHA[i] = 0.18f + 0.4f * k * k;
+			f.aim(STAR_YAW[i], STAR_ELEV[i]);
+			STAR_ALPHA[i] = sunDistance(f.dx, f.dy, f.dz) < STAR_CLEAR ? 0 : 0.18f + 0.4f * k * k;
+			STAR_SKY[i] = background(f.dx, f.dy, f.dz);
 		}
-		float[] t = new float[200];
+
+		float[] t = new float[FACE_ROWS * 2 + 64];
 		int n = 0;
 		for (int k = 0; k < FACE_ROWS; k++) {
 			t[n++] = (float) (1 - Math.cos(Math.PI * k / FACE_ROWS)) / 2;
 		}
-		for (int g = 0; ; g++) {
-			float top = gapTop(g);
-			if (top >= 1) {
-				break;
-			}
-			t[n++] = top;
-			t[n++] = Math.min(1, top + gapWidth(g));
+		for (int g = 0; gapTop(g) < 1; g++) {
+			t[n++] = gapTop(g);
+			t[n++] = Math.min(1, gapTop(g) + gapWidth(g));
 		}
 		t[n++] = 1;
-		java.util.Arrays.sort(t, 0, n);
+		Arrays.sort(t, 0, n);
 		float[] rows = new float[n];
 		int m = 0;
 		for (int i = 0; i < n; i++) {
@@ -137,7 +135,7 @@ final class SynthwaveSky {
 				rows[m++] = t[i];
 			}
 		}
-		FACE_T = java.util.Arrays.copyOf(rows, m);
+		FACE_T = Arrays.copyOf(rows, m);
 		FACE_FILL = new boolean[m - 1];
 		FACE_ROW_RGB = new int[m];
 		for (int i = 0; i < m; i++) {
@@ -150,14 +148,97 @@ final class SynthwaveSky {
 
 	private final SkyFrame frame = new SkyFrame();
 
-	/** The middle, then rings from {@code from} to {@code to} sun radii, about {@code step} apart. */
-	private static float[] rings(float from, float to, float step) {
-		int n = Math.round((to - from) / step);
-		float[] r = new float[n + 2];
-		for (int i = 0; i <= n; i++) {
-			r[i + 1] = from + (to - from) * i / n;
+	/** Points on the sky in rows and columns, with their colours; directions are for lyrics facing south. */
+	private static final class Mesh {
+		final int rows, cols;
+		final float[] x, y, z;
+		final int[] rgb;
+
+		Mesh(int rows, int cols) {
+			this.rows = rows;
+			this.cols = cols;
+			x = new float[rows * cols];
+			y = new float[rows * cols];
+			z = new float[rows * cols];
+			rgb = new int[rows * cols];
+		}
+
+		void set(int i, int j, float px, float py, float pz, int color) {
+			int k = i * cols + j;
+			x[k] = px;
+			y[k] = py;
+			z[k] = pz;
+			rgb[k] = color;
+		}
+
+		/** Turned by the yaw (given as cosine and sine) and pushed out to {@code r}. */
+		void draw(SkyCanvas c, float cos, float sin, float r, float level) {
+			for (int i = 0; i + 1 < rows; i++) {
+				for (int j = 0; j + 1 < cols; j++) {
+					corner(c, i * cols + j, cos, sin, r, level);
+					corner(c, i * cols + j + 1, cos, sin, r, level);
+					corner(c, (i + 1) * cols + j + 1, cos, sin, r, level);
+					corner(c, (i + 1) * cols + j, cos, sin, r, level);
+				}
+			}
+		}
+
+		private void corner(SkyCanvas c, int k, float cos, float sin, float r, float level) {
+			c.vertex((x[k] * cos - z[k] * sin) * r, y[k] * r, (z[k] * cos + x[k] * sin) * r, SkyColors.argb(rgb[k], level));
+		}
+	}
+
+	/** Rings (tangents of their angular radius) round the centre of {@code f}, coloured by {@link #background}. */
+	private static Mesh polar(SkyFrame f, float[] rings, int segments) {
+		Mesh mesh = new Mesh(rings.length, segments + 1);
+		for (int i = 0; i < rings.length; i++) {
+			for (int j = 0; j <= segments; j++) {
+				double a = 2 * Math.PI * j / segments;
+				float ta = rings[i] * (float) Math.cos(a), tb = rings[i] * (float) Math.sin(a);
+				float px = f.dx + ta * f.ux + tb * f.vx, py = f.dy + ta * f.uy + tb * f.vy, pz = f.dz + ta * f.uz + tb * f.vz;
+				float l = (float) Math.sqrt(px * px + py * py + pz * pz);
+				mesh.set(i, j, px / l, py / l, pz / l, background(px / l, py / l, pz / l));
+			}
+		}
+		return mesh;
+	}
+
+	/** Rings round the sun as tangents: its middle, then finely through the glow and coarser through the halo. */
+	private static float[] sunRings() {
+		int glow = Math.round((GLOW_END - 0.9f) / GLOW_STEP), halo = Math.round((HALO_END - GLOW_END) / HALO_STEP);
+		float[] r = new float[1 + glow + 1 + halo];
+		for (int i = 0; i <= glow; i++) {
+			r[1 + i] = (0.9f + (GLOW_END - 0.9f) * i / glow) * TAN_SUN;
+		}
+		for (int i = 1; i <= halo; i++) {
+			r[1 + glow + i] = (GLOW_END + (HALO_END - GLOW_END) * i / halo) * TAN_SUN;
 		}
 		return r;
+	}
+
+	/**
+	 * The finished sky colour in a direction (unit vector, lyrics facing south): the gradient, darkened
+	 * by the swirl, tinted by the halo and the glow round the sun.
+	 */
+	static int background(float x, float y, float z) {
+		float elev = (float) Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, y))));
+		int rgb = skyColor(elev);
+		float toSwirl = x * SWIRL_FRAME.dx + y * SWIRL_FRAME.dy + z * SWIRL_FRAME.dz;
+		rgb = SkyColors.mix(rgb, SWIRL_INK, swirl((float) Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, toSwirl))))));
+		float r = sunDistance(x, y, z);
+		rgb = SkyColors.mix(rgb, HALO_RGB, halo(r));
+		// Behind the face the glow takes the slightly paler gap colour
+		int glow = SkyColors.mix(GAP_RGB, GLOW_RGB, SkyColors.smooth((r - 0.9f) / 0.15f));
+		return SkyColors.mix(rgb, glow, glow(r));
+	}
+
+	/** Distance from the sun's middle in sun radii, measured on the flat sky round it like the face. */
+	static float sunDistance(float x, float y, float z) {
+		float cos = x * SUN_FRAME.dx + y * SUN_FRAME.dy + z * SUN_FRAME.dz;
+		if (cos <= 0) {
+			return Float.MAX_VALUE;
+		}
+		return (float) Math.sqrt(Math.max(0, 1 - cos * cos)) / cos / TAN_SUN;
 	}
 
 	/** Strength of the hot glow {@code r} sun radii from the middle. */
@@ -200,7 +281,7 @@ final class SynthwaveSky {
 		return body * (1 + RING_DEPTH * rings * (float) Math.sin(2 * Math.PI * r / RING_PERIOD));
 	}
 
-	/** Sky colour at a height in degrees. */
+	/** Sky colour at a height in degrees (the horizon colour below it). */
 	static int skyColor(float elevDeg) {
 		return SkyColors.ramp(SKY_AT, SKY_RGB, elevDeg);
 	}
@@ -211,53 +292,27 @@ final class SynthwaveSky {
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		c.fadeBelowHorizon(HORIZON_FADE);
-		dome(c, radius * DOME, level);
-		swirl(c, radius * SWIRL, baseYaw, level);
-		stars(c, radius * STARS, level, time, pixel);
+		DOME_MESH.draw(c, cos, sin, radius * DOME, level);
+		SWIRL_MESH.draw(c, cos, sin, radius * SWIRL, level);
+		SUN_MESH.draw(c, cos, sin, radius * SUN_SKY, level);
+		stars(c, radius * STARS, baseYaw, level, time, pixel);
 		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
-		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
-		round(c, radius * HALO, tanR, HALO_R, HALO_A, HALO_RGB, HALO_RGB, level);
-		round(c, radius * GLOW, tanR, GLOW_R, GLOW_A, GAP_RGB, GLOW_RGB, level);
-		face(c, radius * DISC, tanR, level);
+		face(c, radius * DISC, level);
 		c.fadeBelowHorizon(0);
 	}
 
-	private static void dome(SkyCanvas c, float r, float level) {
-		float step = 360f / DOME_COLUMNS;
-		for (int i = 0; i + 1 < DOME_ROWS.length; i++) {
-			int lo = SkyColors.argb(DOME_RGB[i], level), hi = SkyColors.argb(DOME_RGB[i + 1], level);
-			float e0 = DOME_ROWS[i], e1 = DOME_ROWS[i + 1];
-			for (int j = 0; j < DOME_COLUMNS; j++) {
-				float y0 = j * step, y1 = y0 + step;
-				c.sky(y0, e0, r, lo);
-				c.sky(y1, e0, r, lo);
-				c.sky(y1, e1, r, hi);
-				c.sky(y0, e1, r, hi);
-			}
-		}
-	}
-
-	private void swirl(SkyCanvas c, float r, float baseYaw, float level) {
-		frame.aim(baseYaw, SWIRL_ELEV);
-		for (int i = 0; i < SWIRL_RINGS; i++) {
-			float t0 = SWIRL_TAN[i], t1 = SWIRL_TAN[i + 1];
-			int c0 = SkyColors.argb(SWIRL_INK, SWIRL_ALPHA[i] * level), c1 = SkyColors.argb(SWIRL_INK, SWIRL_ALPHA[i + 1] * level);
-			for (int j = 0; j < SWIRL_SEGMENTS; j++) {
-				c.at(frame, t0 * SWIRL_COS[j], t0 * SWIRL_SIN[j], r, c0);
-				c.at(frame, t0 * SWIRL_COS[j + 1], t0 * SWIRL_SIN[j + 1], r, c0);
-				c.at(frame, t1 * SWIRL_COS[j + 1], t1 * SWIRL_SIN[j + 1], r, c1);
-				c.at(frame, t1 * SWIRL_COS[j], t1 * SWIRL_SIN[j], r, c1);
-			}
-		}
-	}
-
-	private void stars(SkyCanvas c, float r, float level, float time, float pixel) {
+	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
+	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel) {
 		for (int i = 0; i < STAR_COUNT; i++) {
+			if (STAR_ALPHA[i] == 0) {
+				continue;
+			}
 			float twinkle = 0.75f + 0.25f * (float) Math.sin(time * (0.7f + 0.13f * (i % 7)) + i * 2.3f);
-			int col = SkyColors.argb(STAR_RGB, STAR_ALPHA[i] * twinkle * level);
+			int col = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
 			float s = STAR_SIZE[i] * pixel;
-			frame.aim(STAR_YAW[i], STAR_ELEV[i]);
+			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);
 			c.at(frame, -s, -s, r, col);
 			c.at(frame, s, -s, r, col);
 			c.at(frame, s, s, r, col);
@@ -265,23 +320,8 @@ final class SynthwaveSky {
 		}
 	}
 
-	/** Rings around the sun's middle ({@code at} in sun radii) fading by {@code alpha}; the first ring uses {@code inner}. */
-	private void round(SkyCanvas c, float r, float tanR, float[] at, float[] alpha, int inner, int outer, float level) {
-		for (int i = 0; i + 1 < at.length; i++) {
-			float a0 = at[i] * tanR, a1 = at[i + 1] * tanR;
-			int c0 = SkyColors.argb(i == 0 || at[i] < 1 ? inner : outer, alpha[i] * level);
-			int c1 = SkyColors.argb(at[i + 1] < 1 ? inner : outer, alpha[i + 1] * level);
-			for (int j = 0; j < ROUND_SEGMENTS; j++) {
-				c.at(frame, a0 * ROUND_COS[j], a0 * ROUND_SIN[j], r, c0);
-				c.at(frame, a0 * ROUND_COS[j + 1], a0 * ROUND_SIN[j + 1], r, c0);
-				c.at(frame, a1 * ROUND_COS[j + 1], a1 * ROUND_SIN[j + 1], r, c1);
-				c.at(frame, a1 * ROUND_COS[j], a1 * ROUND_SIN[j], r, c1);
-			}
-		}
-	}
-
 	/** The striped face: one trapezoid per row, gaps left open so the glow behind shows through. */
-	private void face(SkyCanvas c, float r, float tanR, float level) {
+	private void face(SkyCanvas c, float r, float level) {
 		for (int i = 0; i < FACE_FILL.length; i++) {
 			if (!FACE_FILL[i]) {
 				continue;
@@ -289,10 +329,10 @@ final class SynthwaveSky {
 			float b0 = 1 - 2 * FACE_T[i], b1 = 1 - 2 * FACE_T[i + 1];
 			float w0 = (float) Math.sqrt(Math.max(0, 1 - b0 * b0)), w1 = (float) Math.sqrt(Math.max(0, 1 - b1 * b1));
 			int c0 = SkyColors.argb(FACE_ROW_RGB[i], level), c1 = SkyColors.argb(FACE_ROW_RGB[i + 1], level);
-			c.at(frame, -w0 * tanR, b0 * tanR, r, c0);
-			c.at(frame, w0 * tanR, b0 * tanR, r, c0);
-			c.at(frame, w1 * tanR, b1 * tanR, r, c1);
-			c.at(frame, -w1 * tanR, b1 * tanR, r, c1);
+			c.at(frame, -w0 * TAN_SUN, b0 * TAN_SUN, r, c0);
+			c.at(frame, w0 * TAN_SUN, b0 * TAN_SUN, r, c0);
+			c.at(frame, w1 * TAN_SUN, b1 * TAN_SUN, r, c1);
+			c.at(frame, -w1 * TAN_SUN, b1 * TAN_SUN, r, c1);
 		}
 	}
 }

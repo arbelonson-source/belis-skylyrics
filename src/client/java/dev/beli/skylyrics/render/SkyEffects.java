@@ -68,7 +68,7 @@ public final class SkyEffects {
 	private final SynthwaveSky synthwave = new SynthwaveSky();
 	private final EclipseSky eclipse = new EclipseSky();
 	private final Constellations constellations = new Constellations();
-	private final Target target = new Target();
+	private final Target light = new Target(false), paint = new Target(true);
 
 	public SkyEffects(LyricsRenderer lyrics, MediaTracker tracker) {
 		this.lyrics = lyrics;
@@ -169,27 +169,44 @@ public final class SkyEffects {
 		pixel = 2 * (float) Math.tan(mc.options.fov().get() * DEG / 2) / Math.max(1, mc.getWindow().getHeight());
 		tint = lyrics.color();
 
-		// The synthwave sky has to cover the vanilla one, so it blends normally; the rest adds light.
-		// Each effect goes through a single render type, drawn far to near, so the layers stack the same
-		// way whether or not the pipeline sorts them.
-		boolean cover = effect == SkyEffect.SYNTHWAVE;
-		target.lit = cover;
+		// The synthwave sky has to cover the vanilla one and the eclipse disc has to be black, so those
+		// blend normally; the rest adds light. Each render type gets its shapes far to near, so the
+		// layers stack the same way whether or not the pipeline sorts them.
 		PoseStack pose = context.matrices();
 		pose.pushPose();
-		context.commandQueue().submitCustomGeometry(pose, cover ? RenderTypes.textBackground() : RenderTypes.lightning(), this::draw);
+		if (effect == SkyEffect.SYNTHWAVE) {
+			context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
+		} else {
+			context.commandQueue().submitCustomGeometry(pose, RenderTypes.lightning(), this::drawGlowing);
+			if (effect == SkyEffect.ECLIPSE) {
+				context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
+			}
+		}
 		pose.popPose();
 	}
 
-	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
-		target.pose = pose;
-		target.vc = vc;
-		switch (effect) {
-			case SYNTHWAVE -> synthwave.draw(target, far, baseYaw, amount, clock, pixel);
-			case ECLIPSE -> eclipse.draw(target, far, baseYaw, amount, clock);
-			default -> { }
+	/** Normally blended: the synthwave sky and its constellations. */
+	private void drawPainted(PoseStack.Pose pose, VertexConsumer vc) {
+		paint.begin(pose, vc);
+		synthwave.draw(paint, far, baseYaw, amount, clock, pixel);
+		if (starPatterns) {
+			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
+		}
+	}
+
+	private void drawEclipseDisc(PoseStack.Pose pose, VertexConsumer vc) {
+		paint.begin(pose, vc);
+		eclipse.drawDisc(paint, far, baseYaw, amount);
+	}
+
+	/** Added light: the eclipse, the constellations and the aurora or nebula, far to near. */
+	private void drawGlowing(PoseStack.Pose pose, VertexConsumer vc) {
+		light.begin(pose, vc);
+		if (effect == SkyEffect.ECLIPSE) {
+			eclipse.draw(light, far, baseYaw, amount, clock);
 		}
 		if (starPatterns) {
-			constellations.draw(target, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
+			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
 		}
 		if (effect == SkyEffect.AURORA) {
 			for (int k = 0; k < RIBBONS; k++) {
@@ -203,12 +220,22 @@ public final class SkyEffects {
 		}
 	}
 
-	/** Hands the sky shapes' corners to this frame's vertex buffer. */
+	/** Hands the sky shapes' corners to one render type's vertex buffer for this frame. */
 	private static final class Target extends SkyCanvas {
-		PoseStack.Pose pose;
-		VertexConsumer vc;
-		/** The plain-blend type also takes a light level; full bright keeps the colours as given. */
-		boolean lit;
+		/** The normally blended type also takes a light level; full bright keeps the colours as given. */
+		private final boolean lit;
+		/** Set by {@link #begin} before any corner arrives. */
+		private PoseStack.Pose pose;
+		private VertexConsumer vc;
+
+		Target(boolean lit) {
+			this.lit = lit;
+		}
+
+		void begin(PoseStack.Pose pose, VertexConsumer vc) {
+			this.pose = pose;
+			this.vc = vc;
+		}
 
 		@Override
 		protected void put(float x, float y, float z, int argb) {

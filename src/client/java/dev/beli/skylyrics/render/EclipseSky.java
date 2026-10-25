@@ -18,6 +18,10 @@ final class EclipseSky {
 	static final float SUN_YAW = 3, SUN_ELEV = 13;
 	/** Light below the horizon fades out over this many degrees, so distant land seen from up high stays clear. */
 	private static final float HORIZON_FADE = 3;
+	/** The disc: near black (measured), a hair in front of the corona, every few ring segments. */
+	private static final int DISC_RGB = 0x030306;
+	private static final float DISC_LAYER = 0.995f;
+	private static final int DISC_STEP = 3;
 	/** Angular radius of the black disc. */
 	static final float SUN_RADIUS = 2.5f;
 
@@ -151,6 +155,25 @@ final class EclipseSky {
 		band(c, radius * BAND, baseYaw, level);
 		corona(c, radius * CORONA, baseYaw, level, time);
 		c.fadeBelowHorizon(0);
+	}
+
+	/**
+	 * The disc itself, painted black over the stars and the milky way behind it. Added light can't
+	 * darken, so this goes through a normally blended pipeline of its own. It only covers where the
+	 * corona has no light, so the two can be drawn in either order.
+	 */
+	void drawDisc(SkyCanvas c, float radius, float baseYaw, float level) {
+		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
+		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
+		int black = SkyColors.argb(DISC_RGB, level);
+		float r = radius * CORONA * DISC_LAYER;
+		for (int j = 0; j < SEGMENTS; j += DISC_STEP) {
+			int k = Math.min(SEGMENTS, j + DISC_STEP);
+			c.at(frame, 0, 0, r, black);
+			c.at(frame, 0, 0, r, black);
+			c.at(frame, tanR * RING_COS[k], tanR * RING_SIN[k], r, black);
+			c.at(frame, tanR * RING_COS[j], tanR * RING_SIN[j], r, black);
+		}
 	}
 
 	private void corona(SkyCanvas c, float r, float baseYaw, float level, float time) {

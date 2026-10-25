@@ -55,6 +55,28 @@ class SynthwaveSkyTest {
 	}
 
 	@Test
+	void backgroundIsPlainGradientAwayFromSwirlAndSun() {
+		// Behind the lyrics' direction, low: neither the swirl nor the sun reach there
+		SkyCanvas.SkyFrame f = new SkyCanvas.SkyFrame().aim(180, 20);
+		assertEquals(SynthwaveSky.skyColor(20), SynthwaveSky.background(f.dx, f.dy, f.dz));
+		// Near the sun the glow takes over
+		SkyCanvas.SkyFrame sun = new SkyCanvas.SkyFrame().aim(SynthwaveSky.SUN_YAW, SynthwaveSky.SUN_ELEV);
+		assertEquals(0, SynthwaveSky.sunDistance(sun.dx, sun.dy, sun.dz), 1e-3f);
+		int glow = SynthwaveSky.background(sun.dx, sun.dy, sun.dz);
+		assertTrue((glow >> 16 & 255) > 0xE0, "hot pink behind the sun");
+	}
+
+	@Test
+	void glowAndHaloFadeSmoothlyToNothing() {
+		assertEquals(1, SynthwaveSky.glow(1), 1e-6f);
+		assertEquals(0.5f, SynthwaveSky.glow(1.32f), 0.01f);
+		assertTrue(SynthwaveSky.glow(1.79f) < 0.02f);
+		assertTrue(SynthwaveSky.halo(1) > SynthwaveSky.halo(2));
+		assertTrue(SynthwaveSky.halo(3.15f) < 0.005f);
+		assertEquals(0, SynthwaveSky.halo(3.2f), 1e-6f);
+	}
+
+	@Test
 	void drawsWholeQuadsOfFiniteCorners() {
 		int[] count = new int[1];
 		SkyCanvas c = new SkyCanvas() {
