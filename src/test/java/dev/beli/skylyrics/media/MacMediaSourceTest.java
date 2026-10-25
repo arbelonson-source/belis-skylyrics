@@ -24,6 +24,14 @@ class MacMediaSourceTest {
 	 * test machine, so nothing is playing and nothing gets launched.
 	 */
 	@Test
+	void notRunningAppsAreNeverAsked() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0, app -> false);
+		assertSame(Snapshot.NOTHING, source.poll());
+		assertTrue(runner.commands.isEmpty(), "no osascript when neither app is open");
+	}
+
+	@Test
 	void runsTheRealAppleScript() throws Exception {
 		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
 		MacMediaSource source = new MacMediaSource(() -> "");
@@ -40,6 +48,8 @@ class MacMediaSourceTest {
 				}
 			}
 			assertSame(Snapshot.NOTHING, s);
+			// And the AppleScript itself compiles and runs here
+			assertEquals("", source.checkScript().strip());
 		} finally {
 			source.close();
 		}

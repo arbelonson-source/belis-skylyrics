@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import dev.beli.skylyrics.Tr;
@@ -21,7 +22,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>macOS has no public "what's playing" API (the private MediaRemote one is closed to other apps since 15.4), so
  * we ask the two players that matter most ourselves, with AppleScript through osascript. Browsers and other players
- * can't be seen this way. An app that isn't running is never asked anything, because asking would open it.
+ * can't be seen this way. An app that isn't running is never asked anything, because asking would open it; and
+ * whether it runs is checked from Java, since even asking AppleScript about an app that isn't installed can pop up
+ * a "Where is Spotify?" window.
  *
  * <p>One osascript run per poll reads both apps and prints one tab-separated line per running app (see
  * {@link #parse}). The first time, macOS asks whether Minecraft may control the app, and osascript waits until
@@ -169,6 +172,7 @@ public final class MacMediaSource implements MediaSource {
 	private final Supplier<String> preferredPlayer;
 	private final Runner runner;
 	private final long minPollNs;
+	private final Predicate<App> running;
 
 	/** The osascript that hasn't finished yet, if any. */
 	private volatile @Nullable Run pending;
@@ -183,14 +187,25 @@ public final class MacMediaSource implements MediaSource {
 	private volatile String currentDisplayName = "";
 
 	public MacMediaSource(Supplier<String> preferredPlayer) {
-		this(preferredPlayer, MacMediaSource::startProcess, MIN_POLL_NS);
+		this(preferredPlayer, MacMediaSource::startProcess, MIN_POLL_NS, MacMediaSource::isRunning);
 	}
 
 	/** @param minPollNs how long a reading is reused for; tests use 0 */
 	MacMediaSource(Supplier<String> preferredPlayer, Runner runner, long minPollNs) {
+		this(preferredPlayer, runner, minPollNs, app -> true);
+	}
+
+	MacMediaSource(Supplier<String> preferredPlayer, Runner runner, long minPollNs, Predicate<App> running) {
 		this.preferredPlayer = preferredPlayer;
 		this.runner = runner;
 		this.minPollNs = minPollNs;
+		this.running = running;
+	}
+
+	/** Looks for the app's program among this user's processes; needs no permission and opens nothing. */
+	static boolean isRunning(App app) {
+		String program = "/" + app.name() + ".app/Contents/MacOS/" + app.name();
+		return ProcessHandle.allProcesses().anyMatch(p -> p.info().command().map(c -> c.endsWith(program)).orElse(false));
 	}
 
 	@Override
@@ -198,14 +213,22 @@ public final class MacMediaSource implements MediaSource {
 		if (!haveLast || System.nanoTime() - lastAt >= minPollNs) {
 			List<String> args = new ArrayList<>();
 			for (App app : APPS) {
-				args.add(app.name());
-				args.add(app.readScript());
+				if (running.test(app)) {
+					args.add(app.name());
+					args.add(app.readScript());
+				}
 			}
 			boolean late = pending != null;
-			String out = osascript(args, true);
-			last = parse(out);
-			lastAt = System.nanoTime();
-			haveLast = !late; // a late answer may be old: read again next time
+			if (args.isEmpty() && !late) {
+				last = Answer.EMPTY; // neither app is open: nothing to ask, no osascript to start
+				lastAt = System.nanoTime();
+				haveLast = true;
+			} else {
+				String out = osascript(args, true);
+				last = parse(out);
+				lastAt = System.nanoTime();
+				haveLast = !late; // a late answer may be old: read again next time
+			}
 		}
 		Reading chosen = PlayerPicker.choose(last.players(), r -> r.app().name(), r -> r.track().player(), Reading::playing,
 				preferredPlayer.get(), current == null ? null : current.name());
@@ -360,6 +383,11 @@ public final class MacMediaSource implements MediaSource {
 		}
 		command.addAll(args);
 		return command;
+	}
+
+	/** Runs the main script with no app to ask, to check that it works on this Mac. Tests only. */
+	String checkScript() throws IOException, InterruptedException {
+		return osascript(List.of(), false);
 	}
 
 	private static Run startProcess(List<String> command) throws IOException {
