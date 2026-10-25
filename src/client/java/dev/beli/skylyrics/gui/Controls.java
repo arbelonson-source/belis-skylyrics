@@ -323,6 +323,8 @@ final class Controls {
 
 	/** A button showing one value; the left half goes back, the right half goes forward. */
 	static final class Cycle extends Row {
+		/** Width of the arrows, like the font's ‹ (3 pixels wide, 5 tall). */
+		private static final int CHEVRON_W = 3;
 		private final List<String> labels;
 		private final IntSupplier get;
 		private final IntConsumer set;
@@ -352,11 +354,23 @@ final class Controls {
 			boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, by, bw, 16);
 			Ui.rect(f.g(), bx, by, bw, 16, 4, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			boolean leftHalf = f.mx() < bx + bw / 2;
-			// Plain strings: in Hebrew the visual order mirrors ‹ and ›, so both arrows pointed inwards
-			f.g().drawString(font, "‹", bx + 6, by + 4, hover && leftHalf ? Ui.ACCENT : Ui.MUTED, false);
-			f.g().drawString(font, "›", bx + bw - 6 - font.width("›"), by + 4, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED, false);
+			chevron(f.g(), bx + 6, by + 5, false, hover && leftHalf ? Ui.ACCENT : Ui.MUTED);
+			chevron(f.g(), bx + bw - 6 - CHEVRON_W, by + 5, true, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED);
 			String value = labels.get(Mth.clamp(get.getAsInt(), 0, labels.size() - 1));
 			f.g().drawCenteredString(font, Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
+		}
+
+		/**
+		 * A small ‹ or › drawn as pixels, top-left corner at x, y. The font's ‹ and › are mirrored in
+		 * right-to-left languages, which made both arrows point inwards in Hebrew.
+		 */
+		private static void chevron(GuiGraphics g, int x, int y, boolean right, int color) {
+			int mid = y + CHEVRON_W - 1;
+			for (int c = 0; c < CHEVRON_W; c++) {
+				int fromTip = right ? CHEVRON_W - 1 - c : c;
+				g.fill(x + c, mid - fromTip, x + c + 1, mid - fromTip + 1, color);
+				g.fill(x + c, mid + fromTip, x + c + 1, mid + fromTip + 1, color);
+			}
 		}
 
 		@Override
