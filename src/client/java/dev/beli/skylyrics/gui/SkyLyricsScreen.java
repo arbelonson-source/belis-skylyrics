@@ -136,12 +136,14 @@ public final class SkyLyricsScreen extends Screen {
 		Row animation = new Segmented("Animation", "How lines come in",
 				new String[] {"Words", "Fade", "Rise", "Pop", "Type"}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i]);
+		Row pulse = new Toggle("Pulse", "The glow flares up as each new line starts",
+				() -> cfg.pulse, v -> cfg.pulse = v);
 		Row capitals = new Toggle("CAPITALS", "Write every lyric in capital letters",
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
 				new Card("Position", placement, direction, height, distance, size),
-				new Card("Lines", previous, next, karaoke, animation, capitals));
+				new Card("Lines", previous, next, karaoke, animation, pulse, capitals));
 	}
 
 	private List<Card> lookTab() {

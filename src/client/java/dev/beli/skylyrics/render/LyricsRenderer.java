@@ -176,7 +176,7 @@ public final class LyricsRenderer {
 
 	private void drawContent(Draw draw, SkyLyricsConfig cfg, long time, long now) {
 		if (shown.instrumental()) {
-			draw.line(INSTRUMENTAL, 0, 1, visibility, 0.6f, 1, -1, -1);
+			draw.line(INSTRUMENTAL, 0, 1, visibility, 0.6f, 1, -1, Float.NaN, Float.NaN);
 		} else {
 			drawLines(draw, cfg, time, now);
 		}
@@ -235,7 +235,7 @@ public final class LyricsRenderer {
 		if (alpha <= 0.01f) {
 			return;
 		}
-		record Item(String text, float r, float scale, float alpha, float highlight, float sung, int maxChars, float wordsT) {
+		record Item(String text, float r, float scale, float alpha, float highlight, float sung, int maxChars, float wordsT, float flareT) {
 		}
 		List<Item> items = new ArrayList<>();
 		for (int i = center - 2; i <= center + 2; i++) {
@@ -283,11 +283,17 @@ public final class LyricsRenderer {
 			if (cfg.animation == Animation.TYPEWRITER && i == center && lastIndex == center) {
 				maxChars = (int) ((now - changedAt) / 28_000_000L);
 			}
-			float wordsT = -1;
-			if (cfg.animation == Animation.WORDS && i == center && lastIndex == center && previousIndex != Integer.MIN_VALUE) {
-				wordsT = (now - changedAt) / 1e9f - 0.06f; // a beat after the old line starts fading
+			float wordsT = Float.NaN, flareT = Float.NaN;
+			if (i == center && lastIndex == center && previousIndex != Integer.MIN_VALUE) {
+				float since = (now - changedAt) / 1e9f;
+				if (cfg.animation == Animation.WORDS) {
+					wordsT = since - 0.06f; // a beat after the old line starts fading
+				}
+				if (cfg.pulse) {
+					flareT = Float.isNaN(wordsT) ? since : wordsT;
+				}
 			}
-			items.add(new Item(text, r, scale, a * alpha, highlight, sung, maxChars, wordsT));
+			items.add(new Item(text, r, scale, a * alpha, highlight, sung, maxChars, wordsT, flareT));
 		}
 		if (items.isEmpty()) {
 			return;
@@ -315,7 +321,7 @@ public final class LyricsRenderer {
 		}
 		for (int k = 0; k < items.size(); k++) {
 			Item it = items.get(k);
-			draw.line(it.text, centers[k] - focus, it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT);
+			draw.line(it.text, centers[k] - focus, it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT, it.flareT);
 		}
 	}
 
@@ -394,7 +400,6 @@ public final class LyricsRenderer {
 		final int color;
 		final float wrapWidth;
 		final Style base;
-
 		Draw(Canvas canvas, Font font, SkyLyricsConfig cfg, int color, float wrapWidth) {
 			this.canvas = canvas;
 			this.font = font;
@@ -412,9 +417,11 @@ public final class LyricsRenderer {
 		 * @param highlight 1 for the current line, 0 for the dim neighbours
 		 * @param sung      0..1, how much of the line has been sung (karaoke fill)
 		 * @param maxChars  typewriter limit, or -1
-		 * @param wordsT    seconds since the line came in, for the word-by-word fade-in, or -1
+		 * @param wordsT    seconds since the line came in, for the word-by-word fade-in, or NaN
+		 * @param flareT    seconds into the glow pulse (per word when words fade in), or NaN
 		 */
-		void line(String text, float y, float scale, float alpha, float highlight, float sung, int maxChars, float wordsT) {
+		void line(String text, float y, float scale, float alpha, float highlight, float sung, int maxChars, float wordsT,
+				float flareT) {
 			alpha *= cfg.opacity;
 			if (alpha <= 0.01f) {
 				return;
@@ -431,7 +438,7 @@ public final class LyricsRenderer {
 			int bright = mix(color, 0xFFFFFF, 0.55f);
 			int dim = mix(color, 0x000000, 0.45f);
 			int secondary = mix(color, 0xFFFFFF, 0.25f);
-			float glowAlpha = cfg.glow * alpha * (0.25f + 0.75f * highlight);
+			boolean byWord = !Float.isNaN(wordsT);
 
 			canvas.push(y, scale);
 			float top = -rows.size() * ROW_H / 2;
@@ -442,43 +449,48 @@ public final class LyricsRenderer {
 				int n = d.cps.length;
 				// How visible each character is: typewriter cuts the line off, words fade in one at a time
 				float[] reveal = new float[n];
+				float[] flare = new float[n];
 				int[] rank = wordRanks(row);
 				for (int v = 0; v < n; v++) {
 					int ci = charIndex + d.logical[v];
+					float wordStart = byWord ? (wordIndex + rank[d.logical[v]]) * stagger : 0;
 					float f = 1;
 					if (maxChars >= 0 && ci >= maxChars) {
 						f = 0;
-					} else if (wordsT >= 0) {
-						f = Mth.clamp((wordsT - (wordIndex + rank[d.logical[v]]) * stagger) / WORD_FADE, 0, 1);
+					} else if (byWord) {
+						f = Mth.clamp((wordsT - wordStart) / WORD_FADE, 0, 1);
 					}
 					reveal[v] = f;
+					// Each word flares as it finishes fading in; other animations flare the whole line at once
+					flare[v] = Float.isNaN(flareT) ? 0 : pulse(flareT - wordStart - (byWord ? WORD_FADE * 0.6f : 0)) * highlight;
 				}
 				float x = -LyricsFont.width(font, base, row) / 2f;
 				float ry = top + r * ROW_H + 1;
 				// Draw runs of characters that share the same visibility; normally that's the whole row
 				for (int from = 0; from < n; ) {
 					int to = from + 1;
-					while (to < n && (reveal[to] == reveal[from] || d.cps[to] == ' ')) {
+					while (to < n && (reveal[to] == reveal[from] && flare[to] == flare[from] || d.cps[to] == ' ')) {
 						to++;
 					}
 					float f = reveal[from];
 					if (f > 0.004f) {
 						float sx = x + (from == 0 ? 0 : LyricsFont.width(font, base, new String(d.cps, 0, from)));
 						float e = 1 - (1 - f) * (1 - f);
-						float sy = ry + (wordsT >= 0 ? (1 - e) * 3 : 0);
+						float sy = ry + (byWord ? (1 - e) * 3 : 0);
+						float fl = flare[from];
 						int start = charIndex;
 						int a0 = from, a1 = to;
 						FormattedCharSequence seq = sink -> {
 							for (int v = a0; v < a1; v++) {
 								float fill = Mth.clamp(sungChars - (start + d.logical[v]), 0, 1);
-								int c = mix(secondary, mix(dim, bright, fill), highlight);
+								int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
 								if (!sink.accept(v, base.withColor(c), d.cps[v])) {
 									return false;
 								}
 							}
 							return true;
 						};
-						float ga = glowAlpha * f;
+						float ga = (cfg.glow + 0.9f * fl) * alpha * (0.25f + 0.75f * highlight) * f;
 						if (ga > 0.02f) {
 							FormattedCharSequence glowSeq = sink -> {
 								for (int v = a0; v < a1; v++) {
@@ -489,7 +501,7 @@ public final class LyricsRenderer {
 								return true;
 							};
 							for (int ring = 1; ring <= 2; ring++) {
-								float radius = ring * 0.85f;
+								float radius = ring * 0.85f * (1 + 0.7f * fl);
 								int alphaByte = Math.round(ga * (ring == 1 ? 0.16f : 0.08f) * 255);
 								if (alphaByte < 2) {
 									continue;
@@ -515,6 +527,20 @@ public final class LyricsRenderer {
 
 	private static final float WORD_STAGGER = 0.07f;
 	private static final float WORD_FADE = 0.25f;
+	private static final float PULSE_RISE = 0.07f;
+	private static final float PULSE_FALL = 0.65f;
+
+	/** A quick swell and a slower fade, {@code t} seconds after a line starts. */
+	static float pulse(float t) {
+		if (t < 0 || t >= PULSE_RISE + PULSE_FALL) {
+			return 0;
+		}
+		if (t < PULSE_RISE) {
+			return t / PULSE_RISE;
+		}
+		float k = 1 - (t - PULSE_RISE) / PULSE_FALL;
+		return k * k;
+	}
 
 	/** A row in display order: right-to-left runs (Hebrew, Arabic) reversed, with each character's logical index. */
 	record Display(int[] cps, int[] logical) {

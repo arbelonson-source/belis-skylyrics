@@ -86,6 +86,8 @@ public final class SkyLyricsConfig {
 	/** The bundled smooth font; off uses Minecraft's pixel font. */
 	public boolean smoothFont = true;
 	public float glow = 0.7f;
+	/** The glow flares up for a moment whenever a new line starts. */
+	public boolean pulse = true;
 	public boolean shadow = true;
 	public float opacity = 1f;
 
