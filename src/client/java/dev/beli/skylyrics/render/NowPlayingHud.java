@@ -9,11 +9,10 @@ import static dev.beli.skylyrics.render.TopBarLayout.CLIP_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.CLOCK_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_INSET;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_W;
-import static dev.beli.skylyrics.render.TopBarLayout.HL_PAD;
 import static dev.beli.skylyrics.render.TopBarLayout.PILL_H;
 import static dev.beli.skylyrics.render.TopBarLayout.STATS_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.TEXT_GAP;
-import static dev.beli.skylyrics.render.TopBarLayout.WORD_GAP;
+import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -74,8 +73,8 @@ public final class NowPlayingHud {
 	private static final float PIXEL_FONT_SCALE = 1;
 
 	private static final int FILL = 0x181523;
-	/** Near-opaque, so the sky barely tints the pill. */
-	private static final int FILL_ALPHA = 245;
+	/** Opaque: the reference's fill reads the same over any sky. */
+	private static final int FILL_ALPHA = 255;
 	private static final int BORDER = 0x4B4665;
 	/** The border: two screen pixels at GUI scale 3. */
 	private static final float BORDER_W = 2 / 3f;
@@ -395,9 +394,10 @@ public final class NowPlayingHud {
 			}
 		}
 		Word cur = words[current], prev = words[Math.max(0, current - 1)];
+		float pad = TopBarLayout.highlightPad(wordGap(font, style, scale));
 
 		// Long lines scroll, in reading order, to keep the word being sung in view
-		float target = TopBarLayout.lineShift(total, cur.x() + cur.w(), room, HL_PAD);
+		float target = TopBarLayout.lineShift(total, cur.x() + cur.w(), room, pad);
 		float k = 1 - (float) Math.exp(-dt * SCROLL_RATE);
 		float shift;
 		if (live) {
@@ -409,7 +409,7 @@ public final class NowPlayingHud {
 		// Positions are kept in reading order; a right-to-left line is mirrored, its start at the right
 		float start;
 		if (rtl) {
-			start = (total + HL_PAD > room ? x + room - HL_PAD : x + total) + shift;
+			start = (total + pad > room ? x + room - pad : x + total) + shift;
 		} else {
 			start = x - shift;
 		}
@@ -425,7 +425,7 @@ public final class NowPlayingHud {
 			hlRight += (right - hlRight) * hk;
 			float x0 = rtl ? start - hlRight : start + hlLeft;
 			float hw = hlRight - hlLeft;
-			roundRectGui(g, x0 - HL_PAD, midY - HL_H / 2f, hw + 2 * HL_PAD, HL_H, HL_RADIUS, ARGB.color(Math.round(a * 255), HIGHLIGHT));
+			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS, ARGB.color(Math.round(a * 255), HIGHLIGHT));
 		}
 
 		int sung = fade(a, SUNG), upcoming = fade(a, UPCOMING);
@@ -437,8 +437,13 @@ public final class NowPlayingHud {
 		}
 	}
 
+	/** The gap between the line's words, in GUI units. */
+	private static float wordGap(Font font, Style style, float scale) {
+		return LyricsFont.width(font, style, " ") * scale + WORD_EXTRA;
+	}
+
 	/**
-	 * The line's words in reading order with a fixed gap between them. A word turns white as a whole once its
+	 * The line's words in reading order, a space (and a little) apart. A word turns white as a whole once its
 	 * singing starts; the share of the line sung is counted in letters.
 	 */
 	private static Word[] words(Font font, Style style, float scale, String text, float sungShare) {
@@ -452,13 +457,14 @@ public final class NowPlayingHud {
 			return new Word[0];
 		}
 		Word[] out = new Word[parts.length];
+		float gap = wordGap(font, style, scale);
 		float x = 0;
 		int seen = 0;
 		for (int i = 0; i < parts.length; i++) {
 			float w = LyricsFont.width(font, style, parts[i]) * scale;
 			boolean sung = seen <= at || sungShare >= 1;
 			out[i] = new Word(parts[i], x, w, sung);
-			x += w + WORD_GAP;
+			x += w + gap;
 			seen += parts[i].length();
 		}
 		return out;

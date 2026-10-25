@@ -33,10 +33,12 @@ final class TopBarLayout {
 	/** The highlight stops this far before the equaliser. */
 	static final float EQ_ROOM = 13 / 3f;
 
-	/** The highlight reaches this far past the word on each side. */
-	static final float HL_PAD = 3;
-	/** Space between words: a bit wider than the font's, so the highlight's padding never touches a neighbour. */
-	static final float WORD_GAP = 3.6f;
+	/** The most the highlight reaches past its words on each side (the reference's, where it fits). */
+	static final float HL_PAD = 10 / 3f;
+	/** The highlight always stops at least this short of the next word, so it never touches a neighbour. */
+	static final float HL_CLEAR = 0.8f;
+	/** Added to the font's space between words: the reference's gaps are a little wider (3 to 3.7 units). */
+	static final float WORD_EXTRA = 0.6f;
 
 	private TopBarLayout() {}
 
@@ -68,6 +70,11 @@ final class TopBarLayout {
 		float left = clockW > 0 ? clockW + CLOCK_GAP : 0;
 		float right = statsW > 0 ? STATS_GAP + statsW : 0;
 		return Math.min(PILL_W, guiWidth - 2 * (Math.max(left, right) + EDGE));
+	}
+
+	/** How far the highlight reaches past its words, with words this far apart. */
+	static float highlightPad(float wordGap) {
+		return Math.clamp(wordGap - HL_CLEAR, 1, HL_PAD);
 	}
 
 	/** Everything in the pill around the text: the cover on the left, the highlight's end and the equaliser on the right. */

@@ -64,6 +64,14 @@ class TopBarLayoutTest {
 	}
 
 	@Test
+	void highlightNeverReachesTheNextWord() {
+		assertEquals(3 - TopBarLayout.HL_CLEAR, TopBarLayout.highlightPad(3), 0.001f);
+		// Wide gaps get the reference's padding, never more; tiny ones still get a little
+		assertEquals(TopBarLayout.HL_PAD, TopBarLayout.highlightPad(10));
+		assertEquals(1, TopBarLayout.highlightPad(1));
+	}
+
+	@Test
 	void signalBarsFollowThePlayerListSteps() {
 		assertEquals(0, TopBarLayout.signalBars(-1));
 		assertEquals(4, TopBarLayout.signalBars(20));
