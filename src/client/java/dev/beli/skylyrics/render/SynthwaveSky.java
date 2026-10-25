@@ -22,10 +22,15 @@ final class SynthwaveSky {
 	private static final float SWIRL_ELEV = 62;
 
 	// Sky gradient by height, measured from the reference: deep indigo-violet overhead to magenta at the horizon
-	private static final float[] SKY_AT = {-20, -4, 0, 10, 21, 32, 42, 56, 90};
-	private static final int[] SKY_RGB = {0x782A86, 0xB140BF, 0xB140BF, 0x70227E, 0x4B175F, 0x39114E, 0x310F46, 0x290D3F, 0x1E0A34};
+	private static final float[] SKY_AT = {0, 10, 21, 32, 42, 56, 90};
+	private static final int[] SKY_RGB = {0xB140BF, 0x70227E, 0x4B175F, 0x39114E, 0x310F46, 0x290D3F, 0x1E0A34};
+	/**
+	 * Below the horizon everything fades out over this many degrees: there the sky only shows past the
+	 * end of the loaded world, and covering that would hide distant land seen from up high.
+	 */
+	static final float HORIZON_FADE = 3;
 	/** Dome rows (degrees of height) and columns, fine where the colour changes fast. */
-	private static final float[] DOME_ROWS = {-20, -4, 0, 3, 6, 10, 15, 21, 26, 32, 42, 56, 70, 90};
+	private static final float[] DOME_ROWS = {-HORIZON_FADE, 0, 3, 6, 10, 15, 21, 26, 32, 42, 56, 70, 90};
 	private static final int DOME_COLUMNS = 36;
 
 	/** The swirl darkens towards this deep blue-violet. */
@@ -51,10 +56,13 @@ final class SynthwaveSky {
 	private static final int GAP_RGB = 0xF56AC3;
 	private static final int GLOW_RGB = 0xF650DC;
 	private static final int HALO_RGB = 0xE848D6;
-	private static final float[] GLOW_R = {0, 0.95f, 1.08f, 1.2f, 1.32f, 1.45f, 1.6f};
-	private static final float[] GLOW_A = {1, 1, 1, 0.75f, 0.48f, 0.22f, 0};
-	private static final float[] HALO_R = {0, 1, 1.3f, 1.6f, 2, 2.6f, 3.1f};
-	private static final float[] HALO_A = {0.45f, 0.45f, 0.38f, 0.26f, 0.13f, 0.04f, 0};
+	/** The glow is solid to just past the rim, half as strong 0.26 radii further out (measured). */
+	private static final float GLOW_SOLID = 1.06f, GLOW_HALF = 0.26f, GLOW_END = 1.8f;
+	/** The halo tints the sky out to about three radii. */
+	private static final float HALO_PEAK = 0.45f, HALO_END = 3.2f;
+	/** Ring spacing, in sun radii, fine enough that the fades show no steps. */
+	private static final float GLOW_STEP = 0.05f, HALO_STEP = 0.1f;
+	private static final float[] GLOW_R, GLOW_A, HALO_R, HALO_A;
 	private static final int ROUND_SEGMENTS = 48;
 
 	private static final int[] DOME_RGB = new int[DOME_ROWS.length];
@@ -72,6 +80,16 @@ final class SynthwaveSky {
 	static {
 		for (int i = 0; i < DOME_ROWS.length; i++) {
 			DOME_RGB[i] = SkyColors.ramp(SKY_AT, SKY_RGB, DOME_ROWS[i]);
+		}
+		GLOW_R = rings(0.95f, GLOW_END, GLOW_STEP);
+		GLOW_A = new float[GLOW_R.length];
+		for (int i = 0; i < GLOW_R.length; i++) {
+			GLOW_A[i] = glow(GLOW_R[i]);
+		}
+		HALO_R = rings(1, HALO_END, HALO_STEP);
+		HALO_A = new float[HALO_R.length];
+		for (int i = 0; i < HALO_R.length; i++) {
+			HALO_A[i] = halo(HALO_R[i]);
 		}
 		for (int i = 0; i <= SWIRL_RINGS; i++) {
 			float r = i * SWIRL_STEP;
@@ -132,6 +150,30 @@ final class SynthwaveSky {
 
 	private final SkyFrame frame = new SkyFrame();
 
+	/** The middle, then rings from {@code from} to {@code to} sun radii, about {@code step} apart. */
+	private static float[] rings(float from, float to, float step) {
+		int n = Math.round((to - from) / step);
+		float[] r = new float[n + 2];
+		for (int i = 0; i <= n; i++) {
+			r[i + 1] = from + (to - from) * i / n;
+		}
+		return r;
+	}
+
+	/** Strength of the hot glow {@code r} sun radii from the middle. */
+	static float glow(float r) {
+		if (r <= GLOW_SOLID) {
+			return 1;
+		}
+		float k = (r - GLOW_SOLID) / GLOW_HALF;
+		return r >= GLOW_END ? 0 : (float) Math.exp(-Math.log(2) * k * k);
+	}
+
+	/** Strength of the broad halo {@code r} sun radii from the middle. */
+	static float halo(float r) {
+		return HALO_PEAK * (1 - SkyColors.smooth((r - 1) / (HALO_END - 1)));
+	}
+
 	/** Top of gap {@code g}, as a share of the sun's height from its top. */
 	static float gapTop(int g) {
 		return GAP_START + g * GAP_PITCH;
@@ -169,6 +211,7 @@ final class SynthwaveSky {
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+		c.fadeBelowHorizon(HORIZON_FADE);
 		dome(c, radius * DOME, level);
 		swirl(c, radius * SWIRL, baseYaw, level);
 		stars(c, radius * STARS, level, time, pixel);
@@ -177,6 +220,7 @@ final class SynthwaveSky {
 		round(c, radius * HALO, tanR, HALO_R, HALO_A, HALO_RGB, HALO_RGB, level);
 		round(c, radius * GLOW, tanR, GLOW_R, GLOW_A, GAP_RGB, GLOW_RGB, level);
 		face(c, radius * DISC, tanR, level);
+		c.fadeBelowHorizon(0);
 	}
 
 	private static void dome(SkyCanvas c, float r, float level) {

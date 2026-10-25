@@ -10,12 +10,27 @@ abstract class SkyCanvas {
 	private final float[] qx = new float[4], qy = new float[4], qz = new float[4];
 	private final int[] qc = new int[4];
 	private int corner;
+	/** Sine of the depth below the horizon where shapes have faded out; 0 = no fading. */
+	private float horizonFade;
 
 	/** Receives one corner of a quad that already faces the camera. */
 	protected abstract void put(float x, float y, float z, int argb);
 
+	/**
+	 * Fades whatever is drawn next out below the horizon, over {@code degrees} (0 turns it off). Low
+	 * shapes then don't paint over distant land seen from up high.
+	 */
+	final void fadeBelowHorizon(float degrees) {
+		horizonFade = (float) Math.sin(Math.toRadians(degrees));
+	}
+
 	/** Adds one corner; every fourth call completes a quad. Corners go round the quad in either direction. */
 	final void vertex(float x, float y, float z, int argb) {
+		if (horizonFade > 0 && y < 0) {
+			float below = -y / (float) Math.sqrt(x * x + y * y + z * z);
+			float keep = 1 - SkyColors.smooth(below / horizonFade);
+			argb = Math.round((argb >>> 24) * keep) << 24 | argb & 0xFFFFFF;
+		}
 		qx[corner] = x;
 		qy[corner] = y;
 		qz[corner] = z;

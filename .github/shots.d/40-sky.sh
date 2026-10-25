@@ -27,8 +27,11 @@ hook "set sky AURORA" "look 258 -34"
 sleep 6
 shot sky-aurora-constellations
 
-# Back down, glass gone, the usual settings and view
+# Back down, glass gone; the synthwave sky once more from the ground, then the usual settings and view
 hook "cmd execute as @a at @s run tp @s ~ ~-40 ~" \
 	"cmd execute as @a at @s run fill ~-1 ~39 ~-1 ~1 ~39 ~1 minecraft:air" \
-	"set sky AURORA" "set direction FOLLOW" "look 0 -28"
+	"set sky SYNTHWAVE" "look 196 -14"
+sleep 6
+shot sky-synthwave-ground
+hook "set sky AURORA" "set direction FOLLOW" "look 0 -28"
 sleep 3

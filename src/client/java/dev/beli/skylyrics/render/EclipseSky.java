@@ -16,6 +16,8 @@ final class EclipseSky {
 
 	/** Sun position: just right of where the lyrics face and below them. */
 	static final float SUN_YAW = 3, SUN_ELEV = 13;
+	/** Light below the horizon fades out over this many degrees, so distant land seen from up high stays clear. */
+	private static final float HORIZON_FADE = 3;
 	/** Angular radius of the black disc. */
 	static final float SUN_RADIUS = 2.5f;
 
@@ -145,8 +147,10 @@ final class EclipseSky {
 	 * @param level 0..1, how much of the effect shows
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time) {
+		c.fadeBelowHorizon(HORIZON_FADE);
 		band(c, radius * BAND, baseYaw, level);
 		corona(c, radius * CORONA, baseYaw, level, time);
+		c.fadeBelowHorizon(0);
 	}
 
 	private void corona(SkyCanvas c, float r, float baseYaw, float level, float time) {
