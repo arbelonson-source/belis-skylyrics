@@ -458,8 +458,7 @@ public final class LyricsRenderer {
 			boolean any = false;
 			for (int w = 0; w < words; w++) {
 				float start = charIndex + first[w], end = charIndex + last[w] + 1;
-				float in = smooth((sungChars - start) / GROW_RAMP), out = smooth((end + GROW_RAMP - sungChars) / GROW_RAMP);
-				byWord[w] = 1 + GROW * in * out * highlight;
+				byWord[w] = wordGrowth(sungChars, start, end, highlight);
 				any |= byWord[w] > 1.001f;
 			}
 			if (!any) {
@@ -621,6 +620,15 @@ public final class LyricsRenderer {
 	private static final float GROW_RAMP = 1.5f;
 	/** From the top of a row of text to the middle of its letters. */
 	private static final float GLYPH_MIDDLE = 3.5f;
+
+	/**
+	 * Size of a word spanning letters {@code start..end} of the line when {@code sungChars} letters have been sung:
+	 * it swells as the singing reaches it and settles once the singing has moved on.
+	 */
+	static float wordGrowth(float sungChars, float start, float end, float highlight) {
+		float in = smooth((sungChars - start) / GROW_RAMP), out = smooth((end + GROW_RAMP - sungChars) / GROW_RAMP);
+		return 1 + GROW * in * out * highlight;
+	}
 
 	private static float smooth(float t) {
 		t = Mth.clamp(t, 0, 1);
