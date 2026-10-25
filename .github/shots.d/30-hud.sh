@@ -42,19 +42,25 @@ if sudo apt-get install -y -q xdotool > /dev/null 2>&1; then
 	x_env() { tr '\0' '\n' < "/proc/$game_pid/environ" 2>/dev/null | sed -n "s/^$1=//p" | head -1 || true; }
 	x_display=$(x_env DISPLAY)
 	x_auth=$(x_env XAUTHORITY)
-	resize() {
-		local ids id size
-		# Every window on the virtual screen; the game's is the one as big as the game (its title can vary)
-		ids=$(DISPLAY=$x_display XAUTHORITY=$x_auth xdotool search --name '.*' 2>/dev/null || true)
-		for id in $ids; do
-			size=$(DISPLAY=$x_display XAUTHORITY=$x_auth xdotool getwindowgeometry "$id" 2>/dev/null | sed -n 's/.*Geometry: //p' || true)
-			echo "display=$x_display window $id size $size -> $1x$2" >> "$OUT/hud-xdotool.txt"
-			if [ "$size" = "$3" ]; then
-				DISPLAY=$x_display XAUTHORITY=$x_auth xdotool windowsize "$id" "$1" "$2" >> "$OUT/hud-xdotool.txt" 2>&1 || true
-			fi
+	xdo() { DISPLAY=$x_display XAUTHORITY=$x_auth xdotool "$@" 2>> "$OUT/hud-xdotool.txt" || true; }
+	# The game's window: titled "Minecraft…", or else any window with a class
+	x_windows() {
+		local ids
+		ids=$(xdo search --name 'Minecraft')
+		[ -n "$ids" ] || ids=$(xdo search --class '.')
+		echo "$ids"
+	}
+	x_old_size=""
+	resize() { # width height
+		local id size
+		for id in $(x_windows); do
+			size=$(xdo getwindowgeometry "$id" | sed -n 's/.*Geometry: //p')
+			[ -n "$x_old_size" ] || x_old_size=$size
+			echo "window $id '$(xdo getwindowname "$id")' $size -> $1x$2" >> "$OUT/hud-xdotool.txt"
+			xdo windowsize "$id" "$1" "$2"
 		done
 	}
-	resize 640 480 1600x900
+	resize 640 480
 	hook "guiscale 2" "set uppercase true"
 	sleep 4
 	hud_at 33300 # early in the longest line
@@ -63,7 +69,8 @@ if sudo apt-get install -y -q xdotool > /dev/null 2>&1; then
 	shot hud-small-long-end
 	hud_at 37500
 	shot hud-small-between
-	resize 1600 900 640x480
+	# Back to the size it had
+	[ -z "$x_old_size" ] || resize "${x_old_size%x*}" "${x_old_size#*x}"
 	hook "set uppercase false"
 	sleep 4
 else
