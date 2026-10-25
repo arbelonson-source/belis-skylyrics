@@ -7,8 +7,7 @@ A free, open-source Fabric mod for Minecraft 1.21.11.
 
 <sub>Short clip: [docs/demo.mp4](docs/demo.mp4). The lyrics in all pictures are made up for the built-in demo song.</sub>
 
-> **Work in progress.** It builds and runs, but it isn't released yet.
-> Progress is tracked in [PLAN.md](PLAN.md).
+Download it from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases). Questions? See the [FAQ](docs/FAQ.md). Something not working? See [Troubleshooting](docs/TROUBLESHOOTING.md).
 
 ## What it does
 
@@ -17,10 +16,11 @@ A free, open-source Fabric mod for Minecraft 1.21.11.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
 - A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted.
+- Three letter styles for the sky lyrics: Smooth, Handwritten or the Minecraft font.
 - Takes its colour from the album cover. You can also pick your own colour, or use rainbow.
 - At night, a soft aurora or nebula can glow in the sky behind the lyrics while music plays.
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
-- Works with Sodium and Iris shaders. Lyrics stay bright and sit in front of shader clouds and rain.
+- Works with Sodium and Iris shaders. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
 - A demo mode with a built-in song, so you can try it without any music playing.
 - English and Hebrew. The settings follow your Minecraft language.
@@ -59,7 +59,7 @@ You need **Linux**. Song detection uses MPRIS, which is Linux only. On other sys
 
 - **J** opens the settings. Change the key under *Options → Controls → Key Binds → Beli's SkyLyrics*.
 - The same place has optional keys for play/pause, next and previous song, and "lyrics are early / late" for the song playing now.
-- No lyrics showing? Open the settings and look at the **Music** tab. It tells you which player it's following and whether lyrics were found. Some songs simply have no lyrics on LRCLIB.
+- No lyrics showing? Open the settings and look at the **Music** tab. It tells you which player it's following and whether lyrics were found. Some songs simply have no lyrics on LRCLIB. More help in [Troubleshooting](docs/TROUBLESHOOTING.md).
 
 ## Building it yourself
 
@@ -71,10 +71,12 @@ JAVA_HOME=/path/to/java-25 ./gradlew build
 
 The jar ends up in `build/libs/`.
 
+What's being worked on is tracked in [PLAN.md](PLAN.md).
+
 ## License
 
 [GNU AGPL v3](LICENSE). You can use, change and share it, as long as you share your changes under the same license.
 
 Lyrics are not part of this project. They're fetched from LRCLIB while you play.
 
-The fonts are Poppins and Noto Sans Hebrew, both under the SIL Open Font License (see [FONTS-LICENSE.txt](src/main/resources/assets/skylyrics/font/FONTS-LICENSE.txt)).
+The fonts are Poppins, Kaushan Script and Noto Sans Hebrew, all under the SIL Open Font License (see [FONTS-LICENSE.txt](src/main/resources/assets/skylyrics/font/FONTS-LICENSE.txt)).
