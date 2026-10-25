@@ -307,7 +307,9 @@ public final class NowPlayingHud {
 			}
 			hlWord = current;
 			int hl = LyricsRenderer.mix(accent, 0x000000, 0.3f);
-			roundRectGui(g, hlX - 2.5f, -6.5f, hlW + 5, 12, 3.5f, ARGB.color(Math.round(a * 235), hl));
+			// Less than half a space either side, so the highlight never touches the neighbouring words
+			float pad = Math.min(2.5f, LyricsFont.width(font, style, " ") * 0.45f);
+			roundRectGui(g, hlX - pad, -6.5f, hlW + 2 * pad, 12, 3.5f, ARGB.color(Math.round(a * 235), hl));
 		}
 
 		// Second pass draws the words over the highlight
