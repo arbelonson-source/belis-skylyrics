@@ -48,10 +48,11 @@ jobs:
           chmod +x gradlew
           sed -i "s/LOOM_ID_HERE/$LOOM_ID/; s/LOOM_VERSION_HERE/$LOOM/" probe/mini/build.gradle
           set -o pipefail
-          ./gradlew -p probe/mini --no-configuration-cache --stacktrace build probeTasks 2>&1 | tee "$RUNNER_TEMP/log.txt"
+          ./gradlew -p probe/mini --no-configuration-cache --stacktrace build probeTasks > "$RUNNER_TEMP/log.txt" 2>&1; r=$?; tail -30 "$RUNNER_TEMP/log.txt"; exit $r
       - name: summarize
         if: always()
         run: |
+          set +e
           {
             echo "result for MC=$MC plugin=$LOOM_ID loom=$LOOM"
             grep -E 'BUILD (SUCCESSFUL|FAILED)|PROBE-|error:|warning:' "$RUNNER_TEMP/log.txt" | head -60
@@ -59,6 +60,7 @@ jobs:
             ls -la probe/mini/build/libs 2>/dev/null
             for j in probe/mini/build/libs/*.jar; do [ -f "$j" ] && unzip -l "$j"; done
             grep -iE 'deprecat|loom|obfusc|mapping' "$RUNNER_TEMP/log.txt" | head -30
+            grep -A25 'What went wrong' "$RUNNER_TEMP/log.txt" | head -60
           } > "$RUNNER_TEMP/sum.txt" 2>&1
           python3 probe/emit.py "$RUNNER_TEMP/sum.txt" "mini $MC $LOOM_ID" 0 8
 
@@ -92,27 +94,25 @@ jobs:
           cd "$RUNNER_TEMP/port"
           chmod +x gradlew
           set -o pipefail
-          ./gradlew --continue --stacktrace compileClientJava compileTestJava probeClasspath 2>&1 | tee "$RUNNER_TEMP/log.txt"
+          ./gradlew --continue --stacktrace compileClientJava compileTestJava probeClasspath > "$RUNNER_TEMP/log.txt" 2>&1; r=$?; tail -40 "$RUNNER_TEMP/log.txt" | sed 's/error:/err-/'; exit $r
       - name: condense errors
         if: always()
         run: python3 probe/errors.py "$RUNNER_TEMP/log.txt" "$RUNNER_TEMP/rep.txt"
-      - name: javap requested classes
-        if: always()
-        run: |
-          cp=$(paste -sd: "$RUNNER_TEMP/port/build/probe-cp.txt" 2>/dev/null || true)
-          for c in $(cat probe/javap-classes.txt); do echo "#### $c"; javap -public -cp "$cp" "$c" 2>&1 | head -150; done > "$RUNNER_TEMP/javap.txt"
+      - name: discover renamed api
+        if: always() && (matrix.mc == '26.1' || matrix.mc == '26.3')
+        run: bash probe/discover.sh "$RUNNER_TEMP/port/build/probe-cp.txt" > "$RUNNER_TEMP/javap.txt" 2>&1 || true
       - name: report 1
         if: always()
         run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 0 10
       - name: report 2
         if: always()
         run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 10 10
-      - name: report 3
+      - name: report discover 1
         if: always()
-        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 20 10
-      - name: report javap
+        run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "disc $MC" 0 10
+      - name: report discover 2
         if: always()
-        run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "javap $MC" 0 10
+        run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "disc $MC" 10 10
       - name: verdict
         if: always()
         run: |

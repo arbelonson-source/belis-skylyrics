@@ -5,6 +5,7 @@ import sys, re, collections
 log = open(sys.argv[1], encoding="utf-8", errors="replace").read().splitlines()
 head = re.compile(r"^(/\S+?\.java):(\d+): (error|warning): (.*)$")
 errs = []
+seen = set()
 i = 0
 while i < len(log):
     m = head.match(log[i])
@@ -31,7 +32,9 @@ while i < len(log):
             continue
         info.append(e.strip())
     rel = path.split("/src/", 1)[-1]
-    errs.append((rel, int(line), kind, msg, info, src))
+    if (rel, line, msg) not in seen:  # gradle prints javac output twice
+        seen.add((rel, line, msg))
+        errs.append((rel, int(line), kind, msg, info, src))
     i = j
 
 out = []
