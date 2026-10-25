@@ -26,6 +26,7 @@ import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.mixin.BossHealthOverlayAccessor;
 
 /**
  * The bar at the top of the screen: a dark rounded pill with the round cover, the line being
@@ -69,6 +70,8 @@ public final class NowPlayingHud {
 	private float width = -1;
 	/** The clock's room, eased like {@link #width} so the text and the bar's edge move together. */
 	private float lead = -1;
+	/** Where the bar's top edge is, eased: below any boss bars. */
+	private float top = -1;
 	private float hlX, hlW = -1;
 	private int hlWord = -1;
 	private final float[] eq = new float[4];
@@ -117,6 +120,7 @@ public final class NowPlayingHud {
 			content = null;
 			width = -1;
 			lead = -1;
+			top = -1;
 			return;
 		}
 
@@ -150,8 +154,27 @@ public final class NowPlayingHud {
 		width = width < 0 ? target : width + (target - width) * k;
 
 		float x = (g.guiWidth() - width) / 2f;
-		float y = 5 - (1 - ease(alpha)) * 10;
+		float topTarget = topBelowBossBars(mc, g.guiHeight());
+		top = top < 0 ? topTarget : top + (topTarget - top) * k;
+		float y = top - (1 - ease(alpha)) * 10;
 		draw(g, font, style, mc, x, y, lead, clock, clockW, textScale, maxText, now, dt);
+	}
+
+	/**
+	 * Boss bars (a dragon, a wither, server events) are drawn from the top of the screen, 19 units apart, as many
+	 * as fit in the top third. The bar goes just below the last one instead of covering their names.
+	 */
+	static float topBelowBossBars(Minecraft mc, int guiHeight) {
+		int count = ((BossHealthOverlayAccessor) mc.gui.getBossOverlay()).skylyrics$getEvents().size();
+		return topBelowBossBars(count, guiHeight);
+	}
+
+	static float topBelowBossBars(int count, int guiHeight) {
+		int shown = 0;
+		for (int y = 12; shown < count && y < guiHeight / 3; y += 19) {
+			shown++;
+		}
+		return shown == 0 ? 5 : 12 + 19 * (shown - 1) + 5 + 4;
 	}
 
 	/** The time as the computer's language writes it, e.g. "21:07" or "9:07 PM". */

@@ -85,6 +85,10 @@ shot night-sky-2
 hook "cmd time set noon"
 sleep 8
 shot daytime
+hook "cmd bossbar add skylyrics:test \"Made Up Boss\"" "cmd bossbar set skylyrics:test players @a"
+sleep 4
+shot boss-bar
+hook "cmd bossbar remove skylyrics:test"
 hook "set placement FLOATING" "look 0 0"
 sleep 6
 shot floating
