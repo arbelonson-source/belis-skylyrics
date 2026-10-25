@@ -22,6 +22,7 @@ import net.minecraft.util.Mth;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
+import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
@@ -45,7 +46,6 @@ public final class LyricsRenderer {
 	private static final float SECONDARY = 0.7f;
 	private static final float GAP = 5f;
 	private static final String DOTS = "♪  ♪  ♪";
-	private static final String INSTRUMENTAL = "♪  Instrumental  ♪";
 
 	private final MediaTracker tracker;
 	private final LyricsService service;
@@ -176,7 +176,7 @@ public final class LyricsRenderer {
 
 	private void drawContent(Draw draw, SkyLyricsConfig cfg, long time, long now) {
 		if (shown.instrumental()) {
-			draw.line(INSTRUMENTAL, 0, 1, visibility, 0.6f, 1, -1, Float.NaN, Float.NaN);
+			draw.line(Tr.t("♪  Instrumental  ♪"), 0, 1, visibility, 0.6f, 1, -1, Float.NaN, Float.NaN);
 		} else {
 			drawLines(draw, cfg, time, now);
 		}

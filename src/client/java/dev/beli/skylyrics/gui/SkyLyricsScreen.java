@@ -18,6 +18,7 @@ import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.SkyLyricsClient;
+import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
@@ -47,20 +48,31 @@ public final class SkyLyricsScreen extends Screen {
 	static final String GITHUB = "https://github.com/arbelonson-source/belis-skylyrics";
 	private static final String LRCLIB = "https://lrclib.net";
 
-	private static final String[] TAB_NAMES = {"Lyrics", "Look", "Music", "Display", "About"};
+	private static final int TAB_COUNT = 5;
 	private static final String[] TAB_ICONS = {"☁", "✦", "♫", "◐", "ℹ"};
-	private static final String[] TAB_SUBTITLES = {
-			"Where the lyrics go and how they move",
-			"Colours, glow and style",
-			"Your music player and lyrics",
-			"When to show things",
-			"About this mod",
-	};
+	private static String tabName(int i) {
+		return switch (i) {
+			case 0 -> Tr.t("Lyrics");
+			case 1 -> Tr.t("Look");
+			case 2 -> Tr.t("Music");
+			case 3 -> Tr.t("Display");
+			default -> Tr.t("About");
+		};
+	}
+
+	private static String tabSubtitle(int i) {
+		return switch (i) {
+			case 0 -> Tr.t("Where the lyrics go and how they move");
+			case 1 -> Tr.t("Colours, glow and style");
+			case 2 -> Tr.t("Your music player and lyrics");
+			case 3 -> Tr.t("When to show things");
+			default -> Tr.t("About this mod");
+		};
+	}
 	private static final int MUSIC_TAB = 2;
 	private static final int[] SWATCHES = {
 			0xB57BFF, 0xFF6EC7, 0xFF5A5A, 0xFFA24C, 0xFFE066, 0x6BFF8E, 0x4FE3FF, 0x5B8CFF, 0xFFFFFF,
 	};
-	private static final String[] PLAYER_LABELS = {"Auto", "Spotify", "Firefox", "Chrome", "mpv", "VLC"};
 	private static final String[] PLAYER_KEYS = {"", "spotify", "firefox", "chrom", "mpv", "vlc"};
 
 	private static final int SIDEBAR_W = 96;
@@ -77,8 +89,8 @@ public final class SkyLyricsScreen extends Screen {
 	private final SkyLyricsClient mod = SkyLyricsClient.get();
 	private final List<List<Card>> tabs = new ArrayList<>();
 	private final Toggle masterToggle;
-	private final float[] scroll = new float[TAB_NAMES.length];
-	private final float[] scrollTarget = new float[TAB_NAMES.length];
+	private final float[] scroll = new float[TAB_COUNT];
+	private final float[] scrollTarget = new float[TAB_COUNT];
 
 	private int tab = lastTab;
 	private int px, py, pw, ph;
@@ -101,7 +113,7 @@ public final class SkyLyricsScreen extends Screen {
 	public SkyLyricsScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
 		this.parent = parent;
-		masterToggle = new Toggle("Lyrics", null, () -> cfg.enabled, v -> cfg.enabled = v);
+		masterToggle = new Toggle(Tr.t("Lyrics"), null, () -> cfg.enabled, v -> cfg.enabled = v);
 		tabs.add(lyricsTab());
 		tabs.add(lookTab());
 		tabs.add(musicTab());
@@ -112,90 +124,90 @@ public final class SkyLyricsScreen extends Screen {
 	// ---- Tabs -------------------------------------------------------------------------------------
 
 	private List<Card> lyricsTab() {
-		Row placement = new Segmented("Placement", "Sky: huge and far away. Floating: close by",
-				new String[] {"Sky", "Floating"}, () -> cfg.placement.ordinal(),
+		Row placement = new Segmented(Tr.t("Placement"), Tr.t("Sky: huge and far away. Floating: close by"),
+				new String[] {Tr.t("Sky"), Tr.t("Floating")}, () -> cfg.placement.ordinal(),
 				i -> cfg.placement = Placement.values()[i]);
-		Row direction = new Segmented("Direction", "Follow keeps them where you look",
-				new String[] {"Follow", "N", "E", "S", "W"},
+		Row direction = new Segmented(Tr.t("Direction"), Tr.t("Follow keeps them where you look"),
+				new String[] {Tr.t("Follow"), Tr.t("N"), Tr.t("E"), Tr.t("S"), Tr.t("W")},
 				() -> cfg.direction == Direction.FOLLOW ? 0 : cfg.direction.ordinal() + 1,
 				i -> cfg.direction = i == 0 ? Direction.FOLLOW : Direction.values()[i - 1])
 				.when(() -> cfg.placement == Placement.SKY);
-		Row height = new Slider("Height", "How high above the horizon", -10, 80, 1,
+		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°");
-		Row distance = new Slider("Distance", "How far away they float", 8, 160, 1,
-				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Math.round(v) + " blocks");
-		Row size = new Slider("Size", null, 0.3, 3, 0.05,
+		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
+				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)));
+		Row size = new Slider(Tr.t("Size"), null, 0.3, 3, 0.05,
 				() -> cfg.size, v -> cfg.size = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v));
 
-		Row previous = new Toggle("Previous line", "The line that just ended, faded",
+		Row previous = new Toggle(Tr.t("Previous line"), Tr.t("The line that just ended, faded"),
 				() -> cfg.showPrevious, v -> cfg.showPrevious = v);
-		Row next = new Toggle("Next line", "What's coming up, dimmed",
+		Row next = new Toggle(Tr.t("Next line"), Tr.t("What's coming up, dimmed"),
 				() -> cfg.showNext, v -> cfg.showNext = v);
-		Row karaoke = new Toggle("Karaoke fill", "Words light up as they are sung",
+		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung"),
 				() -> cfg.karaoke, v -> cfg.karaoke = v);
-		Row animation = new Segmented("Animation", "How lines come in",
-				new String[] {"Words", "Fade", "Rise", "Pop", "Type"}, () -> cfg.animation.ordinal(),
+		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
+				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type")}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i]);
-		Row pulse = new Toggle("Pulse", "The glow flares up as each new line starts",
+		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),
 				() -> cfg.pulse, v -> cfg.pulse = v);
-		Row capitals = new Toggle("CAPITALS", "Write every lyric in capital letters",
+		Row capitals = new Toggle(Tr.t("CAPITALS"), Tr.t("Write every lyric in capital letters"),
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card("Position", placement, direction, height, distance, size),
-				new Card("Lines", previous, next, karaoke, animation, pulse, capitals));
+				new Card(Tr.t("Position"), placement, direction, height, distance, size),
+				new Card(Tr.t("Lines"), previous, next, karaoke, animation, pulse, capitals));
 	}
 
 	private List<Card> lookTab() {
-		Row mode = new Segmented("Colour", "Album takes the colour from the cover art",
-				new String[] {"Album", "Pick", "Rainbow"}, () -> cfg.colorMode.ordinal(),
+		Row mode = new Segmented(Tr.t("Colour"), Tr.t("Album takes the colour from the cover art"),
+				new String[] {Tr.t("Album"), Tr.t("Pick"), Tr.t("Rainbow")}, () -> cfg.colorMode.ordinal(),
 				i -> cfg.colorMode = ColorMode.values()[i]);
-		Row swatches = new Swatches("Pick a colour", null, SWATCHES,
+		Row swatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
 				() -> cfg.colorMode == ColorMode.FIXED ? cfg.color : -1,
 				c -> {
 					cfg.color = c;
 					cfg.colorMode = ColorMode.FIXED;
 				});
-		Row albumColor = new Info("Album colour", null, () -> {
+		Row albumColor = new Info(Tr.t("Album colour"), null, () -> {
 			Track track = mod.tracker().track();
 			if (track == Track.NONE) {
-				return "nothing playing";
+				return Tr.t("no song playing");
 			}
-			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : "no cover art";
+			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 
-		Row font = new Segmented("Font", "Smooth letters, or Minecraft's pixel font",
-				new String[] {"Smooth", "Minecraft"}, () -> cfg.smoothFont ? 0 : 1, i -> cfg.smoothFont = i == 0);
-		Row glow = new Slider("Glow", "Soft light around the letters", 0, 1, 0.05,
+		Row font = new Segmented(Tr.t("Font"), Tr.t("Smooth letters, or Minecraft's pixel font"),
+				new String[] {Tr.t("Smooth"), Tr.t("Minecraft")}, () -> cfg.smoothFont ? 0 : 1, i -> cfg.smoothFont = i == 0);
+		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
-		Row shadow = new Toggle("Shadow", "A dark edge so text reads on bright skies",
+		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
 				() -> cfg.shadow, v -> cfg.shadow = v);
-		Row opacity = new Slider("Opacity", null, 0.2, 1, 0.05,
+		Row opacity = new Slider(Tr.t("Opacity"), null, 0.2, 1, 0.05,
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
-		Row seeThrough = new Toggle("See through blocks", "Stay visible behind hills and walls",
+		Row seeThrough = new Toggle(Tr.t("See through blocks"), Tr.t("Stay visible behind hills and walls"),
 				() -> cfg.seeThroughBlocks, v -> cfg.seeThroughBlocks = v);
-		Row layer = new Segmented("Draw on top", "Keeps lyrics bright through shaders, clouds and rain",
-				new String[] {"Auto", "Always", "Never"}, () -> switch (cfg.layer) {
+		Row layer = new Segmented(Tr.t("Draw on top"), Tr.t("Keeps lyrics bright through shaders, clouds and rain"),
+				new String[] {Tr.t("Auto"), Tr.t("Always"), Tr.t("Never")}, () -> switch (cfg.layer) {
 					case AUTO -> 0;
 					case SCREEN -> 1;
 					case WORLD -> 2;
 				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD);
 
 		return List.of(
-				new Card("Colour", mode, swatches, albumColor),
-				new Card("Style", font, glow, shadow, opacity, seeThrough, layer));
+				new Card(Tr.t("Colour"), mode, swatches, albumColor),
+				new Card(Tr.t("Style"), font, glow, shadow, opacity, seeThrough, layer));
 	}
 
 	private List<Card> musicTab() {
 		MediaTracker tracker = mod.tracker();
 		LyricsService service = mod.lyrics();
-		Row status = new Buttons("Lyrics", "",
-				new Button(() -> "Retry", service::retry,
+		Row status = new Buttons(Tr.t("Lyrics"), "",
+				new Button(() -> Tr.t("Retry"), service::retry,
 						() -> service.state() == LyricsService.State.NOT_FOUND || service.state() == LyricsService.State.ERROR,
 						false))
 				.describe(this::lyricsStatus);
 
-		Row player = new Cycle("Player", "Which app to follow", List.of(PLAYER_LABELS),
+		Row player = new Cycle(Tr.t("Player"), Tr.t("Which app to follow"), List.of(Tr.t("Auto"), "Spotify", "Firefox", "Chrome", "mpv", "VLC"),
 				() -> {
 					for (int i = 0; i < PLAYER_KEYS.length; i++) {
 						if (PLAYER_KEYS[i].equalsIgnoreCase(cfg.preferredPlayer)) {
@@ -208,32 +220,32 @@ public final class SkyLyricsScreen extends Screen {
 					cfg.preferredPlayer = PLAYER_KEYS[i];
 					tracker.refresh();
 				});
-		Row connection = new Info("Status", null, () -> {
+		Row connection = new Info(Tr.t("Status"), null, () -> {
 			if (cfg.demoMode) {
-				return "Playing the demo song";
+				return Tr.t("Playing the demo song");
 			}
 			if (!tracker.connected()) {
 				String error = tracker.error();
-				return error == null || error.isEmpty() ? "Can't reach music players" : error;
+				return error == null || error.isEmpty() ? Tr.t("Can't reach music players") : error;
 			}
-			return tracker.track() == Track.NONE ? "No music playing" : "Following " + tracker.sourceName();
+			return tracker.track() == Track.NONE ? Tr.t("No music playing") : Tr.t("Following %s", tracker.sourceName());
 		});
-		Row timing = new Slider("Timing", "Late? Move right. Early? Left", -3000, 3000, 50,
+		Row timing = new Slider(Tr.t("Timing"), Tr.t("Late? Move right. Early? Left"), -3000, 3000, 50,
 				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds);
-		Row songTiming = new Slider("This song", "Remembered for this song only", -3000, 3000, 50,
+		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -3000, 3000, 50,
 				() -> cfg.songOffset(tracker.track()), v -> cfg.setSongOffset(tracker.track(), (int) Math.round(v)),
 				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE);
-		Row demo = new Toggle("Demo song", "A built-in song for trying things out",
+		Row demo = new Toggle(Tr.t("Demo song"), Tr.t("A built-in song for trying things out"),
 				() -> cfg.demoMode, v -> {
 					cfg.demoMode = v;
 					tracker.refresh();
 				});
-		Row plain = new Toggle("Untimed lyrics", "If a song has no timing, spread the lines out",
+		Row plain = new Toggle(Tr.t("Untimed lyrics"), Tr.t("If a song has no timing, spread the lines out"),
 				() -> cfg.showPlainLyrics, v -> cfg.showPlainLyrics = v);
 
 		return List.of(
-				new Card("Now playing", new NowPlayingRow(), status),
-				new Card("Player", player, connection, timing, songTiming, demo, plain));
+				new Card(Tr.t("Now playing"), new NowPlayingRow(), status),
+				new Card(Tr.t("Player"), player, connection, timing, songTiming, demo, plain));
 	}
 
 	public static String seconds(double ms) {
@@ -241,59 +253,56 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private List<Card> displayTab() {
-		Row f1 = new Toggle("Hide with F1", "When you hide the HUD", () -> cfg.hideWithF1, v -> cfg.hideWithF1 = v);
-		Row menus = new Toggle("Hide in menus", "When a menu or chat is open", () -> cfg.hideInMenus, v -> cfg.hideInMenus = v);
-		Row paused = new Toggle("Hide when paused", "When the music is paused", () -> cfg.hideWhenPaused, v -> cfg.hideWhenPaused = v);
+		Row f1 = new Toggle(Tr.t("Hide with F1"), Tr.t("When you hide the HUD"), () -> cfg.hideWithF1, v -> cfg.hideWithF1 = v);
+		Row menus = new Toggle(Tr.t("Hide in menus"), Tr.t("When a menu or chat is open"), () -> cfg.hideInMenus, v -> cfg.hideInMenus = v);
+		Row paused = new Toggle(Tr.t("Hide when paused"), Tr.t("When the music is paused"), () -> cfg.hideWhenPaused, v -> cfg.hideWhenPaused = v);
 
-		Row card = new Toggle("Top bar", "Song and lyrics at the top of the screen",
+		Row card = new Toggle(Tr.t("Top bar"), Tr.t("Song and lyrics at the top of the screen"),
 				() -> cfg.nowPlayingHud, v -> cfg.nowPlayingHud = v);
-		Row barLyrics = new Toggle("Lyrics in the bar", "The line being sung, word by word",
+		Row barLyrics = new Toggle(Tr.t("Lyrics in the bar"), Tr.t("The line being sung, word by word"),
 				() -> cfg.barLyrics, v -> cfg.barLyrics = v)
 				.when(() -> cfg.nowPlayingHud);
-		Row onlyOnChange = new Toggle("Song name only on change", "Shows for a few seconds, then hides",
+		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
 
-		Row openKey = new Info("Open settings", null, () -> keyName(mod.openSettingsKey()));
-		Row controls = new Buttons("More keys", "Toggle lyrics, play/pause, skip songs",
-				new Button("Controls", () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
+		Row openKey = new Info(Tr.t("Open settings"), null, () -> keyName(mod.openSettingsKey()));
+		Row controls = new Buttons(Tr.t("More keys"), Tr.t("Toggle lyrics, play/pause, skip songs"),
+				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
 
 		return List.of(
-				new Card("Hide lyrics", f1, menus, paused),
-				new Card("Top bar", card, barLyrics, onlyOnChange),
-				new Card("Keys", openKey, controls));
+				new Card(Tr.t("Hide lyrics"), f1, menus, paused),
+				new Card(Tr.t("Top bar"), card, barLyrics, onlyOnChange),
+				new Card(Tr.t("Keys"), openKey, controls));
 	}
 
 	private List<Card> aboutTab() {
 		String version = FabricLoader.getInstance().getModContainer(SkyLyricsClient.MOD_ID)
 				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("dev");
-		Row intro = new Paragraph(() -> "Beli's SkyLyrics shows the words of whatever song you are playing, "
-				+ "floating in the Minecraft sky. It is free and open source (MIT licence).");
-		Row versionRow = new Info("Version", null, () -> version);
-		Row how = new Paragraph(() -> "The song comes from your music app through MPRIS, the same Linux feature "
-				+ "your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, "
-				+ "a free community lyrics library, and are saved on your computer for next time.");
-		Row compat = new Paragraph(() -> "Works with Sodium, Iris and shader packs.");
-		Row links = new Buttons("Links", null,
+		Row intro = new Paragraph(() -> Tr.t("Beli's SkyLyrics shows the words of whatever song you are playing, floating in the Minecraft sky. It is free and open source (AGPL licence)."));
+		Row versionRow = new Info(Tr.t("Version"), null, () -> version);
+		Row how = new Paragraph(() -> Tr.t("The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time."));
+		Row compat = new Paragraph(() -> Tr.t("Works with Sodium, Iris and shader packs."));
+		Row links = new Buttons(Tr.t("Links"), null,
 				new Button("GitHub", () -> ConfirmLinkScreen.confirmLinkNow(this, GITHUB)),
 				new Button("LRCLIB", () -> ConfirmLinkScreen.confirmLinkNow(this, LRCLIB)));
 		return List.of(
 				new Card("Beli's SkyLyrics", intro, versionRow),
-				new Card("How it works", how, compat, links));
+				new Card(Tr.t("How it works"), how, compat, links));
 	}
 
 	private String lyricsStatus() {
 		if (mod.tracker().track() == Track.NONE) {
-			return "Waiting for a song";
+			return Tr.t("Waiting for a song");
 		}
 		Lyrics lyrics = mod.lyrics().lyrics();
 		return switch (mod.lyrics().state()) {
-			case IDLE -> "Waiting for a song";
-			case LOADING -> "Looking for lyrics…";
-			case READY -> lyrics.instrumental() ? "Instrumental, no words"
-					: lyrics.synced() ? "Found, with timing" : "Found, without timing";
-			case NOT_FOUND -> "No lyrics found for this song";
-			case ERROR -> "Couldn't reach LRCLIB. Offline?";
+			case IDLE -> Tr.t("Waiting for a song");
+			case LOADING -> Tr.t("Looking for lyrics…");
+			case READY -> lyrics.instrumental() ? Tr.t("Instrumental, no words")
+					: lyrics.synced() ? Tr.t("Found, with timing") : Tr.t("Found, without timing");
+			case NOT_FOUND -> Tr.t("No lyrics found for this song");
+			case ERROR -> Tr.t("Couldn't reach LRCLIB. Offline?");
 		};
 	}
 
@@ -303,7 +312,7 @@ public final class SkyLyricsScreen extends Screen {
 
 	private static String keyName(@Nullable KeyMapping key) {
 		if (key == null || key.isUnbound()) {
-			return "not set";
+			return Tr.t("not set");
 		}
 		return key.getTranslatedKeyMessage().getString();
 	}
@@ -440,7 +449,7 @@ public final class SkyLyricsScreen extends Screen {
 		int iy = Math.round(indicatorY);
 		Ui.rect(g, px + 6, iy, SIDEBAR_W - 12, TAB_H, 5, Ui.ACCENT_SOFT);
 		Ui.rect(g, px + 6, iy + 5, 2, TAB_H - 10, 1, Ui.ACCENT);
-		for (int i = 0; i < TAB_NAMES.length; i++) {
+		for (int i = 0; i < TAB_COUNT; i++) {
 			int ty = tabsY + i * (TAB_H + 2);
 			boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), px + 6, ty, SIDEBAR_W - 12, TAB_H);
 			if (hover && i != tab) {
@@ -448,7 +457,7 @@ public final class SkyLyricsScreen extends Screen {
 			}
 			int color = i == tab ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
 			g.drawString(font, TAB_ICONS[i], px + 14, ty + 6, i == tab ? Ui.ACCENT : color, false);
-			g.drawString(font, TAB_NAMES[i], px + 28, ty + 6, color, false);
+			g.drawString(font, tabName(i), px + 28, ty + 6, color, false);
 		}
 
 		g.fill(px + 10, py + ph - 36, px + SIDEBAR_W - 10, py + ph - 35, Ui.DIVIDER);
@@ -456,24 +465,24 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private void renderHeader(GuiGraphics g, Frame f) {
-		g.drawString(font, TAB_NAMES[tab], viewX, py + 12, Ui.TEXT, false);
-		g.drawString(font, TAB_SUBTITLES[tab], viewX, py + 23, Ui.MUTED, false);
+		g.drawString(font, tabName(tab), viewX, py + 12, Ui.TEXT, false);
+		g.drawString(font, tabSubtitle(tab), viewX, py + 23, Ui.MUTED, false);
 
-		int bw = font.width("Preview") + 16;
+		int bw = font.width(Tr.t("Preview")) + 16;
 		int bx = px + pw - 12 - bw;
 		previewX = bx;
 		previewW = bw;
 		pillW = 0;
 		boolean hoverPreview = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), bx, py + 12, bw, 16);
-		Controls.drawButton(f, bx, py + 12, bw, 16, "Preview", hoverPreview, false, true);
+		Controls.drawButton(f, bx, py + 12, bw, 16, Tr.t("Preview"), hoverPreview, false, true);
 
-		int titleW = Math.max(font.width(TAB_NAMES[tab]), font.width(TAB_SUBTITLES[tab]));
+		int titleW = Math.max(font.width(tabName(tab)), font.width(tabSubtitle(tab)));
 		int room = bx - 6 - (viewX + titleW + 10);
 		if (room < 60) {
 			return;
 		}
 		Track track = mod.tracker().track();
-		String text = track == Track.NONE ? "Nothing playing"
+		String text = track == Track.NONE ? Tr.t("Nothing playing")
 				: track.artist().isEmpty() ? track.title() : track.title() + " · " + track.artist();
 		pillW = Math.min(room, Math.min(150, font.width(text) + 22));
 		pillX = bx - 6 - pillW;
@@ -531,7 +540,7 @@ public final class SkyLyricsScreen extends Screen {
 		int fy = py + ph - FOOTER_H + 8;
 		g.fill(viewX, fy - 8, px + pw - 12, fy - 7, Ui.DIVIDER);
 		boolean armed = System.nanoTime() < resetArmedUntil;
-		String reset = armed ? "Click again to reset" : "Reset all";
+		String reset = armed ? Tr.t("Click again to reset") : Tr.t("Reset all");
 		int rw = font.width(reset) + 16;
 		boolean hoverReset = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), viewX, fy, rw, 16);
 		Controls.drawButton(f, viewX, fy, rw, 16, reset, hoverReset, false, true);
@@ -542,9 +551,9 @@ public final class SkyLyricsScreen extends Screen {
 		int dw = 56;
 		int dx = px + pw - 12 - dw;
 		boolean hoverDone = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), dx, fy, dw, 16);
-		Controls.drawButton(f, dx, fy, dw, 16, "Done", hoverDone, true, true);
+		Controls.drawButton(f, dx, fy, dw, 16, Tr.t("Done"), hoverDone, true, true);
 
-		String hint = keyName(mod.openSettingsKey()) + " or Esc to close";
+		String hint = Tr.t("%s or Esc to close", keyName(mod.openSettingsKey()));
 		int hintX = (viewX + rw + dx) / 2 - font.width(hint) / 2;
 		if (hintX > viewX + rw + 6 && hintX + font.width(hint) < dx - 6) {
 			g.drawString(font, hint, hintX, fy + 4, Ui.DIM, false);
@@ -553,8 +562,8 @@ public final class SkyLyricsScreen extends Screen {
 
 	private void renderPreviewHint(GuiGraphics g) {
 		boolean nothing = mod.tracker().track() == Track.NONE;
-		String text = nothing ? "Nothing is playing. Turn on the demo song in Music to try it."
-				: "Previewing. Click or press any key to go back.";
+		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song in Music to try it.")
+				: Tr.t("Previewing. Click or press any key to go back.");
 		int w = font.width(text) + 24;
 		int x = (width - w) / 2;
 		int y = height - 44;
@@ -578,7 +587,7 @@ public final class SkyLyricsScreen extends Screen {
 		}
 
 		int tabsY = py + 40;
-		for (int i = 0; i < TAB_NAMES.length; i++) {
+		for (int i = 0; i < TAB_COUNT; i++) {
 			if (Ui.inside(mx, my, px + 6, tabsY + i * (TAB_H + 2), SIDEBAR_W - 12, TAB_H)) {
 				selectTab(i);
 				return true;
@@ -601,7 +610,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		int fy = py + ph - FOOTER_H + 8;
 		boolean armed = System.nanoTime() < resetArmedUntil;
-		int rw = font.width(armed ? "Click again to reset" : "Reset all") + 16;
+		int rw = font.width(armed ? Tr.t("Click again to reset") : Tr.t("Reset all")) + 16;
 		if (Ui.inside(mx, my, viewX, fy, rw, 16)) {
 			if (armed) {
 				cfg.resetToDefaults();
@@ -701,7 +710,7 @@ public final class SkyLyricsScreen extends Screen {
 			return true;
 		}
 		if (event.isUp() || event.isDown()) {
-			selectTab(Math.floorMod(tab + (event.isDown() ? 1 : -1), TAB_NAMES.length));
+			selectTab(Math.floorMod(tab + (event.isDown() ? 1 : -1), TAB_COUNT));
 			return true;
 		}
 		return super.keyPressed(event);
@@ -785,8 +794,8 @@ public final class SkyLyricsScreen extends Screen {
 
 			int tx = barX();
 			if (track == Track.NONE) {
-				g.drawString(font, "Nothing playing", tx, y + 13, Ui.TEXT, false);
-				g.drawString(font, Ui.clip(font, "Play a song in Spotify, a browser or any player", w - tx + x - 10),
+				g.drawString(font, Tr.t("Nothing playing"), tx, y + 13, Ui.TEXT, false);
+				g.drawString(font, Ui.clip(font, Tr.t("Play a song in Spotify, a browser or any player"), w - tx + x - 10),
 						tx, y + 25, Ui.MUTED, false);
 				return;
 			}

@@ -20,6 +20,7 @@ A free, open-source Fabric mod for Minecraft 1.21.11.
 - Works with Sodium and Iris shaders. Lyrics stay bright and sit in front of shader clouds and rain.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
 - A demo mode with a built-in song, so you can try it without any music playing.
+- English and Hebrew. The settings follow your Minecraft language.
 
 ## Install
 

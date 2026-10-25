@@ -15,6 +15,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 
+import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
@@ -306,15 +307,15 @@ public final class NowPlayingHud {
 	private Content songInfo(Track track) {
 		String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
 		String status = switch (service.state()) {
-			case LOADING -> "finding lyrics…";
-			case NOT_FOUND -> "no lyrics";
-			case ERROR -> "offline";
+			case LOADING -> Tr.t("finding lyrics…");
+			case NOT_FOUND -> Tr.t("no lyrics");
+			case ERROR -> Tr.t("offline");
 			default -> "";
 		};
 		if (!status.isEmpty()) {
 			sub = sub.isEmpty() ? status : sub + "  ·  " + status;
 		}
-		String title = track.title().isEmpty() ? "Unknown song" : track.title();
+		String title = track.title().isEmpty() ? Tr.t("Unknown song") : track.title();
 		return new Content("S" + title + "\n" + sub, false, title, sub, 1);
 	}
 

@@ -39,7 +39,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] Album-art colour theme (lyrics colour matches the cover)
 - [ ] Custom skies (aurora, nebula, …) that work with/without shaders
 - [x] Beat-ish pulse (glow on each new line)
-- [ ] Translations (en_us + he_il)
+- [x] Translations (en_us + he_il)
 
 ### Release
 - [ ] Screenshots + videos in docs/ (shaders on/off, GUI)
@@ -60,3 +60,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 18:47: timing can now be fixed per song. A "This song" slider under Music, plus two keys (unbound by default, set them in Controls) that nudge the playing song by 0.1 s and say so above the hotbar. Each song keeps its own timing on top of the general one (last 500 songs remembered). Unit test SongOffsetTest.
 - 2026-10-25 18:53: new "Pulse" switch (on by default, Lyrics > Lines): the glow swells and the letters brighten for a moment when a line starts; with the Words animation each word flares as it lands. Also fixed a one-frame flash of the whole new line before its words faded in. Unit test PulseTest.
 - 2026-10-25 18:56: README rewritten for normal players: what it does now (top bar, Words animation, pulse, per-song timing, shader-safe lyrics), install steps for Prism Launcher and the official launcher, where the keys are, and what to check when no lyrics show.
+- 2026-10-25 19:07: Hebrew translation of the whole settings screen, the top bar and the status messages (148 texts, he_il). English stays the fallback for anything missing (unit test TrTest checks both files match). Checked every tab in Hebrew on the headless screen; all rows fit. Also fixed the About page, which wrongly said MIT licence; it is AGPL.

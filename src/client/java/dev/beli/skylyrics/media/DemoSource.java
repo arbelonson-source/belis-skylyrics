@@ -1,5 +1,7 @@
 package dev.beli.skylyrics.media;
 
+import dev.beli.skylyrics.Tr;
+
 /**
  * A built-in fake song with original lyrics, so the mod can be tried (and filmed) without music
  * and without showing anyone's copyrighted lyrics.
@@ -76,6 +78,6 @@ public final class DemoSource implements MediaSource {
 
 	@Override
 	public String displayName() {
-		return "Demo";
+		return Tr.t("Demo");
 	}
 }
