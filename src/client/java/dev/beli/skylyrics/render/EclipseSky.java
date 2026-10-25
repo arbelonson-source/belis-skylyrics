@@ -17,7 +17,7 @@ final class EclipseSky {
 	/** Sun position: just right of where the lyrics face and below them. */
 	static final float SUN_YAW = 3, SUN_ELEV = 13;
 	/** Angular radius of the black disc. */
-	static final float SUN_RADIUS = 2.3f;
+	static final float SUN_RADIUS = 2.5f;
 
 	// Corona by distance from the middle, in disc radii (measured, minus the night sky):
 	// the cream rim just outside the disc, then orange shifting to red as it fades out by 5 radii
@@ -50,8 +50,8 @@ final class EclipseSky {
 	/** Milky way: a great circle crossing above the sun, sloping gently down to the right. */
 	private static final float BAND_YAW = 3, BAND_ELEV = 33, BAND_SLOPE = -8;
 	private static final int BAND_RGB = 0xC8BEE6;
-	/** Peak strength (about +20 on a dark sky) and width (sigma, degrees; full width at half height about 14). */
-	private static final float BAND_PEAK = 0.11f, BAND_SIGMA = 6;
+	/** Peak strength (about +30 on a dark sky) and width (sigma, degrees; full width at half height about 14). */
+	private static final float BAND_PEAK = 0.16f, BAND_SIGMA = 6;
 	private static final int BAND_SEGMENTS = 144, BAND_ROWS = 12;
 	private static final float BAND_HALF = 16;
 
