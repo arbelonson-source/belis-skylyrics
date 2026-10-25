@@ -47,6 +47,10 @@ public final class NowPlayingHud {
 	/** From the bar's left edge to the clock, and from the clock to the divider and on to the cover. */
 	private static final int CLOCK_INSET = 7;
 	private static final int CLOCK_GAP = 5;
+	/** How long the last line counts as being sung, for keeping the bar up. */
+	private static final long LAST_LINE_MS = 8_000;
+	/** Less room than this for the song, and the clock steps aside. */
+	private static final float MIN_TEXT = 40;
 	private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT);
 
 	private final MediaTracker tracker;
@@ -62,6 +66,8 @@ public final class NowPlayingHud {
 	private @Nullable Content old;
 	private long swappedAt;
 	private float width = -1;
+	/** The clock's room, eased like {@link #width} so the text and the bar's edge move together. */
+	private float lead = -1;
 	private float hlX, hlW = -1;
 	private int hlWord = -1;
 	private final float[] eq = new float[4];
@@ -108,6 +114,7 @@ public final class NowPlayingHud {
 		if (alpha <= 0.01f) {
 			content = null;
 			width = -1;
+			lead = -1;
 			return;
 		}
 
@@ -122,16 +129,23 @@ public final class NowPlayingHud {
 		art.upload();
 		Font font = mc.font;
 		Style style = LyricsFont.base(cfg);
+		float room = Math.min(g.guiWidth() - 40, 360) - (PAD + ART + GAP + 7 + EQ_W + 8);
 		String clock = cfg.barClock ? clock() : "";
 		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, style, clock);
 		// Room taken by the clock and its divider, before the cover
-		float lead = clock.isEmpty() ? 0 : CLOCK_INSET + clockW + 2 * CLOCK_GAP + 1 - PAD;
-		float maxText = Math.min(g.guiWidth() - 40, 360) - (lead + PAD + ART + GAP + 7 + EQ_W + 8);
+		float clockRoom = clock.isEmpty() ? 0 : CLOCK_INSET + clockW + 2 * CLOCK_GAP + 1 - PAD;
+		if (room - clockRoom < MIN_TEXT) {
+			clock = ""; // a very narrow window: the song matters more
+			clockRoom = 0;
+		}
+		float k = 1 - (float) Math.exp(-dt * 12);
+		lead = lead < 0 ? clockRoom : lead + (clockRoom - lead) * k;
+		float maxText = Math.max(MIN_TEXT, room - lead);
 		float textW = textWidth(font, style, content);
 		float textScale = textW > maxText ? Math.max(0.8f, maxText / textW) : 1;
 		float shown = Math.min(textW * textScale, maxText);
 		float target = lead + PAD + ART + GAP + shown + 7 + EQ_W + 8;
-		width = width < 0 ? target : width + (target - width) * (1 - (float) Math.exp(-dt * 12));
+		width = width < 0 ? target : width + (target - width) * k;
 
 		float x = (g.guiWidth() - width) / 2f;
 		float y = 5 - (1 - ease(alpha)) * 10;
@@ -324,10 +338,17 @@ public final class NowPlayingHud {
 		return tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
 	}
 
-	/** The song has timed lyrics and the first line has started (it may be a gap between lines now). */
+	/**
+	 * The song is playing between its first and last line (it may be a gap between lines now). Paused, or in a
+	 * long outro after the last line, the bar goes back to hiding.
+	 */
 	private boolean singing(SkyLyricsConfig cfg) {
 		Lyrics lyrics = service.lyrics();
-		return lyrics.synced() && !lyrics.isEmpty() && lyrics.indexAt(lyricsTime(cfg)) >= 0;
+		if (!tracker.playing() || !lyrics.synced() || lyrics.isEmpty()) {
+			return false;
+		}
+		long time = lyricsTime(cfg);
+		return lyrics.indexAt(time) >= 0 && time <= lyrics.get(lyrics.lines().size() - 1).timeMs() + LAST_LINE_MS;
 	}
 
 	private @Nullable Content currentLine(SkyLyricsConfig cfg) {

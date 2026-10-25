@@ -76,6 +76,8 @@ public final class LyricsRenderer {
 	private final Map<String, float[]> offsetCache = new HashMap<>();
 	private float wrapCacheWidth;
 	private Style wrapCacheStyle = Style.EMPTY;
+	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
+	private float wrapCacheProbe;
 	private Pending pending;
 
 	/** A frame laid out by the world pass, waiting for the HUD pass to draw it on screen. */
@@ -139,7 +141,9 @@ public final class LyricsRenderer {
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
 		Style wrapStyle = LyricsFont.sky(cfg);
-		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle)) {
+		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪");
+		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
+			wrapCacheProbe = probe;
 			wrapCache.clear();
 			offsetCache.clear();
 			wrapCacheWidth = wrapWidth;
@@ -285,7 +289,7 @@ public final class LyricsRenderer {
 						sung = i == center || i < center ? 1 : 0;
 					} else if (i == center) {
 						long end = Math.min(shown.endOf(i, line.timeMs() + 5000), line.timeMs() + 12000);
-						sung = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
+						sung = progress(time, line.timeMs(), end);
 					} else {
 						sung = 0;
 					}
@@ -620,6 +624,14 @@ public final class LyricsRenderer {
 	private static final float GROW_RAMP = 1.5f;
 	/** From the top of a row of text to the middle of its letters. */
 	private static final float GLYPH_MIDDLE = 3.5f;
+
+	/**
+	 * How far through its line the singing is: 0 at the start, 1 at the end. It keeps counting a little past 1 so
+	 * the last word settles back to its normal size after it's sung; the karaoke fill stops at 1 by itself.
+	 */
+	static float progress(long time, long start, long end) {
+		return Mth.clamp((time - start) / (float) Math.max(1, end - start), 0, 2);
+	}
 
 	/**
 	 * Size of a word spanning letters {@code start..end} of the line when {@code sungChars} letters have been sung:

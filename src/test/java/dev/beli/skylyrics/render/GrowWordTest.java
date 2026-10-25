@@ -31,6 +31,18 @@ class GrowWordTest {
 		assertTrue(at(10.3f) < rising && rising < at(11.2f), "grows smoothly");
 	}
 
+	/** The last word ends where the line ends; it must still settle once the line's time is up. */
+	@Test
+	void lastWordSettlesAfterTheLine() {
+		int total = 20; // letters in the line; the last word is letters 15..20
+		float sungAtEnd = LyricsRenderer.progress(10_000, 6_000, 10_000) * total;
+		assertEquals(FULL, LyricsRenderer.wordGrowth(sungAtEnd, 15, 20, 1), 1e-5);
+		float sungLater = LyricsRenderer.progress(10_400, 6_000, 10_000) * total;
+		assertEquals(1, LyricsRenderer.wordGrowth(sungLater, 15, 20, 1), "back to normal 0.4 s after the line");
+		assertEquals(2, LyricsRenderer.progress(60_000, 6_000, 10_000), "stops counting eventually");
+		assertEquals(0, LyricsRenderer.progress(5_000, 6_000, 10_000));
+	}
+
 	@Test
 	void dimLinesDontGrow() {
 		assertEquals(1, LyricsRenderer.wordGrowth(12, 10, 15, 0));
