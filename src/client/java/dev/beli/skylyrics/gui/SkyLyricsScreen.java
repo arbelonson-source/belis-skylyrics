@@ -125,7 +125,7 @@ public final class SkyLyricsScreen extends Screen {
 	// ---- Tabs -------------------------------------------------------------------------------------
 
 	private List<Card> lyricsTab() {
-		Row placement = new Segmented(Tr.t("Placement"), Tr.t("Sky: huge and far away. Floating: close by"),
+		Row placement = new Segmented(Tr.t("Placement"), Tr.t("Far up in the sky, or close by"),
 				new String[] {Tr.t("Sky"), Tr.t("Floating")}, () -> cfg.placement.ordinal(),
 				i -> cfg.placement = Placement.values()[i]);
 		Row direction = new Segmented(Tr.t("Direction"), Tr.t("Follow keeps them where you look"),
@@ -160,7 +160,7 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private List<Card> lookTab() {
-		Row mode = new Segmented(Tr.t("Colour"), Tr.t("Album takes the colour from the cover art"),
+		Row mode = new Segmented(Tr.t("Colour"), Tr.t("From the cover, or your own"),
 				new String[] {Tr.t("Album"), Tr.t("Pick"), Tr.t("Rainbow")}, () -> cfg.colorMode.ordinal(),
 				i -> cfg.colorMode = ColorMode.values()[i]);
 		Row swatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
@@ -177,7 +177,7 @@ public final class SkyLyricsScreen extends Screen {
 			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 
-		Row font = new Segmented(Tr.t("Font"), Tr.t("Smooth letters, or Minecraft's pixel font"),
+		Row font = new Segmented(Tr.t("Font"), Tr.t("Smooth, or Minecraft's letters"),
 				new String[] {Tr.t("Smooth"), Tr.t("Minecraft")}, () -> cfg.smoothFont ? 0 : 1, i -> cfg.smoothFont = i == 0);
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
@@ -187,7 +187,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle(Tr.t("See through blocks"), Tr.t("Stay visible behind hills and walls"),
 				() -> cfg.seeThroughBlocks, v -> cfg.seeThroughBlocks = v);
-		Row layer = new Segmented(Tr.t("Draw on top"), Tr.t("Keeps lyrics bright through shaders, clouds and rain"),
+		Row layer = new Segmented(Tr.t("Draw on top"), Tr.t("Stays bright with shaders"),
 				new String[] {Tr.t("Auto"), Tr.t("Always"), Tr.t("Never")}, () -> switch (cfg.layer) {
 					case AUTO -> 0;
 					case SCREEN -> 1;

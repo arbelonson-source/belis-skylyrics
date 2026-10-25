@@ -42,7 +42,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] Translations (en_us + he_il)
 
 ### Release
-- [ ] Screenshots + videos in docs/ (shaders on/off, GUI)
+- [x] Screenshots + videos in docs/ (shaders on/off, GUI)
 - [x] README with install steps for normal people
 - [ ] GitHub repo arbelonson-source/belis-skylyrics, release jar, CI build
 - [ ] Install into the owner's "donut" instance
@@ -62,3 +62,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 18:56: README rewritten for normal players: what it does now (top bar, Words animation, pulse, per-song timing, shader-safe lyrics), install steps for Prism Launcher and the official launcher, where the keys are, and what to check when no lyrics show.
 - 2026-10-25 19:07: Hebrew translation of the whole settings screen, the top bar and the status messages (148 texts, he_il). English stays the fallback for anything missing (unit test TrTest checks both files match). Checked every tab in Hebrew on the headless screen; all rows fit. Also fixed the About page, which wrongly said MIT licence; it is AGPL.
 - 2026-10-25 19:30: night sky effects. While music plays at night, a green aurora (soft curtains with rays) or a purple-blue nebula glows behind the lyrics, tinted by the song colour. Off / Aurora / Nebula plus a strength slider in Look > Sky. Hides in rain, daytime, underwater and the Nether/End, fades in and out. Checked with shaders on and off on the headless screen.
+- 2026-10-25 19:41: pictures and a short clip for the project page (docs/): sunset and aurora with shaders, nebula, daytime and floating without, the four settings tabs, and a word-by-word clip (animated preview in the README, mp4 next to it). Recorded only the middle of the hidden test screen so desktop pop-ups stay out. Also shortened four settings help lines that were cut off (English and Hebrew).

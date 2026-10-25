@@ -3,7 +3,9 @@
 Synced lyrics for the song you're listening to, glowing in the Minecraft sky.
 A free, open-source Fabric mod for Minecraft 1.21.11.
 
-![Demo lyrics in the night sky](docs/sky-night.png)
+![Lyrics fading in word by word over a sunset](docs/demo.webp)
+
+<sub>Short clip: [docs/demo.mp4](docs/demo.mp4). The lyrics in all pictures are made up for the built-in demo song.</sub>
 
 > **Work in progress.** It builds and runs, but it isn't released yet.
 > Progress is tracked in [PLAN.md](PLAN.md).
@@ -22,6 +24,17 @@ A free, open-source Fabric mod for Minecraft 1.21.11.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
 - A demo mode with a built-in song, so you can try it without any music playing.
 - English and Hebrew. The settings follow your Minecraft language.
+
+## Pictures
+
+| | |
+|---|---|
+| ![Sunset with Complementary shaders](docs/sunset-shaders.jpg) | ![Aurora at night with shaders](docs/aurora-shaders.jpg) |
+| Sunset, with shaders | Aurora at night, with shaders |
+| ![Nebula at night](docs/nebula.jpg) | ![Daytime without shaders](docs/daytime.jpg) |
+| Nebula at night | Daytime, no shaders |
+| ![Floating mode](docs/floating.jpg) | ![The settings screen](docs/settings.jpg) |
+| Floating mode, close by | The settings screen |
 
 ## Install
 
