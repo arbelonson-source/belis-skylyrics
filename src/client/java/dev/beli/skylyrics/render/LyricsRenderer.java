@@ -9,8 +9,10 @@ import java.util.Map;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.network.chat.Style;
@@ -29,7 +31,9 @@ import dev.beli.skylyrics.media.MediaTracker;
 
 /**
  * Draws the lyrics in the world. Text goes through Minecraft's own text pipeline (the same one
- * name tags use), so it works with Sodium, Iris and shader packs without special cases.
+ * name tags use), so it works with Sodium, Iris and shader packs without special cases. When
+ * {@link ScreenLayer} is active the same layout is drawn over the finished frame instead, at the
+ * spot in the sky where it would have been, so shader lighting and clouds leave it alone.
  */
 public final class LyricsRenderer {
 	private static final float DEG = Mth.DEG_TO_RAD;
@@ -61,6 +65,10 @@ public final class LyricsRenderer {
 	private final Map<String, List<String>> wrapCache = new HashMap<>();
 	private float wrapCacheWidth;
 	private boolean wrapCacheSmooth;
+	private Pending pending;
+
+	/** A frame laid out by the world pass, waiting for the HUD pass to draw it on screen. */
+	private record Pending(Vector3f offset, float scale, float wrapWidth, long time, long now) {}
 
 	public LyricsRenderer(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -74,6 +82,7 @@ public final class LyricsRenderer {
 	}
 
 	public void render(WorldRenderContext context) {
+		pending = null;
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		Camera camera = mc.gameRenderer.getMainCamera();
@@ -125,19 +134,51 @@ public final class LyricsRenderer {
 		Quaternionf orientation = new Quaternionf().rotationYXZ(Mth.PI - anchorYaw * DEG, -anchorPitch * DEG, 0);
 		Vector3f offset = new Vector3f(0, 0, -1).rotate(orientation).mul(distance);
 
+		if (ScreenLayer.active(cfg) && ScreenLayer.ready()) {
+			pending = new Pending(offset, scale, wrapWidth, time, now);
+			return;
+		}
+
 		PoseStack pose = context.matrices();
 		pose.pushPose();
 		pose.translate(offset.x, offset.y, offset.z);
 		pose.mulPose(orientation);
 		pose.scale(scale, -scale, scale);
 
-		Draw draw = new Draw(context.commandQueue(), pose, mc.font, cfg, rgb(), wrapWidth);
+		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
+		Draw draw = new Draw(new WorldCanvas(context.commandQueue(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
+		drawContent(draw, cfg, time, now);
+		pose.popPose();
+	}
+
+	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
+	public void renderHud(GuiGraphics g, DeltaTracker delta) {
+		Pending frame = pending;
+		pending = null;
+		if (frame == null) {
+			return;
+		}
+		Vector3f at = ScreenLayer.project(frame.offset(), g.guiWidth(), g.guiHeight());
+		if (at == null) {
+			return; // behind you
+		}
+		Minecraft mc = Minecraft.getInstance();
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		float size = frame.scale() * at.z;
+		g.pose().pushMatrix();
+		g.pose().translate(at.x, at.y);
+		g.pose().scale(size, size);
+		Draw draw = new Draw(new ScreenCanvas(g, mc.font), mc.font, cfg, rgb(), frame.wrapWidth());
+		drawContent(draw, cfg, frame.time(), frame.now());
+		g.pose().popMatrix();
+	}
+
+	private void drawContent(Draw draw, SkyLyricsConfig cfg, long time, long now) {
 		if (shown.instrumental()) {
 			draw.line(INSTRUMENTAL, 0, 1, visibility, 0.6f, 1, -1);
 		} else {
 			drawLines(draw, cfg, time, now);
 		}
-		pose.popPose();
 	}
 
 	private void drawLines(Draw draw, SkyLyricsConfig cfg, long time, long now) {
@@ -276,24 +317,78 @@ public final class LyricsRenderer {
 	}
 
 	/** One frame's worth of drawing settings. */
+	/** Where the text ends up: in the world, or over the finished screen. */
+	private interface Canvas {
+		void push(float y, float scale);
+
+		void pop();
+
+		/** {@code glow} copies sit a hair behind the real text. */
+		void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, boolean glow);
+	}
+
+	private record WorldCanvas(SubmitNodeCollector out, PoseStack pose, Font.DisplayMode mode) implements Canvas {
+		@Override
+		public void push(float y, float scale) {
+			pose.pushPose();
+			pose.translate(0, y, 0);
+			pose.scale(scale, scale, scale);
+		}
+
+		@Override
+		public void pop() {
+			pose.popPose();
+		}
+
+		@Override
+		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, boolean glow) {
+			if (glow) {
+				pose.pushPose();
+				pose.translate(0, 0, -0.35f);
+			}
+			out.submitText(pose, x, y, seq, shadow, mode, LightTexture.FULL_BRIGHT, argb, 0, 0);
+			if (glow) {
+				pose.popPose();
+			}
+		}
+	}
+
+	private record ScreenCanvas(GuiGraphics g, Font font) implements Canvas {
+		@Override
+		public void push(float y, float scale) {
+			g.pose().pushMatrix();
+			g.pose().translate(0, y);
+			g.pose().scale(scale, scale);
+		}
+
+		@Override
+		public void pop() {
+			g.pose().popMatrix();
+		}
+
+		@Override
+		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, boolean glow) {
+			g.pose().pushMatrix();
+			g.pose().translate(x, y);
+			g.drawString(font, seq, 0, 0, argb, shadow);
+			g.pose().popMatrix();
+		}
+	}
+
 	private final class Draw {
-		final SubmitNodeCollector out;
-		final PoseStack pose;
+		final Canvas canvas;
 		final Font font;
 		final SkyLyricsConfig cfg;
 		final int color;
 		final float wrapWidth;
-		final Font.DisplayMode mode;
 		final Style base;
 
-		Draw(SubmitNodeCollector out, PoseStack pose, Font font, SkyLyricsConfig cfg, int color, float wrapWidth) {
-			this.out = out;
-			this.pose = pose;
+		Draw(Canvas canvas, Font font, SkyLyricsConfig cfg, int color, float wrapWidth) {
+			this.canvas = canvas;
 			this.font = font;
 			this.cfg = cfg;
 			this.color = color;
 			this.wrapWidth = wrapWidth;
-			this.mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
 			this.base = LyricsFont.base(cfg);
 		}
 
@@ -323,9 +418,7 @@ public final class LyricsRenderer {
 			int secondary = mix(color, 0xFFFFFF, 0.25f);
 			int a = Math.round(alpha * 255);
 
-			pose.pushPose();
-			pose.translate(0, y, 0);
-			pose.scale(scale, scale, scale);
+			canvas.push(y, scale);
 			float top = -rows.size() * ROW_H / 2;
 			int charIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
@@ -355,8 +448,6 @@ public final class LyricsRenderer {
 				float glowAlpha = cfg.glow * alpha * (0.25f + 0.75f * highlight);
 				if (glowAlpha > 0.02f) {
 					FormattedCharSequence glowSeq = maxChars < 0 ? FormattedCharSequence.forward(row, base) : seq;
-					pose.pushPose();
-					pose.translate(0, 0, -0.35f);
 					for (int ring = 1; ring <= 2; ring++) {
 						float radius = ring * 0.85f;
 						int ga = Math.round(glowAlpha * (ring == 1 ? 0.16f : 0.08f) * 255);
@@ -366,16 +457,15 @@ public final class LyricsRenderer {
 						int glowColor = ga << 24 | color;
 						for (int k = 0; k < 8; k++) {
 							float ang = k * Mth.PI / 4 + (ring == 2 ? Mth.PI / 8 : 0);
-							out.submitText(pose, x + Mth.cos(ang) * radius, ry + Mth.sin(ang) * radius,
-									glowSeq, false, mode, LightTexture.FULL_BRIGHT, glowColor, 0, 0);
+							canvas.text(x + Mth.cos(ang) * radius, ry + Mth.sin(ang) * radius,
+									glowSeq, false, glowColor, true);
 						}
 					}
-					pose.popPose();
 				}
-				out.submitText(pose, x, ry, seq, cfg.shadow, mode, LightTexture.FULL_BRIGHT, a << 24 | 0xFFFFFF, 0, 0);
+				canvas.text(x, ry, seq, cfg.shadow, a << 24 | 0xFFFFFF, false);
 				charIndex += row.codePointCount(0, row.length());
 			}
-			pose.popPose();
+			canvas.pop();
 		}
 	}
 

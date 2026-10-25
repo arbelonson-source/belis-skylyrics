@@ -49,6 +49,15 @@ public final class SkyLyricsConfig {
 		FADE, RISE, POP, TYPEWRITER
 	}
 
+	public enum Layer {
+		/** On screen while a shader pack is on, in the world otherwise. */
+		AUTO,
+		/** In the world: hills can hide the text, shaders light it. */
+		WORLD,
+		/** Drawn over the finished picture, so shaders and clouds can't dim or cover it. */
+		SCREEN
+	}
+
 	// Main
 	public boolean enabled = true;
 	public Placement placement = Placement.SKY;
@@ -80,6 +89,7 @@ public final class SkyLyricsConfig {
 	/** Blocks away from you. */
 	public float distance = 64f;
 	public boolean seeThroughBlocks = true;
+	public Layer layer = Layer.AUTO;
 	public boolean hideInMenus = false;
 	public boolean hideWhenPaused = false;
 	public boolean hideWithF1 = true;
@@ -124,6 +134,7 @@ public final class SkyLyricsConfig {
 		if (direction == null) direction = d.direction;
 		if (colorMode == null) colorMode = d.colorMode;
 		if (animation == null) animation = d.animation;
+		if (layer == null) layer = d.layer;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);

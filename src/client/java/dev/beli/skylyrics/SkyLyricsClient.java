@@ -81,6 +81,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 		registerKeys();
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::render);
+		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		HudElementRegistry.addLast(id("now_playing"), hud::render);
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 		if (DevTestHook.enabled()) {

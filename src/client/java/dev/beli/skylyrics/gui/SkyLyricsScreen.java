@@ -22,6 +22,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.gui.Controls.Button;
 import dev.beli.skylyrics.gui.Controls.Buttons;
@@ -133,7 +134,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row karaoke = new Toggle("Karaoke fill", "Words light up as they are sung",
 				() -> cfg.karaoke, v -> cfg.karaoke = v);
 		Row animation = new Segmented("Animation", "How a new line comes in",
-				new String[] {"Rise", "Fade", "Pop", "Type"}, () -> cfg.animation.ordinal(),
+				new String[] {"Fade", "Rise", "Pop", "Type"}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i]);
 		Row capitals = new Toggle("CAPITALS", "Write every lyric in capital letters",
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
@@ -171,10 +172,16 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle("See through blocks", "Stay visible behind hills and walls",
 				() -> cfg.seeThroughBlocks, v -> cfg.seeThroughBlocks = v);
+		Row layer = new Segmented("Draw on top", "Keeps lyrics bright above shader clouds. Auto: only with shaders",
+				new String[] {"Auto", "Always", "Never"}, () -> switch (cfg.layer) {
+					case AUTO -> 0;
+					case SCREEN -> 1;
+					case WORLD -> 2;
+				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD);
 
 		return List.of(
 				new Card("Colour", mode, swatches, albumColor),
-				new Card("Style", font, glow, shadow, opacity, seeThrough));
+				new Card("Style", font, glow, shadow, opacity, seeThrough, layer));
 	}
 
 	private List<Card> musicTab() {
