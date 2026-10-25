@@ -12,6 +12,9 @@ public final class LrcParser {
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
 	private static final Pattern WORD_TIME = Pattern.compile("<\\d{1,3}:\\d{1,2}(?:[.:]\\d{1,3})?>");
+	// Also old Mac files that end lines with a bare \r
+	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
+	private static final char BOM = 0xFEFF;
 
 	private LrcParser() {
 	}
@@ -22,7 +25,8 @@ public final class LrcParser {
 		}
 		long offset = 0;
 		List<LyricLine> lines = new ArrayList<>();
-		for (String raw : lrc.split("\\r?\\n")) {
+		for (String raw : lines(lrc)) {
+			raw = raw.stripLeading();
 			Matcher off = OFFSET.matcher(raw);
 			if (off.find()) {
 				offset = Long.parseLong(off.group(1));
@@ -62,7 +66,7 @@ public final class LrcParser {
 			return Lyrics.NONE;
 		}
 		List<String> rows = new ArrayList<>();
-		for (String raw : text.split("\\r?\\n")) {
+		for (String raw : lines(text)) {
 			rows.add(raw.strip());
 		}
 		while (!rows.isEmpty() && rows.getLast().isEmpty()) {
@@ -79,6 +83,14 @@ public final class LrcParser {
 			lines.add(new LyricLine(intro + i * step, rows.get(i)));
 		}
 		return new Lyrics(collapseBreaks(lines), false, false);
+	}
+
+	private static String[] lines(String text) {
+		// A byte order mark in front would hide the first timestamp
+		if (text.charAt(0) == BOM) {
+			text = text.substring(1);
+		}
+		return LINE_BREAK.split(text);
 	}
 
 	private static List<LyricLine> collapseBreaks(List<LyricLine> lines) {

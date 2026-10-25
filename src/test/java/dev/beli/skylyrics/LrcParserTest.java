@@ -87,6 +87,26 @@ class LrcParserTest {
 		assertEquals(2, l.indexAt(60_000));
 	}
 
+	private static final String BOM = String.valueOf((char) 0xFEFF);
+
+	@Test
+	void byteOrderMarkAndIndentDontDropLines() {
+		Lyrics l = LrcParser.parseSynced(BOM + "[00:01.00]first\n  [00:02.00]second\n\t[00:03.00]third");
+		assertEquals(3, l.lines().size());
+		assertEquals("first", l.get(0).text());
+		assertEquals(2000, l.get(1).timeMs());
+		assertEquals("third", l.get(2).text());
+	}
+
+	@Test
+	void oldMacLineEndingsSplitLines() {
+		Lyrics synced = LrcParser.parseSynced("[00:01.00]a\r[00:02.00]b\r[00:03.00]c");
+		assertEquals(3, synced.lines().size());
+		Lyrics plain = LrcParser.parsePlain(BOM + "one\rtwo", 60_000);
+		assertEquals(2, plain.lines().size());
+		assertEquals("one", plain.get(0).text());
+	}
+
 	@Test
 	void demoSongParses() {
 		Lyrics l = LrcParser.parseSynced(DemoSource.LYRICS);

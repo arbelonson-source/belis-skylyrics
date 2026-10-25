@@ -44,9 +44,15 @@ public final class LrclibClient {
 			.followRedirects(HttpClient.Redirect.NORMAL)
 			.build();
 	private final String userAgent;
+	private final String base;
 
 	public LrclibClient(String version) {
+		this(version, BASE);
+	}
+
+	LrclibClient(String version, String base) {
 		this.userAgent = "BelisSkyLyrics/" + version + " (https://github.com/arbelonson-source/belis-skylyrics)";
+		this.base = base;
 	}
 
 	public Result find(Track track) throws IOException, InterruptedException {
@@ -151,7 +157,7 @@ public final class LrclibClient {
 				qs.add(k + "=" + URLEncoder.encode(v, StandardCharsets.UTF_8));
 			}
 		});
-		HttpRequest request = HttpRequest.newBuilder(URI.create(BASE + path + "?" + qs))
+		HttpRequest request = HttpRequest.newBuilder(URI.create(base + path + "?" + qs))
 				.timeout(Duration.ofSeconds(10))
 				.header("User-Agent", userAgent)
 				.header("Accept", "application/json")

@@ -16,6 +16,12 @@ public final class TitleCleaner {
 	private static final Pattern ARTIST_NOISE = Pattern.compile("(?i)(\\s*-\\s*topic|vevo|\\s+official)$");
 	private static final Pattern DASH = Pattern.compile("\\s+[-\u2013\u2014|]\\s+");
 
+	private static final Pattern TOPIC = Pattern.compile("(?i).*\\s-\\s*topic$");
+	/** "Remastered 2011", "Live at …", "Mono": the part after the dash is not a song name. */
+	private static final Pattern VERSION_TAG = Pattern.compile(
+			"(?i)(\\d{4}\\s+)?(digital\\s+)?remaster(ed)?(\\s+(\\d{4}|version))?|(\\d{4}\\s+)?(mono|stereo)(\\s+(version|mix))?"
+					+ "|live|live (at|from|in) .+|radio edit|(single|album|live|acoustic|demo) version|demo|acoustic|instrumental");
+
 	private TitleCleaner() {
 	}
 
@@ -26,8 +32,10 @@ public final class TitleCleaner {
 		if (BROWSERS.contains(track.player().toLowerCase(Locale.ROOT))) {
 			title = NOISE.matcher(title).replaceAll("").trim();
 			String[] parts = DASH.split(title, 2);
-			// "Artist - Song" video titles; the channel name is usually not the real artist
-			if (parts.length == 2 && !parts[0].isBlank() && !parts[1].isBlank()) {
+			// "Artist - Song" video titles; the channel name is usually not the real artist.
+			// "Topic" channels already give the real artist and song.
+			if (parts.length == 2 && !parts[0].isBlank() && !parts[1].isBlank()
+					&& !TOPIC.matcher(track.artist()).matches() && !VERSION_TAG.matcher(parts[1].trim()).matches()) {
 				artist = parts[0].trim();
 				title = parts[1].trim();
 			}

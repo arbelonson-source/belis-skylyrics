@@ -52,6 +52,11 @@ public final class MediaTracker {
 		return demoMode.getAsBoolean() ? demo : mpris;
 	}
 
+	/** Browsers often send the length and cover a moment after the title. */
+	private static boolean filledIn(Track old, Track fresh) {
+		return (old.lengthMs() <= 0 && fresh.lengthMs() > 0) || (old.artUrl().isEmpty() && !fresh.artUrl().isEmpty());
+	}
+
 	private void pollOnce() {
 		MediaSource source = source();
 		Snapshot fresh;
@@ -71,7 +76,7 @@ public final class MediaTracker {
 		}
 
 		Snapshot old = snapshot;
-		if (!fresh.track().sameSong(old.track())) {
+		if (!fresh.track().sameSong(old.track()) || filledIn(old.track(), fresh.track())) {
 			snapshot = fresh;
 			sourceName = source.displayName();
 			onTrackChange.accept(fresh.track());

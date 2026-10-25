@@ -33,6 +33,29 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void versionTagIsNotTakenForTheSongName() {
+		Track t = TitleCleaner.clean(track("Made Up Song - Remastered 2011", "Made Up Band", "firefox"));
+		assertEquals("Made Up Band", t.artist());
+		assertEquals("Made Up Song - Remastered 2011", t.title());
+		assertEquals("Made Up Band", TitleCleaner.clean(track("Made Up Song - Live at Some Hall", "Made Up Band", "chromium")).artist());
+		assertEquals("Made Up Band", TitleCleaner.clean(track("Made Up Song - 2009 Remaster", "Made Up Band", "firefox")).artist());
+	}
+
+	@Test
+	void songsThatStartLikeATagAreStillSplit() {
+		Track t = TitleCleaner.clean(track("Made Up Band - Live Forever And Ever", "SomeChannel", "firefox"));
+		assertEquals("Made Up Band", t.artist());
+		assertEquals("Live Forever And Ever", t.title());
+	}
+
+	@Test
+	void topicChannelTitlesAreNeverSplit() {
+		Track t = TitleCleaner.clean(track("Made Up Song - From the Made Up Movie", "Made Up Band - Topic", "firefox"));
+		assertEquals("Made Up Band", t.artist());
+		assertEquals("Made Up Song - From the Made Up Movie", t.title());
+	}
+
+	@Test
 	void searchTitleDropsVersionNoise() {
 		assertEquals("Song", TitleCleaner.forSearch("Song - Remastered 2011"));
 		assertEquals("Song", TitleCleaner.forSearch("Song - 2011 Remaster"));

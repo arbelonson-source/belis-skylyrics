@@ -69,6 +69,11 @@ public final class LyricsService {
 
 	/** Called when the song changes. */
 	public void load(Track newTrack) {
+		Track old = track;
+		if (!newTrack.isNone() && newTrack.sameSong(old) && newTrack.lengthMs() == old.lengthMs() && state != State.ERROR) {
+			track = newTrack; // only the cover changed; keep the lyrics on screen
+			return;
+		}
 		long gen = generation.incrementAndGet();
 		track = newTrack;
 		lyrics = Lyrics.NONE;
@@ -97,6 +102,9 @@ public final class LyricsService {
 	}
 
 	private void fetch(Track t, long gen, boolean skipCache) {
+		if (generation.get() != gen) {
+			return; // skipped past this song while it waited in the queue
+		}
 		Path file = cacheFile(t);
 		try {
 			CacheEntry cached = skipCache ? null : readCache(file);
