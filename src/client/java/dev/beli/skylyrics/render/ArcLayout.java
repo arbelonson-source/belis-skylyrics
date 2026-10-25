@@ -19,13 +19,16 @@ final class ArcLayout {
 	static final float ROW_WIDTH = 160f;
 	/** From one row to the next. */
 	static final float ROW_PITCH = 14f;
-	/** How fast a row bends up away from its middle: y rises by this × x². */
-	static final float CURVE = 0.0024f;
+	/**
+	 * How far a row's ends rise above its middle: this share of the row's width, kept between the limits so short
+	 * rows still bend and long ones don't climb too far.
+	 */
+	static final float RISE = 0.1f, MIN_RISE = 6f, MAX_RISE = 20f;
 	/** Groups lean along the curve, but only this much of the way (the rest is their own random tilt). */
 	static final float FOLLOW = 0.4f;
 	static final float ROLL_LIMIT = 16f;
 	/** Each group's own tilt, in degrees: at least the first, at most the second, neighbours leaning opposite ways. */
-	private static final float ROLL_MIN = 1.5f, ROLL_MAX = 8f;
+	private static final float ROLL_MIN = 3f, ROLL_MAX = 10f;
 	/** How far a group steps up or down off the curve. */
 	static final float STEP = 3.5f;
 	static final float MIN_SCALE = 0.75f;
@@ -136,6 +139,11 @@ final class ArcLayout {
 		return w + gap * Math.max(0, to - from - 1);
 	}
 
+	/** How far the ends of a row this wide rise above its middle. */
+	static float rise(float rowWidth) {
+		return Math.clamp(RISE * rowWidth, MIN_RISE, MAX_RISE);
+	}
+
 	/** How many words go in the group starting at word {@code at}: usually two, sometimes one or three. */
 	static int groupSize(long seed, int at) {
 		float u = unit(seed, at, SALT_GROUP);
@@ -188,6 +196,9 @@ final class ArcLayout {
 			}
 			float rowY = (r - (rows - 1) / 2f) * ROW_PITCH;
 			float x = -rowWidth / 2;
+			// y = rowY - curve * x², rising by the row's rise at its ends
+			float half = Math.max(1, rowWidth / 2);
+			float curve = rise(rowWidth) / (half * half);
 			for (int g = 0; g < spans.size(); g++, groupNo++) {
 				int[] s = spans.get(g);
 				float cx = x + advance[g] / 2;
@@ -195,8 +206,8 @@ final class ArcLayout {
 				if (rtl) {
 					cx = -cx;
 				}
-				float y = rowY - CURVE * cx * cx + (unit(seed, s[0], SALT_STEP) * 2 - 1) * STEP;
-				float tangent = (float) Math.toDegrees(Math.atan(-2 * CURVE * cx));
+				float y = rowY - curve * cx * cx + (unit(seed, s[0], SALT_STEP) * 2 - 1) * STEP;
+				float tangent = (float) Math.toDegrees(Math.atan(-2 * curve * cx));
 				float own = (groupNo % 2 == 0 ? flip : -flip) * (ROLL_MIN + (ROLL_MAX - ROLL_MIN) * unit(seed, s[0], SALT_ROLL));
 				float angle = Math.clamp(FOLLOW * tangent + own, -ROLL_LIMIT, ROLL_LIMIT);
 				float inner = width(widths, s[0], s[1], space);

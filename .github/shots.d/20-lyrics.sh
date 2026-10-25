@@ -2,10 +2,15 @@
 # Arc lines appear where you look when they start, so each look is followed by a wait for the next line.
 
 hook "set layout ARC" "cmd time set midnight" "look 0 -12"
-sleep 9
+sleep 10
 shot lyrics-arc-night
-sleep 3
+sleep 4
 shot lyrics-arc-night-2
+# The same drawn in the world pass instead of over the finished picture
+hook "set layer WORLD"
+sleep 6
+shot lyrics-arc-night-world
+hook "set layer AUTO"
 hook "cmd time set noon" "look 0 -12"
 sleep 8
 shot lyrics-arc-day

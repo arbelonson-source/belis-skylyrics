@@ -103,8 +103,6 @@ class ArcLayoutTest {
 		List<ArcLayout.Group> groups = ArcLayout.place(w, rows, 2.5f, ArcLayout.seed(0, "x"), false);
 		float firstRowMin = Float.MAX_VALUE, secondRowMin = Float.MAX_VALUE;
 		for (ArcLayout.Group g : groups) {
-			// Raw curve height without the random step: the ends sit higher (smaller y) than the middle
-			assertTrue(ArcLayout.CURVE * g.x() * g.x() >= 0);
 			if (g.from() < rows[1]) {
 				firstRowMin = Math.min(firstRowMin, g.y());
 			} else {
@@ -112,9 +110,11 @@ class ArcLayoutTest {
 			}
 		}
 		assertTrue(firstRowMin < secondRowMin, "the first row is above the second");
-		// A wide row's ends rise clearly above its middle
-		float rise = ArcLayout.CURVE * 70 * 70;
-		assertTrue(rise > 2 * ArcLayout.STEP, "the curve shows through the random steps");
+		// Rows bend up at the ends, more for wide rows but within limits
+		assertEquals(ArcLayout.MIN_RISE, ArcLayout.rise(20));
+		assertEquals(ArcLayout.MAX_RISE, ArcLayout.rise(1000));
+		assertTrue(ArcLayout.rise(160) > ArcLayout.rise(100));
+		assertTrue(ArcLayout.rise(160) > 2 * ArcLayout.STEP, "the curve shows through the random steps");
 	}
 
 	@Test
