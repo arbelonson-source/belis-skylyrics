@@ -1,5 +1,19 @@
 package dev.beli.skylyrics.render;
 
+import static dev.beli.skylyrics.render.TopBarLayout.ART;
+import static dev.beli.skylyrics.render.TopBarLayout.ART_INSET;
+import static dev.beli.skylyrics.render.TopBarLayout.BARS;
+import static dev.beli.skylyrics.render.TopBarLayout.BAR_GAP;
+import static dev.beli.skylyrics.render.TopBarLayout.BAR_W;
+import static dev.beli.skylyrics.render.TopBarLayout.CLIP_GAP;
+import static dev.beli.skylyrics.render.TopBarLayout.CLOCK_GAP;
+import static dev.beli.skylyrics.render.TopBarLayout.EQ_INSET;
+import static dev.beli.skylyrics.render.TopBarLayout.EQ_W;
+import static dev.beli.skylyrics.render.TopBarLayout.PILL_H;
+import static dev.beli.skylyrics.render.TopBarLayout.STATS_GAP;
+import static dev.beli.skylyrics.render.TopBarLayout.TEXT_GAP;
+import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
+
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
@@ -11,6 +25,8 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.FormattedText;
@@ -29,30 +45,64 @@ import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.mixin.BossHealthOverlayAccessor;
 
 /**
- * The bar at the top of the screen: a dark rounded pill with the round cover, the line being
- * sung (the current word sits on a coloured highlight) and a little equaliser. Between lines,
- * and for a moment after the song changes, it shows the title and artist instead. It can also
- * show the time on its left.
+ * The bar at the top of the screen: a dark capsule, sized to its text and centred, with the round cover, the line
+ * being sung (the last words sung sit on a violet highlight) and a little equaliser. Between lines, and for a
+ * moment after the song changes, it shows the title and artist instead. The time can sit on its left, and the
+ * connection and frame rate on its right. Sizes are in {@link TopBarLayout}.
  */
 public final class NowPlayingHud {
 	private static final long SHOW_NS = 6_000_000_000L;
 	private static final long TITLE_NS = 3_500_000_000L;
-	private static final long SWAP_NS = 260_000_000L;
-	private static final int H = 20;
-	private static final int ART = 14;
-	private static final int PAD = 3;
-	private static final int GAP = 6;
-	private static final int EQ_W = 11;
-	private static final int BG = 0x0E0C14;
-	private static final int GREY = 0x9C96AE;
-	private static final int CLOCK = 0xD6D1E3;
-	/** From the bar's left edge to the clock, and from the clock to the divider and on to the cover. */
-	private static final int CLOCK_INSET = 7;
-	private static final int CLOCK_GAP = 5;
+	/** Old and new text crossfade in place this long. */
+	private static final long SWAP_NS = 180_000_000L;
+	/** The pill's resize when the text changes, eased out. */
+	private static final long RESIZE_NS = 290_000_000L;
+	/** Highlight edges close about a tenth of the way to their target per frame at 60 fps. */
+	private static final float HL_RATE = 7;
+	/** How fast a scrolled long line follows the word being sung, and eases back once the pill has grown. */
+	private static final float SCROLL_RATE = 5;
+	/** At a line's start the highlight grows out of a sliver this wide at the first word. */
+	private static final float HL_START_W = 2.5f;
+	private static final float HL_H = 12;
+	private static final float HL_RADIUS = 3;
+
+	/** Smooth-font text is drawn smaller than its natural size, like the reference's light line. */
+	private static final float TEXT_SCALE = 0.75f;
+	private static final float CLOCK_SCALE = 0.85f;
+	/** Minecraft's own font is pixel art: any size but whole ones would blur it. */
+	private static final float PIXEL_FONT_SCALE = 1;
+
+	private static final int FILL = 0x181523;
+	/** Opaque: the reference's fill reads the same over any sky. */
+	private static final int FILL_ALPHA = 255;
+	private static final int BORDER = 0x4B4665;
+	/** The border: two screen pixels at GUI scale 3. */
+	private static final float BORDER_W = 2 / 3f;
+	private static final int SUNG = 0xFCF8FF;
+	private static final int UPCOMING = 0x8C879E;
+	private static final int HIGHLIGHT = 0x926CDE;
+	private static final int EQ_COLOR = 0xA076F4;
+	private static final int CLOCK = 0xF0F0F0;
+	private static final int STAT_TEXT = 0x8A8699;
+	private static final int SIGNAL_OFF = 0x4E3C62;
+	/** The cover's stand-in when the song has none. */
+	private static final int NO_ART = 0x3A2E5C;
+
+	/** Equaliser heights, from resting to the tallest. */
+	private static final float EQ_MIN = 2, EQ_MAX = 20 / 3f;
+	/** The equaliser picks new heights a few times a second, like the reference's, not every frame. */
+	private static final float EQ_STEPS_PER_S = 4;
+	/** Signal bars: their heights, bottoms level a bit below the pill's middle, and the gap to the fps text. */
+	private static final float[] SIGNAL_H = {5 / 3f, 11 / 3f, 17 / 3f, 23 / 3f};
+	private static final float SIGNAL_BOTTOM = 3.8f;
+	private static final float SIGNAL_TEXT_GAP = 5;
+	/** A unit, written the same in every language like the debug screen's. */
+	private static final String FPS = " fps";
+	/** Room kept for the frame rate, so the bar doesn't twitch as the digits change. */
+	private static final String FPS_SAMPLE = "000" + FPS;
+
 	/** How long the last line counts as being sung, for keeping the bar up. */
 	private static final long LAST_LINE_MS = 8_000;
-	/** Less room than this for the song, and the clock steps aside. */
-	private static final float MIN_TEXT = 40;
 	private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT);
 
 	private final MediaTracker tracker;
@@ -67,23 +117,24 @@ public final class NowPlayingHud {
 	private @Nullable Content content;
 	private @Nullable Content old;
 	private long swappedAt;
-	private float width = -1;
-	/** The clock's room, eased like {@link #width} so the text and the bar's edge move together. */
-	private float lead = -1;
+	/** The pill's width, tweened from {@link #widthFrom} to {@link #widthTo} since {@link #resizedAt}. */
+	private float width = -1, widthFrom, widthTo;
+	private long resizedAt;
 	/** Where the bar's top edge is, eased: below any boss bars. */
 	private float top = -1;
-	private float hlX, hlW = -1;
-	private int hlWord = -1;
-	private final float[] eq = new float[4];
+	/** The highlight's edges, from the line's start; negative when it has to start over. */
+	private float hlLeft, hlRight = -1;
+	/** How far a long line is scrolled, and the old line's while it fades. */
+	private float scroll, oldScroll;
+	private final float[] eq = new float[BARS];
 	private int clockMinute = -1;
 	private String clockText = "";
 
 	/** What the bar says: a lyric line, or the song's title and artist. */
-	private record Content(String key, boolean lyric, String text, String sub, float sung) {
-		Content sung(float s) {
-			return new Content(key, lyric, text, sub, s);
-		}
-	}
+	private record Content(String key, boolean lyric, String text, String sub, float sung) {}
+
+	/** A word of the line, placed from the line's start in GUI units. */
+	private record Word(String text, float x, float w, boolean sung) {}
 
 	public NowPlayingHud(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -118,46 +169,60 @@ public final class NowPlayingHud {
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			content = null;
+			old = null;
 			width = -1;
-			lead = -1;
 			top = -1;
 			return;
 		}
 
 		Content next = line != null && now - shownAt >= TITLE_NS ? line : songInfo(track);
 		if (content == null || !content.key().equals(next.key())) {
-			old = content == null ? null : content.sung(1);
+			old = content;
+			oldScroll = scroll;
 			swappedAt = now;
-			hlWord = -1;
+			hlRight = -1;
+			scroll = 0;
 		}
 		content = next;
 
 		art.upload();
 		Font font = mc.font;
 		Style style = LyricsFont.base(cfg);
-		float room = Math.min(g.guiWidth() - 40, 360) - (PAD + ART + GAP + 7 + EQ_W + 8);
+		float textScale = cfg.smoothFont ? TEXT_SCALE : PIXEL_FONT_SCALE;
+		Style clockStyle = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
+		float clockScale = cfg.smoothFont ? CLOCK_SCALE : PIXEL_FONT_SCALE;
+
 		String clock = cfg.barClock ? clock() : "";
-		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, style, clock);
-		// Room taken by the clock and its divider, before the cover
-		float clockRoom = clock.isEmpty() ? 0 : CLOCK_INSET + clockW + 2 * CLOCK_GAP + 1 - PAD;
-		if (room - clockRoom < MIN_TEXT) {
-			clock = ""; // a very narrow window: the song matters more
-			clockRoom = 0;
+		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, clockStyle, clock) * clockScale;
+		float statsW = cfg.barStats ? statsWidth(font, style, textScale) : 0;
+		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), clockW, statsW);
+
+		float target = TopBarLayout.pillFor(contentWidth(font, style, textScale, next), fit.pill());
+		if (width < 0) {
+			width = widthFrom = widthTo = target;
+		} else if (Math.abs(target - widthTo) > 0.25f) {
+			widthFrom = width;
+			widthTo = target;
+			resizedAt = now;
 		}
-		float k = 1 - (float) Math.exp(-dt * 12);
-		lead = lead < 0 ? clockRoom : lead + (clockRoom - lead) * k;
-		float maxText = Math.max(MIN_TEXT, room - lead);
-		float textW = textWidth(font, style, content);
-		float textScale = textW > maxText ? Math.max(0.8f, maxText / textW) : 1;
-		float shown = Math.min(textW * textScale, maxText);
-		float target = lead + PAD + ART + GAP + shown + 7 + EQ_W + 8;
-		width = width < 0 ? target : width + (target - width) * k;
+		float r = Mth.clamp((now - resizedAt) / (float) RESIZE_NS, 0, 1);
+		width = widthFrom + (widthTo - widthFrom) * easeOutCubic(r);
 
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = topBelowBossBars(mc, g.guiHeight());
+		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
-		float y = top - (1 - ease(alpha)) * 10;
-		draw(g, font, style, mc, x, y, lead, clock, clockW, textScale, maxText, now, dt);
+		float y = top - (1 - easeOut(alpha)) * 10;
+
+		drawPill(g, mc, x, y, now, dt);
+		float midY = y + PILL_H / 2f;
+		if (fit.clock()) {
+			text(g, font, clockStyle, clock, x - CLOCK_GAP - clockW, midY, clockScale, fade(alpha, CLOCK));
+		}
+		if (fit.stats()) {
+			drawStats(g, mc, font, style, textScale, x + width + STATS_GAP, midY);
+		}
+		drawText(g, font, style, textScale, x, midY, now, dt);
 	}
 
 	/**
@@ -184,183 +249,239 @@ public final class NowPlayingHud {
 		if (minute != clockMinute) {
 			clockMinute = minute;
 			// Some languages put a narrow no-break space before AM/PM, which the fonts don't have
-			clockText = CLOCK_FORMAT.format(time).replace('\u202F', ' ').replace('\u00A0', ' ');
+			clockText = CLOCK_FORMAT.format(time).replace(' ', ' ').replace(' ', ' ');
 		}
 		return clockText;
 	}
 
-	private void draw(GuiGraphics g, Font font, Style style, Minecraft mc, float x, float y, float lead, String clock, float clockW,
-			float textScale, float maxText, long now, float dt) {
+	/** The capsule, its border, the cover and the equaliser, drawn in real pixels so round edges stay smooth. */
+	private void drawPill(GuiGraphics g, Minecraft mc, float x, float y, long now, float dt) {
 		float a = alpha;
-		int accent = art.color();
 		float s = (float) mc.getWindow().getGuiScale();
+		// The cover and equaliser dim for a moment while the text crossfades
+		float swap = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
+		float dim = old == null ? 1 : 1 - 0.35f * Mth.sin(swap * Mth.PI);
 
-		// Shapes are drawn in real pixels so the round edges stay smooth at any GUI scale
 		g.pose().pushMatrix();
 		g.pose().scale(1 / s, 1 / s);
-		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(width * s), ph = H * s;
-		roundRect(g, px, py, pw, ph, ph / 2, ARGB.color(Math.round(a * 46), 0xFFFFFF));
-		roundRect(g, px + 1, py + 1, pw - 2, ph - 2, ph / 2 - 1, ARGB.color(Math.round(a * 205), BG));
+		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(width * s), ph = Math.round(PILL_H * s);
+		float b = Math.max(1, Math.round(BORDER_W * s));
+		roundRect(g, px, py, pw, ph, ph / 2, ARGB.color(Math.round(a * 255), BORDER));
+		roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, ph / 2 - b, ARGB.color(Math.round(a * FILL_ALPHA), FILL));
 
-		if (!clock.isEmpty()) {
-			float divX = px + (CLOCK_INSET + clockW + CLOCK_GAP) * s;
-			roundRect(g, divX, py + ph * 0.27f, Math.max(1, Math.round(s * 0.5f)), ph * 0.46f, 0, ARGB.color(Math.round(a * 40), 0xFFFFFF));
-		}
 		int artPx = Math.round(ART * s);
-		int artX = Math.round(px + (lead + PAD) * s), artY = Math.round(py + (ph - artPx) / 2);
+		int artX = Math.round(px + ART_INSET * s), artY = Math.round(py + (ph - artPx) / 2);
 		if (art.hasTexture()) {
+			// The texture is already cut round (AlbumArt)
 			g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, artX, artY, 0, 0, artPx, artPx,
-					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a));
+					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a * dim));
 		} else {
-			roundRect(g, artX, artY, artPx, artPx, artPx / 2f, ARGB.color(Math.round(a * 255), LyricsRenderer.mix(accent, 0x000000, 0.45f)));
+			roundRect(g, artX, artY, artPx, artPx, artPx / 2f, ARGB.color(Math.round(a * dim * 255), NO_ART));
 		}
 
-		// Equaliser: four bars that bounce while the music plays and rest when it's paused
-		float t = now / 1e9f;
-		float barW = 2 * s, barGap = 1 * s, maxBar = 10 * s;
-		float eqX = px + pw - (8 + EQ_W) * s;
+		// Equaliser: four bars that hop to new heights while the music plays and rest when it's paused
+		float barW = BAR_W * s, barGap = BAR_GAP * s;
+		float eqX = px + pw - (EQ_INSET + EQ_W) * s;
 		for (int i = 0; i < eq.length; i++) {
-			float target = 0.2f;
+			float target = 0;
 			if (tracker.playing()) {
-				target = 0.25f + 0.75f * Math.abs(Mth.sin(t * (5.1f + i * 1.7f) + i * 1.3f) * Mth.sin(t * (2.3f + i * 0.9f) + i));
+				// Each bar changes on its own beat, a quarter step after the one before
+				long n = (long) (now / 1e9 * EQ_STEPS_PER_S + i * 0.25f);
+				target = 0.15f + 0.85f * hash01(n * 31 + i * 7919);
 			}
-			eq[i] += (target - eq[i]) * Math.min(1, dt * 14);
-			float bh = Math.max(barW, maxBar * eq[i]);
-			roundRect(g, eqX + i * (barW + barGap), py + (ph - bh) / 2, barW, bh, barW / 2, ARGB.color(Math.round(a * 255), accent));
+			eq[i] += (target - eq[i]) * Math.min(1, dt * 16);
+			float bh = Math.round(Math.max(barW, (EQ_MIN + (EQ_MAX - EQ_MIN) * eq[i]) * s));
+			roundRect(g, Math.round(eqX + i * (barW + barGap)), Math.round(py + (ph - bh) / 2), barW, bh, barW / 2,
+					ARGB.color(Math.round(a * dim * 255), EQ_COLOR));
 		}
 		g.pose().popMatrix();
 		if (!art.hasTexture()) {
-			g.drawCenteredString(font, "♪", Math.round(x + lead + PAD + ART / 2f), Math.round(y + H / 2f - 4), ARGB.color(Math.round(a * 230), 0xFFFFFF));
-		}
-		if (!clock.isEmpty()) {
+			Font font = mc.font;
 			g.pose().pushMatrix();
-			g.pose().translate(x + CLOCK_INSET, y + H / 2f);
-			text(g, font, style, clock, 0, ARGB.color(Math.max(4, Math.round(a * 255)), CLOCK));
+			g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
+			g.pose().scale(0.85f, 0.85f);
+			g.drawCenteredString(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
 			g.pose().popMatrix();
 		}
+	}
 
-		// Text, sliding in from below while the old text slides out the top
-		float tx = x + lead + PAD + ART + GAP;
+	/** A number from 0 to 1 that looks random but is the same for the same seed. */
+	private static float hash01(long seed) {
+		long z = seed * 0x9E3779B97F4A7C15L;
+		z = (z ^ (z >>> 31)) * 0xBF58476D1CE4E5B9L;
+		return ((z ^ (z >>> 29)) >>> 40) / (float) (1L << 24);
+	}
+
+	private float statsWidth(Font font, Style style, float textScale) {
+		return BARS * BAR_W + (BARS - 1) * BAR_GAP + SIGNAL_TEXT_GAP + LyricsFont.width(font, style, FPS_SAMPLE) * textScale;
+	}
+
+	/** Signal bars (lit by ping on a server, dim in single player), then the frame rate. */
+	private void drawStats(GuiGraphics g, Minecraft mc, Font font, Style style, float textScale, float x, float midY) {
+		float a = alpha;
+		int lit = 0;
+		ClientPacketListener connection = mc.getConnection();
+		if (!mc.isLocalServer() && connection != null && mc.player != null) {
+			PlayerInfo me = connection.getPlayerInfo(mc.player.getUUID());
+			lit = TopBarLayout.signalBars(me == null ? -1 : me.getLatency());
+		}
+		float s = (float) mc.getWindow().getGuiScale();
+		g.pose().pushMatrix();
+		g.pose().scale(1 / s, 1 / s);
+		float barW = Math.round(BAR_W * s), pitch = (BAR_W + BAR_GAP) * s;
+		float bottom = Math.round((midY + SIGNAL_BOTTOM) * s);
+		for (int i = 0; i < SIGNAL_H.length; i++) {
+			float h = Math.max(barW, Math.round(SIGNAL_H[i] * s));
+			int color = i < lit ? EQ_COLOR : SIGNAL_OFF;
+			roundRect(g, Math.round(x * s + i * pitch), bottom - h, barW, h, barW / 2, ARGB.color(Math.round(a * 255), color));
+		}
+		g.pose().popMatrix();
+		float tx = x + BARS * BAR_W + (BARS - 1) * BAR_GAP + SIGNAL_TEXT_GAP;
+		text(g, font, style, mc.getFps() + FPS, tx, midY, textScale, fade(a, STAT_TEXT));
+	}
+
+	/** The line or the song's name; the old one fades out where the new one fades in. */
+	private void drawText(GuiGraphics g, Font font, Style style, float scale, float x, float midY, long now, float dt) {
+		float tx = x + ART_INSET + ART + TEXT_GAP;
+		float room = TopBarLayout.textRoom(width);
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
-		p = ease(p);
-		// Up to the bar's edge as it is now: while the bar grows, longer text mustn't run over the equaliser
-		float right = Math.min(tx + maxText + 4, x + width - (7 + EQ_W + 8) + 3);
-		g.enableScissor(Math.round(tx) - 4, Math.round(y) + 1, Math.round(right), Math.round(y + H) - 1);
+		int clipLeft = Math.round(x + ART_INSET + ART + CLIP_GAP);
+		// Words past the room stop where the highlight would, a little before the equaliser
+		int clipRight = Math.round(tx + room);
+		g.enableScissor(clipLeft, Math.round(midY - PILL_H / 2f) + 1, clipRight, Math.round(midY + PILL_H / 2f) - 1);
 		if (old != null && p < 1) {
-			drawContent(g, font, style, old, tx, y + H / 2f - p * 7, textScale, maxText, a * (1 - p), accent, false, dt);
+			drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
+		} else {
+			old = null;
 		}
 		if (content != null) {
-			drawContent(g, font, style, content, tx, y + H / 2f + (1 - p) * 7, textScale, maxText, a * p, accent, true, dt);
+			drawContent(g, font, style, scale, content, tx, midY, room, alpha * (old == null ? 1 : p), true, dt);
 		}
 		g.disableScissor();
 	}
 
-	private void drawContent(GuiGraphics g, Font font, Style style, Content c, float x, float midY, float scale, float maxText,
-			float a, int accent, boolean live, float dt) {
+	private void drawContent(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
+			float a, boolean live, float dt) {
 		if (a <= 0.02f) {
 			return;
 		}
-		int white = ARGB.color(Math.max(4, Math.round(a * 255)), 0xFFFFFF);
-		int grey = ARGB.color(Math.max(4, Math.round(a * 255)), GREY);
-		g.pose().pushMatrix();
-		g.pose().translate(x, midY);
-		g.pose().scale(scale, scale);
-		float limit = maxText / scale;
 		if (!c.lyric()) {
+			// The song's name doesn't scroll: while the pill is narrow it ends in "…"
+			float limit = room / scale;
 			String title = clip(font, style, c.text(), limit);
-			text(g, font, style, title, 0, white);
+			text(g, font, style, title, x, midY, scale, fade(a, SUNG));
 			float used = LyricsFont.width(font, style, title);
 			if (!c.sub().isEmpty() && used < limit - 12) {
-				text(g, font, style, clip(font, style, "  ·  " + c.sub(), limit - used), used, grey);
+				text(g, font, style, clip(font, style, "  ·  " + c.sub(), limit - used), x + used * scale, midY, scale, fade(a, UPCOMING));
 			}
-		} else {
-			drawLyric(g, font, style, c, limit, a, accent, white, grey, live, dt);
+			return;
 		}
-		g.pose().popMatrix();
+		drawLyric(g, font, style, scale, c, x, midY, room, a, live, dt);
 	}
 
-	/** The line split into words: sung ones white, the current one on the highlight, the rest grey. */
-	private void drawLyric(GuiGraphics g, Font font, Style style, Content c, float limit, float a, int accent,
-			int white, int grey, boolean live, float dt) {
-		String text = clip(font, style, c.text(), limit);
-		float total = LyricsFont.width(font, style, text);
-		boolean rtl = isRtl(text);
+	/** The line word by word: sung words white, the rest grey, and the last two sung on the highlight. */
+	private void drawLyric(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
+			float a, boolean live, float dt) {
+		Word[] words = words(font, style, scale, c.text(), c.sung());
+		if (words.length == 0) {
+			return;
+		}
+		boolean rtl = isRtl(c.text());
+		float total = words[words.length - 1].x() + words[words.length - 1].w();
+		int current = 0;
+		for (int i = 0; i < words.length; i++) {
+			if (words[i].sung()) {
+				current = i;
+			}
+		}
+		Word cur = words[current], prev = words[Math.max(0, current - 1)];
+		float pad = TopBarLayout.highlightPad(wordGap(font, style, scale));
+
+		// Long lines scroll, in reading order, to keep the word being sung in view
+		float target = TopBarLayout.lineShift(total, cur.x() + cur.w(), room, pad);
+		float k = 1 - (float) Math.exp(-dt * SCROLL_RATE);
+		float shift;
+		if (live) {
+			scroll += (target - scroll) * k;
+			shift = scroll;
+		} else {
+			shift = oldScroll;
+		}
+		// Positions are kept in reading order; a right-to-left line is mirrored, its start at the right
+		float start;
+		if (rtl) {
+			start = (total + pad > room ? x + room - pad : x + total) + shift;
+		} else {
+			start = x - shift;
+		}
+
+		if (live) {
+			float left = prev.x(), right = cur.x() + cur.w();
+			if (hlRight < 0) {
+				hlLeft = words[0].x();
+				hlRight = hlLeft + HL_START_W;
+			}
+			float hk = 1 - (float) Math.exp(-dt * HL_RATE);
+			hlLeft += (left - hlLeft) * hk;
+			hlRight += (right - hlRight) * hk;
+			float x0 = rtl ? start - hlRight : start + hlLeft;
+			float hw = hlRight - hlLeft;
+			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS, ARGB.color(Math.round(a * 255), HIGHLIGHT));
+		}
+
+		int sung = fade(a, SUNG), upcoming = fade(a, UPCOMING);
+		for (Word w : words) {
+			// The old line greys out the moment it is replaced
+			int color = live && w.sung() ? sung : upcoming;
+			float wx = rtl ? start - w.x() - w.w() : start + w.x();
+			text(g, font, style, w.text(), wx, midY, scale, color);
+		}
+	}
+
+	/** The gap between the line's words, in GUI units. */
+	private static float wordGap(Font font, Style style, float scale) {
+		return LyricsFont.width(font, style, " ") * scale + WORD_EXTRA;
+	}
+
+	/**
+	 * The line's words in reading order, a space (and a little) apart. A word turns white as a whole once its
+	 * singing starts; the share of the line sung is counted in letters.
+	 */
+	private static Word[] words(Font font, Style style, float scale, String text, float sungShare) {
 		int letters = 0;
 		for (int i = 0; i < text.length(); i++) {
 			letters += text.charAt(i) == ' ' ? 0 : 1;
 		}
-		float at = c.sung() * letters;
-
-		int count = 0, current = -1;
-		float curX = 0, curW = 0;
+		float at = sungShare * letters;
+		String[] parts = text.trim().split(" +");
+		if (parts.length == 1 && parts[0].isEmpty()) {
+			return new Word[0];
+		}
+		Word[] out = new Word[parts.length];
+		float gap = wordGap(font, style, scale);
+		float x = 0;
 		int seen = 0;
-		for (int start = 0; start < text.length(); ) {
-			if (text.charAt(start) == ' ') {
-				start++;
-				continue;
-			}
-			int end = text.indexOf(' ', start);
-			end = end < 0 ? text.length() : end;
-			String word = text.substring(start, end);
-			float wx = LyricsFont.width(font, style, text.substring(0, start));
-			float ww = LyricsFont.width(font, style, word);
-			if (rtl) {
-				wx = total - wx - ww;
-			}
-			// The word being sung; once the line is done the highlight rests on its last word
-			boolean now = c.sung() < 1 ? seen + word.length() > at : end == text.length();
-			if (now && current < 0) {
-				current = count;
-				curX = wx;
-				curW = ww;
-			}
-			seen += word.length();
-			count++;
-			start = end;
+		for (int i = 0; i < parts.length; i++) {
+			float w = LyricsFont.width(font, style, parts[i]) * scale;
+			boolean sung = seen <= at || sungShare >= 1;
+			out[i] = new Word(parts[i], x, w, sung);
+			x += w + gap;
+			seen += parts[i].length();
 		}
-
-		if (live && current >= 0) {
-			if (hlWord < 0 || hlW < 0) {
-				hlX = curX;
-				hlW = curW;
-			} else {
-				float k = 1 - (float) Math.exp(-dt * 18);
-				hlX += (curX - hlX) * k;
-				hlW += (curW - hlW) * k;
-			}
-			hlWord = current;
-			int hl = LyricsRenderer.mix(accent, 0x000000, 0.3f);
-			// Less than half a space either side, so the highlight never touches the neighbouring words
-			float pad = Math.min(2.5f, LyricsFont.width(font, style, " ") * 0.45f);
-			roundRectGui(g, hlX - pad, -6.5f, hlW + 2 * pad, 12, 3.5f, ARGB.color(Math.round(a * 235), hl));
-		}
-
-		// Second pass draws the words over the highlight
-		seen = 0;
-		for (int start = 0; start < text.length(); ) {
-			if (text.charAt(start) == ' ') {
-				start++;
-				continue;
-			}
-			int end = text.indexOf(' ', start);
-			end = end < 0 ? text.length() : end;
-			String word = text.substring(start, end);
-			float wx = LyricsFont.width(font, style, text.substring(0, start));
-			if (rtl) {
-				wx = total - wx - LyricsFont.width(font, style, word);
-			}
-			boolean upcoming = c.sung() < 1 && seen > at;
-			text(g, font, style, word, wx, upcoming ? grey : white);
-			seen += word.length();
-			start = end;
-		}
+		return out;
 	}
 
-	private void text(GuiGraphics g, Font font, Style style, String text, float x, int color) {
+	/** Draws text with its middle at {@code midY}, scaled about its left end. */
+	private static void text(GuiGraphics g, Font font, Style style, String text, float x, float midY, float scale, int color) {
 		g.pose().pushMatrix();
-		g.pose().translate(x, -4);
-		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, 0, color, false);
+		g.pose().translate(x, midY);
+		g.pose().scale(scale, scale);
+		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
 		g.pose().popMatrix();
+	}
+
+	private static int fade(float a, int rgb) {
+		return ARGB.color(Math.max(4, Math.round(a * 255)), rgb);
 	}
 
 	private long lyricsTime(SkyLyricsConfig cfg) {
@@ -418,12 +539,17 @@ public final class NowPlayingHud {
 		return new Content("S" + title + "\n" + sub, false, title, sub, 1);
 	}
 
-	private static float textWidth(Font font, Style style, Content c) {
+	/** The text's width on screen, in GUI units. */
+	private static float contentWidth(Font font, Style style, float scale, Content c) {
+		if (c.lyric()) {
+			Word[] words = words(font, style, scale, c.text(), 1);
+			return words.length == 0 ? 0 : words[words.length - 1].x() + words[words.length - 1].w();
+		}
 		float w = LyricsFont.width(font, style, c.text());
-		if (!c.lyric() && !c.sub().isEmpty()) {
+		if (!c.sub().isEmpty()) {
 			w += LyricsFont.width(font, style, "  ·  " + c.sub());
 		}
-		return w;
+		return w * scale;
 	}
 
 	private static boolean isRtl(String text) {
@@ -471,7 +597,12 @@ public final class NowPlayingHud {
 		RoundRect.draw(g, x, y, w, h, r, color);
 	}
 
-	private static float ease(float t) {
+	private static float easeOut(float t) {
 		return 1 - (1 - t) * (1 - t);
+	}
+
+	private static float easeOutCubic(float t) {
+		float u = 1 - t;
+		return 1 - u * u * u;
 	}
 }
