@@ -50,6 +50,16 @@ public final class SkyLyricsConfig {
 		RAINBOW
 	}
 
+	/** How the words of a line are laid out. */
+	public enum Layout {
+		/** Only the line being sung, wrapped into rows along a gentle curve; each word tilted and sized a little differently. */
+		ARC,
+		/** The previous, current and next lines, straight and centred. */
+		LINES,
+		/** Each word or two placed in the world around you as it's sung, fading as newer ones arrive. */
+		WORLD
+	}
+
 	public enum Animation {
 		WORDS, FADE, RISE, POP, TYPEWRITER
 	}
@@ -57,7 +67,11 @@ public final class SkyLyricsConfig {
 	public enum SkyEffect {
 		OFF,
 		AURORA,
-		NEBULA
+		NEBULA,
+		/** A purple gradient with a striped retro sun low in the sky. */
+		SYNTHWAVE,
+		/** A black sun with a glowing ring and a flare, under a faint milky way. */
+		ECLIPSE
 	}
 
 	public enum Layer {
@@ -73,6 +87,7 @@ public final class SkyLyricsConfig {
 	public boolean enabled = true;
 	public Placement placement = Placement.SKY;
 	public Direction direction = Direction.FOLLOW;
+	public Layout layout = Layout.ARC;
 
 	// Lyrics
 	public boolean showPrevious = true;
@@ -89,19 +104,25 @@ public final class SkyLyricsConfig {
 	public boolean showPlainLyrics = true;
 
 	// Style
-	public ColorMode colorMode = ColorMode.ALBUM;
-	public int color = 0xB57BFF;
+	public ColorMode colorMode = ColorMode.FIXED;
+	public int color = 0xC7D0F4;
 	/** The bundled smooth font; off uses Minecraft's pixel font. */
 	public boolean smoothFont = true;
 	/** With {@link #smoothFont}: handwritten letters for the sky lyrics. */
 	public boolean scriptFont = false;
-	public float glow = 0.7f;
+	/** With {@link #smoothFont} and not {@link #scriptFont}: the heavier Poppins Bold. */
+	public boolean boldFont = true;
+	/** Solid darker and lighter copies of the letters just behind them, for a raised 3D look. */
+	public boolean depth = true;
+	public float glow = 0f;
 	/** The glow flares up for a moment whenever a new line starts. */
 	public boolean pulse = true;
 	public boolean shadow = true;
 	public float opacity = 1f;
 	public SkyEffect sky = SkyEffect.AURORA;
 	public float skyStrength = 0.7f;
+	/** Star patterns joined by thin lines in the night sky. */
+	public boolean constellations = true;
 
 	// Display
 	public float size = 1f;
@@ -120,8 +141,10 @@ public final class SkyLyricsConfig {
 	public boolean hudOnlyOnChange = true;
 	/** The top bar also shows the line being sung, with the current word highlighted. */
 	public boolean barLyrics = true;
-	/** The time on the left of the top bar. */
-	public boolean barClock = false;
+	/** The time, left of the top bar. */
+	public boolean barClock = true;
+	/** Frames per second and ping, right of the top bar. */
+	public boolean barStats = true;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */
@@ -161,6 +184,7 @@ public final class SkyLyricsConfig {
 		if (animation == null) animation = d.animation;
 		if (layer == null) layer = d.layer;
 		if (sky == null) sky = d.sky;
+		if (layout == null) layout = d.layout;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);

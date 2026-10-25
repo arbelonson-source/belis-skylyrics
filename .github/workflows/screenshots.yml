@@ -47,4 +47,10 @@ jobs:
           mkdir -p "pics/$dir" && cp shots/* "pics/$dir/"
           git -C pics add "$dir"
           git -C pics commit -qm "Screenshots from $GITHUB_REF_NAME ${GITHUB_SHA::7}"
-          git -C pics push origin HEAD:ci-screenshots
+          # Other runs may push at the same time; each adds its own folder, so replaying on top always works
+          for i in 1 2 3 4 5; do
+            git -C pics push origin HEAD:ci-screenshots && exit 0
+            sleep $((i * 3))
+            git -C pics fetch origin ci-screenshots && git -C pics rebase -q FETCH_HEAD
+          done
+          exit 1

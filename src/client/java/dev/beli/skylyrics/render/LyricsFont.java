@@ -27,9 +27,12 @@ public final class LyricsFont {
 		return cfg.smoothFont ? Style.EMPTY.withFont(SMOOTH) : Style.EMPTY;
 	}
 
-	/** Like {@link #base}, but the sky lyrics may use the handwritten font; the top bar stays smooth. */
+	/** Like {@link #base}, but the sky lyrics may use the bold or handwritten font; the top bar stays smooth. */
 	public static Style sky(SkyLyricsConfig cfg) {
-		return cfg.smoothFont && cfg.scriptFont ? Style.EMPTY.withFont(SCRIPT) : base(cfg);
+		if (cfg.smoothFont && cfg.scriptFont) {
+			return Style.EMPTY.withFont(SCRIPT);
+		}
+		return cfg.smoothFont && cfg.boldFont ? Style.EMPTY.withFont(BOLD) : base(cfg);
 	}
 
 	/** Exact width in text units (the plain {@code Font.width(String)} always measures Minecraft's font). */

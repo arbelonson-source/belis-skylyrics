@@ -115,6 +115,13 @@ shot hebrew-settings-music
 hook "close" "lang en_us"
 sleep 10
 
+# More pictures, one file per feature: .github/shots.d/*.sh, using hook, shot and sleep like above
+for extra in .github/shots.d/*.sh; do
+	[ -f "$extra" ] || continue
+	echo "== $extra"
+	. "$extra"
+done
+
 kill "$GAME" 2>/dev/null || true
 pkill -f 'net.fabricmc' 2>/dev/null || true
 cp "$RUN"/screenshots/*.png "$OUT"/
