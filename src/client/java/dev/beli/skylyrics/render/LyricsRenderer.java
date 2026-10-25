@@ -445,18 +445,11 @@ public final class LyricsRenderer {
 		float @Nullable [] growth(String row, Display d, int charIndex, float sungChars, float highlight) {
 			int n = d.cps.length;
 			int[] rank = wordRanks(row);
-			int words = wordCount(row);
+			int[][] bounds = wordBounds(row);
+			int[] first = bounds[0], last = bounds[1];
+			int words = first.length;
 			if (words == 0) {
 				return null;
-			}
-			int[] first = new int[words], last = new int[words];
-			Arrays.fill(first, Integer.MAX_VALUE);
-			for (int v = 0; v < n; v++) {
-				if (d.cps[v] != ' ') {
-					int li = d.logical[v], w = rank[li];
-					first[w] = Math.min(first[w], li);
-					last[w] = Math.max(last[w], li);
-				}
 			}
 			float[] byWord = new float[words];
 			boolean any = false;
@@ -757,6 +750,31 @@ public final class LyricsRenderer {
 			rank[i] = Math.max(0, w);
 		}
 		return rank;
+	}
+
+	/** Each word's first and last letter (logical order), kept per row since the same rows are drawn every frame. */
+	private static final Map<String, int[][]> BOUNDS = new LinkedHashMap<>(64, 0.75f, true) {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<String, int[][]> eldest) {
+			return size() > 64;
+		}
+	};
+
+	private static int[][] wordBounds(String row) {
+		return BOUNDS.computeIfAbsent(row, r -> {
+			int[] rank = wordRanks(r);
+			int[] cps = r.codePoints().toArray();
+			int words = wordCount(r);
+			int[] first = new int[words], last = new int[words];
+			Arrays.fill(first, Integer.MAX_VALUE);
+			for (int i = 0; i < cps.length; i++) {
+				if (cps[i] != ' ') {
+					first[rank[i]] = Math.min(first[rank[i]], i);
+					last[rank[i]] = Math.max(last[rank[i]], i);
+				}
+			}
+			return new int[][] {first, last};
+		});
 	}
 
 	private static int wordCount(String row) {
