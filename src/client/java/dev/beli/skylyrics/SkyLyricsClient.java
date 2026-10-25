@@ -1,6 +1,7 @@
 package dev.beli.skylyrics;
 
 import java.nio.file.Path;
+import java.util.Locale;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
@@ -23,9 +24,11 @@ import dev.beli.skylyrics.dev.DevTestHook;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LrclibClient;
 import dev.beli.skylyrics.lyrics.LyricsService;
+import dev.beli.skylyrics.media.MediaSource;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.MprisSource;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.media.WindowsMediaSource;
 import dev.beli.skylyrics.render.AlbumArt;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
@@ -71,8 +74,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				.orElse("dev");
 		Path cache = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(MOD_ID);
 
-		tracker = new MediaTracker(new MprisSource(() -> SkyLyricsConfig.get().preferredPlayer),
-				() -> SkyLyricsConfig.get().demoMode);
+		tracker = new MediaTracker(musicSource(cache), () -> SkyLyricsConfig.get().demoMode);
 		lyrics = new LyricsService(new LrclibClient(version), cache);
 		art = new AlbumArt();
 		renderer = new LyricsRenderer(tracker, lyrics, art);
@@ -98,6 +100,18 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
 		LOG.info("Beli's SkyLyrics {} ready (placement {}, demo {})", version, cfg.placement, cfg.demoMode);
+	}
+
+	/** True on Windows, where the song comes from Windows' media controls instead of MPRIS. */
+	public static boolean windows() {
+		return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
+	}
+
+	private static MediaSource musicSource(Path cache) {
+		if (windows()) {
+			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"));
+		}
+		return new MprisSource(() -> SkyLyricsConfig.get().preferredPlayer);
 	}
 
 	private void registerKeys() {

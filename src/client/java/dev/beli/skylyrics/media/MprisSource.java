@@ -73,7 +73,8 @@ public final class MprisSource implements MediaSource {
 			}
 		}
 
-		Reading chosen = choose(readings);
+		Reading chosen = PlayerPicker.choose(readings, Reading::busName, r -> r.track.player(), Reading::playing,
+				preferredPlayer.get(), current);
 		if (chosen == null) {
 			current = null;
 			currentTrackId = null;
@@ -83,37 +84,6 @@ public final class MprisSource implements MediaSource {
 		currentTrackId = chosen.trackId;
 		currentDisplayName = prettyName(chosen.track.player());
 		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, System.nanoTime());
-	}
-
-	private @Nullable Reading choose(List<Reading> readings) {
-		if (readings.isEmpty()) {
-			return null;
-		}
-		String preferred = preferredPlayer.get().toLowerCase(Locale.ROOT).trim();
-		if (!preferred.isEmpty()) {
-			for (Reading r : readings) {
-				if (r.track.player().toLowerCase(Locale.ROOT).contains(preferred)) {
-					return r;
-				}
-			}
-		}
-		// Stick with the current player while it's playing, so two tabs don't fight
-		for (Reading r : readings) {
-			if (r.playing && r.busName.equals(current)) {
-				return r;
-			}
-		}
-		for (Reading r : readings) {
-			if (r.playing) {
-				return r;
-			}
-		}
-		for (Reading r : readings) {
-			if (r.busName.equals(current)) {
-				return r;
-			}
-		}
-		return readings.getFirst();
 	}
 
 	private static @Nullable Reading read(DBusConnection conn, String busName) {

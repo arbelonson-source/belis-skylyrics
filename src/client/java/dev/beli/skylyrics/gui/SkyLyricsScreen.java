@@ -3,6 +3,7 @@ package dev.beli.skylyrics.gui;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Stream;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
@@ -74,7 +75,13 @@ public final class SkyLyricsScreen extends Screen {
 	private static final int[] SWATCHES = {
 			0xB57BFF, 0xFF6EC7, 0xFF5A5A, 0xFFA24C, 0xFFE066, 0x6BFF8E, 0x4FE3FF, 0x5B8CFF, 0xFFFFFF,
 	};
-	private static final String[] PLAYER_KEYS = {"", "spotify", "firefox", "chrom", "mpv", "vlc"};
+	/** Part of the player name to look for, next to the name shown; the first one is Auto. */
+	private static final String[] PLAYER_KEYS = SkyLyricsClient.windows()
+			? new String[] {"", "spotify", "chrom", "edge", "firefox", "media player"}
+			: new String[] {"", "spotify", "firefox", "chrom", "mpv", "vlc"};
+	private static final List<String> PLAYER_NAMES = SkyLyricsClient.windows()
+			? List.of("Spotify", "Chrome", "Edge", "Firefox", "Media Player")
+			: List.of("Spotify", "Firefox", "Chrome", "mpv", "VLC");
 
 	private static final int SIDEBAR_W = 96;
 	private static final int TAB_H = 20;
@@ -221,7 +228,7 @@ public final class SkyLyricsScreen extends Screen {
 						false))
 				.describe(this::lyricsStatus);
 
-		Row player = new Cycle(Tr.t("Player"), Tr.t("Which app to follow"), List.of(Tr.t("Auto"), "Spotify", "Firefox", "Chrome", "mpv", "VLC"),
+		Row player = new Cycle(Tr.t("Player"), Tr.t("Which app to follow"), Stream.concat(Stream.of(Tr.t("Auto")), PLAYER_NAMES.stream()).toList(),
 				() -> {
 					for (int i = 0; i < PLAYER_KEYS.length; i++) {
 						if (PLAYER_KEYS[i].equalsIgnoreCase(cfg.preferredPlayer)) {
@@ -295,7 +302,9 @@ public final class SkyLyricsScreen extends Screen {
 				.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse("dev");
 		Row intro = new Paragraph(() -> Tr.t("Beli's SkyLyrics shows the words of whatever song you are playing, floating in the Minecraft sky. It is free and open source (AGPL licence)."));
 		Row versionRow = new Info(Tr.t("Version"), null, () -> version);
-		Row how = new Paragraph(() -> Tr.t("The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time."));
+		Row how = new Paragraph(() -> SkyLyricsClient.windows()
+				? Tr.t("On Windows the song comes from the media controls that pop up when you press a media key, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time.")
+				: Tr.t("The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time."));
 		Row compat = new Paragraph(() -> Tr.t("Works with Sodium, Iris and shader packs."));
 		Row links = new Buttons(Tr.t("Links"), null,
 				new Button("GitHub", () -> ConfirmLinkScreen.confirmLinkNow(this, GITHUB)),

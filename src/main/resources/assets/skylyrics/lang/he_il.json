@@ -122,6 +122,7 @@
   "skylyrics.ui.beli_s_skylyrics_shows_the_words_of_whatever_son": "Beli's SkyLyrics מציג את מילות השיר שמתנגן, צפות בשמי מיינקראפט. חינמי ופתוח (רישיון AGPL).",
   "skylyrics.ui.version": "גרסה",
   "skylyrics.ui.the_song_comes_from_your_music_app_through_mpris": "השיר מגיע מאפליקציית המוזיקה דרך MPRIS, אותו מנגנון לינוקס של מקשי המדיה, כך ש-Spotify, דפדפנים ורוב הנגנים עובדים. המילים מגיעות מ-LRCLIB, ספריית מילים קהילתית חינמית, ונשמרות במחשב לפעם הבאה.",
+  "skylyrics.ui.on_windows_the_song_comes_from_the_media_control": "ב-Windows השיר מגיע מפקדי המדיה שקופצים כשלוחצים על מקש מדיה, כך ש-Spotify, דפדפנים ורוב הנגנים עובדים. המילים מגיעות מ-LRCLIB, ספריית מילים קהילתית חינמית, ונשמרות במחשב לפעם הבאה.",
   "skylyrics.ui.works_with_sodium_iris_and_shader_packs": "עובד עם Sodium, Iris וחבילות שיידרים.",
   "skylyrics.ui.links": "קישורים",
   "skylyrics.ui.how_it_works": "איך זה עובד",

@@ -122,6 +122,7 @@
   "skylyrics.ui.beli_s_skylyrics_shows_the_words_of_whatever_son": "Beli's SkyLyrics shows the words of whatever song you are playing, floating in the Minecraft sky. It is free and open source (AGPL licence).",
   "skylyrics.ui.version": "Version",
   "skylyrics.ui.the_song_comes_from_your_music_app_through_mpris": "The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time.",
+  "skylyrics.ui.on_windows_the_song_comes_from_the_media_control": "On Windows the song comes from the media controls that pop up when you press a media key, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time.",
   "skylyrics.ui.works_with_sodium_iris_and_shader_packs": "Works with Sodium, Iris and shader packs.",
   "skylyrics.ui.links": "Links",
   "skylyrics.ui.how_it_works": "How it works",

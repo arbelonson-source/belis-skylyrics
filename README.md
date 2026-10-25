@@ -11,7 +11,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 ## What it does
 
-- Sees what's playing on your PC: Spotify, a browser tab, or any other player that supports MPRIS on Linux.
+- Sees what's playing on your PC: Spotify, a browser tab, or any other player that shows up in your media controls. Works on Linux and on Windows 10 and 11.
 - Gets the synced lyrics from [LRCLIB](https://lrclib.net) and shows them line by line, in time with the song.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
@@ -38,7 +38,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 ## Install
 
-You need **Linux**. Song detection uses MPRIS, which is Linux only. On other systems, only the demo song works.
+Works on **Linux** and **Windows 10 or 11**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS only the demo song works for now.
 
 ### With Prism Launcher (easiest)
 
@@ -52,7 +52,9 @@ You need **Linux**. Song detection uses MPRIS, which is Linux only. On other sys
 
 1. Run the [Fabric installer](https://fabricmc.net/use/installer/) and install Fabric for **1.21.11**.
 2. Download [Fabric API](https://modrinth.com/mod/fabric-api) and the SkyLyrics `.jar`.
-3. Put both files in `~/.minecraft/mods`. Create the folder if it doesn't exist.
+3. Put both files in your `mods` folder. Create it if it doesn't exist.
+   - Linux: `~/.minecraft/mods`
+   - Windows: `%appdata%\.minecraft\mods` (paste this into the File Explorer address bar)
 4. In the launcher, pick the **fabric-loader-1.21.11** profile and press Play.
 
 ### Using it

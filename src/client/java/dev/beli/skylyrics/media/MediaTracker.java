@@ -18,7 +18,7 @@ public final class MediaTracker {
 	/** Small differences between our clock and the player's are jitter, not a seek. */
 	private static final long SEEK_THRESHOLD_MS = 350;
 
-	private final MediaSource mpris;
+	private final MediaSource player;
 	private final MediaSource demo = new DemoSource();
 	private final BooleanSupplier demoMode;
 	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -35,8 +35,8 @@ public final class MediaTracker {
 	};
 	private boolean loggedError;
 
-	public MediaTracker(MediaSource mpris, BooleanSupplier demoMode) {
-		this.mpris = mpris;
+	public MediaTracker(MediaSource player, BooleanSupplier demoMode) {
+		this.player = player;
 		this.demoMode = demoMode;
 	}
 
@@ -49,7 +49,7 @@ public final class MediaTracker {
 	}
 
 	private MediaSource source() {
-		return demoMode.getAsBoolean() ? demo : mpris;
+		return demoMode.getAsBoolean() ? demo : player;
 	}
 
 	/** Browsers often send the length and cover a moment after the title. */
@@ -151,7 +151,7 @@ public final class MediaTracker {
 
 	public void reconnect() {
 		executor.execute(() -> {
-			mpris.close();
+			player.close();
 			pollOnce();
 		});
 	}
@@ -166,6 +166,6 @@ public final class MediaTracker {
 
 	public void shutdown() {
 		executor.shutdownNow();
-		mpris.close();
+		player.close();
 	}
 }

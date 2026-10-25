@@ -50,7 +50,7 @@ See the words of the song you're listening to, right in the Minecraft sky, in ti
 
 The mod finds the song your music player is playing, looks up synced lyrics, and draws them as glowing text far away in the sky or floating close to you. It's free and open source, and it always will be.
 
-**Linux only for now.** The mod reads your song through MPRIS, the Linux feature behind your desktop's media keys. On Windows and macOS it loads, but it can't see your music, so only the built-in demo song works.
+**Works on Linux and on Windows 10 and 11.** On Windows the mod reads the media controls that pop up when you press a media key. On Linux it uses MPRIS, the feature behind your desktop's media keys. On macOS it loads, but only the built-in demo song works for now.
 
 ## Features
 
@@ -75,7 +75,7 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 - Minecraft 1.21.11 with Fabric Loader 0.17.0 or newer
 - Fabric API
 - Java 21 or newer (the Minecraft launcher already includes it)
-- Linux, with a music player that shows up in your desktop's media controls
+- Linux, or Windows 10 or 11, with a music player that shows up in your media controls
 - Optional: Mod Menu, to open the settings from the mod list
 
 ## How to install
@@ -90,10 +90,10 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 ## FAQ
 
 **Does it work on Windows or macOS?**
-Not yet. It needs MPRIS, which only Linux has. On other systems only the demo song works.
+Windows 10 and 11: yes, it reads the media controls that pop up when you press a media key. macOS: not yet, only the demo song works there.
 
 **Which music players work?**
-Anything that shows up in your Linux desktop's media controls: Spotify (including the Flatpak version), Firefox, Chrome and other browsers (so YouTube, YouTube Music and SoundCloud in a tab), VLC, Rhythmbox, Elisa and most other music apps. mpv works with the mpv-mpris plugin. You can choose which player to follow in the Music tab.
+On Windows: anything that shows up in the media panel when you press a media key, such as Spotify, Chrome, Edge, Firefox and other browsers, Media Player and Apple Music (VLC and mpv don't show up there). On Linux: anything that shows up in your desktop's media controls: Spotify (including the Flatpak version), Firefox, Chrome and other browsers (so YouTube, YouTube Music and SoundCloud in a tab), VLC, Rhythmbox, Elisa and most other music apps. mpv works with the mpv-mpris plugin. You can choose which player to follow in the Music tab.
 
 **Where do the lyrics come from?**
 From LRCLIB (lrclib.net), a free, volunteer-run lyrics database. No account needed. If LRCLIB doesn't have a song, the mod can't show lyrics for it. Lyrics it finds are saved on your computer, so songs it has seen before work offline.

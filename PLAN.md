@@ -51,6 +51,17 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] Lyrics search for songs with several artists ("A, B"): try the first artist alone when the full name finds nothing
 - [x] Daytime lyrics without shaders look a little pale; give them a bit more contrast against a bright sky
 
+### Windows (owner's top priority, 2026-10-25)
+- [x] Song detection on Windows 10/11 through the media controls (System Media Transport Controls), via a hidden bundled PowerShell helper (`src/client/resources/skylyrics/windows-media.ps1`), no native code
+- [x] Play/pause, next, previous and seek on Windows
+- [x] Album covers from Windows (saved to `.cache/skylyrics/windows/covers`, read like any `file://` cover)
+- [x] Player choice in the Music tab lists Windows players on Windows; About text says Windows
+- [x] Tests: the helper script runs against a made-up media manager (needs PowerShell; `pwsh` on Linux, built in on Windows)
+- [x] CI builds and tests on windows-2025 too (talks to the real Windows media API there)
+- [x] README, FAQ, Troubleshooting, store pages and v0.2.0 notes mention Windows
+- [ ] First run on a real Windows PC: Spotify, Chrome/Edge, covers, controls, no console window flashing, Hebrew user names
+- [ ] Settings screen on Windows: "Media Player" fits in the Player button
+
 ### Polish ideas (the loop keeps going)
 - [x] Optional handwritten "Script" font for the sky lyrics, like the brush lettering in the Neon Lyrics videos (OFL font, bundled)
 - [ ] Top bar: "now playing" look between lines (song title · artist) instead of an empty bar
@@ -80,3 +91,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 20:25: new font choice "Handwritten" (Kaushan Script, OFL) for the sky lyrics, like the brush lettering in the Neon Lyrics videos. The top bar keeps the smooth font. Font row is now Smooth / Handwritten / Minecraft (English and Hebrew).
 - 2026-10-25 20:45: player help pages (docs/FAQ.md, docs/TROUBLESHOOTING.md), ready-to-paste Modrinth and CurseForge pages (store/), draft release notes for v0.2.0, README links them and lists the Handwritten font. Nothing published to the stores.
 - 2026-10-25 20:59: when LRCLIB has a hiccup (busy, too many requests, timeout, no network) the mod now keeps trying while the song plays (after 2 s, 5 s, 10 s, 20 s, then every 30-60 s) instead of staying lyric-less until the next song; a hiccup is never saved as "no lyrics". Also: skipped songs aren't looked up one by one, LRC files with a BOM, indents or old Mac line ends parse fully, "Song - Remastered 2011" browser titles keep the artist, and length/cover that browsers send late now reach the lyrics and cover art.
+- 2026-10-25 (cloud session): Windows support. Windows has no MPRIS; the closest thing is the media controls behind the media-key panel (GlobalSystemMediaTransportControlsSessionManager, a WinRT API). Java can't call WinRT by itself, so the mod starts Windows PowerShell 5.1 (part of every Windows 10/11) with a bundled script that stays running hidden and answers numbered one-line commands with one-line JSON. Positions are moved on from the player's last report, since players only update the timeline on play, pause and seek. Choosing between several players is now shared with the Linux source (PlayerPicker). If PowerShell can't start, the Music tab shows why and the mod retries every 15 s. Checked here: the media classes compile and their 17 tests pass, including the real script against a fake media manager on PowerShell 7. Not checked: the full Gradle build (this cloud session can't reach maven.fabricmc.net or Mojang's servers) and a real Windows PC.

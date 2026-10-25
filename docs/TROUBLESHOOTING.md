@@ -41,6 +41,28 @@ A few more things to know:
 
 ## Check that your player can be seen
 
+### On Windows
+
+The mod reads the media controls that Windows shows when you press a media key or change the volume. If your song shows up there, the mod can see it too.
+
+**Quick check.** While the music plays, press a volume key on your keyboard. On Windows 11 you can also click the speaker icon in the taskbar. A small panel should show the song's name and the player. If it isn't there, the mod can't see it either.
+
+**Spotify** works from spotify.com and from the Microsoft Store. If it doesn't show up in the panel, open Spotify's **Settings**, find **Display**, and turn on **Show desktop overlay when using media keys**.
+
+**Browsers** (Chrome, Edge, Firefox and others) show any tab that plays sound, such as YouTube, YouTube Music or SoundCloud. If several tabs play, the mod follows the one that is playing. Pause the others if it picks the wrong one.
+
+**VLC and mpv** don't show up in that panel on their own, so the mod can't see them.
+
+**Music tab Status mentions PowerShell or "media controls".** To read the media controls the mod starts a small hidden PowerShell helper. PowerShell comes with Windows 10 and 11. The helper can't run if:
+
+- your computer is on Windows 8 or older,
+- a school or work computer blocks PowerShell scripts, or
+- an antivirus program blocks it. Allowing Minecraft (Java) to run PowerShell fixes this.
+
+The helper writes its own error messages to `.cache\skylyrics\windows\windows-media.log` in your Minecraft folder. That file is useful to include if you [ask for help](#still-stuck). If the helper fails, the mod tries again 15 seconds later on its own.
+
+### On Linux
+
 The mod finds your song through MPRIS, the Linux feature behind your desktop's media keys and music controls. If your desktop's music controls show the song, the mod can usually see it too.
 
 **Quick check with playerctl.** Open a terminal and type:
@@ -71,7 +93,7 @@ flatpak override --user --talk-name=org.mpris.MediaPlayer2.* org.prismlauncher.P
 
 Then close Prism Launcher completely and open it again. If you prefer a window to a terminal, the Flatseal app can do the same: pick Prism Launcher, and under **Session Bus → Talks** add `org.mpris.MediaPlayer2.*`.
 
-**Windows and macOS** don't have MPRIS, so only the built-in demo song works there for now.
+**macOS** isn't supported yet, so only the built-in demo song works there.
 
 ## Shaders make the lyrics dim
 
@@ -98,7 +120,8 @@ Everything is inside your Minecraft folder:
 
 Your Minecraft folder is:
 
-- **Official launcher:** `~/.minecraft` (`~` is your home folder; folders starting with a dot are hidden, press Ctrl+H in the file manager to see them).
+- **Official launcher on Linux:** `~/.minecraft` (`~` is your home folder; folders starting with a dot are hidden, press Ctrl+H in the file manager to see them).
+- **Official launcher on Windows:** `%appdata%\.minecraft`. Paste that into the File Explorer address bar and press Enter.
 - **Prism Launcher:** right-click the instance and choose **Folder**. The `config` folder and the hidden `.cache` folder are inside.
 
 To start over with all settings, use **Reset all** at the bottom of the settings screen (click it twice). Or close Minecraft and delete `skylyrics.json`.
@@ -107,4 +130,4 @@ Deleting the `skylyrics` cache folder is safe. The mod just looks up the lyrics 
 
 ## Still stuck?
 
-Open an issue at [github.com/arbelonson-source/belis-skylyrics/issues](https://github.com/arbelonson-source/belis-skylyrics/issues). Say which music player you use, what the **Music** tab shows for Status and Lyrics, and whether you use shaders.
+Open an issue at [github.com/arbelonson-source/belis-skylyrics/issues](https://github.com/arbelonson-source/belis-skylyrics/issues). Say whether you're on Windows or Linux, which music player you use, what the **Music** tab shows for Status and Lyrics, and whether you use shaders.

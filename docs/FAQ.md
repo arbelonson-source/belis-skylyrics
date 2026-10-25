@@ -8,11 +8,23 @@ While you play Minecraft and listen to music on the same computer, it shows the 
 
 ## Does it work on Windows or macOS?
 
-Not yet. The mod finds your song through MPRIS, a Linux feature (the same one that makes the media keys and the music controls on your desktop work). On Windows and macOS the mod still loads, but it can't see your music, so only the built-in demo song works.
+**Windows 10 and 11: yes.** The mod reads the same media controls that Windows shows when you press a media key or change the volume. To do that it runs a small hidden PowerShell helper. PowerShell comes with Windows, so there is nothing extra to install.
+
+**macOS: not yet.** The mod loads, but it can't see your music, so only the built-in demo song works.
+
+On Linux the mod finds your song through MPRIS, the feature behind the media keys and the music controls on your desktop.
 
 ## Which music players work?
 
-Anything that shows up in your Linux desktop's media controls. For example:
+**On Windows:** anything that shows up in the little media panel when you press a media key or a volume key. For example:
+
+- Spotify, from spotify.com or from the Microsoft Store
+- Chrome, Edge, Firefox, Brave, Opera and other browsers, so YouTube, YouTube Music, SoundCloud and similar sites in a tab
+- Media Player, Apple Music, TIDAL, Deezer and most other music apps
+
+VLC and mpv don't show up in that panel on their own, so the mod can't see them.
+
+**On Linux:** anything that shows up in your desktop's media controls. For example:
 
 - Spotify, including the Flatpak version
 - Firefox, Chrome, Chromium, Brave and other browsers, so YouTube, YouTube Music, SoundCloud and similar sites in a tab
@@ -23,7 +35,7 @@ If you're not sure, see "Check that your player can be seen" in [TROUBLESHOOTING
 
 ## Can I choose which player it follows?
 
-Yes. Open the settings with **J**, go to the **Music** tab and change **Player**. The choices are Auto, Spotify, Firefox, Chrome, mpv and VLC. **Auto** follows whatever is playing, and sticks with the same player while it keeps playing, so two browser tabs don't fight over it.
+Yes. Open the settings with **J**, go to the **Music** tab and change **Player**. On Linux the choices are Auto, Spotify, Firefox, Chrome, mpv and VLC. On Windows they are Auto, Spotify, Chrome, Edge, Firefox and Media Player. **Auto** follows whatever is playing, and sticks with the same player while it keeps playing, so two browser tabs don't fight over it.
 
 ## Where do the lyrics come from?
 
