@@ -8,6 +8,7 @@ import java.util.List;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.server.MinecraftServer;
 
 import dev.beli.skylyrics.SkyLyricsClient;
@@ -25,8 +26,9 @@ public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
 	private int countdown;
 
+	/** On in the dev game, and in runProductionClient, which sets -Dskylyrics.testHook=true. */
 	public static boolean enabled() {
-		return FabricLoader.getInstance().isDevelopmentEnvironment();
+		return FabricLoader.getInstance().isDevelopmentEnvironment() || Boolean.getBoolean("skylyrics.testHook");
 	}
 
 	public void tick(Minecraft client) {
@@ -105,6 +107,14 @@ public final class DevTestHook {
 					}
 				}
 				case "close" -> client.setScreen(null);
+				case "screen" -> {
+					// Opens another mod's screen by class name, e.g. Mod Menu's list
+					try {
+						client.setScreen((Screen) Class.forName(arg).getConstructor(Screen.class).newInstance(client.screen));
+					} catch (ReflectiveOperationException e) {
+						throw new IllegalStateException(e);
+					}
+				}
 				case "scroll" -> {
 					if (client.screen != null) {
 						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));

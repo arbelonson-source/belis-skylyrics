@@ -57,6 +57,30 @@ dependencies {
 	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
 }
 
+// runProductionClient: the built jar with the published Fabric API, Sodium, Iris and Mod Menu,
+// the way a player installs it. Catches problems that only show up outside the dev game.
+configurations {
+	productionMods { transitive = false }
+}
+
+dependencies {
+	productionMods "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	productionMods "maven.modrinth:sodium:${project.sodium_version}"
+	productionMods "maven.modrinth:iris:${project.iris_version}"
+	productionMods "com.terraformersmc:modmenu:${project.modmenu_version}"
+}
+
+tasks.register("runProductionClient", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
+	mods.from(remapJar)
+	mods.from(configurations.productionMods)
+	jvmArgs.add("-Dskylyrics.testHook=true")
+	// -PquickPlay=WorldName opens that world straight away
+	if (project.hasProperty("quickPlay")) {
+		programArgs.addAll("--quickPlaySingleplayer", project.property("quickPlay").toString())
+	}
+	runDir = file("run-prod")
+}
+
 sourceSets {
 	test {
 		compileClasspath += sourceSets.client.output + sourceSets.client.compileClasspath

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b0a24"/>
+      <stop offset="0.6" stop-color="#1c1450"/>
+      <stop offset="1" stop-color="#3a1f6e"/>
+    </linearGradient>
+    <radialGradient id="aurora" cx="0.3" cy="0.15" r="0.75">
+      <stop offset="0" stop-color="#3fe0b0" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#2aa38f" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#2aa38f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="note" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f4ecff"/>
+      <stop offset="1" stop-color="#c9a8ff"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <clipPath id="tile"><rect width="256" height="256" rx="52"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="256" height="256" fill="url(#sky)"/>
+    <rect width="256" height="256" fill="url(#aurora)"/>
+    <g fill="#ffffff">
+      <circle cx="38" cy="44" r="2.6" opacity="0.9"/>
+      <circle cx="206" cy="36" r="3" opacity="0.95"/>
+      <circle cx="222" cy="98" r="2" opacity="0.7"/>
+      <circle cx="58" cy="118" r="1.8" opacity="0.6"/>
+      <circle cx="160" cy="24" r="1.6" opacity="0.6"/>
+      <circle cx="28" cy="178" r="2" opacity="0.5"/>
+      <circle cx="232" cy="160" r="1.6" opacity="0.5"/>
+    </g>
+    <!-- lyric lines -->
+    <rect x="44" y="198" width="168" height="14" rx="7" fill="#9b6be8"/>
+    <rect x="72" y="222" width="112" height="10" rx="5" fill="#ffffff" opacity="0.35"/>
+    <!-- music note -->
+    <g filter="url(#glow)" fill="url(#note)">
+      <path d="M104 62 L182 46 L182 140 A22 18 -18 1 1 168 122 L168 82 L118 92 L118 152 A22 18 -18 1 1 104 134 Z"/>
+    </g>
+  </g>
+</svg>
