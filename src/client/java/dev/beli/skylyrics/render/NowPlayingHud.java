@@ -346,7 +346,8 @@ public final class NowPlayingHud {
 		float room = TopBarLayout.textRoom(width);
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
 		int clipLeft = Math.round(x + ART_INSET + ART + CLIP_GAP);
-		int clipRight = Math.round(x + width - EQ_INSET - EQ_W - 1);
+		// Words past the room stop where the highlight would, a little before the equaliser
+		int clipRight = Math.round(tx + room);
 		g.enableScissor(clipLeft, Math.round(midY - PILL_H / 2f) + 1, clipRight, Math.round(midY + PILL_H / 2f) - 1);
 		if (old != null && p < 1) {
 			drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);

@@ -45,7 +45,7 @@ if sudo apt-get install -y -q xdotool > /dev/null 2>&1; then
 	sleep 4
 	hud_at 33300 # early in the longest line
 	shot hud-small-long-start
-	hud_at 35600 # late in it: scrolled
+	hud_at 36100 # late in it: scrolled
 	shot hud-small-long-end
 	hud_at 37500
 	shot hud-small-between
