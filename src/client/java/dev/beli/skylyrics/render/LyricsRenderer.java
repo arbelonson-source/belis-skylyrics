@@ -80,9 +80,9 @@ public final class LyricsRenderer {
 	/** Depth copies: the dark one this far down, the light one this far up (text units, about 0.1 and 0.05 em). */
 	private static final float DEPTH_DOWN = 1.05f, DEPTH_UP = 0.5f;
 	/** The dark copy's brightness by night and by day (against a bright sky it needs to be darker to show). */
-	private static final float DEPTH_DARK_NIGHT = 0.74f, DEPTH_DARK_DAY = 0.5f;
+	private static final float DEPTH_DARK_NIGHT = 0.66f, DEPTH_DARK_DAY = 0.45f;
 	/** The dark copy is a bit more saturated than the face, like a shaded side. */
-	private static final float DEPTH_SATURATION = 1.3f;
+	private static final float DEPTH_SATURATION = 1.55f;
 	/** The next word shows faintly and smaller before it's sung, brightening as its turn comes (reference pictures). */
 	private static final float NEXT_ALPHA_MIN = 0.3f, NEXT_ALPHA_MAX = 0.6f, NEXT_SCALE = 0.75f;
 	/** The light copy is this much brighter than the face. */
