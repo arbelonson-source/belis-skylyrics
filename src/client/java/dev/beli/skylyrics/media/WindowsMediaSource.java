@@ -402,7 +402,8 @@ public final class WindowsMediaSource implements MediaSource {
 	}
 
 	static List<String> command(String exe, Path script, Path coverDir) {
-		String run = "& ([scriptblock]::Create([IO.File]::ReadAllText(" + quote(script) + "))) -CoverDir " + quote(coverDir);
+		// Dot-sourced: with "&" the script's own variables and $script: would be two different scopes
+		String run = ". ([scriptblock]::Create([IO.File]::ReadAllText(" + quote(script) + "))) -CoverDir " + quote(coverDir);
 		return List.of(exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", run);
 	}
 

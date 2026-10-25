@@ -67,4 +67,5 @@ $manager = [pscustomobject]@{ Sessions = $sessions }
 $manager | Add-Member ScriptMethod GetSessions { $this.Sessions }
 $manager | Add-Member ScriptMethod GetCurrentSession { $this.Sessions[0] }
 
-& $Script -CoverDir $CoverDir -Manager $manager
+# Started the way the game starts it (WindowsMediaSource.command): read in and dot-sourced, so $script: means one scope
+. ([scriptblock]::Create([IO.File]::ReadAllText($Script))) -CoverDir $CoverDir -Manager $manager
