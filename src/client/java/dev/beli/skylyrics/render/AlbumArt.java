@@ -16,6 +16,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import javax.imageio.ImageIO;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -111,7 +114,12 @@ public final class AlbumArt {
 		pending = null;
 		Minecraft mc = Minecraft.getInstance();
 		if (texture == null) {
-			texture = new DynamicTexture(() -> "SkyLyrics album art", image);
+			texture = new DynamicTexture(() -> "SkyLyrics album art", image) {
+				{
+					// Smooth scaling, so the round cover doesn't get jagged edges when drawn small
+					sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+				}
+			};
 			mc.getTextureManager().register(TEXTURE, texture);
 		} else {
 			texture.setPixels(image);
@@ -158,7 +166,11 @@ public final class AlbumArt {
 						n++;
 					}
 				}
-				out.setPixel(x, y, 0xFF000000 | (int) (r / n) << 16 | (int) (g / n) << 8 | (int) (b / n));
+				// Round cover: fade out past the circle's edge over about one pixel
+				float dx = x + 0.5f - SIZE / 2f, dy = y + 0.5f - SIZE / 2f;
+				float edge = SIZE / 2f - (float) Math.sqrt(dx * dx + dy * dy);
+				int a = Math.round(255 * Math.clamp(edge + 0.5f, 0f, 1f));
+				out.setPixel(x, y, a << 24 | (int) (r / n) << 16 | (int) (g / n) << 8 | (int) (b / n));
 			}
 		}
 		return out;

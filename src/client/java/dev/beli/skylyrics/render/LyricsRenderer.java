@@ -39,7 +39,7 @@ public final class LyricsRenderer {
 	private static final float DEG = Mth.DEG_TO_RAD;
 	private static final long ANIM_NS = 450_000_000L;
 	/** Lines show a little before their timestamp so the animation has finished when the singing starts. */
-	private static final long LEAD_MS = 150;
+	static final long LEAD_MS = 150;
 	private static final float ROW_H = 10f;
 	private static final float SECONDARY = 0.7f;
 	private static final float GAP = 5f;

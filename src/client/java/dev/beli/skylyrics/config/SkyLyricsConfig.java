@@ -97,6 +97,8 @@ public final class SkyLyricsConfig {
 	// Now-playing card
 	public boolean nowPlayingHud = true;
 	public boolean hudOnlyOnChange = true;
+	/** The top bar also shows the line being sung, with the current word highlighted. */
+	public boolean barLyrics = true;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */

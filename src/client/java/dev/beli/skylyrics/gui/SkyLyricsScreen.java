@@ -237,9 +237,12 @@ public final class SkyLyricsScreen extends Screen {
 		Row menus = new Toggle("Hide in menus", "When a menu or chat is open", () -> cfg.hideInMenus, v -> cfg.hideInMenus = v);
 		Row paused = new Toggle("Hide when paused", "When the music is paused", () -> cfg.hideWhenPaused, v -> cfg.hideWhenPaused = v);
 
-		Row card = new Toggle("Now-playing card", "Song name at the top of the screen",
+		Row card = new Toggle("Top bar", "Song and lyrics at the top of the screen",
 				() -> cfg.nowPlayingHud, v -> cfg.nowPlayingHud = v);
-		Row onlyOnChange = new Toggle("Only when the song changes", "Shows for a few seconds, then slides away",
+		Row barLyrics = new Toggle("Lyrics in the bar", "The line being sung, word by word",
+				() -> cfg.barLyrics, v -> cfg.barLyrics = v)
+				.when(() -> cfg.nowPlayingHud);
+		Row onlyOnChange = new Toggle("Song name only on change", "Shows for a few seconds, then hides",
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
 
@@ -249,7 +252,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card("Hide lyrics", f1, menus, paused),
-				new Card("Now-playing card", card, onlyOnChange),
+				new Card("Top bar", card, barLyrics, onlyOnChange),
 				new Card("Keys", openKey, controls));
 	}
 
