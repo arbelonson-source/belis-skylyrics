@@ -115,7 +115,7 @@ jobs:
           exit $r
       - name: discover renamed api
         if: always() && (matrix.mc == '26.1' || matrix.mc == '26.3')
-        run: bash probe/discover2.sh "$RUNNER_TEMP/port/build/probe-cp.txt" > "$RUNNER_TEMP/javap.txt" 2>&1 || true
+        run: bash probe/discover3.sh "$RUNNER_TEMP/port/build/probe-cp.txt" > "$RUNNER_TEMP/javap.txt" 2>&1 || true
       - name: report wave 1
         if: always()
         run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 0 8

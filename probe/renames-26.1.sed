@@ -15,3 +15,5 @@ s/\.resizeDisplay()/.resizeGui()/g
 s/public void renderBackground(GuiGraphicsExtractor/public void extractBackground(GuiGraphicsExtractor/
 s/super\.renderBackground(/super.extractBackground(/
 s/public void render(GuiGraphicsExtractor g, int mouseX/public void extractRenderState(GuiGraphicsExtractor g, int mouseX/
+s/\.drawString(/.text(/g
+s/\.drawCenteredString(/.centeredText(/g
