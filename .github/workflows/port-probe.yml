@@ -1,0 +1,25 @@
+# THROWAWAY (port-26x only): prints the 26.x signatures the mixins need, as annotations.
+name: port-probe
+on:
+  push:
+    branches: [port-26x]
+    paths: ['.github/port-probe/**', '.github/workflows/port-probe.yml']
+
+jobs:
+  javap:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ['26.1', '26.2', '26.3']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - run: python3 .github/port-probe/javap.py "${{ matrix.mc }}" "$RUNNER_TEMP/out.txt"
+      - if: always()
+        run: python3 .github/port-probe/emit.py "$RUNNER_TEMP/out.txt" "javap ${{ matrix.mc }}" 0 9
+      - if: always()
+        run: python3 .github/port-probe/emit.py "$RUNNER_TEMP/out.txt" "javap ${{ matrix.mc }}" 9 9
