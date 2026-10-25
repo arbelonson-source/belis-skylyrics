@@ -216,9 +216,11 @@ public final class SkyLyricsScreen extends Screen {
 			}
 			return tracker.track() == Track.NONE ? "No music playing" : "Following " + tracker.sourceName();
 		});
-		Row timing = new Slider("Timing", "Lyrics late? Move right. Early? Move left", -3000, 3000, 50,
-				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v),
-				v -> Math.abs(v) < 1 ? "0 s" : String.format(Locale.ROOT, "%+.2f s", v / 1000));
+		Row timing = new Slider("Timing", "Late? Move right. Early? Left", -3000, 3000, 50,
+				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds);
+		Row songTiming = new Slider("This song", "Remembered for this song only", -3000, 3000, 50,
+				() -> cfg.songOffset(tracker.track()), v -> cfg.setSongOffset(tracker.track(), (int) Math.round(v)),
+				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE);
 		Row demo = new Toggle("Demo song", "A built-in song for trying things out",
 				() -> cfg.demoMode, v -> {
 					cfg.demoMode = v;
@@ -229,7 +231,11 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card("Now playing", new NowPlayingRow(), status),
-				new Card("Player", player, connection, timing, demo, plain));
+				new Card("Player", player, connection, timing, songTiming, demo, plain));
+	}
+
+	public static String seconds(double ms) {
+		return Math.abs(ms) < 1 ? "0 s" : String.format(Locale.ROOT, "%+.2f s", ms / 1000);
 	}
 
 	private List<Card> displayTab() {

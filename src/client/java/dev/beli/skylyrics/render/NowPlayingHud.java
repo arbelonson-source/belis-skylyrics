@@ -285,7 +285,7 @@ public final class NowPlayingHud {
 		if (!lyrics.synced() || lyrics.isEmpty()) {
 			return null;
 		}
-		long time = tracker.positionMs() + cfg.syncOffsetMs + LyricsRenderer.LEAD_MS;
+		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
 		int i = lyrics.indexAt(time);
 		if (i < 0 || i >= lyrics.lines().size()) {
 			return null;

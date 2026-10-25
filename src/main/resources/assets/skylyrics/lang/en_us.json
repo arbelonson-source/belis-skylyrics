@@ -6,5 +6,9 @@
   "key.skylyrics.play_pause": "Play / pause music",
   "key.skylyrics.next": "Next song",
   "key.skylyrics.previous": "Previous song",
+  "key.skylyrics.lyrics_late": "Lyrics are late (this song)",
+  "key.skylyrics.lyrics_early": "Lyrics are early (this song)",
+  "skylyrics.timing.song": "Timing for this song: %s",
+  "skylyrics.timing.none": "No song playing",
   "modmenu.descriptionTranslation.skylyrics": "Synced lyrics for the song you're playing, floating in the sky."
 }

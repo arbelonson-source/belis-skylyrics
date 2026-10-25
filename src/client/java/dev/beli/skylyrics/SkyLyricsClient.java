@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -24,6 +25,7 @@ import dev.beli.skylyrics.lyrics.LrclibClient;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.MprisSource;
+import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.render.AlbumArt;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
@@ -47,6 +49,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private KeyMapping playPause;
 	private KeyMapping nextTrack;
 	private KeyMapping previousTrack;
+	private KeyMapping lyricsLate;
+	private KeyMapping lyricsEarly;
 
 	public static SkyLyricsClient get() {
 		return instance;
@@ -100,6 +104,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		playPause = key("play_pause", InputConstants.UNKNOWN.getValue(), category);
 		nextTrack = key("next", InputConstants.UNKNOWN.getValue(), category);
 		previousTrack = key("previous", InputConstants.UNKNOWN.getValue(), category);
+		lyricsLate = key("lyrics_late", InputConstants.UNKNOWN.getValue(), category);
+		lyricsEarly = key("lyrics_early", InputConstants.UNKNOWN.getValue(), category);
 	}
 
 	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
@@ -131,6 +137,27 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		while (previousTrack.consumeClick()) {
 			tracker.previous();
 		}
+		while (lyricsLate.consumeClick()) {
+			nudgeTiming(client, SYNC_STEP_MS);
+		}
+		while (lyricsEarly.consumeClick()) {
+			nudgeTiming(client, -SYNC_STEP_MS);
+		}
+	}
+
+	private static final int SYNC_STEP_MS = 100;
+
+	/** Fixes the timing of just the song playing now, and says so above the hotbar. */
+	private void nudgeTiming(Minecraft client, int ms) {
+		Track track = tracker.track();
+		if (track == Track.NONE) {
+			client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
+			return;
+		}
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		cfg.setSongOffset(track, cfg.songOffset(track) + ms);
+		cfg.save();
+		client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
 	}
 
 	private void shutdown() {

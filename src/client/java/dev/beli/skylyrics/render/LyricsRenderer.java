@@ -95,7 +95,7 @@ public final class LyricsRenderer {
 		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
 			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
 		}
-		long time = tracker.positionMs() + cfg.syncOffsetMs + LEAD_MS;
+		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LEAD_MS;
 		boolean hasLyrics = !current.isEmpty() || current.instrumental();
 		if (hasLyrics) {
 			if (current != shown) {

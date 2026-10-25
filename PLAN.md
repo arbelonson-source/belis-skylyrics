@@ -35,7 +35,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] Config saved to config/skylyrics.json
 
 ### v0.2 — polish
-- [ ] Sync offset per song (+/- buttons), remembered — global offset slider exists, per-song memory still missing
+- [x] Sync offset per song (+/- buttons), remembered
 - [x] Album-art colour theme (lyrics colour matches the cover)
 - [ ] Custom skies (aurora, nebula, …) that work with/without shaders
 - [ ] Beat-ish pulse (glow on each new line)
@@ -57,3 +57,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 18:12: checked with shaders off too. Found two more things dimming the lyrics: rain fog (new in 1.21.6) and clouds painting over see-through text. Auto now draws on screen unless blocks should hide the lyrics; it also steps back to the world while F1 hides the HUD, so F1 screenshots keep their lyrics.
 - 2026-10-25 18:32: new top bar in the style of the Neon Lyrics videos: a dark rounded pill with the round cover, the line being sung (sung words white, the current word on a highlight that glides along, upcoming words grey) and a small equaliser that rests when paused. It shows the title · artist when the song changes, and is the only thing shown if "Lyrics in the bar" is off. Checked both modes on the headless screen with Iris on.
 - 2026-10-25 18:41: new default animation "Words": the old line fades out while the new line's words fade and slide in one after another, like the Neon Lyrics videos. Right-to-left lines (Hebrew) are now put in display order before drawing, so they no longer come out backwards in the sky (unit test DisplayOrderTest). Added a `scroll` command to the dev test hook.
+- 2026-10-25 18:47: timing can now be fixed per song. A "This song" slider under Music, plus two keys (unbound by default, set them in Controls) that nudge the playing song by 0.1 s and say so above the hotbar. Each song keeps its own timing on top of the general one (last 500 songs remembered). Unit test SongOffsetTest.
