@@ -1,0 +1,2 @@
+display=:99 window 543 size 1920x1080 -> 640x480
+display=:99 window 543 size 1920x1080 -> 1600x900
