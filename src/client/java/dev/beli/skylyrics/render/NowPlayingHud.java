@@ -20,6 +20,7 @@ import net.minecraft.util.Mth;
 
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
@@ -109,7 +110,8 @@ public final class NowPlayingHud {
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
 		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg);
 		boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.options.hideGui
-				&& (info || line != null);
+				&& (info || line != null)
+				&& !(mc.screen instanceof SkyLyricsScreen settings && settings.coversTopBar());
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			content = null;
@@ -218,7 +220,9 @@ public final class NowPlayingHud {
 		float tx = x + lead + PAD + ART + GAP;
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
 		p = ease(p);
-		g.enableScissor(Math.round(tx) - 4, Math.round(y) + 1, Math.round(tx + maxText) + 4, Math.round(y + H) - 1);
+		// Up to the bar's edge as it is now: while the bar grows, longer text mustn't run over the equaliser
+		float right = Math.min(tx + maxText + 4, x + width - (7 + EQ_W + 8) + 3);
+		g.enableScissor(Math.round(tx) - 4, Math.round(y) + 1, Math.round(right), Math.round(y + H) - 1);
 		if (old != null && p < 1) {
 			drawContent(g, font, style, old, tx, y + H / 2f - p * 7, textScale, maxText, a * (1 - p), accent, false, dt);
 		}

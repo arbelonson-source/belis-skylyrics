@@ -754,6 +754,11 @@ public final class SkyLyricsScreen extends Screen {
 		return super.keyPressed(event);
 	}
 
+	/** At big GUI scales the panel reaches the top of the screen, where the top bar would peek out from under it. */
+	public boolean coversTopBar() {
+		return !preview && py < 30;
+	}
+
 	public void setPreview(boolean on) {
 		preview = on;
 	}
