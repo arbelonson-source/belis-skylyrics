@@ -1,0 +1,10 @@
+{
+  "key.category.skylyrics.main": "Beli's SkyLyrics",
+  "key.skylyrics.open_settings": "Open settings",
+  "key.skylyrics.toggle": "Show or hide lyrics",
+  "key.skylyrics.now_playing": "Show now-playing card",
+  "key.skylyrics.play_pause": "Play / pause music",
+  "key.skylyrics.next": "Next song",
+  "key.skylyrics.previous": "Previous song",
+  "modmenu.descriptionTranslation.skylyrics": "Synced lyrics for the song you're playing, floating in the sky."
+}

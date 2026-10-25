@@ -1,0 +1,94 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	maven {
+		name = 'Terraformers'
+		url = 'https://maven.terraformersmc.com/releases/'
+	}
+	maven {
+		name = 'Modrinth'
+		url = 'https://api.modrinth.com/maven'
+		content { includeGroup 'maven.modrinth' }
+	}
+	mavenCentral()
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"skylyrics" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Optional: adds a config button in Mod Menu when it is installed
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+	// Only in the test game (runClient), to check the lyrics with Sodium + Iris shaders. Not shipped.
+	modLocalRuntime "maven.modrinth:sodium:${project.sodium_version}"
+	modLocalRuntime "maven.modrinth:iris:${project.iris_version}"
+
+	// Talks to music players over D-Bus (MPRIS) on Linux. Bundled inside the mod jar.
+	clientImplementation "com.github.hypfvieh:dbus-java-core:${project.dbus_java_version}"
+	clientImplementation "com.github.hypfvieh:dbus-java-transport-native-unixsocket:${project.dbus_java_version}"
+	include "com.github.hypfvieh:dbus-java-core:${project.dbus_java_version}"
+	include "com.github.hypfvieh:dbus-java-transport-native-unixsocket:${project.dbus_java_version}"
+
+	testImplementation "org.junit.jupiter:junit-jupiter:5.13.4"
+	testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+sourceSets {
+	test {
+		compileClasspath += sourceSets.client.output + sourceSets.client.compileClasspath
+		runtimeClasspath += sourceSets.client.output + sourceSets.client.runtimeClasspath
+	}
+}
+
+test {
+	useJUnitPlatform()
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+}
+
+java {
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	def projectName = project.name
+	inputs.property "projectName", projectName
+
+	from("LICENSE") {
+		rename { "${it}_$projectName"}
+	}
+}

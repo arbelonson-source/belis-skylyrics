@@ -1,0 +1,36 @@
+{
+	"schemaVersion": 1,
+	"id": "skylyrics",
+	"version": "${version}",
+	"name": "Beli's SkyLyrics",
+	"description": "Synced lyrics for the song you're listening to, glowing in the Minecraft sky. Free and open source.",
+	"authors": [
+		"Beli"
+	],
+	"contact": {
+		"sources": "https://github.com/arbelonson-source/belis-skylyrics",
+		"issues": "https://github.com/arbelonson-source/belis-skylyrics/issues"
+	},
+	"license": "AGPL-3.0-only",
+	"icon": "assets/skylyrics/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"dev.beli.skylyrics.SkyLyricsClient"
+		],
+		"modmenu": [
+			"dev.beli.skylyrics.gui.ModMenuIntegration"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.17.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*",
+		"iris": "*",
+		"sodium": "*"
+	}
+}
