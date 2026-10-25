@@ -27,7 +27,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] LRC parser (multi-timestamp lines, offsets, empty lines = breaks) + unit tests
 - [x] Sky renderer: big glowing text far away in the sky, billboard, fade/rise animation, karaoke sweep
 - [x] Modes: Sky (fixed direction in the world) / Floating (in front of you, follows view)
-- [ ] Works with Iris shaders on + off, Sodium
+- [x] Works with Iris shaders on + off, Sodium
 - [x] Now-playing pill (top of screen): album art, title · artist, progress
 - [x] Config screen: sidebar tabs, cards, toggles, segmented, sliders, colour swatches, live preview, player controls
 - [x] Keybind (J) to open config, Mod Menu button
@@ -54,3 +54,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25: owner asked to see progress on GitHub now and to use AGPL-3.0. Uploaded as a public work-in-progress repo; push after every session from now on.
 - 2026-10-25 17:51: smooth lyrics font (Poppins SemiBold + Noto Sans Hebrew, both OFL) with a Font switch in the Style card; checked in the sky with Iris on. Still to fix: clouds draw over the lyrics and shaders make the text dark.
 - 2026-10-25 18:04: shaders no longer hide the lyrics. New "Draw on top" setting (Auto/Always/Never): with a shader pack on, Auto draws the lyrics as a screen layer pinned to the same spot in the sky, so they stay bright and clouds cannot cover them. Also fixed the Animation buttons, whose labels were swapped.
+- 2026-10-25 18:12: checked with shaders off too. Found two more things dimming the lyrics: rain fog (new in 1.21.6) and clouds painting over see-through text. Auto now draws on screen unless blocks should hide the lyrics; it also steps back to the world while F1 hides the HUD, so F1 screenshots keep their lyrics.

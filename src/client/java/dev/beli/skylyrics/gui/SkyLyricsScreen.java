@@ -172,7 +172,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle("See through blocks", "Stay visible behind hills and walls",
 				() -> cfg.seeThroughBlocks, v -> cfg.seeThroughBlocks = v);
-		Row layer = new Segmented("Draw on top", "Keeps lyrics bright above shader clouds. Auto: only with shaders",
+		Row layer = new Segmented("Draw on top", "Keeps lyrics bright through shaders, clouds and rain",
 				new String[] {"Auto", "Always", "Never"}, () -> switch (cfg.layer) {
 					case AUTO -> 0;
 					case SCREEN -> 1;

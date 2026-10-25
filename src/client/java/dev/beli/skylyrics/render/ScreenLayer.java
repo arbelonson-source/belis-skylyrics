@@ -4,6 +4,8 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import java.lang.reflect.Method;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -36,11 +38,23 @@ public final class ScreenLayer {
 	}
 
 	public static boolean active(SkyLyricsConfig cfg) {
+		// The HUD isn't drawn while F1 hides it, so lyrics that should stay visible go back to the world.
+		if (Minecraft.getInstance().options.hideGui) {
+			return false;
+		}
 		return switch (cfg.layer) {
 			case SCREEN -> true;
 			case WORLD -> false;
-			case AUTO -> shadersOn();
+			// See-through text in the world gets painted over by clouds, so only keep it there
+			// when blocks are meant to hide it and nothing would wash it out.
+			case AUTO -> cfg.seeThroughBlocks || shadersOn() || raining();
 		};
+	}
+
+	/** Rain pulls the fog in close enough to swallow the sky text, so it goes on screen too. */
+	static boolean raining() {
+		ClientLevel level = Minecraft.getInstance().level;
+		return level != null && level.getRainLevel(1f) > 0f;
 	}
 
 	/**

@@ -50,7 +50,7 @@ public final class SkyLyricsConfig {
 	}
 
 	public enum Layer {
-		/** On screen while a shader pack is on, in the world otherwise. */
+		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
 		AUTO,
 		/** In the world: hills can hide the text, shaders light it. */
 		WORLD,
