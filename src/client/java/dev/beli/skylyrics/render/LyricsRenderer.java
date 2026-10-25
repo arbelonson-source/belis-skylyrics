@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
@@ -53,6 +54,39 @@ public final class LyricsRenderer {
 	private static final float SECONDARY = 0.7f;
 	private static final float GAP = 5f;
 	private static final String DOTS = "♪  ♪  ♪";
+
+	/** The arc layout's letters are a bit smaller than the stacked lines': about 3 % of the screen height. */
+	private static final float ARC_SIZE = 0.7f;
+	/** A sung line leaves in this long, fading as it drifts up. */
+	private static final long ARC_LEAVE_NS = 230_000_000L;
+	/** How far it drifts up meanwhile, and how far a new word rises as it fades in (text units, about 2 % and 0.75 % of the screen height). */
+	private static final float ARC_LEAVE_RISE = 7.4f, ARC_APPEAR_RISE = 2.6f;
+	/** A word fades in over this long once it's sung, starting this long after, so the old line is gone first. */
+	private static final long ARC_WORD_FADE_MS = 300, ARC_WORD_DELAY_MS = 100;
+	/** The word being sung is a little whiter, and settles to the normal colour over this long. */
+	private static final long ARC_CURRENT_MS = 250;
+	private static final float CURRENT_WHITE = 0.3f;
+	/** Each line sits this many degrees left or right of where you look, and this many above the crosshair. */
+	private static final float ARC_SIDE = 6f, ARC_ABOVE_MIN = 5f, ARC_ABOVE_MAX = 8f;
+	private static final int SALT_SIDE = 101, SALT_UP = 102;
+	/**
+	 * A line further than this many degrees left/right or up/down from where you look (near the screen's edge or
+	 * past it), for this long, moves to where you look now.
+	 */
+	private static final float ARC_LOST_YAW = 35f, ARC_LOST_PITCH = 25f;
+	private static final long ARC_LOST_NS = 1_000_000_000L;
+	/** A line that moved to a new spot fades in there over this long. */
+	private static final long ARC_ARRIVE_NS = 300_000_000L;
+	/** Depth copies: the dark one this far down, the light one this far up (text units, about 0.1 and 0.05 em). */
+	private static final float DEPTH_DOWN = 1.05f, DEPTH_UP = 0.5f;
+	/** The dark copy's brightness by night and by day (against a bright sky it needs to be darker to show). */
+	private static final float DEPTH_DARK_NIGHT = 0.66f, DEPTH_DARK_DAY = 0.45f;
+	/** The dark copy is a bit more saturated than the face, like a shaded side. */
+	private static final float DEPTH_SATURATION = 1.55f;
+	/** The light copy is this much brighter than the face. */
+	private static final float DEPTH_LIGHT = 1.035f;
+	/** How far apart the layers behind the text sit in the world, in text units. */
+	private static final float LAYER_STEP = 0.35f;
 
 	private final MediaTracker tracker;
 	private final LyricsService service;
@@ -78,10 +112,34 @@ public final class LyricsRenderer {
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
 	private float wrapCacheProbe;
-	private Pending pending;
+	private @Nullable Pending pending;
+	private final WorldWords worldWords = new WorldWords();
+	/** Arc layouts of the lines on show, keyed by line number and text. */
+	private final Map<String, ArcText> arcCache = new HashMap<>();
+	/** Where in the sky each arc line was put, by line number. */
+	private final Map<Integer, ArcAnchor> arcAnchors = new HashMap<>();
 
 	/** A frame laid out by the world pass, waiting for the HUD pass to draw it on screen. */
-	private record Pending(Vector3f offset, float scale, float wrapWidth, long time, long now) {}
+	private record Pending(List<Spot> spots, float scale, float wrapWidth, long time, long now) {}
+
+	/** One block of text and where it sits around the camera; {@code arc} is null for the stacked lines. */
+	private record Spot(Vector3f offset, Quaternionf orientation, @Nullable ArcShot arc) {}
+
+	/**
+	 * An arc line to draw: which line, how far it is through leaving (or -1 while it's being sung), and how far
+	 * through fading in at its spot (0..1).
+	 */
+	private record ArcShot(int index, float leave, float arrive) {}
+
+	/** An arc line's spot in the sky, and since when it's been there or out of view. */
+	private static final class ArcAnchor {
+		float yaw, pitch;
+		long placed;
+		long lostSince = -1;
+	}
+
+	/** A line cut into words and placed for the arc layout. */
+	private record ArcText(String[] words, float[] widths, int[] firstChar, int total, List<ArcLayout.Group> groups) {}
 
 	public LyricsRenderer(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -115,6 +173,9 @@ public final class LyricsRenderer {
 				lastIndex = Integer.MIN_VALUE;
 				wrapCache.clear();
 				offsetCache.clear();
+				arcCache.clear();
+				arcAnchors.clear();
+				worldWords.clear();
 			}
 			frozenTime = time;
 		} else {
@@ -129,6 +190,11 @@ public final class LyricsRenderer {
 		updateColor(cfg, dt, now);
 		updateDaylight(mc, camera, dt);
 		updateAnchor(cfg, camera, dt);
+		if (cfg.layout == Layout.WORLD && !shown.instrumental()) {
+			renderWorldWords(context, mc, cfg, camera, time, now, dt);
+			return;
+		}
+		worldWords.clear();
 		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental()) {
 			return;
 		}
@@ -146,28 +212,145 @@ public final class LyricsRenderer {
 			wrapCacheProbe = probe;
 			wrapCache.clear();
 			offsetCache.clear();
+			arcCache.clear();
 			wrapCacheWidth = wrapWidth;
 			wrapCacheStyle = wrapStyle;
 		}
 
-		Quaternionf orientation = new Quaternionf().rotationYXZ(Mth.PI - anchorYaw * DEG, -anchorPitch * DEG, 0);
-		Vector3f offset = new Vector3f(0, 0, -1).rotate(orientation).mul(distance);
+		List<Spot> spots = new ArrayList<>();
+		if (cfg.layout == Layout.ARC && !shown.instrumental()) {
+			for (ArcShot shot : arcShots(cfg, camera, time, now)) {
+				ArcAnchor at = arcAnchors.get(shot.index());
+				spots.add(spot(at.yaw, at.pitch, distance, shot));
+			}
+		} else {
+			spots.add(spot(anchorYaw, anchorPitch, distance, null));
+		}
 
 		if (ScreenLayer.active(cfg) && ScreenLayer.ready()) {
-			pending = new Pending(offset, scale, wrapWidth, time, now);
+			pending = new Pending(spots, scale, wrapWidth, time, now);
 			return;
 		}
 
 		PoseStack pose = context.matrices();
-		pose.pushPose();
-		pose.translate(offset.x, offset.y, offset.z);
-		pose.mulPose(orientation);
-		pose.scale(scale, -scale, scale);
-
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
 		Draw draw = new Draw(new WorldCanvas(context.commandQueue(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
-		drawContent(draw, cfg, time, now);
-		pose.popPose();
+		for (Spot spot : spots) {
+			pose.pushPose();
+			pose.translate(spot.offset().x, spot.offset().y, spot.offset().z);
+			pose.mulPose(spot.orientation());
+			pose.scale(scale, -scale, scale);
+			drawSpot(draw, spot, cfg, time, now);
+			pose.popPose();
+		}
+	}
+
+	private static Spot spot(float yaw, float pitch, float distance, @Nullable ArcShot arc) {
+		Quaternionf orientation = new Quaternionf().rotationYXZ(Mth.PI - yaw * DEG, -pitch * DEG, 0);
+		return new Spot(new Vector3f(0, 0, -1).rotate(orientation).mul(distance), orientation, arc);
+	}
+
+	private void drawSpot(Draw draw, Spot spot, SkyLyricsConfig cfg, long time, long now) {
+		ArcShot arc = spot.arc();
+		if (arc != null) {
+			draw.arcLine(arc, time, now);
+		} else {
+			drawContent(draw, cfg, time, now);
+		}
+	}
+
+	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
+	private void renderWorldWords(WorldRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
+			long now, float dt) {
+		int index = shown.indexAt(time);
+		String text = null;
+		float sungChars = 0;
+		if (sungLine(index)) {
+			LyricLine line = shown.get(index);
+			text = line.text();
+			int total = text.codePointCount(0, text.length());
+			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), lineEnd(index)) * total : total;
+		}
+		Style style = LyricsFont.sky(cfg);
+		worldWords.update(index, text, sungChars, camera, mc.level, mc.font, style, now, dt);
+		float alpha = visibility * cfg.opacity;
+		if (alpha <= 0.01f) {
+			return;
+		}
+		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
+		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, rgb(), alpha, sungChars, now);
+	}
+
+	/** When the singing of a line counts as over, for spreading its words over its time. */
+	private long lineEnd(int index) {
+		long start = shown.get(index).timeMs();
+		return Math.min(shown.endOf(index, start + 5000), start + 12000);
+	}
+
+	/**
+	 * The arc lines to draw this frame: the one being sung, plus the previous one while it leaves. Each line gets
+	 * its spot in the sky when it starts (where you're looking, give or take a little) and keeps it.
+	 */
+	private List<ArcShot> arcShots(SkyLyricsConfig cfg, Camera camera, long time, long now) {
+		int index = shown.indexAt(time);
+		noteIndex(index, now);
+		List<ArcShot> shots = new ArrayList<>(2);
+		float leave = (now - changedAt) / (float) ARC_LEAVE_NS;
+		int previous = previousIndex;
+		if (previous != index && leave < 1 && sungLine(previous)) {
+			shots.add(new ArcShot(previous, leave, arrival(arcAnchor(cfg, camera, previous, now, false), now)));
+		}
+		if (sungLine(index)) {
+			shots.add(new ArcShot(index, -1, arrival(arcAnchor(cfg, camera, index, now, true), now)));
+		}
+		arcAnchors.keySet().removeIf(i -> i != index && i != previous);
+		return shots;
+	}
+
+	private boolean sungLine(int index) {
+		return index >= 0 && index < shown.lines().size() && !shown.get(index).isBreak();
+	}
+
+	private static float arrival(ArcAnchor anchor, long now) {
+		return Mth.clamp((now - anchor.placed) / (float) ARC_ARRIVE_NS, 0, 1);
+	}
+
+	/**
+	 * The line's spot: where you're looking when it starts, a little above the crosshair, and then it stays put
+	 * like the clouds. A line you've turned well away from for a moment comes back to where you look now, so a
+	 * long line isn't lost behind you. With a fixed compass direction the lines keep to it instead.
+	 */
+	private ArcAnchor arcAnchor(SkyLyricsConfig cfg, Camera camera, int index, long now, boolean follow) {
+		boolean fixed = cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW;
+		ArcAnchor anchor = arcAnchors.get(index);
+		if (anchor != null && !fixed && follow) {
+			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW
+					|| Math.abs(anchor.pitch - camera.xRot()) > ARC_LOST_PITCH) {
+				if (anchor.lostSince < 0) {
+					anchor.lostSince = now;
+				} else if (now - anchor.lostSince > ARC_LOST_NS) {
+					anchor = null;
+				}
+			} else {
+				anchor.lostSince = -1;
+			}
+		}
+		if (anchor == null) {
+			long seed = ArcLayout.seed(index, shown.get(index).text());
+			float side = (ArcLayout.unit(seed, 0, SALT_SIDE) * 2 - 1) * ARC_SIDE;
+			float up = ARC_ABOVE_MIN + ArcLayout.unit(seed, 0, SALT_UP) * (ARC_ABOVE_MAX - ARC_ABOVE_MIN);
+			anchor = new ArcAnchor();
+			anchor.placed = now;
+			if (fixed) {
+				anchor.yaw = cfg.direction.yaw + side;
+				anchor.pitch = -cfg.height - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
+			} else {
+				anchor.yaw = camera.yRot() + side;
+				anchor.pitch = Mth.clamp(camera.xRot() - up, -85, 85);
+			}
+			arcAnchors.put(index, anchor);
+		}
+		return anchor;
 	}
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
@@ -177,19 +360,21 @@ public final class LyricsRenderer {
 		if (frame == null) {
 			return;
 		}
-		Vector3f at = ScreenLayer.project(frame.offset(), g.guiWidth(), g.guiHeight());
-		if (at == null) {
-			return; // behind you
-		}
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		float size = frame.scale() * at.z;
-		g.pose().pushMatrix();
-		g.pose().translate(at.x, at.y);
-		g.pose().scale(size, size);
 		Draw draw = new Draw(new ScreenCanvas(g, mc.font), mc.font, cfg, rgb(), frame.wrapWidth());
-		drawContent(draw, cfg, frame.time(), frame.now());
-		g.pose().popMatrix();
+		for (Spot spot : frame.spots()) {
+			Vector3f at = ScreenLayer.project(spot.offset(), g.guiWidth(), g.guiHeight());
+			if (at == null) {
+				continue; // behind you
+			}
+			float size = frame.scale() * at.z;
+			g.pose().pushMatrix();
+			g.pose().translate(at.x, at.y);
+			g.pose().scale(size, size);
+			drawSpot(draw, spot, cfg, frame.time(), frame.now());
+			g.pose().popMatrix();
+		}
 	}
 
 	private void drawContent(Draw draw, SkyLyricsConfig cfg, long time, long now) {
@@ -200,13 +385,18 @@ public final class LyricsRenderer {
 		}
 	}
 
-	private void drawLines(Draw draw, SkyLyricsConfig cfg, long time, long now) {
-		int index = shown.indexAt(time);
+	/** Remembers when the line being sung changed, for the animations between lines. */
+	private void noteIndex(int index, long now) {
 		if (index != lastIndex) {
 			previousIndex = lastIndex;
 			lastIndex = index;
 			changedAt = previousIndex == Integer.MIN_VALUE ? now - ANIM_NS : now;
 		}
+	}
+
+	private void drawLines(Draw draw, SkyLyricsConfig cfg, long time, long now) {
+		int index = shown.indexAt(time);
+		noteIndex(index, now);
 		float p = Mth.clamp((now - changedAt) / (float) ANIM_NS, 0, 1);
 		boolean stepForward = index == previousIndex + 1;
 
@@ -355,19 +545,27 @@ public final class LyricsRenderer {
 	/** One frame's worth of drawing settings. */
 	/** Where the text ends up: in the world, or over the finished screen. */
 	private interface Canvas {
-		void push(float x, float y, float scale);
+		/** Moves to (x, y), turns by {@code angle} degrees (clockwise on screen) and scales. */
+		void push(float x, float y, float scale, float angle);
 
 		void pop();
 
-		/** {@code glow} copies sit a hair behind the real text. */
-		void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, boolean glow);
+		/**
+		 * Copies with a higher {@code behind} sit a hair further back than the real text (0), so glow and depth
+		 * layers never flicker through it in the world.
+		 */
+		void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind);
 	}
 
 	private record WorldCanvas(SubmitNodeCollector out, PoseStack pose, Font.DisplayMode mode) implements Canvas {
 		@Override
-		public void push(float x, float y, float scale) {
+		public void push(float x, float y, float scale, float angle) {
 			pose.pushPose();
 			pose.translate(x, y, 0);
+			if (angle != 0) {
+				// The text space has y pointing down, so a positive turn about z is clockwise on screen
+				pose.mulPose(new Quaternionf().rotationZ(angle * DEG));
+			}
 			pose.scale(scale, scale, scale);
 		}
 
@@ -377,13 +575,13 @@ public final class LyricsRenderer {
 		}
 
 		@Override
-		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, boolean glow) {
-			if (glow) {
+		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
+			if (behind > 0) {
 				pose.pushPose();
-				pose.translate(0, 0, -0.35f);
+				pose.translate(0, 0, -LAYER_STEP * behind);
 			}
 			out.submitText(pose, x, y, seq, shadow, mode, LightTexture.FULL_BRIGHT, argb, 0, 0);
-			if (glow) {
+			if (behind > 0) {
 				pose.popPose();
 			}
 		}
@@ -391,9 +589,12 @@ public final class LyricsRenderer {
 
 	private record ScreenCanvas(GuiGraphics g, Font font) implements Canvas {
 		@Override
-		public void push(float x, float y, float scale) {
+		public void push(float x, float y, float scale, float angle) {
 			g.pose().pushMatrix();
 			g.pose().translate(x, y);
+			if (angle != 0) {
+				g.pose().rotate(angle * DEG); // y points down here too, so positive is clockwise
+			}
 			g.pose().scale(scale, scale);
 		}
 
@@ -403,7 +604,7 @@ public final class LyricsRenderer {
 		}
 
 		@Override
-		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, boolean glow) {
+		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
 			g.pose().pushMatrix();
 			g.pose().translate(x, y);
 			g.drawString(font, seq, 0, 0, argb, shadow);
@@ -468,6 +669,129 @@ public final class LyricsRenderer {
 			return grow;
 		}
 
+		/** Cuts a line into words and places them for the arc layout. */
+		ArcText arcText(int index, String text) {
+			List<String> words = new ArrayList<>();
+			List<Integer> first = new ArrayList<>();
+			int[] cps = text.codePoints().toArray();
+			for (int i = 0; i < cps.length; ) {
+				if (cps[i] == ' ') {
+					i++;
+					continue;
+				}
+				int start = i;
+				while (i < cps.length && cps[i] != ' ') {
+					i++;
+				}
+				words.add(new String(cps, start, i - start));
+				first.add(start);
+			}
+			int n = words.size();
+			float[] widths = new float[n];
+			boolean[] pause = new boolean[n];
+			int[] firstChar = new int[n];
+			for (int w = 0; w < n; w++) {
+				String word = words.get(w);
+				widths[w] = LyricsFont.width(font, base, word);
+				pause[w] = ",.;:!?…".indexOf(word.charAt(word.length() - 1)) >= 0;
+				firstChar[w] = first.get(w);
+			}
+			boolean rtl = Bidi.requiresBidi(text.toCharArray(), 0, text.length())
+					&& !new Bidi(text, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
+			float space = LyricsFont.width(font, base, " ");
+			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause), space,
+					ArcLayout.seed(index, text), rtl);
+			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups);
+		}
+
+		/**
+		 * One line of the arc layout. Words appear one at a time as they're sung, fading in as they rise a little;
+		 * once sung they hold still until the whole line leaves together, fading as it drifts up.
+		 */
+		void arcLine(ArcShot shot, long time, long now) {
+			int index = shot.index();
+			LyricLine line = shown.get(index);
+			String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
+			ArcText arc = arcCache.computeIfAbsent(index + "\n" + text, k -> arcText(index, text));
+			boolean leaving = shot.leave() >= 0;
+			float leave = leaving ? shot.leave() : 0;
+			float alpha = visibility * cfg.opacity * (1 - leave) * shot.arrive();
+			if (alpha <= 0.01f) {
+				return;
+			}
+			// Without word timing (karaoke off, plain lyrics) the words come in one after another as the line starts
+			boolean timed = cfg.karaoke && shown.synced();
+			long start = line.timeMs(), end = lineEnd(index);
+			long sungAt = time - LEAD_MS - ARC_WORD_DELAY_MS;
+			float since = (now - changedAt) / 1e9f;
+			int dark = depthDark(color, daylight), light = depthLight(color);
+			int words = arc.words().length;
+
+			canvas.push(0, -ARC_LEAVE_RISE * easeOutCubic(leave), ARC_SIZE, 0);
+			for (ArcLayout.Group g : arc.groups()) {
+				canvas.push(g.x(), g.y(), g.scale(), g.angle());
+				for (int w = g.from(); w < g.to(); w++) {
+					float e = 1, current = 0;
+					if (!leaving && timed) {
+						long at = start + (end - start) * arc.firstChar()[w] / arc.total();
+						long next = w + 1 < words ? start + (end - start) * arc.firstChar()[w + 1] / arc.total() : end;
+						e = Mth.clamp((sungAt - at) / (float) ARC_WORD_FADE_MS, 0, 1);
+						if (sungAt >= at) {
+							current = Mth.clamp((next - sungAt) / (float) ARC_CURRENT_MS, 0, 1);
+						}
+					} else if (!leaving) {
+						e = Mth.clamp((since - w * WORD_STAGGER) * 1000f / ARC_WORD_FADE_MS, 0, 1);
+					}
+					e = easeOutCubic(e);
+					if (e <= 0.004f) {
+						continue;
+					}
+					float x = g.wordX()[w - g.from()] - arc.widths()[w] / 2;
+					float y = -GLYPH_MIDDLE + (1 - e) * ARC_APPEAR_RISE;
+					word(arc.words()[w], x, y, alpha * e, mix(color, 0xFFFFFF, CURRENT_WHITE * current), dark, light, g.angle());
+				}
+				canvas.pop();
+			}
+			canvas.pop();
+		}
+
+		/**
+		 * One word with its depth: a darker copy just below and a lighter one just above, solid, so the letters look
+		 * raised. The offsets point straight down the screen however the word is turned.
+		 */
+		private void word(String word, float x, float y, float alpha, int face, int dark, int light, float angle) {
+			Display d = Display.of(word);
+			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
+			if (cfg.glow > 0.01f) {
+				int glowByte = Math.round(cfg.glow * alpha * 0.16f * 255);
+				if (glowByte >= 2) {
+					int halo = mix(face, 0x000000, 0.75f * daylight);
+					for (int k = 0; k < 8; k++) {
+						float ang = k * Mth.PI / 4;
+						canvas.text(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
+					}
+				}
+			}
+			if (cfg.depth) {
+				float sin = Mth.sin(angle * DEG), cos = Mth.cos(angle * DEG);
+				canvas.text(x + sin * DEPTH_DOWN, y + cos * DEPTH_DOWN, colored(d, dark), false, argb, 2);
+				canvas.text(x - sin * DEPTH_UP, y - cos * DEPTH_UP, colored(d, light), false, argb, 1);
+			}
+			canvas.text(x, y, colored(d, face), cfg.shadow && !cfg.depth, argb, 0);
+		}
+
+		private FormattedCharSequence colored(Display d, int rgb) {
+			Style style = base.withColor(rgb);
+			return sink -> {
+				for (int v = 0; v < d.cps.length; v++) {
+					if (!sink.accept(v, style, d.cps[v])) {
+						return false;
+					}
+				}
+				return true;
+			};
+		}
+
 		/**
 		 * @param highlight 1 for the current line, 0 for the dim neighbours
 		 * @param sung      0..1, how much of the line has been sung (karaoke fill)
@@ -500,7 +824,7 @@ public final class LyricsRenderer {
 
 			boolean growing = cfg.growWord && cfg.karaoke && shown.synced() && highlight > 0.01f && sung > 0;
 
-			canvas.push(0, y, scale);
+			canvas.push(0, y, scale, 0);
 			float top = -rows.size() * ROW_H / 2;
 			int charIndex = 0, wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
@@ -552,7 +876,7 @@ public final class LyricsRenderer {
 						if (size != 1) {
 							// Grow around the middle of the letters, so the word swells up and down evenly
 							float cy = ry + GLYPH_MIDDLE;
-							canvas.push(sx, cy, size);
+							canvas.push(sx, cy, size, 0);
 							sx = 0;
 							sy -= cy;
 						}
@@ -590,11 +914,11 @@ public final class LyricsRenderer {
 								for (int k = 0; k < 8; k++) {
 									float ang = k * Mth.PI / 4 + (ring == 2 ? Mth.PI / 8 : 0);
 									canvas.text(sx + Mth.cos(ang) * radius, sy + Mth.sin(ang) * radius,
-											glowSeq, false, glowColor, true);
+											glowSeq, false, glowColor, 1);
 								}
 							}
 						}
-						canvas.text(sx, sy, seq, cfg.shadow, Math.max(4, Math.round(alpha * f * 255)) << 24 | 0xFFFFFF, false);
+						canvas.text(sx, sy, seq, cfg.shadow, Math.max(4, Math.round(alpha * f * 255)) << 24 | 0xFFFFFF, 0);
 						if (size != 1) {
 							canvas.pop();
 						}
@@ -902,6 +1226,26 @@ public final class LyricsRenderer {
 
 	private static float easeInOut(float t) {
 		return t < 0.5f ? 4 * t * t * t : 1 - (float) Math.pow(-2 * t + 2, 3) / 2;
+	}
+
+	private static float easeOutCubic(float t) {
+		float u = 1 - t;
+		return 1 - u * u * u;
+	}
+
+	/** The dark depth copy: darker and a little more saturated than the face, darker still by day. */
+	static int depthDark(int face, float day) {
+		float[] hsb = java.awt.Color.RGBtoHSB(face >> 16 & 0xFF, face >> 8 & 0xFF, face & 0xFF, null);
+		float b = hsb[2] * Mth.lerp(Mth.clamp(day, 0, 1), DEPTH_DARK_NIGHT, DEPTH_DARK_DAY);
+		return java.awt.Color.HSBtoRGB(hsb[0], Math.min(1, hsb[1] * DEPTH_SATURATION), b) & 0xFFFFFF;
+	}
+
+	/** The light depth copy: the face a touch brighter. */
+	static int depthLight(int face) {
+		int r = Math.min(255, Math.round((face >> 16 & 0xFF) * DEPTH_LIGHT));
+		int g = Math.min(255, Math.round((face >> 8 & 0xFF) * DEPTH_LIGHT));
+		int b = Math.min(255, Math.round((face & 0xFF) * DEPTH_LIGHT));
+		return r << 16 | g << 8 | b;
 	}
 
 	private static float easeOutBack(float t) {
