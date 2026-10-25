@@ -80,9 +80,11 @@ public final class LyricsRenderer {
 	/** Depth copies: the dark one this far down, the light one this far up (text units, about 0.1 and 0.05 em). */
 	private static final float DEPTH_DOWN = 1.05f, DEPTH_UP = 0.5f;
 	/** The dark copy's brightness by night and by day (against a bright sky it needs to be darker to show). */
-	private static final float DEPTH_DARK_NIGHT = 0.66f, DEPTH_DARK_DAY = 0.45f;
+	private static final float DEPTH_DARK_NIGHT = 0.74f, DEPTH_DARK_DAY = 0.5f;
 	/** The dark copy is a bit more saturated than the face, like a shaded side. */
-	private static final float DEPTH_SATURATION = 1.55f;
+	private static final float DEPTH_SATURATION = 1.3f;
+	/** The next word shows faintly and smaller before it's sung, brightening as its turn comes (reference pictures). */
+	private static final float NEXT_ALPHA_MIN = 0.3f, NEXT_ALPHA_MAX = 0.6f, NEXT_SCALE = 0.75f;
 	/** The light copy is this much brighter than the face. */
 	private static final float DEPTH_LIGHT = 1.035f;
 	/** How far apart the layers behind the text sit in the world, in text units. */
@@ -726,15 +728,25 @@ public final class LyricsRenderer {
 			float since = (now - changedAt) / 1e9f;
 			int dark = depthDark(color, daylight), light = depthLight(color);
 			int words = arc.words().length;
+			// The one word after those already sung, shown faintly ahead of its time
+			int nextWord = -1;
+			if (!leaving && timed) {
+				for (int w = 0; w < words; w++) {
+					if (wordAt(arc, w, start, end) > sungAt) {
+						nextWord = w;
+						break;
+					}
+				}
+			}
 
 			canvas.push(0, -ARC_LEAVE_RISE * easeOutCubic(leave), ARC_SIZE, 0);
 			for (ArcLayout.Group g : arc.groups()) {
 				canvas.push(g.x(), g.y(), g.scale(), g.angle());
 				for (int w = g.from(); w < g.to(); w++) {
-					float e = 1, current = 0;
+					float e = 1, current = 0, ahead = 0;
 					if (!leaving && timed) {
-						long at = start + (end - start) * arc.firstChar()[w] / arc.total();
-						long next = w + 1 < words ? start + (end - start) * arc.firstChar()[w + 1] / arc.total() : end;
+						long at = wordAt(arc, w, start, end);
+						long next = w + 1 < words ? wordAt(arc, w + 1, start, end) : end;
 						e = Mth.clamp((sungAt - at) / (float) ARC_WORD_FADE_MS, 0, 1);
 						if (sungAt >= at) {
 							current = Mth.clamp((next - sungAt) / (float) ARC_CURRENT_MS, 0, 1);
@@ -742,13 +754,23 @@ public final class LyricsRenderer {
 					} else if (!leaving) {
 						e = Mth.clamp((since - w * WORD_STAGGER) * 1000f / ARC_WORD_FADE_MS, 0, 1);
 					}
+					if (w == nextWord) {
+						long before = w > 0 ? wordAt(arc, w - 1, start, end) : start;
+						long at = wordAt(arc, w, start, end);
+						ahead = Mth.lerp(Mth.clamp((sungAt - before) / (float) Math.max(1, at - before), 0, 1), NEXT_ALPHA_MIN, NEXT_ALPHA_MAX);
+					}
 					e = easeOutCubic(e);
-					if (e <= 0.004f) {
+					if (e <= 0.004f && ahead <= 0) {
 						continue;
 					}
-					float x = g.wordX()[w - g.from()] - arc.widths()[w] / 2;
+					float cx = g.wordX()[w - g.from()];
 					float y = -GLYPH_MIDDLE + (1 - e) * ARC_APPEAR_RISE;
-					word(arc.words()[w], x, y, alpha * e, mix(color, 0xFFFFFF, CURRENT_WHITE * current), dark, light, g.angle());
+					// A waiting word is smaller and flat; it grows to full size and gets its depth as it's sung
+					float size = ahead > 0 ? Mth.lerp(e, NEXT_SCALE, 1) : 1;
+					canvas.push(cx, 0, size, 0);
+					word(arc.words()[w], -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e), mix(color, 0xFFFFFF, CURRENT_WHITE * current),
+							dark, light, g.angle(), e > 0.004f);
+					canvas.pop();
 				}
 				canvas.pop();
 			}
@@ -759,7 +781,7 @@ public final class LyricsRenderer {
 		 * One word with its depth: a darker copy just below and a lighter one just above, solid, so the letters look
 		 * raised. The offsets point straight down the screen however the word is turned.
 		 */
-		private void word(String word, float x, float y, float alpha, int face, int dark, int light, float angle) {
+		private void word(String word, float x, float y, float alpha, int face, int dark, int light, float angle, boolean withDepth) {
 			Display d = Display.of(word);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
 			if (cfg.glow > 0.01f) {
@@ -772,12 +794,17 @@ public final class LyricsRenderer {
 					}
 				}
 			}
-			if (cfg.depth) {
+			if (cfg.depth && withDepth) {
 				float sin = Mth.sin(angle * DEG), cos = Mth.cos(angle * DEG);
 				canvas.text(x + sin * DEPTH_DOWN, y + cos * DEPTH_DOWN, colored(d, dark), false, argb, 2);
 				canvas.text(x - sin * DEPTH_UP, y - cos * DEPTH_UP, colored(d, light), false, argb, 1);
 			}
 			canvas.text(x, y, colored(d, face), cfg.shadow && !cfg.depth, argb, 0);
+		}
+
+		/** When a word of the line starts being sung, spreading the line's time over its letters. */
+		private static long wordAt(ArcText arc, int w, long start, long end) {
+			return start + (end - start) * arc.firstChar()[w] / arc.total();
 		}
 
 		private FormattedCharSequence colored(Display d, int rgb) {
