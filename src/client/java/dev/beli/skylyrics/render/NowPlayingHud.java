@@ -367,37 +367,9 @@ public final class NowPlayingHud {
 		g.pose().popMatrix();
 	}
 
-	/** A rounded rectangle in the current pose's units, with soft edges on the curves. */
+	/** A rounded rectangle in the current pose's units, with smooth curves. */
 	static void roundRect(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
-		int alpha = ARGB.alpha(color);
-		if (alpha == 0 || w <= 0 || h <= 0) {
-			return;
-		}
-		int x0 = Math.round(x), y0 = Math.round(y), x1 = Math.round(x + w), y1 = Math.round(y + h);
-		int rows = y1 - y0;
-		r = Math.min(r, Math.min(x1 - x0, rows) / 2f);
-		int curve = (int) Math.ceil(r);
-		if (rows > 2 * curve) {
-			g.fill(x0, y0 + curve, x1, y1 - curve, color);
-		}
-		for (int j = 0; j < rows; j++) {
-			if (j >= curve && j < rows - curve) {
-				continue;
-			}
-			float cy = j + 0.5f;
-			float dy = Math.max(0, Math.max(r - cy, cy - (rows - r)));
-			float inset = r - (float) Math.sqrt(Math.max(0, r * r - dy * dy));
-			int full = (int) Math.ceil(inset);
-			float cover = full - inset;
-			if (cover > 0.02f && full >= 1) {
-				int soft = ARGB.color(Math.round(alpha * cover), color & 0xFFFFFF);
-				g.fill(x0 + full - 1, y0 + j, x0 + full, y0 + j + 1, soft);
-				g.fill(x1 - full, y0 + j, x1 - full + 1, y0 + j + 1, soft);
-			}
-			if (x1 - full > x0 + full) {
-				g.fill(x0 + full, y0 + j, x1 - full, y0 + j + 1, color);
-			}
-		}
+		RoundRect.draw(g, x, y, w, h, r, color);
 	}
 
 	private static float ease(float t) {

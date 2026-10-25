@@ -3,6 +3,7 @@ package dev.beli.skylyrics.render;
 import java.text.Bidi;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -555,7 +556,19 @@ public final class LyricsRenderer {
 
 	/** A row in display order: right-to-left runs (Hebrew, Arabic) reversed, with each character's logical index. */
 	record Display(int[] cps, int[] logical) {
+		/** The same few rows are drawn every frame, so their layout is kept instead of recomputed. Render thread only. */
+		private static final Map<String, Display> CACHE = new LinkedHashMap<>(64, 0.75f, true) {
+			@Override
+			protected boolean removeEldestEntry(Map.Entry<String, Display> eldest) {
+				return size() > 64;
+			}
+		};
+
 		static Display of(String row) {
+			return CACHE.computeIfAbsent(row, Display::compute);
+		}
+
+		private static Display compute(String row) {
 			int[] cps = row.codePoints().toArray();
 			int n = cps.length;
 			int[] logical = new int[n];
@@ -614,7 +627,18 @@ public final class LyricsRenderer {
 	}
 
 	/** Which word (0, 1, 2, …) each code point of the row belongs to; spaces count with the word before. */
+	private static final Map<String, int[]> RANKS = new LinkedHashMap<>(64, 0.75f, true) {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<String, int[]> eldest) {
+			return size() > 64;
+		}
+	};
+
 	private static int[] wordRanks(String row) {
+		return RANKS.computeIfAbsent(row, LyricsRenderer::computeWordRanks);
+	}
+
+	private static int[] computeWordRanks(String row) {
 		int[] cps = row.codePoints().toArray();
 		int[] rank = new int[cps.length];
 		int w = -1;
