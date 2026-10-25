@@ -20,6 +20,7 @@ public final class ScreenLayer {
 	private static final Matrix4f viewProjection = new Matrix4f();
 	private static final Vector4f clip = new Vector4f();
 	private static float pixelsPerUnit;
+	private static float unitsAcross;
 	private static boolean captured;
 	private static Method irisInstance, irisShadersOn;
 	private static boolean irisLookedUp;
@@ -30,6 +31,7 @@ public final class ScreenLayer {
 	public static void capture(Matrix4f view, Matrix4f projection) {
 		viewProjection.set(projection).mul(view);
 		pixelsPerUnit = projection.m11();
+		unitsAcross = projection.m00();
 		captured = true;
 	}
 
@@ -69,6 +71,23 @@ public final class ScreenLayer {
 		float x = (clip.x / clip.w * 0.5f + 0.5f) * width;
 		float y = (0.5f - clip.y / clip.w * 0.5f) * height;
 		return new Vector3f(x, y, height * 0.5f * pixelsPerUnit / clip.w);
+	}
+
+	/**
+	 * Whether a camera-relative box (half size in blocks, facing the camera) reaches into the view,
+	 * with an extra margin as a fraction of the screen. Allocates nothing.
+	 */
+	static boolean inView(Vector3f centre, float halfW, float halfH, float margin) {
+		if (!captured) {
+			return false;
+		}
+		clip.set(centre.x, centre.y, centre.z, 1f).mul(viewProjection);
+		if (clip.w < 0.05f) {
+			return false;
+		}
+		float x = Math.abs(clip.x / clip.w) - halfW * unitsAcross / clip.w;
+		float y = Math.abs(clip.y / clip.w) - halfH * pixelsPerUnit / clip.w;
+		return x < 1 + 2 * margin && y < 1 + 2 * margin;
 	}
 
 	/** Asks Iris through its public API, without needing Iris to build or run. */

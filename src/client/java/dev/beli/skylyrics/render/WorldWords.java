@@ -17,6 +17,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.render.LyricsRenderer.Display;
@@ -245,6 +246,9 @@ final class WorldWords {
 				continue;
 			}
 			float grow = c.size * (0.85f + 0.15f * (1 - (1 - in) * (1 - in)));
+			int letters = c.display.cps().length;
+			LyricsInView.check(new Vector3f((float) (c.pos.x - eye.x), (float) (c.pos.y - eye.y), (float) (c.pos.z - eye.z)),
+					c.at[letters] * grow / 2, 5 * grow);
 			pose.pushPose();
 			pose.translate((float) (c.pos.x - eye.x), (float) (c.pos.y - eye.y), (float) (c.pos.z - eye.z));
 			pose.mulPose(new Quaternionf().rotationY(Mth.PI - c.yaw * DEG).rotateZ(c.roll * DEG));

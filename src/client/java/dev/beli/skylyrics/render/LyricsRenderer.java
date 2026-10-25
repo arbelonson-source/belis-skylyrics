@@ -228,6 +228,11 @@ public final class LyricsRenderer {
 		} else {
 			spots.add(spot(anchorYaw, anchorPitch, distance, null));
 		}
+		if (visibility > 0.5f) {
+			for (Spot spot : spots) {
+				LyricsInView.check(spot.offset(), 0.3f * wrapWidth * scale, 1.5f * ROW_H * scale);
+			}
+		}
 
 		if (ScreenLayer.active(cfg) && ScreenLayer.ready()) {
 			pending = new Pending(spots, scale, wrapWidth, time, now);

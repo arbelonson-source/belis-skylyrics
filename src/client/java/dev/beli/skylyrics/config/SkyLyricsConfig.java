@@ -79,6 +79,11 @@ public final class SkyLyricsConfig {
 		BOTTOM
 	}
 
+	public enum BarShow {
+		ALWAYS,
+		LYRICS_OUT_OF_VIEW
+	}
+
 	public enum BarAccent {
 		ALBUM,
 		LYRICS,
@@ -156,6 +161,7 @@ public final class SkyLyricsConfig {
 	public boolean barClock = true;
 	/** Frames per second and ping, right of the top bar. */
 	public boolean barStats = true;
+	public BarShow barShow = BarShow.ALWAYS;
 	public BarPosition barPosition = BarPosition.TOP;
 	public float barSize = 1f;
 	/** How dark the bar's background is, from transparent to opaque. */
@@ -206,6 +212,7 @@ public final class SkyLyricsConfig {
 		if (layout == null) layout = d.layout;
 		if (barPosition == null) barPosition = d.barPosition;
 		if (barAccent == null) barAccent = d.barAccent;
+		if (barShow == null) barShow = d.barShow;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);

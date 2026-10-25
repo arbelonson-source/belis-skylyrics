@@ -23,6 +23,7 @@ import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
+import dev.beli.skylyrics.config.SkyLyricsConfig.BarShow;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
@@ -330,6 +331,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
+		Row showBar = new Segmented(Tr.t("Show bar"), Tr.t("Can hide while you see the lyrics in the world"),
+				new String[] {Tr.t("Always"), Tr.t("Lyrics out of view")}, () -> cfg.barShow.ordinal(),
+				i -> cfg.barShow = BarShow.values()[i]).when(() -> cfg.nowPlayingHud);
 		Row barPosition = new Segmented(Tr.t("Bar position"), Tr.t("Bottom sits just above the hotbar"),
 				new String[] {Tr.t("Top"), Tr.t("Bottom")}, () -> cfg.barPosition.ordinal(),
 				i -> cfg.barPosition = BarPosition.values()[i]).when(() -> cfg.nowPlayingHud);
@@ -355,7 +359,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused),
-				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, barPosition, barSize,
+				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barEq),
 				new Card(Tr.t("Keys"), openKey, controls));
 	}
