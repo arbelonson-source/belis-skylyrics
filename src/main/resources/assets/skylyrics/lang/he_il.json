@@ -158,5 +158,8 @@
   "skylyrics.ui.bigger_current_word": "מילה נוכחית גדולה יותר",
   "skylyrics.ui.the_word_being_sung_grows_a_little": "המילה שמושרת עכשיו גדלה קצת",
   "skylyrics.ui.clock": "שעון",
-  "skylyrics.ui.the_time_on_the_left_of_the_bar": "השעה בצד שמאל של הסרגל"
+  "skylyrics.ui.the_time_on_the_left_of_the_bar": "השעה בצד שמאל של הסרגל",
+  "skylyrics.ui.on_macos_the_mod_asks_the_spotify_and_music_apps": "ב-macOS המוד שואל את האפליקציות Spotify ו\"מוזיקה\" מה מתנגן. בפעם הראשונה macOS ישאל אם Minecraft רשאי לשלוט בהן: לחץ על אישור. ב-Mac אי אפשר לראות דפדפנים ונגנים אחרים. המילים מגיעות מ-LRCLIB, ספריית מילים קהילתית חינמית, ונשמרות במחשב לפעם הבאה.",
+  "skylyrics.ui.allow_minecraft_to_control_s_in_system_settings": "תן ל-Minecraft לשלוט ב-%s בהגדרות המערכת ← פרטיות ואבטחה ← אוטומציה",
+  "skylyrics.ui.waiting_for_spotify_or_music_if_macos_asks_to_le": "ממתין ל-Spotify או ל\"מוזיקה\". אם macOS שואל אם לתת ל-Minecraft לשלוט בהן, לחץ על אישור"
 }

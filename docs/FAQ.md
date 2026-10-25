@@ -10,7 +10,7 @@ While you play Minecraft and listen to music on the same computer, it shows the 
 
 **Windows 10 and 11: yes.** The mod reads the same media controls that Windows shows when you press a media key or change the volume. To do that it runs a small hidden PowerShell helper. PowerShell comes with Windows, so there is nothing extra to install.
 
-**macOS: not yet.** The mod loads, but it can't see your music, so only the built-in demo song works.
+**macOS: with Spotify and Apple Music only.** A Mac doesn't tell other apps what's playing, so the mod asks the Spotify and Music apps directly. Browsers and other players can't be seen. The first time, macOS asks whether Minecraft may control Spotify or Music. Click **OK**. If something goes wrong, see "On macOS" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#on-macos).
 
 On Linux the mod finds your song through MPRIS, the feature behind the media keys and the music controls on your desktop.
 
@@ -31,11 +31,18 @@ VLC and mpv don't show up in that panel on their own, so the mod can't see them.
 - VLC, Rhythmbox, Elisa, Strawberry and most other music apps
 - mpv, once the mpv-mpris plugin is installed
 
+**On macOS:** only two apps:
+
+- Spotify, the desktop app
+- Music, Apple's own music app (Apple Music and your own songs)
+
+The app has to be open; the mod never opens it by itself. YouTube and other sites in a browser, VLC and other players don't work on a Mac.
+
 If you're not sure, see "Check that your player can be seen" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Can I choose which player it follows?
 
-Yes. Open the settings with **J**, go to the **Music** tab and change **Player**. On Linux the choices are Auto, Spotify, Firefox, Chrome, mpv and VLC. On Windows they are Auto, Spotify, Chrome, Edge, Firefox and Media Player. **Auto** follows whatever is playing, and sticks with the same player while it keeps playing, so two browser tabs don't fight over it.
+Yes. Open the settings with **J**, go to the **Music** tab and change **Player**. On Linux the choices are Auto, Spotify, Firefox, Chrome, mpv and VLC. On Windows they are Auto, Spotify, Chrome, Edge, Firefox and Media Player. On macOS they are Auto, Spotify and Music. **Auto** follows whatever is playing, and sticks with the same player while it keeps playing, so two browser tabs don't fight over it.
 
 ## Where do the lyrics come from?
 

@@ -7,13 +7,13 @@ import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 
-/** Decides which of several open players to follow. Shared by the Linux and Windows sources. */
+/** Decides which of several open players to follow. Shared by the Linux, Windows and macOS sources. */
 final class PlayerPicker {
 	private PlayerPicker() {
 	}
 
 	/**
-	 * @param id        tells players apart (D-Bus name, Windows app id)
+	 * @param id        tells players apart (D-Bus name, Windows app id, Mac app name)
 	 * @param player    short player name, matched against {@code preferred}
 	 * @param preferred part of a player name from the settings; empty = whatever is playing
 	 * @param current   the id followed until now, or null

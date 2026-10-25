@@ -42,7 +42,7 @@ Paste everything below the line into the description box.
 
 It's free and open source, and it always will be.
 
-> **Works on Linux and on Windows 10 and 11.** On Windows the mod reads the media controls that pop up when you press a media key. On Linux it uses MPRIS, the feature behind your desktop's media keys. On macOS it loads, but only the built-in demo song works for now.
+> **Works on Linux, on Windows 10 and 11, and on macOS with Spotify or Apple Music.** On Windows the mod reads the media controls that pop up when you press a media key. On Linux it uses MPRIS, the feature behind your desktop's media keys. On macOS it asks the Spotify and Music apps directly, so other players and browsers can't be seen there.
 
 ### Features
 
@@ -67,7 +67,7 @@ It's free and open source, and it always will be.
 - Fabric Loader 0.17.0 or newer
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 - Java 21 or newer (the Minecraft launcher already includes it)
-- Linux, or Windows 10 or 11, with a music player that shows up in your media controls
+- Linux, or Windows 10 or 11, with a music player that shows up in your media controls; or macOS with the Spotify or Music app
 - Optional: [Mod Menu](https://modrinth.com/mod/modmenu) to open the settings from the mod list
 
 ### Install
@@ -80,10 +80,10 @@ It's free and open source, and it always will be.
 ### FAQ
 
 **Does it work on Windows or macOS?**
-Windows 10 and 11: yes, it reads the media controls that pop up when you press a media key. macOS: not yet, only the demo song works there.
+Windows 10 and 11: yes, it reads the media controls that pop up when you press a media key. macOS: yes, with the Spotify and Apple Music apps only. The first time, macOS asks whether Minecraft may control them: click OK.
 
 **Which music players work?**
-On Windows: anything that shows up in the media panel when you press a media key, such as Spotify, Chrome, Edge, Firefox and other browsers, Media Player and Apple Music (VLC and mpv don't show up there). On Linux: anything that shows up in your desktop's media controls: Spotify (including the Flatpak version), Firefox, Chrome and other browsers (so YouTube, YouTube Music and SoundCloud in a tab), VLC, Rhythmbox, Elisa and most other music apps. mpv works with the mpv-mpris plugin. You can tell the mod which player to follow in the Music tab.
+On Windows: anything that shows up in the media panel when you press a media key, such as Spotify, Chrome, Edge, Firefox and other browsers, Media Player and Apple Music (VLC and mpv don't show up there). On Linux: anything that shows up in your desktop's media controls: Spotify (including the Flatpak version), Firefox, Chrome and other browsers (so YouTube, YouTube Music and SoundCloud in a tab), VLC, Rhythmbox, Elisa and most other music apps. mpv works with the mpv-mpris plugin. On macOS: the Spotify and Music apps, while they are open. You can tell the mod which player to follow in the Music tab.
 
 **Where do the lyrics come from?**
 From [LRCLIB](https://lrclib.net), a free, volunteer-run lyrics database. No account needed. If LRCLIB doesn't have a song, the mod can't show lyrics for it. Lyrics it finds are saved on your computer, so songs it has seen before work offline.

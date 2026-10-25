@@ -24,6 +24,7 @@ import dev.beli.skylyrics.dev.DevTestHook;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LrclibClient;
 import dev.beli.skylyrics.lyrics.LyricsService;
+import dev.beli.skylyrics.media.MacMediaSource;
 import dev.beli.skylyrics.media.MediaSource;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.MprisSource;
@@ -107,9 +108,17 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
 	}
 
+	/** True on macOS, where the song comes from asking Spotify and Music directly. */
+	public static boolean mac() {
+		return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac");
+	}
+
 	private static MediaSource musicSource(Path cache) {
 		if (windows()) {
 			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"));
+		}
+		if (mac()) {
+			return new MacMediaSource(() -> SkyLyricsConfig.get().preferredPlayer);
 		}
 		return new MprisSource(() -> SkyLyricsConfig.get().preferredPlayer);
 	}

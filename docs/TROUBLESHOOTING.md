@@ -21,7 +21,7 @@ Go through these in order:
 
 ## The lyrics are for the wrong song
 
-- **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want (Auto, Spotify, Firefox, Chrome, mpv or VLC).
+- **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want. The choices are different on Linux, Windows and macOS (see the [FAQ](FAQ.md#can-i-choose-which-player-it-follows)).
 - **A browser tab is playing something else.** A muted video in another tab still counts as playing. Pause it or close it.
 - **The song name is messy.** Video titles like "Artist - Song (Official Video)" are cleaned up before looking for lyrics, but some titles are too unusual to match, or LRCLIB matched a different version. Press **Retry** on the Music tab to look again.
 
@@ -93,7 +93,31 @@ flatpak override --user --talk-name=org.mpris.MediaPlayer2.* org.prismlauncher.P
 
 Then close Prism Launcher completely and open it again. If you prefer a window to a terminal, the Flatseal app can do the same: pick Prism Launcher, and under **Session Bus → Talks** add `org.mpris.MediaPlayer2.*`.
 
-**macOS** isn't supported yet, so only the built-in demo song works there.
+### On macOS
+
+On a Mac the mod can see only two apps: **Spotify** and Apple's **Music** app. macOS doesn't tell other apps what's playing, so the mod asks these two directly. YouTube and other sites in a browser, VLC and other players can't be seen on a Mac.
+
+**The app has to be open.** The mod only asks Spotify or Music while they are already running, so it never opens them by itself. If both play at once, set **Player** on the Music tab to the one you want.
+
+**Allow Minecraft to control Spotify and Music.** The first time, macOS shows a message like *"Minecraft" wants access to control "Spotify"*. Click **OK**. Depending on how you start the game, the message may name your launcher (for example Prism Launcher) or "java" instead of Minecraft. Until you answer, the Music tab says it is waiting for Spotify or Music.
+
+If you clicked **Don't Allow**, the Music tab says "Allow Minecraft to control Spotify in System Settings → Privacy & Security → Automation". To fix it:
+
+1. Open **System Settings**, then **Privacy & Security**, then **Automation**.
+2. Find Minecraft, your launcher or "java" in the list, and turn on **Spotify** and **Music** under it.
+3. Go back to the game. The mod notices within a second or two.
+
+If nothing like that is in the list, you can make macOS ask again. Quit Minecraft, open the Terminal app and type:
+
+```
+tccutil reset AppleEvents
+```
+
+Then start Minecraft and play a song. Note that this makes macOS ask again for every app that controls other apps, not only Minecraft.
+
+**No album cover for Music songs.** Spotify gives the mod a link to the cover, but the Music app doesn't, so the top bar shows no cover for songs played in Music.
+
+**Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
 
 ## Shaders make the lyrics dim
 
@@ -122,6 +146,7 @@ Your Minecraft folder is:
 
 - **Official launcher on Linux:** `~/.minecraft` (`~` is your home folder; folders starting with a dot are hidden, press Ctrl+H in the file manager to see them).
 - **Official launcher on Windows:** `%appdata%\.minecraft`. Paste that into the File Explorer address bar and press Enter.
+- **Official launcher on macOS:** `~/Library/Application Support/minecraft`. In Finder, choose **Go → Go to Folder…**, paste that and press Return.
 - **Prism Launcher:** right-click the instance and choose **Folder**. The `config` folder and the hidden `.cache` folder are inside.
 
 To start over with all settings, use **Reset all** at the bottom of the settings screen (click it twice). Or close Minecraft and delete `skylyrics.json`.
@@ -130,4 +155,4 @@ Deleting the `skylyrics` cache folder is safe. The mod just looks up the lyrics 
 
 ## Still stuck?
 
-Open an issue at [github.com/arbelonson-source/belis-skylyrics/issues](https://github.com/arbelonson-source/belis-skylyrics/issues). Say whether you're on Windows or Linux, which music player you use, what the **Music** tab shows for Status and Lyrics, and whether you use shaders.
+Open an issue at [github.com/arbelonson-source/belis-skylyrics/issues](https://github.com/arbelonson-source/belis-skylyrics/issues). Say whether you're on Windows, macOS or Linux, which music player you use, what the **Music** tab shows for Status and Lyrics, and whether you use shaders.

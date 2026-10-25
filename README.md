@@ -11,7 +11,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 ## What it does
 
-- Sees what's playing on your PC: Spotify, a browser tab, or any other player that shows up in your media controls. Works on Linux and on Windows 10 and 11.
+- Sees what's playing on your PC: Spotify, a browser tab, or any other player that shows up in your media controls. Works on Linux and on Windows 10 and 11. On macOS it works with the Spotify and Apple Music apps.
 - Gets the synced lyrics from [LRCLIB](https://lrclib.net) and shows them line by line, in time with the song.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
@@ -39,7 +39,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 ## Install
 
-Works on **Linux** and **Windows 10 or 11**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS only the demo song works for now.
+Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether Minecraft may control them: click **OK**.
 
 ### With Prism Launcher (easiest)
 
@@ -56,6 +56,7 @@ Works on **Linux** and **Windows 10 or 11**. On Linux the mod finds your song th
 3. Put both files in your `mods` folder. Create it if it doesn't exist.
    - Linux: `~/.minecraft/mods`
    - Windows: `%appdata%\.minecraft\mods` (paste this into the File Explorer address bar)
+   - macOS: `~/Library/Application Support/minecraft/mods` (in Finder, choose **Go → Go to Folder…** and paste this)
 4. In the launcher, pick the **fabric-loader-1.21.11** profile and press Play.
 
 ### Using it
