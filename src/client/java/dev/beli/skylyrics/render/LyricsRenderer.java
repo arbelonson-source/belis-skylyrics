@@ -187,7 +187,7 @@ public final class LyricsRenderer {
 		boolean want = cfg.enabled && hasLyrics
 				&& !(cfg.hideWithF1 && mc.options.hideGui)
 				&& !(cfg.hideInMenus && mc.screen != null && !(mc.screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
-				&& !(cfg.hideWhenPaused && !tracker.playing());
+				&& !(cfg.hideWhenPaused && !tracker.playing()) && !Visibility.hidden(mc, cfg);
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
 		updateColor(cfg, dt, now);
 		updateDaylight(mc, camera, dt);

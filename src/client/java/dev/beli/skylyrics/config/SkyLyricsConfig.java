@@ -151,6 +151,12 @@ public final class SkyLyricsConfig {
 	public boolean hideInMenus = false;
 	public boolean hideWhenPaused = false;
 	public boolean hideWithF1 = true;
+	public boolean hideInNether = false;
+	public boolean hideInEnd = false;
+	public boolean hideUnderwater = false;
+	/** Hide when there's no open sky above the player, like underground. */
+	public boolean hideInCaves = false;
+	public boolean hideInMultiplayer = false;
 
 	// Now-playing card
 	public boolean nowPlayingHud = true;

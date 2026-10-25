@@ -250,6 +250,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.constellations, v -> cfg.constellations = v);
 
 		return List.of(
+				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
 				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
 				new Card(Tr.t("Sky"), night, skyStrength, constellations));
@@ -316,6 +317,14 @@ public final class SkyLyricsScreen extends Screen {
 		Row f1 = new Toggle(Tr.t("Hide with F1"), Tr.t("When you hide the HUD"), () -> cfg.hideWithF1, v -> cfg.hideWithF1 = v);
 		Row menus = new Toggle(Tr.t("Hide in menus"), Tr.t("When a menu or chat is open"), () -> cfg.hideInMenus, v -> cfg.hideInMenus = v);
 		Row paused = new Toggle(Tr.t("Hide when paused"), Tr.t("When the music is paused"), () -> cfg.hideWhenPaused, v -> cfg.hideWhenPaused = v);
+		Row nether = new Toggle(Tr.t("Hide in the Nether"), null, () -> cfg.hideInNether, v -> cfg.hideInNether = v);
+		Row end = new Toggle(Tr.t("Hide in the End"), null, () -> cfg.hideInEnd, v -> cfg.hideInEnd = v);
+		Row water = new Toggle(Tr.t("Hide underwater"), Tr.t("While your head is under water"),
+				() -> cfg.hideUnderwater, v -> cfg.hideUnderwater = v);
+		Row caves = new Toggle(Tr.t("Hide in caves"), Tr.t("When there's no open sky above you"),
+				() -> cfg.hideInCaves, v -> cfg.hideInCaves = v);
+		Row multiplayer = new Toggle(Tr.t("Hide in multiplayer"), Tr.t("Only show them in your own worlds"),
+				() -> cfg.hideInMultiplayer, v -> cfg.hideInMultiplayer = v);
 
 		Row card = new Toggle(Tr.t("Top bar"), Tr.t("Song and lyrics at the top of the screen"),
 				() -> cfg.nowPlayingHud, v -> cfg.nowPlayingHud = v);
@@ -358,7 +367,7 @@ public final class SkyLyricsScreen extends Screen {
 				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
 
 		return List.of(
-				new Card(Tr.t("Hide lyrics"), f1, menus, paused),
+				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barEq),
 				new Card(Tr.t("Keys"), openKey, controls));

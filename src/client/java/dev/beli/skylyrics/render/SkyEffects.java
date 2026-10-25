@@ -142,7 +142,7 @@ public final class SkyEffects {
 		float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
 		last = now;
 		boolean any = cfg.sky != SkyEffect.OFF || cfg.constellations;
-		boolean on = any && cfg.enabled && tracker.playing();
+		boolean on = any && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg);
 		presence = step(presence, on, dt);
 		ClientLevel level = mc.level;
 		if (presence <= 0 || !any || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {

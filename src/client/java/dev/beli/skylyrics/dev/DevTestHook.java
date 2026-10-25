@@ -121,6 +121,16 @@ public final class DevTestHook {
 						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
 					}
 				}
+				case "click" -> {
+					// x y in scaled GUI pixels, a left click and release
+					String[] xy = arg.split("\\s+");
+					if (client.screen != null) {
+						var e = new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]),
+								new net.minecraft.client.input.MouseButtonInfo(0, 0));
+						client.screen.mouseClicked(e, false);
+						client.screen.mouseReleased(e);
+					}
+				}
 				case "hud" -> client.options.hideGui = arg.equals("off");
 				case "lang" -> {
 					client.getLanguageManager().setSelected(arg);
