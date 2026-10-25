@@ -5,18 +5,46 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Locale;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Everything here runs without a Mac: osascript's answers are made up. */
 class MacMediaSourceTest {
+	/**
+	 * On a Mac (CI), the real thing: the AppleScript must compile and run. Spotify and Music aren't open on a
+	 * test machine, so nothing is playing and nothing gets launched.
+	 */
+	@Test
+	void runsTheRealAppleScript() throws Exception {
+		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
+		MacMediaSource source = new MacMediaSource(() -> "");
+		try {
+			Snapshot s = null;
+			// A cold start can take longer than one poll waits; the poll says so and the next one picks it up
+			for (int i = 0; s == null; i++) {
+				try {
+					s = source.poll();
+				} catch (IOException e) {
+					if (i >= 10 || !e.getMessage().startsWith("Waiting")) {
+						throw e;
+					}
+				}
+			}
+			assertSame(Snapshot.NOTHING, s);
+		} finally {
+			source.close();
+		}
+	}
+
 	private static final String SPOTIFY_PLAYING = "Spotify\tplaying\t215000\t61.25\tSong One\tMade Up Band\tMade Up Album\thttps://i.scdn.co/image/abc\n";
 	private static final String MUSIC_PAUSED = "Music\tpaused\t245.5\t12.5\tSong Two\tOther Band\tOther Album\t\n";
 
