@@ -42,6 +42,10 @@ dependencies {
 	// Only in the test game (runClient), to check the lyrics with Sodium + Iris shaders. Not shipped.
 	modLocalRuntime "maven.modrinth:sodium:${project.sodium_version}"
 	modLocalRuntime "maven.modrinth:iris:${project.iris_version}"
+	// Iris bundles these, but the test game needs them on the classpath directly
+	localRuntime "org.anarres:jcpp:1.4.14"
+	localRuntime "io.github.douira:glsl-transformer:3.0.0-pre3"
+	localRuntime "org.antlr:antlr4-runtime:4.13.1"
 
 	// Talks to music players over D-Bus (MPRIS) on Linux. Bundled inside the mod jar.
 	clientImplementation "com.github.hypfvieh:dbus-java-core:${project.dbus_java_version}"
