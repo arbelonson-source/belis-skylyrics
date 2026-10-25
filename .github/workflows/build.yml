@@ -38,6 +38,22 @@ jobs:
           report=build/test-results/test/TEST-dev.beli.skylyrics.media.WindowsMediaSourceTest.xml
           grep -o '<testsuite [^>]*>' "$report"
           grep -q 'skipped="1"' "$report" && grep -q 'failures="0"' "$report" && grep -q 'errors="0"' "$report"
+      - name: show failed tests as annotations
+        # The annotations can be read through GitHub's API, which is easier to reach than the full log
+        if: failure()
+        run: |
+          py=$(command -v python3 || command -v python)
+          for f in build/test-results/test/*.xml; do
+            [ -f "$f" ] || continue
+            "$py" - "$f" <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          for case in ET.parse(sys.argv[1]).getroot().iter('testcase'):
+              for bad in list(case.findall('failure')) + list(case.findall('error')):
+                  text = (bad.get('message') or '') + ' | ' + (bad.text or '')[:1500]
+                  text = text.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+                  print(f"::error title={case.get('classname')}.{case.get('name')}::{text}")
+          PY
+          done
       - name: capture build artifacts
         if: matrix.os == 'ubuntu-24.04'
         uses: actions/upload-artifact@v7
