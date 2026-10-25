@@ -101,6 +101,7 @@ jobs:
       - name: wave 2 - apply mechanical renames in a second copy and compile again
         if: always()
         run: |
+          set +e
           rsync -a --exclude build --exclude .gradle "$RUNNER_TEMP/port/" "$RUNNER_TEMP/port2/"
           rules="-f probe/renames-26.1.sed"
           case "$MC" in 26.3*) rules="$rules -f probe/renames-26.3.sed";; esac
