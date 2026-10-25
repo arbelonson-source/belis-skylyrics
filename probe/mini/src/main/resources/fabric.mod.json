@@ -1,0 +1,8 @@
+{
+	"schemaVersion": 1,
+	"id": "probe",
+	"version": "0.0.1",
+	"environment": "client",
+	"entrypoints": { "client": ["probe.ProbeClient"] },
+	"depends": { "fabricloader": "*", "minecraft": "*", "java": ">=25", "fabric-api": "*" }
+}

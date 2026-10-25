@@ -1,0 +1,119 @@
+# THROWAWAY probe for Minecraft 26.x support (branch probe-26x only). Reports everything as annotations.
+name: probe-26x
+on:
+  push:
+    branches: [probe-26x]
+  workflow_dispatch:
+
+jobs:
+  meta:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - name: gather versions
+        run: python3 probe/meta.py report "$RUNNER_TEMP/meta.txt"
+      - name: report 1
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/meta.txt" meta 0 10
+      - name: report 2
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/meta.txt" meta 10 10
+      - name: report 3
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/meta.txt" meta 20 10
+
+  mini:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ['26.1', '26.3']
+        loom_id: ['net.fabricmc.fabric-loom', 'net.fabricmc.fabric-loom-remap']
+    env:
+      MC: ${{ matrix.mc }}
+      LOOM_ID: ${{ matrix.loom_id }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: resolve versions
+        run: |
+          python3 probe/meta.py resolve "$MC" | tee -a "$GITHUB_ENV" > "$RUNNER_TEMP/v.txt"
+          echo "LOOM=$(sed -n 's/^loom_version=//p' gradle.properties)" | tee -a "$GITHUB_ENV" >> "$RUNNER_TEMP/v.txt"
+          python3 probe/emit.py "$RUNNER_TEMP/v.txt" "mini $MC $LOOM_ID versions" 0 1
+      - name: build mini mod
+        run: |
+          chmod +x gradlew
+          sed -i "s/LOOM_ID_HERE/$LOOM_ID/; s/LOOM_VERSION_HERE/$LOOM/" probe/mini/build.gradle
+          set -o pipefail
+          ./gradlew -p probe/mini --no-configuration-cache --stacktrace build probeTasks 2>&1 | tee "$RUNNER_TEMP/log.txt"
+      - name: summarize
+        if: always()
+        run: |
+          {
+            echo "result for MC=$MC plugin=$LOOM_ID loom=$LOOM"
+            grep -E 'BUILD (SUCCESSFUL|FAILED)|PROBE-|error:|warning:' "$RUNNER_TEMP/log.txt" | head -60
+            python3 probe/errors.py "$RUNNER_TEMP/log.txt" /dev/null | tail -40
+            ls -la probe/mini/build/libs 2>/dev/null
+            for j in probe/mini/build/libs/*.jar; do [ -f "$j" ] && unzip -l "$j"; done
+            grep -iE 'deprecat|loom|obfusc|mapping' "$RUNNER_TEMP/log.txt" | head -30
+          } > "$RUNNER_TEMP/sum.txt" 2>&1
+          python3 probe/emit.py "$RUNNER_TEMP/sum.txt" "mini $MC $LOOM_ID" 0 8
+
+  real:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mc: ['26.1', '26.1.1', '26.1.2', '26.2', '26.3']
+    env:
+      MC: ${{ matrix.mc }}
+      LOOM_ID: net.fabricmc.fabric-loom
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+      - name: resolve versions
+        run: |
+          python3 probe/meta.py resolve "$MC" | tee -a "$GITHUB_ENV" > "$RUNNER_TEMP/v.txt"
+          echo "LOOM=$(sed -n 's/^loom_version=//p' gradle.properties)" | tee -a "$GITHUB_ENV" >> "$RUNNER_TEMP/v.txt"
+          python3 probe/emit.py "$RUNNER_TEMP/v.txt" "real $MC versions" 0 1
+      - name: copy repo and rewrite build for 26.x
+        run: |
+          mkdir -p "$RUNNER_TEMP/port"
+          rsync -a --exclude .git --exclude probe ./ "$RUNNER_TEMP/port/"
+          python3 probe/port.py "$RUNNER_TEMP/port"
+      - name: compile real sources
+        run: |
+          cd "$RUNNER_TEMP/port"
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --continue --stacktrace compileClientJava compileTestJava probeClasspath 2>&1 | tee "$RUNNER_TEMP/log.txt"
+      - name: condense errors
+        if: always()
+        run: python3 probe/errors.py "$RUNNER_TEMP/log.txt" "$RUNNER_TEMP/rep.txt"
+      - name: javap requested classes
+        if: always()
+        run: |
+          cp=$(paste -sd: "$RUNNER_TEMP/port/build/probe-cp.txt" 2>/dev/null || true)
+          for c in $(cat probe/javap-classes.txt); do echo "#### $c"; javap -public -cp "$cp" "$c" 2>&1 | head -150; done > "$RUNNER_TEMP/javap.txt"
+      - name: report 1
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 0 10
+      - name: report 2
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 10 10
+      - name: report 3
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 20 10
+      - name: report javap
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "javap $MC" 0 10
+      - name: verdict
+        if: always()
+        run: |
+          if grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/log.txt"; then echo "::notice title=real $MC verdict::compiles cleanly (client + tests)"; else echo "::error title=real $MC verdict::$(head -1 "$RUNNER_TEMP/rep.txt")"; fi

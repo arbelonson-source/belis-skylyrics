@@ -1,0 +1,49 @@
+// Minimal Fabric client mod for an unobfuscated (26.x) game: no mappings, no remapping, no mod* configurations.
+// Gradle's plugins {} block cannot take variables, so the workflow seds the plugin id/version in before building.
+plugins {
+	id 'LOOM_ID_HERE' version 'LOOM_VERSION_HERE'
+}
+
+version = '0.0.1'
+group = 'probe'
+
+repositories {
+	maven { url = 'https://maven.terraformersmc.com/releases/' }
+	mavenCentral()
+}
+
+loom {
+	splitEnvironmentSourceSets()
+	mods {
+		"probe" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+def remap = System.getenv('LOOM_ID') == 'net.fabricmc.fabric-loom-remap'
+dependencies {
+	minecraft "com.mojang:minecraft:${System.getenv('MC')}"
+	if (remap) {
+		mappings loom.officialMojangMappings()
+		modImplementation "net.fabricmc:fabric-loader:${System.getenv('LOADER')}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${System.getenv('FABRIC_API')}"
+	} else {
+		implementation "net.fabricmc:fabric-loader:${System.getenv('LOADER')}"
+		implementation "net.fabricmc.fabric-api:fabric-api:${System.getenv('FABRIC_API')}"
+		if (System.getenv('MODMENU')) compileOnly "com.terraformersmc:modmenu:${System.getenv('MODMENU')}"
+	}
+}
+
+tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+tasks.register("probeTasks") {
+	def names = tasks.names.toList().sort()
+	def cfgs = configurations.names.toList().sort()
+	doLast { println "PROBE-TASKS " + names.join(" "); println "PROBE-CONFIGS " + cfgs.join(" ") }
+}
