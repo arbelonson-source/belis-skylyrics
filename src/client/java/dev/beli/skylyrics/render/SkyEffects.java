@@ -3,12 +3,14 @@ package dev.beli.skylyrics.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
 import dev.beli.skylyrics.media.MediaTracker;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.attribute.EnvironmentAttributes;
@@ -16,8 +18,10 @@ import net.minecraft.world.level.dimension.DimensionType.Skybox;
 import net.minecraft.world.level.material.FogType;
 
 /**
- * A soft aurora or nebula high in the night sky while music plays, tinted by the lyrics colour.
- * Drawn camera-relative with an additive type, so it needs no shader support and works with Iris and Sodium.
+ * Night sky effects while music plays: a soft aurora or nebula tinted by the lyrics colour, a synthwave
+ * sky with a striped retro sun, or an eclipse under a milky way, plus constellations with any of them.
+ * Drawn camera-relative through Minecraft's own pipelines (additive like lightning, or plain blending like
+ * name tag backgrounds), so it needs no shader support and works with Iris and Sodium.
  */
 public final class SkyEffects {
 	private static final float FADE_SECONDS = 1.5f;
@@ -33,6 +37,12 @@ public final class SkyEffects {
 	private static final int SLICES = 24;
 	private static final int DOTS = 60;
 	private static final float DEG = (float) (Math.PI / 180);
+	/** At the default strength the synthwave sky and the suns show fully; lower strengths fade them. */
+	private static final float FULL_STRENGTH = 0.7f;
+	/** With the lyrics following the view, the suns sit where the real sun went down: the west. */
+	static final float FOLLOW_YAW = 90;
+	/** Constellations sit in front of the far sky shapes (and behind the aurora and the lyrics). */
+	private static final float CONSTELLATION_LAYER = 0.87f;
 
 	private final LyricsRenderer lyrics;
 	private final MediaTracker tracker;
@@ -45,9 +55,20 @@ public final class SkyEffects {
 	private int corner;
 
 	private SkyEffect effect;
+	private boolean starPatterns;
 	private float radius;
+	private float far;
 	private float fade;
+	/** 0..1: how much of the synthwave sky, the eclipse and the constellations shows. */
+	private float amount;
+	private float baseYaw;
+	private float pixel;
 	private int tint;
+
+	private final SynthwaveSky synthwave = new SynthwaveSky();
+	private final EclipseSky eclipse = new EclipseSky();
+	private final Constellations constellations = new Constellations();
+	private final Target target = new Target();
 
 	public SkyEffects(LyricsRenderer lyrics, MediaTracker tracker) {
 		this.lyrics = lyrics;
@@ -78,6 +99,21 @@ public final class SkyEffects {
 		return Math.min(renderDistanceChunks * 16 * 0.45f, 110f);
 	}
 
+	/**
+	 * Distance of the sky-wide shapes: just short of where the render-distance fog starts, so hills
+	 * nearer than that still stand in front of the synthwave sky and the suns.
+	 */
+	static float farRadius(int renderDistanceChunks) {
+		float blocks = renderDistanceChunks * 16;
+		float fogStart = blocks - Mth.clamp(blocks / 10, 4, 64);
+		return fogStart * 0.9f;
+	}
+
+	/** Compass direction the lyrics face, which the suns and constellations are placed around. */
+	static float baseYaw(Direction direction) {
+		return direction == Direction.FOLLOW ? FOLLOW_YAW : direction.yaw;
+	}
+
 	/** Ribbon ends fade out over the first and last 18% of the arc. */
 	static float endFade(float u) {
 		return smooth(u / 0.18f) * smooth((1 - u) / 0.18f);
@@ -105,11 +141,11 @@ public final class SkyEffects {
 		long now = System.nanoTime();
 		float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
 		last = now;
-		boolean on = cfg.sky != SkyEffect.OFF && cfg.enabled && tracker.playing();
+		boolean any = cfg.sky != SkyEffect.OFF || cfg.constellations;
+		boolean on = any && cfg.enabled && tracker.playing();
 		presence = step(presence, on, dt);
 		ClientLevel level = mc.level;
-		if (presence <= 0 || cfg.sky == SkyEffect.OFF || level == null
-				|| level.dimensionType().skybox() != Skybox.OVERWORLD) {
+		if (presence <= 0 || !any || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
 			return;
 		}
 		Camera camera = mc.gameRenderer.getMainCamera();
@@ -124,25 +160,62 @@ public final class SkyEffects {
 		}
 		clock += dt;
 		effect = cfg.sky;
+		starPatterns = cfg.constellations;
 		radius = radius(mc.options.getEffectiveRenderDistance());
+		far = farRadius(mc.options.getEffectiveRenderDistance());
+		amount = clamp01(fade / FULL_STRENGTH);
+		baseYaw = baseYaw(cfg.direction);
+		// One screen pixel as a tangent of its angle, so lines stay about a pixel wide at any size
+		pixel = 2 * (float) Math.tan(mc.options.fov().get() * DEG / 2) / Math.max(1, mc.getWindow().getHeight());
 		tint = lyrics.color();
 
+		// The synthwave sky has to cover the vanilla one, so it blends normally; the rest adds light.
+		// Each effect goes through a single render type, drawn far to near, so the layers stack the same
+		// way whether or not the pipeline sorts them.
+		boolean cover = effect == SkyEffect.SYNTHWAVE;
+		target.lit = cover;
 		PoseStack pose = context.matrices();
 		pose.pushPose();
-		context.commandQueue().submitCustomGeometry(pose, RenderTypes.lightning(), this::draw);
+		context.commandQueue().submitCustomGeometry(pose, cover ? RenderTypes.textBackground() : RenderTypes.lightning(), this::draw);
 		pose.popPose();
 	}
 
 	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
+		target.pose = pose;
+		target.vc = vc;
+		switch (effect) {
+			case SYNTHWAVE -> synthwave.draw(target, far, baseYaw, amount, clock, pixel);
+			case ECLIPSE -> eclipse.draw(target, far, baseYaw, amount, clock);
+			default -> { }
+		}
+		if (starPatterns) {
+			constellations.draw(target, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
+		}
 		if (effect == SkyEffect.AURORA) {
 			for (int k = 0; k < RIBBONS; k++) {
 				ribbon(pose, vc, k);
 			}
-		} else {
+		} else if (effect == SkyEffect.NEBULA) {
 			for (int k = 0; k < BLOBS; k++) {
 				blob(pose, vc, k);
 			}
 			dots(pose, vc);
+		}
+	}
+
+	/** Hands the sky shapes' corners to this frame's vertex buffer. */
+	private static final class Target extends SkyCanvas {
+		PoseStack.Pose pose;
+		VertexConsumer vc;
+		/** The plain-blend type also takes a light level; full bright keeps the colours as given. */
+		boolean lit;
+
+		@Override
+		protected void put(float x, float y, float z, int argb) {
+			VertexConsumer v = vc.addVertex(pose, x, y, z).setColor(argb);
+			if (lit) {
+				v.setLight(LightTexture.FULL_BRIGHT);
+			}
 		}
 	}
 
