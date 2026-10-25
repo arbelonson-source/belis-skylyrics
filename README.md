@@ -15,7 +15,8 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - Gets the synced lyrics from [LRCLIB](https://lrclib.net) and shows them line by line, in time with the song.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
-- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted.
+- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. It can show a clock too.
+- The word being sung can grow a little in the sky (optional).
 - Three letter styles for the sky lyrics: Smooth, Handwritten or the Minecraft font.
 - Takes its colour from the album cover. You can also pick your own colour, or use rainbow.
 - At night, a soft aurora or nebula can glow in the sky behind the lyrics while music plays.

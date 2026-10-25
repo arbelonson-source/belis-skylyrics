@@ -95,6 +95,10 @@ sourceSets {
 
 test {
 	useJUnitPlatform()
+	// Name every test in the log, so CI shows that the Windows ones really ran there
+	testLogging {
+		events "passed", "skipped", "failed"
+	}
 }
 
 processResources {

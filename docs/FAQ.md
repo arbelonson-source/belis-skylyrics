@@ -73,9 +73,9 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 ## What can I change about the look?
 
-- **Lyrics tab:** in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines, the karaoke fill, the animation (Words, Fade, Rise, Pop or Type), the pulse when a new line starts, and capital letters.
+- **Lyrics tab:** in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines, the karaoke fill, a bigger current word, the animation (Words, Fade, Rise, Pop or Type), the pulse when a new line starts, and capital letters.
 - **Look tab:** colour from the album cover, your own colour or rainbow; the letter style (Smooth, Handwritten or Minecraft); glow, shadow and opacity; and the night sky (Off, Aurora or Nebula) with its strength.
-- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, and turn the top bar on or off.
+- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, turn the top bar on or off, and add a clock to it.
 
 ## Is the mod in Hebrew?
 

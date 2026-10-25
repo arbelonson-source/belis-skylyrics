@@ -154,5 +154,9 @@
   "skylyrics.ui.off": "כבוי",
   "skylyrics.ui.aurora": "אורורה",
   "skylyrics.ui.nebula": "ערפילית",
-  "skylyrics.ui.strength": "עוצמה"
+  "skylyrics.ui.strength": "עוצמה",
+  "skylyrics.ui.bigger_current_word": "מילה נוכחית גדולה יותר",
+  "skylyrics.ui.the_word_being_sung_grows_a_little": "המילה שמושרת עכשיו גדלה קצת",
+  "skylyrics.ui.clock": "שעון",
+  "skylyrics.ui.the_time_on_the_left_of_the_bar": "השעה בצד שמאל של הסרגל"
 }

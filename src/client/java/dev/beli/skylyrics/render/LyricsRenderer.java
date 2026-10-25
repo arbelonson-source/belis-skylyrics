@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import java.text.Bidi;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.dimension.DimensionType.Skybox;
 import net.minecraft.world.level.material.FogType;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
@@ -70,6 +72,8 @@ public final class LyricsRenderer {
 	private int previousIndex = Integer.MIN_VALUE;
 	private long changedAt;
 	private final Map<String, List<String>> wrapCache = new HashMap<>();
+	/** Where each character of a row starts, in display order (one extra entry: the row's width). */
+	private final Map<String, float[]> offsetCache = new HashMap<>();
 	private float wrapCacheWidth;
 	private Style wrapCacheStyle = Style.EMPTY;
 	private Pending pending;
@@ -108,6 +112,7 @@ public final class LyricsRenderer {
 				shown = current;
 				lastIndex = Integer.MIN_VALUE;
 				wrapCache.clear();
+				offsetCache.clear();
 			}
 			frozenTime = time;
 		} else {
@@ -136,6 +141,7 @@ public final class LyricsRenderer {
 		Style wrapStyle = LyricsFont.sky(cfg);
 		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle)) {
 			wrapCache.clear();
+			offsetCache.clear();
 			wrapCacheWidth = wrapWidth;
 			wrapCacheStyle = wrapStyle;
 		}
@@ -345,7 +351,7 @@ public final class LyricsRenderer {
 	/** One frame's worth of drawing settings. */
 	/** Where the text ends up: in the world, or over the finished screen. */
 	private interface Canvas {
-		void push(float y, float scale);
+		void push(float x, float y, float scale);
 
 		void pop();
 
@@ -355,9 +361,9 @@ public final class LyricsRenderer {
 
 	private record WorldCanvas(SubmitNodeCollector out, PoseStack pose, Font.DisplayMode mode) implements Canvas {
 		@Override
-		public void push(float y, float scale) {
+		public void push(float x, float y, float scale) {
 			pose.pushPose();
-			pose.translate(0, y, 0);
+			pose.translate(x, y, 0);
 			pose.scale(scale, scale, scale);
 		}
 
@@ -381,9 +387,9 @@ public final class LyricsRenderer {
 
 	private record ScreenCanvas(GuiGraphics g, Font font) implements Canvas {
 		@Override
-		public void push(float y, float scale) {
+		public void push(float x, float y, float scale) {
 			g.pose().pushMatrix();
-			g.pose().translate(0, y);
+			g.pose().translate(x, y);
 			g.pose().scale(scale, scale);
 		}
 
@@ -421,6 +427,51 @@ public final class LyricsRenderer {
 			return wrapCache.computeIfAbsent(text, t -> wrap(font, base, t, wrapWidth));
 		}
 
+		float[] offsets(String row, Display d) {
+			return offsetCache.computeIfAbsent(row, r -> {
+				float[] at = new float[d.cps.length + 1];
+				for (int v = 1; v <= d.cps.length; v++) {
+					at[v] = LyricsFont.width(font, base, new String(d.cps, 0, v));
+				}
+				return at;
+			});
+		}
+
+		/** How much bigger each character is drawn (1 = normal): the word being sung swells, then settles. */
+		float @Nullable [] growth(String row, Display d, int charIndex, float sungChars, float highlight) {
+			int n = d.cps.length;
+			int[] rank = wordRanks(row);
+			int words = wordCount(row);
+			if (words == 0) {
+				return null;
+			}
+			int[] first = new int[words], last = new int[words];
+			Arrays.fill(first, Integer.MAX_VALUE);
+			for (int v = 0; v < n; v++) {
+				if (d.cps[v] != ' ') {
+					int li = d.logical[v], w = rank[li];
+					first[w] = Math.min(first[w], li);
+					last[w] = Math.max(last[w], li);
+				}
+			}
+			float[] byWord = new float[words];
+			boolean any = false;
+			for (int w = 0; w < words; w++) {
+				float start = charIndex + first[w], end = charIndex + last[w] + 1;
+				float in = smooth((sungChars - start) / GROW_RAMP), out = smooth((end + GROW_RAMP - sungChars) / GROW_RAMP);
+				byWord[w] = 1 + GROW * in * out * highlight;
+				any |= byWord[w] > 1.001f;
+			}
+			if (!any) {
+				return null;
+			}
+			float[] grow = new float[n];
+			for (int v = 0; v < n; v++) {
+				grow[v] = d.cps[v] == ' ' ? 1 : byWord[rank[d.logical[v]]];
+			}
+			return grow;
+		}
+
 		/**
 		 * @param highlight 1 for the current line, 0 for the dim neighbours
 		 * @param sung      0..1, how much of the line has been sung (karaoke fill)
@@ -451,7 +502,9 @@ public final class LyricsRenderer {
 			float haloWeight = 1 + 0.9f * day;
 			boolean byWord = !Float.isNaN(wordsT);
 
-			canvas.push(y, scale);
+			boolean growing = cfg.growWord && cfg.karaoke && shown.synced() && highlight > 0.01f && sung > 0;
+
+			canvas.push(0, y, scale);
 			float top = -rows.size() * ROW_H / 2;
 			int charIndex = 0, wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
@@ -475,19 +528,38 @@ public final class LyricsRenderer {
 					// Each word flares as it finishes fading in; other animations flare the whole line at once
 					flare[v] = Float.isNaN(flareT) ? 0 : pulse(flareT - wordStart - (byWord ? WORD_FADE * 0.6f : 0)) * highlight;
 				}
-				float x = -LyricsFont.width(font, base, row) / 2f;
+				float[] at = offsets(row, d);
+				float[] grow = growing ? growth(row, d, charIndex, sungChars, highlight) : null;
+				if (grow != null) {
+					// A bigger word pushes its neighbours aside instead of covering them
+					float[] spread = new float[n + 1];
+					for (int v = 0; v < n; v++) {
+						spread[v + 1] = spread[v] + (at[v + 1] - at[v]) * grow[v];
+					}
+					at = spread;
+				}
+				float x = -at[n] / 2f;
 				float ry = top + r * ROW_H + 1;
-				// Draw runs of characters that share the same visibility; normally that's the whole row
+				// Draw runs of characters that share the same visibility and size; normally that's the whole row
 				for (int from = 0; from < n; ) {
 					int to = from + 1;
-					while (to < n && (reveal[to] == reveal[from] && flare[to] == flare[from] || d.cps[to] == ' ')) {
+					while (to < n && (reveal[to] == reveal[from] && flare[to] == flare[from] && (grow == null || grow[to] == grow[from])
+							|| d.cps[to] == ' ')) {
 						to++;
 					}
 					float f = reveal[from];
 					if (f > 0.004f) {
-						float sx = x + (from == 0 ? 0 : LyricsFont.width(font, base, new String(d.cps, 0, from)));
+						float sx = x + at[from];
 						float e = 1 - (1 - f) * (1 - f);
 						float sy = ry + (byWord ? (1 - e) * 3 : 0);
+						float size = grow == null ? 1 : grow[from];
+						if (size != 1) {
+							// Grow around the middle of the letters, so the word swells up and down evenly
+							float cy = ry + GLYPH_MIDDLE;
+							canvas.push(sx, cy, size);
+							sx = 0;
+							sy -= cy;
+						}
 						float fl = flare[from];
 						int start = charIndex;
 						int a0 = from, a1 = to;
@@ -527,6 +599,9 @@ public final class LyricsRenderer {
 							}
 						}
 						canvas.text(sx, sy, seq, cfg.shadow, Math.max(4, Math.round(alpha * f * 255)) << 24 | 0xFFFFFF, false);
+						if (size != 1) {
+							canvas.pop();
+						}
 					}
 					from = to;
 				}
@@ -541,6 +616,16 @@ public final class LyricsRenderer {
 	private static final float WORD_FADE = 0.25f;
 	private static final float PULSE_RISE = 0.07f;
 	private static final float PULSE_FALL = 0.65f;
+	/** How much bigger the word being sung gets, and over how many letters it swells and settles. */
+	static final float GROW = 0.14f;
+	private static final float GROW_RAMP = 1.5f;
+	/** From the top of a row of text to the middle of its letters. */
+	private static final float GLYPH_MIDDLE = 3.5f;
+
+	private static float smooth(float t) {
+		t = Mth.clamp(t, 0, 1);
+		return t * t * (3 - 2 * t);
+	}
 
 	/** A quick swell and a slower fade, {@code t} seconds after a line starts. */
 	static float pulse(float t) {

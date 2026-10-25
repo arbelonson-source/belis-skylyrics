@@ -154,5 +154,9 @@
   "skylyrics.ui.off": "Off",
   "skylyrics.ui.aurora": "Aurora",
   "skylyrics.ui.nebula": "Nebula",
-  "skylyrics.ui.strength": "Strength"
+  "skylyrics.ui.strength": "Strength",
+  "skylyrics.ui.bigger_current_word": "Bigger current word",
+  "skylyrics.ui.the_word_being_sung_grows_a_little": "The word being sung grows a little",
+  "skylyrics.ui.clock": "Clock",
+  "skylyrics.ui.the_time_on_the_left_of_the_bar": "The time on the left of the bar"
 }

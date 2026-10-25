@@ -153,6 +153,9 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.showNext, v -> cfg.showNext = v);
 		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung"),
 				() -> cfg.karaoke, v -> cfg.karaoke = v);
+		Row grow = new Toggle(Tr.t("Bigger current word"), Tr.t("The word being sung grows a little"),
+				() -> cfg.growWord, v -> cfg.growWord = v)
+				.when(() -> cfg.karaoke);
 		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
 				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type")}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i]);
@@ -163,7 +166,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Position"), placement, direction, height, distance, size),
-				new Card(Tr.t("Lines"), previous, next, karaoke, animation, pulse, capitals));
+				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 
 	private List<Card> lookTab() {
@@ -283,6 +286,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row barLyrics = new Toggle(Tr.t("Lyrics in the bar"), Tr.t("The line being sung, word by word"),
 				() -> cfg.barLyrics, v -> cfg.barLyrics = v)
 				.when(() -> cfg.nowPlayingHud);
+		Row clock = new Toggle(Tr.t("Clock"), Tr.t("The time on the left of the bar"),
+				() -> cfg.barClock, v -> cfg.barClock = v)
+				.when(() -> cfg.nowPlayingHud);
 		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
@@ -293,7 +299,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused),
-				new Card(Tr.t("Top bar"), card, barLyrics, onlyOnChange),
+				new Card(Tr.t("Top bar"), card, barLyrics, clock, onlyOnChange),
 				new Card(Tr.t("Keys"), openKey, controls));
 	}
 

@@ -1,5 +1,8 @@
 package dev.beli.skylyrics.render;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.Locale;
 
 import org.jspecify.annotations.Nullable;
@@ -26,7 +29,8 @@ import dev.beli.skylyrics.media.Track;
 /**
  * The bar at the top of the screen: a dark rounded pill with the round cover, the line being
  * sung (the current word sits on a coloured highlight) and a little equaliser. Between lines,
- * and for a moment after the song changes, it shows the title and artist instead.
+ * and for a moment after the song changes, it shows the title and artist instead. It can also
+ * show the time on its left.
  */
 public final class NowPlayingHud {
 	private static final long SHOW_NS = 6_000_000_000L;
@@ -39,6 +43,11 @@ public final class NowPlayingHud {
 	private static final int EQ_W = 11;
 	private static final int BG = 0x0E0C14;
 	private static final int GREY = 0x9C96AE;
+	private static final int CLOCK = 0xD6D1E3;
+	/** From the bar's left edge to the clock, and from the clock to the divider and on to the cover. */
+	private static final int CLOCK_INSET = 7;
+	private static final int CLOCK_GAP = 5;
+	private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT);
 
 	private final MediaTracker tracker;
 	private final LyricsService service;
@@ -56,6 +65,8 @@ public final class NowPlayingHud {
 	private float hlX, hlW = -1;
 	private int hlWord = -1;
 	private final float[] eq = new float[4];
+	private int clockMinute = -1;
+	private String clockText = "";
 
 	/** What the bar says: a lyric line, or the song's title and artist. */
 	private record Content(String key, boolean lyric, String text, String sub, float sung) {
@@ -89,7 +100,8 @@ public final class NowPlayingHud {
 
 		Track track = tracker.track();
 		Content line = cfg.barLyrics ? currentLine(cfg) : null;
-		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS;
+		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
+		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg);
 		boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.options.hideGui
 				&& (info || line != null);
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
@@ -110,19 +122,36 @@ public final class NowPlayingHud {
 		art.upload();
 		Font font = mc.font;
 		Style style = LyricsFont.base(cfg);
-		float maxText = Math.min(g.guiWidth() - 40, 360) - (PAD + ART + GAP + 7 + EQ_W + 8);
+		String clock = cfg.barClock ? clock() : "";
+		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, style, clock);
+		// Room taken by the clock and its divider, before the cover
+		float lead = clock.isEmpty() ? 0 : CLOCK_INSET + clockW + 2 * CLOCK_GAP + 1 - PAD;
+		float maxText = Math.min(g.guiWidth() - 40, 360) - (lead + PAD + ART + GAP + 7 + EQ_W + 8);
 		float textW = textWidth(font, style, content);
 		float textScale = textW > maxText ? Math.max(0.8f, maxText / textW) : 1;
 		float shown = Math.min(textW * textScale, maxText);
-		float target = PAD + ART + GAP + shown + 7 + EQ_W + 8;
+		float target = lead + PAD + ART + GAP + shown + 7 + EQ_W + 8;
 		width = width < 0 ? target : width + (target - width) * (1 - (float) Math.exp(-dt * 12));
 
 		float x = (g.guiWidth() - width) / 2f;
 		float y = 5 - (1 - ease(alpha)) * 10;
-		draw(g, font, style, mc, x, y, textScale, maxText, now, dt);
+		draw(g, font, style, mc, x, y, lead, clock, clockW, textScale, maxText, now, dt);
 	}
 
-	private void draw(GuiGraphics g, Font font, Style style, Minecraft mc, float x, float y, float textScale, float maxText, long now, float dt) {
+	/** The time as the computer's language writes it, e.g. "21:07" or "9:07 PM". */
+	private String clock() {
+		LocalTime time = LocalTime.now();
+		int minute = time.getHour() * 60 + time.getMinute();
+		if (minute != clockMinute) {
+			clockMinute = minute;
+			// Some languages put a narrow no-break space before AM/PM, which the fonts don't have
+			clockText = CLOCK_FORMAT.format(time).replace('\u202F', ' ').replace('\u00A0', ' ');
+		}
+		return clockText;
+	}
+
+	private void draw(GuiGraphics g, Font font, Style style, Minecraft mc, float x, float y, float lead, String clock, float clockW,
+			float textScale, float maxText, long now, float dt) {
 		float a = alpha;
 		int accent = art.color();
 		float s = (float) mc.getWindow().getGuiScale();
@@ -134,8 +163,12 @@ public final class NowPlayingHud {
 		roundRect(g, px, py, pw, ph, ph / 2, ARGB.color(Math.round(a * 46), 0xFFFFFF));
 		roundRect(g, px + 1, py + 1, pw - 2, ph - 2, ph / 2 - 1, ARGB.color(Math.round(a * 205), BG));
 
+		if (!clock.isEmpty()) {
+			float divX = px + (CLOCK_INSET + clockW + CLOCK_GAP) * s;
+			roundRect(g, divX, py + ph * 0.27f, Math.max(1, Math.round(s * 0.5f)), ph * 0.46f, 0, ARGB.color(Math.round(a * 40), 0xFFFFFF));
+		}
 		int artPx = Math.round(ART * s);
-		int artX = Math.round(px + PAD * s), artY = Math.round(py + (ph - artPx) / 2);
+		int artX = Math.round(px + (lead + PAD) * s), artY = Math.round(py + (ph - artPx) / 2);
 		if (art.hasTexture()) {
 			g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, artX, artY, 0, 0, artPx, artPx,
 					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a));
@@ -158,11 +191,17 @@ public final class NowPlayingHud {
 		}
 		g.pose().popMatrix();
 		if (!art.hasTexture()) {
-			g.drawCenteredString(font, "♪", Math.round(x + PAD + ART / 2f), Math.round(y + H / 2f - 4), ARGB.color(Math.round(a * 230), 0xFFFFFF));
+			g.drawCenteredString(font, "♪", Math.round(x + lead + PAD + ART / 2f), Math.round(y + H / 2f - 4), ARGB.color(Math.round(a * 230), 0xFFFFFF));
+		}
+		if (!clock.isEmpty()) {
+			g.pose().pushMatrix();
+			g.pose().translate(x + CLOCK_INSET, y + H / 2f);
+			text(g, font, style, clock, 0, ARGB.color(Math.max(4, Math.round(a * 255)), CLOCK));
+			g.pose().popMatrix();
 		}
 
 		// Text, sliding in from below while the old text slides out the top
-		float tx = x + PAD + ART + GAP;
+		float tx = x + lead + PAD + ART + GAP;
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
 		p = ease(p);
 		g.enableScissor(Math.round(tx) - 4, Math.round(y) + 1, Math.round(tx + maxText) + 4, Math.round(y + H) - 1);
@@ -281,12 +320,22 @@ public final class NowPlayingHud {
 		g.pose().popMatrix();
 	}
 
+	private long lyricsTime(SkyLyricsConfig cfg) {
+		return tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
+	}
+
+	/** The song has timed lyrics and the first line has started (it may be a gap between lines now). */
+	private boolean singing(SkyLyricsConfig cfg) {
+		Lyrics lyrics = service.lyrics();
+		return lyrics.synced() && !lyrics.isEmpty() && lyrics.indexAt(lyricsTime(cfg)) >= 0;
+	}
+
 	private @Nullable Content currentLine(SkyLyricsConfig cfg) {
 		Lyrics lyrics = service.lyrics();
 		if (!lyrics.synced() || lyrics.isEmpty()) {
 			return null;
 		}
-		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
+		long time = lyricsTime(cfg);
 		int i = lyrics.indexAt(time);
 		if (i < 0 || i >= lyrics.lines().size()) {
 			return null;

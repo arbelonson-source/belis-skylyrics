@@ -78,6 +78,8 @@ public final class SkyLyricsConfig {
 	public boolean showPrevious = true;
 	public boolean showNext = true;
 	public boolean karaoke = true;
+	/** With {@link #karaoke}: the word being sung grows a little. */
+	public boolean growWord = false;
 	public boolean uppercase = false;
 	public Animation animation = Animation.WORDS;
 	/** Positive shows lyrics earlier (if they lag behind the song), in milliseconds. */
@@ -118,6 +120,8 @@ public final class SkyLyricsConfig {
 	public boolean hudOnlyOnChange = true;
 	/** The top bar also shows the line being sung, with the current word highlighted. */
 	public boolean barLyrics = true;
+	/** The time on the left of the top bar. */
+	public boolean barClock = false;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */

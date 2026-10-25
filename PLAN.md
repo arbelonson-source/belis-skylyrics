@@ -64,9 +64,9 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 
 ### Polish ideas (the loop keeps going)
 - [x] Optional handwritten "Script" font for the sky lyrics, like the brush lettering in the Neon Lyrics videos (OFL font, bundled)
-- [ ] Top bar: "now playing" look between lines (song title · artist) instead of an empty bar
-- [ ] Top bar: optional clock on the left of the bar
-- [ ] Current word slightly larger while it is being sung (optional)
+- [x] Top bar: "now playing" look between lines (song title · artist) instead of an empty bar
+- [x] Top bar: optional clock on the left of the bar
+- [x] Current word slightly larger while it is being sung (optional)
 - [ ] Settings screen: live preview of the sky lyrics inside the menu looks right at every GUI scale
 
 ## Log
@@ -92,3 +92,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 20:45: player help pages (docs/FAQ.md, docs/TROUBLESHOOTING.md), ready-to-paste Modrinth and CurseForge pages (store/), draft release notes for v0.2.0, README links them and lists the Handwritten font. Nothing published to the stores.
 - 2026-10-25 20:59: when LRCLIB has a hiccup (busy, too many requests, timeout, no network) the mod now keeps trying while the song plays (after 2 s, 5 s, 10 s, 20 s, then every 30-60 s) instead of staying lyric-less until the next song; a hiccup is never saved as "no lyrics". Also: skipped songs aren't looked up one by one, LRC files with a BOM, indents or old Mac line ends parse fully, "Song - Remastered 2011" browser titles keep the artist, and length/cover that browsers send late now reach the lyrics and cover art.
 - 2026-10-25 (cloud session): Windows support. Windows has no MPRIS; the closest thing is the media controls behind the media-key panel (GlobalSystemMediaTransportControlsSessionManager, a WinRT API). Java can't call WinRT by itself, so the mod starts Windows PowerShell 5.1 (part of every Windows 10/11) with a bundled script that stays running hidden and answers numbered one-line commands with one-line JSON. Positions are moved on from the player's last report, since players only update the timeline on play, pause and seek. Choosing between several players is now shared with the Linux source (PlayerPicker). If PowerShell can't start, the Music tab shows why and the mod retries every 15 s. Checked here: the media classes compile and their 17 tests pass, including the real script against a fake media manager on PowerShell 7. Not checked: the full Gradle build (this cloud session can't reach maven.fabricmc.net or Mojang's servers) and a real Windows PC.
+- 2026-10-25 (cloud session): v0.2.0 prep. The top bar stays up through instrumental gaps once the singing has started, showing title · artist. New Clock switch (Display > Top bar, off at first): the time in the computer's format on the left of the bar, with a thin divider before the cover. New "Bigger current word" switch (Lyrics > Lines, needs karaoke, off at first): the word being sung grows by 14% over about a letter and a half and settles after; the row is laid out again so neighbours move aside. Version 0.2.0, release notes written (Windows, fonts, clock, bigger word, LRCLIB retries, fixes). Compiled and tested by CI only; still needs an in-game look (headless screen) before release.
