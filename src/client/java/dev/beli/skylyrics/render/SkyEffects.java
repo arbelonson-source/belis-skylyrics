@@ -22,7 +22,7 @@ import net.minecraft.world.level.material.FogType;
 public final class SkyEffects {
 	private static final float FADE_SECONDS = 1.5f;
 	/** Star brightness of a full overworld night. */
-	private static final float NIGHT_STARS = 0.5f;
+	static final float NIGHT_STARS = 0.5f;
 	private static final int TEAL = 0x3CFFB4;
 	private static final int VIOLET = 0x7A4CFF;
 	private static final int DEEP_BLUE = 0x2A58E8;

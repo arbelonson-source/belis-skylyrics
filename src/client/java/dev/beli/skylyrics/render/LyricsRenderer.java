@@ -14,11 +14,15 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.attribute.EnvironmentAttributes;
+import net.minecraft.world.level.dimension.DimensionType.Skybox;
+import net.minecraft.world.level.material.FogType;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
@@ -53,6 +57,7 @@ public final class LyricsRenderer {
 
 	private long lastFrame;
 	private float visibility;
+	private float daylight;
 	private float anchorYaw = Float.NaN;
 	private float anchorPitch;
 	private boolean following;
@@ -114,6 +119,7 @@ public final class LyricsRenderer {
 				&& !(cfg.hideWhenPaused && !tracker.playing());
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
 		updateColor(cfg, dt, now);
+		updateDaylight(mc, camera, dt);
 		updateAnchor(cfg, camera, dt);
 		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental()) {
 			return;
@@ -435,9 +441,12 @@ public final class LyricsRenderer {
 			float sungChars = sung * total;
 			float stagger = Math.min(WORD_STAGGER, 0.7f / Math.max(1, words));
 
-			int bright = mix(color, 0xFFFFFF, 0.55f);
-			int dim = mix(color, 0x000000, 0.45f);
-			int secondary = mix(color, 0xFFFFFF, 0.25f);
+			float day = daylight;
+			int bright = mix(color, 0xFFFFFF, 0.55f - 0.08f * day);
+			int dim = mix(color, 0x000000, 0.45f - 0.4f * day); // dark words would sink into the dark halo
+			int secondary = mix(color, 0xFFFFFF, 0.25f - 0.25f * day);
+			int halo = mix(color, 0x000000, 0.75f * day);
+			float haloWeight = 1 + 0.9f * day;
 			boolean byWord = !Float.isNaN(wordsT);
 
 			canvas.push(y, scale);
@@ -490,7 +499,8 @@ public final class LyricsRenderer {
 							}
 							return true;
 						};
-						float ga = (cfg.glow + 0.9f * fl) * alpha * (0.25f + 0.75f * highlight) * f;
+						float ga = (cfg.glow + 0.9f * fl) * alpha * Mth.lerp(day, 0.25f + 0.75f * highlight, 0.7f + 0.3f * highlight)
+								* f * haloWeight;
 						if (ga > 0.02f) {
 							FormattedCharSequence glowSeq = sink -> {
 								for (int v = a0; v < a1; v++) {
@@ -502,11 +512,11 @@ public final class LyricsRenderer {
 							};
 							for (int ring = 1; ring <= 2; ring++) {
 								float radius = ring * 0.85f * (1 + 0.7f * fl);
-								int alphaByte = Math.round(ga * (ring == 1 ? 0.16f : 0.08f) * 255);
+								int alphaByte = Math.min(255, Math.round(ga * (ring == 1 ? 0.16f : 0.08f) * 255));
 								if (alphaByte < 2) {
 									continue;
 								}
-								int glowColor = alphaByte << 24 | color;
+								int glowColor = alphaByte << 24 | halo;
 								for (int k = 0; k < 8; k++) {
 									float ang = k * Mth.PI / 4 + (ring == 2 ? Mth.PI / 8 : 0);
 									canvas.text(sx + Mth.cos(ang) * radius, sy + Mth.sin(ang) * radius,
@@ -653,6 +663,26 @@ public final class LyricsRenderer {
 			rows.add(row.toString());
 		}
 		return rows;
+	}
+
+	private void updateDaylight(Minecraft mc, Camera camera, float dt) {
+		ClientLevel level = mc.level;
+		float target = 0;
+		if (level != null && level.dimensionType().skybox() == Skybox.OVERWORLD
+				&& camera.getFluidInCamera() == FogType.NONE) {
+			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+			target = daylight(camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial),
+					level.getRainLevel(partial));
+		}
+		daylight = approach(daylight, target, dt * 2f);
+	}
+
+	/**
+	 * 1 under a clear day sky, 0 at night; rain greys the sky so it counts half. A light glow vanishes against a
+	 * bright sky, so by day the lyrics get a dark halo instead.
+	 */
+	static float daylight(float starBrightness, float rainLevel) {
+		return (1 - Mth.clamp(starBrightness / SkyEffects.NIGHT_STARS, 0, 1)) * (1 - 0.5f * Mth.clamp(rainLevel, 0, 1));
 	}
 
 	private void updateColor(SkyLyricsConfig cfg, float dt, long now) {

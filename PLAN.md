@@ -48,8 +48,8 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] Install into the owner's "donut" instance
 
 ### After 0.1.0 (small things)
-- [ ] Lyrics search for songs with several artists ("A, B"): try the first artist alone when the full name finds nothing
-- [ ] Daytime lyrics without shaders look a little pale; give them a bit more contrast against a bright sky
+- [x] Lyrics search for songs with several artists ("A, B"): try the first artist alone when the full name finds nothing
+- [x] Daytime lyrics without shaders look a little pale; give them a bit more contrast against a bright sky
 
 ## Log
 - 2026-10-25: started. Template from FabricMC/fabric-example-mod@1.21.11.
@@ -69,3 +69,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 19:41: pictures and a short clip for the project page (docs/): sunset and aurora with shaders, nebula, daytime and floating without, the four settings tabs, and a word-by-word clip (animated preview in the README, mp4 next to it). Recorded only the middle of the hidden test screen so desktop pop-ups stay out. Also shortened four settings help lines that were cut off (English and Hebrew).
 - 2026-10-25 19:52: tested the real jar the way players install it (new `runProductionClient` task: built jar + published Fabric API, Sodium 0.8.4, Iris 1.10.5, Mod Menu, Complementary shaders). Lyrics, top bar, aurora and the settings screen all work; Mod Menu lists it with the right licence and opens the settings. Replaced the template "Mod ID" placeholder icon with a real one (night sky, glowing note, lyric lines; source docs/icon.svg).
 - 2026-10-25 20:00: first release, v0.1.0, on GitHub with the jar (built by GitHub from the tag). Before installing, tried the released jar next to all 48 mods of the "donut" instance (ImmediatelyFast, skyboxify, polytone, C2ME, Bobby, etc.) with Complementary and with BSL: loads cleanly, lyrics, top bar, aurora and settings all fine. Then copied the release jar into donut's mods folder. `runProductionClient -PmodsDir=...` does this test with any mods folder.
+- 2026-10-25 20:40: songs with several artists already work: checked live on LRCLIB (Queen & David Bowie, Shawn Mendes & Camila Cabello, The Chainsmokers & Coldplay, Earth, Wind & Fire), and the search already falls back to the first artist alone. Daytime lyrics: under a bright sky the light glow turns into a dark halo and the colours get deeper, so the words stand out; at night nothing changes. Fades with sunset and counts rain as half.
