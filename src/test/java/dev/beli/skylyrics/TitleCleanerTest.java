@@ -63,6 +63,16 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void searchTitleDropsGuestArtists() {
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (with SOMEONE)"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song [with Someone & Another]"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (feat. Someone)"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song [Ft. Someone]"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (prod. Someone)"));
+		assertEquals("Without You", TitleCleaner.forSearch("Without You"));
+	}
+
+	@Test
 	void mainArtistIsTheFirstOne() {
 		assertEquals("A", TitleCleaner.mainArtist("A, B & C"));
 		assertEquals("A", TitleCleaner.mainArtist("A feat. B"));

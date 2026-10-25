@@ -39,6 +39,20 @@ public final class LrclibClient {
 		}
 	}
 
+	/** LRCLIB answered with an HTTP error other than 404. */
+	public static final class StatusException extends IOException {
+		private final int status;
+
+		StatusException(int status) {
+			super("LRCLIB answered " + status);
+			this.status = status;
+		}
+
+		public int status() {
+			return status;
+		}
+	}
+
 	private final HttpClient http = HttpClient.newBuilder()
 			.connectTimeout(Duration.ofSeconds(6))
 			.followRedirects(HttpClient.Redirect.NORMAL)
@@ -168,7 +182,7 @@ public final class LrclibClient {
 			return null;
 		}
 		if (response.statusCode() / 100 != 2) {
-			throw new IOException("LRCLIB answered " + response.statusCode());
+			throw new StatusException(response.statusCode());
 		}
 		return JsonParser.parseString(response.body());
 	}

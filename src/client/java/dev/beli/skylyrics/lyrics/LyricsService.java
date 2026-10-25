@@ -7,12 +7,17 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.IntToLongFunction;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,6 +33,8 @@ public final class LyricsService {
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 	/** Don't re-ask LRCLIB about a song it didn't have for this long. */
 	private static final long NOT_FOUND_TTL_MS = 3L * 24 * 60 * 60 * 1000;
+	/** Waits between tries while LRCLIB is having trouble; the last one repeats. */
+	private static final long[] RETRY_DELAYS_MS = {2_000, 5_000, 10_000, 20_000, 30_000, 45_000, 60_000};
 
 	public enum State {
 		IDLE, LOADING, READY, NOT_FOUND, ERROR
@@ -38,7 +45,8 @@ public final class LyricsService {
 
 	private final LrclibClient client;
 	private final Path cacheDir;
-	private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+	private final IntToLongFunction retryDelayMs;
+	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
 		Thread t = new Thread(r, "SkyLyrics lyrics");
 		t.setDaemon(true);
 		return t;
@@ -49,10 +57,21 @@ public final class LyricsService {
 	private volatile Track track = Track.NONE;
 	private volatile Lyrics lyrics = Lyrics.NONE;
 	private volatile State state = State.IDLE;
+	private volatile ScheduledFuture<?> pendingRetry;
 
 	public LyricsService(LrclibClient client, Path cacheDir) {
+		this(client, cacheDir, LyricsService::retryDelayMs);
+	}
+
+	LyricsService(LrclibClient client, Path cacheDir, IntToLongFunction retryDelayMs) {
 		this.client = client;
 		this.cacheDir = cacheDir;
+		this.retryDelayMs = retryDelayMs;
+	}
+
+	/** How long to wait before trying again after {@code failures} failed tries in a row. */
+	static long retryDelayMs(int failures) {
+		return RETRY_DELAYS_MS[Math.min(Math.max(failures, 1), RETRY_DELAYS_MS.length) - 1];
 	}
 
 	public Track track() {
@@ -70,11 +89,12 @@ public final class LyricsService {
 	/** Called when the song changes. */
 	public void load(Track newTrack) {
 		Track old = track;
-		if (!newTrack.isNone() && newTrack.sameSong(old) && newTrack.lengthMs() == old.lengthMs() && state != State.ERROR) {
-			track = newTrack; // only the cover changed; keep the lyrics on screen
+		if (!newTrack.isNone() && newTrack.sameSong(old) && newTrack.lengthMs() == old.lengthMs()) {
+			track = newTrack; // only the cover changed; keep the lyrics (or the lookup) going
 			return;
 		}
 		long gen = generation.incrementAndGet();
+		cancelRetry();
 		track = newTrack;
 		lyrics = Lyrics.NONE;
 		if (newTrack.isNone()) {
@@ -87,7 +107,7 @@ public final class LyricsService {
 			return;
 		}
 		state = State.LOADING;
-		executor.execute(() -> fetch(newTrack, gen, false));
+		executor.execute(() -> fetch(newTrack, gen, false, 0));
 	}
 
 	/** Forget the cached answer for this song and ask again. */
@@ -97,11 +117,28 @@ public final class LyricsService {
 			return;
 		}
 		long gen = generation.incrementAndGet();
+		cancelRetry();
 		state = State.LOADING;
-		executor.execute(() -> fetch(t, gen, true));
+		executor.execute(() -> fetch(t, gen, true, 0));
 	}
 
-	private void fetch(Track t, long gen, boolean skipCache) {
+	private void cancelRetry() {
+		ScheduledFuture<?> retry = pendingRetry;
+		if (retry != null) {
+			retry.cancel(false);
+		}
+	}
+
+	/** LRCLIB busy or down, too many requests, a timeout or no network: worth asking again soon. */
+	static boolean temporary(Exception e) {
+		if (e instanceof LrclibClient.StatusException s) {
+			return s.status() == 408 || s.status() == 429 || s.status() >= 500;
+		}
+		return e instanceof IOException || e instanceof JsonParseException;
+	}
+
+	/** @param failures tries for this song that already failed with a temporary problem */
+	private void fetch(Track t, long gen, boolean skipCache, int failures) {
 		if (generation.get() != gen) {
 			return; // skipped past this song while it waited in the queue
 		}
@@ -118,13 +155,32 @@ public final class LyricsService {
 			if (generation.get() != gen) {
 				return;
 			}
+			if (failures > 0) {
+				LOG.info("Got lyrics for {} after {} failed tries", t.key(), failures);
+			}
 			apply(t, result);
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		} catch (Exception e) {
-			if (generation.get() == gen) {
+			if (generation.get() != gen) {
+				return;
+			}
+			state = State.ERROR;
+			if (!temporary(e)) {
 				LOG.warn("Couldn't get lyrics for {}: {}", t.key(), e.toString());
-				state = State.ERROR;
+				return;
+			}
+			// Keep trying while the song plays; never saved to the cache, so it isn't "no lyrics"
+			long delay = retryDelayMs.applyAsLong(failures + 1);
+			if (failures == 0) {
+				LOG.warn("Couldn't get lyrics for {}: {}. Trying again while it plays.", t.key(), e.toString());
+			} else {
+				LOG.debug("Still no lyrics for {} ({}), try {} in {} ms", t.key(), e.toString(), failures + 2, delay);
+			}
+			try {
+				pendingRetry = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
+			} catch (RejectedExecutionException ignored) {
+				// shutting down
 			}
 		}
 	}
