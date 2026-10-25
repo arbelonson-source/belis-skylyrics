@@ -95,7 +95,7 @@ class ThemesTest {
 		SkyLyricsConfig dreamy = theme("dreamy").preview();
 		assertTrue(dreamy.smoothFont && dreamy.scriptFont);
 		assertEquals(SkyEffect.NEBULA, dreamy.sky);
-		assertTrue(dreamy.glow > 0 && dreamy.glow < new SkyLyricsConfig().glow);
+		assertTrue(dreamy.glow > 0 && dreamy.glow <= 0.5f); // a soft glow; the default look has none
 
 		assertEquals(ColorMode.RAINBOW, theme("rainbow").preview().colorMode);
 	}
@@ -126,7 +126,7 @@ class ThemesTest {
 	void pickedColourIsIgnoredWhileTheSongPicksTheColour() {
 		SkyLyricsConfig cfg = new SkyLyricsConfig();
 		cfg.color = 0x7BD8FF;
-		assertSame(theme("neon"), Themes.active(cfg));
+		assertNull(Themes.active(cfg)); // Neon has its own fixed colour, so another one is Custom
 		Themes.apply(theme("rainbow"), cfg);
 		cfg.color = 0xFF7BAC;
 		assertSame(theme("rainbow"), Themes.active(cfg));
