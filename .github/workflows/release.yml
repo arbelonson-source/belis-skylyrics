@@ -1,9 +1,13 @@
-# Pushing a tag like v0.1.0 builds the mod and publishes a GitHub release with the jar.
+# Publishes a GitHub release with the jar. Two ways to start it:
+# - push a tag like v0.2.0, or
+# - Actions tab → release → Run workflow (on main): it takes the version from gradle.properties,
+#   creates the tag on the commit it built, and publishes the release.
 
 name: release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -23,18 +27,26 @@ jobs:
           distribution: 'microsoft'
       - name: build
         run: chmod +x ./gradlew && ./gradlew build
-      - name: check the tag matches the version in gradle.properties
+      - name: work out the tag
         run: |
           version=$(grep '^version=' gradle.properties | cut -d= -f2 | tr -d ' ')
-          test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but gradle.properties says $version"; exit 1; }
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but gradle.properties says $version"; exit 1; }
+          elif gh release view "v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "v$version is already released; raise the version in gradle.properties first"; exit 1
+          fi
+          echo "TAG=v$version" >> "$GITHUB_ENV"
+        env:
+          GH_TOKEN: ${{ github.token }}
       - name: publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           jar=$(ls build/libs/*.jar | grep -v -- '-sources.jar$')
-          notes=".github/release-notes/$GITHUB_REF_NAME.md"
+          notes=".github/release-notes/$TAG.md"
+          # --target makes the tag on this commit when it doesn't exist yet (Run workflow)
           if [ -f "$notes" ]; then
-            gh release create "$GITHUB_REF_NAME" "$jar" --title "Beli's SkyLyrics $GITHUB_REF_NAME" --notes-file "$notes"
+            gh release create "$TAG" "$jar" --target "$GITHUB_SHA" --title "Beli's SkyLyrics $TAG" --notes-file "$notes"
           else
-            gh release create "$GITHUB_REF_NAME" "$jar" --title "Beli's SkyLyrics $GITHUB_REF_NAME" --generate-notes
+            gh release create "$TAG" "$jar" --target "$GITHUB_SHA" --title "Beli's SkyLyrics $TAG" --generate-notes
           fi
