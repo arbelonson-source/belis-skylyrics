@@ -29,6 +29,7 @@ import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.render.AlbumArt;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
+import dev.beli.skylyrics.render.SkyEffects;
 
 public final class SkyLyricsClient implements ClientModInitializer {
 	public static final String MOD_ID = "skylyrics";
@@ -40,6 +41,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private LyricsService lyrics;
 	private AlbumArt art;
 	private LyricsRenderer renderer;
+	private SkyEffects sky;
 	private NowPlayingHud hud;
 	private DevTestHook testHook;
 
@@ -84,6 +86,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker.start(500);
 
 		registerKeys();
+		sky = new SkyEffects(renderer, tracker);
+		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::render);
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		HudElementRegistry.addLast(id("now_playing"), hud::render);

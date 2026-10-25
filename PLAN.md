@@ -37,7 +37,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 ### v0.2 — polish
 - [x] Sync offset per song (+/- buttons), remembered
 - [x] Album-art colour theme (lyrics colour matches the cover)
-- [ ] Custom skies (aurora, nebula, …) that work with/without shaders
+- [x] Custom skies (aurora, nebula, …) that work with/without shaders
 - [x] Beat-ish pulse (glow on each new line)
 - [x] Translations (en_us + he_il)
 
@@ -61,3 +61,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-25 18:53: new "Pulse" switch (on by default, Lyrics > Lines): the glow swells and the letters brighten for a moment when a line starts; with the Words animation each word flares as it lands. Also fixed a one-frame flash of the whole new line before its words faded in. Unit test PulseTest.
 - 2026-10-25 18:56: README rewritten for normal players: what it does now (top bar, Words animation, pulse, per-song timing, shader-safe lyrics), install steps for Prism Launcher and the official launcher, where the keys are, and what to check when no lyrics show.
 - 2026-10-25 19:07: Hebrew translation of the whole settings screen, the top bar and the status messages (148 texts, he_il). English stays the fallback for anything missing (unit test TrTest checks both files match). Checked every tab in Hebrew on the headless screen; all rows fit. Also fixed the About page, which wrongly said MIT licence; it is AGPL.
+- 2026-10-25 19:30: night sky effects. While music plays at night, a green aurora (soft curtains with rays) or a purple-blue nebula glows behind the lyrics, tinted by the song colour. Off / Aurora / Nebula plus a strength slider in Look > Sky. Hides in rain, daytime, underwater and the Nether/End, fades in and out. Checked with shaders on and off on the headless screen.

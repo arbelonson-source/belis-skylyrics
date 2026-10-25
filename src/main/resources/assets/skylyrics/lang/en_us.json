@@ -146,5 +146,11 @@
   "skylyrics.ui.finding_lyrics": "finding lyrics…",
   "skylyrics.ui.no_lyrics": "no lyrics",
   "skylyrics.ui.offline": "offline",
-  "skylyrics.ui.unknown_song": "Unknown song"
+  "skylyrics.ui.unknown_song": "Unknown song",
+  "skylyrics.ui.night_sky": "Night sky",
+  "skylyrics.ui.shows_at_night_with_music": "Shows at night with music",
+  "skylyrics.ui.off": "Off",
+  "skylyrics.ui.aurora": "Aurora",
+  "skylyrics.ui.nebula": "Nebula",
+  "skylyrics.ui.strength": "Strength"
 }

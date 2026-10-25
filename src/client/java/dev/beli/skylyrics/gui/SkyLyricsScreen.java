@@ -24,6 +24,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
+import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.gui.Controls.Button;
 import dev.beli.skylyrics.gui.Controls.Buttons;
@@ -193,9 +194,17 @@ public final class SkyLyricsScreen extends Screen {
 					case WORLD -> 2;
 				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD);
 
+		Row night = new Segmented(Tr.t("Night sky"), Tr.t("Shows at night with music"),
+				new String[] {Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula")}, () -> cfg.sky.ordinal(),
+				i -> cfg.sky = SkyEffect.values()[i]);
+		Row skyStrength = new Slider(Tr.t("Strength"), null, 0.1, 1, 0.05,
+				() -> cfg.skyStrength, v -> cfg.skyStrength = (float) v, SkyLyricsScreen::percent)
+				.when(() -> cfg.sky != SkyEffect.OFF);
+
 		return List.of(
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
-				new Card(Tr.t("Style"), font, glow, shadow, opacity, seeThrough, layer));
+				new Card(Tr.t("Style"), font, glow, shadow, opacity, seeThrough, layer),
+				new Card(Tr.t("Sky"), night, skyStrength));
 	}
 
 	private List<Card> musicTab() {

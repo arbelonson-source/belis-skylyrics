@@ -54,6 +54,12 @@ public final class SkyLyricsConfig {
 		WORDS, FADE, RISE, POP, TYPEWRITER
 	}
 
+	public enum SkyEffect {
+		OFF,
+		AURORA,
+		NEBULA
+	}
+
 	public enum Layer {
 		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
 		AUTO,
@@ -90,6 +96,8 @@ public final class SkyLyricsConfig {
 	public boolean pulse = true;
 	public boolean shadow = true;
 	public float opacity = 1f;
+	public SkyEffect sky = SkyEffect.AURORA;
+	public float skyStrength = 0.7f;
 
 	// Display
 	public float size = 1f;
@@ -146,9 +154,11 @@ public final class SkyLyricsConfig {
 		if (colorMode == null) colorMode = d.colorMode;
 		if (animation == null) animation = d.animation;
 		if (layer == null) layer = d.layer;
+		if (sky == null) sky = d.sky;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);
+		skyStrength = clamp(skyStrength, 0, 1);
 		size = clamp(size, 0.3f, 3);
 		height = clamp(height, -10, 80);
 		distance = clamp(distance, 8, 160);

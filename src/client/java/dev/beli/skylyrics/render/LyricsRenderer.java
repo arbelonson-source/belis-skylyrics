@@ -678,6 +678,11 @@ public final class LyricsRenderer {
 		return Math.round(cr * 255) << 16 | Math.round(cg * 255) << 8 | Math.round(cb * 255);
 	}
 
+	/** The smoothed lyrics colour as packed RGB. */
+	public int color() {
+		return rgb();
+	}
+
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
 		float camYaw = camera.yRot();
 		float camPitch = camera.xRot();

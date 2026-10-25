@@ -11,6 +11,7 @@ import net.minecraft.client.Screenshot;
 import net.minecraft.server.MinecraftServer;
 
 import dev.beli.skylyrics.SkyLyricsClient;
+import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 
 /**
@@ -49,6 +50,32 @@ public final class DevTestHook {
 			if (!trimmed.isEmpty()) {
 				run(client, trimmed);
 			}
+		}
+	}
+
+	/** "set field value": changes one config field for this run (not saved). */
+	private static void set(String arg) {
+		String[] kv = arg.split("\\s+", 2);
+		try {
+			java.lang.reflect.Field field = SkyLyricsConfig.class.getField(kv[0]);
+			Class<?> type = field.getType();
+			Object value;
+			if (type == boolean.class) {
+				value = Boolean.parseBoolean(kv[1]);
+			} else if (type == int.class) {
+				value = Integer.parseInt(kv[1]);
+			} else if (type == float.class) {
+				value = Float.parseFloat(kv[1]);
+			} else if (type.isEnum()) {
+				value = java.util.Arrays.stream(type.getEnumConstants())
+						.filter(c -> ((Enum<?>) c).name().equals(kv[1]))
+						.findFirst().orElseThrow();
+			} else {
+				value = kv[1];
+			}
+			field.set(SkyLyricsConfig.get(), value);
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalArgumentException("no config field " + kv[0], e);
 		}
 	}
 
@@ -91,6 +118,7 @@ public final class DevTestHook {
 								.performPrefixedCommand(server.createCommandSourceStack(), arg));
 					}
 				}
+				case "set" -> set(arg);
 				case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.getMainRenderTarget(), 1,
 						message -> SkyLyricsClient.LOG.info("Test hook: {}", message.getString()));
 				default -> SkyLyricsClient.LOG.warn("Test hook: unknown command {}", parts[0]);

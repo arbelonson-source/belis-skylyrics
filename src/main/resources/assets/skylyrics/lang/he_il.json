@@ -146,5 +146,11 @@
   "skylyrics.ui.finding_lyrics": "מחפש מילים…",
   "skylyrics.ui.no_lyrics": "אין מילים",
   "skylyrics.ui.offline": "לא מחובר",
-  "skylyrics.ui.unknown_song": "שיר לא ידוע"
+  "skylyrics.ui.unknown_song": "שיר לא ידוע",
+  "skylyrics.ui.night_sky": "שמי לילה",
+  "skylyrics.ui.shows_at_night_with_music": "מופיע בלילה עם מוזיקה",
+  "skylyrics.ui.off": "כבוי",
+  "skylyrics.ui.aurora": "אורורה",
+  "skylyrics.ui.nebula": "ערפילית",
+  "skylyrics.ui.strength": "עוצמה"
 }

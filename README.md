@@ -16,6 +16,7 @@ A free, open-source Fabric mod for Minecraft 1.21.11.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
 - A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted.
 - Takes its colour from the album cover. You can also pick your own colour, or use rainbow.
+- At night, a soft aurora or nebula can glow in the sky behind the lyrics while music plays.
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. Lyrics stay bright and sit in front of shader clouds and rain.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
