@@ -177,8 +177,13 @@ public final class SkyLyricsScreen extends Screen {
 			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 
-		Row font = new Segmented(Tr.t("Font"), Tr.t("Smooth, or Minecraft's letters"),
-				new String[] {Tr.t("Smooth"), Tr.t("Minecraft")}, () -> cfg.smoothFont ? 0 : 1, i -> cfg.smoothFont = i == 0);
+		Row font = new Segmented(Tr.t("Font"), Tr.t("Letter style"),
+				new String[] {Tr.t("Smooth"), Tr.t("Handwritten"), Tr.t("Minecraft")},
+				() -> !cfg.smoothFont ? 2 : cfg.scriptFont ? 1 : 0,
+				i -> {
+					cfg.smoothFont = i != 2;
+					cfg.scriptFont = i == 1;
+				});
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),

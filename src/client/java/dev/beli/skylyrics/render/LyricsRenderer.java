@@ -70,7 +70,7 @@ public final class LyricsRenderer {
 	private long changedAt;
 	private final Map<String, List<String>> wrapCache = new HashMap<>();
 	private float wrapCacheWidth;
-	private boolean wrapCacheSmooth;
+	private Style wrapCacheStyle = Style.EMPTY;
 	private Pending pending;
 
 	/** A frame laid out by the world pass, waiting for the HUD pass to draw it on screen. */
@@ -132,10 +132,11 @@ public final class LyricsRenderer {
 		float angular = (sky ? 3.4f : 2.6f) * cfg.size;
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
-		if (wrapWidth != wrapCacheWidth || cfg.smoothFont != wrapCacheSmooth) {
+		Style wrapStyle = LyricsFont.sky(cfg);
+		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle)) {
 			wrapCache.clear();
 			wrapCacheWidth = wrapWidth;
-			wrapCacheSmooth = cfg.smoothFont;
+			wrapCacheStyle = wrapStyle;
 		}
 
 		Quaternionf orientation = new Quaternionf().rotationYXZ(Mth.PI - anchorYaw * DEG, -anchorPitch * DEG, 0);
@@ -412,7 +413,7 @@ public final class LyricsRenderer {
 			this.cfg = cfg;
 			this.color = color;
 			this.wrapWidth = wrapWidth;
-			this.base = LyricsFont.base(cfg);
+			this.base = LyricsFont.sky(cfg);
 		}
 
 		List<String> rows(String text) {

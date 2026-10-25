@@ -91,6 +91,8 @@ public final class SkyLyricsConfig {
 	public int color = 0xB57BFF;
 	/** The bundled smooth font; off uses Minecraft's pixel font. */
 	public boolean smoothFont = true;
+	/** With {@link #smoothFont}: handwritten letters for the sky lyrics. */
+	public boolean scriptFont = false;
 	public float glow = 0.7f;
 	/** The glow flares up for a moment whenever a new line starts. */
 	public boolean pulse = true;
