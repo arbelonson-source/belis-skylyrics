@@ -98,22 +98,39 @@ jobs:
       - name: condense errors
         if: always()
         run: python3 probe/errors.py "$RUNNER_TEMP/log.txt" "$RUNNER_TEMP/rep.txt"
+      - name: wave 2 - apply mechanical renames in a second copy and compile again
+        if: always()
+        run: |
+          rsync -a --exclude build --exclude .gradle "$RUNNER_TEMP/port/" "$RUNNER_TEMP/port2/"
+          rules="-f probe/renames-26.1.sed"
+          case "$MC" in 26.3*) rules="$rules -f probe/renames-26.3.sed";; esac
+          find "$RUNNER_TEMP/port2/src" -name '*.java' -exec sed -i $rules {} +
+          { echo "wave-2 renames: lines changed per file"; diff -r "$RUNNER_TEMP/port/src" "$RUNNER_TEMP/port2/src" | grep -E '^diff|^>' | awk '/^diff/{f=$NF; sub(/.*\/java\//,"",f); next} {n[f]++} END{for(k in n) print n[k], k}' | sort -rn; } > "$RUNNER_TEMP/rename-stat.txt"
+          cd "$RUNNER_TEMP/port2"
+          ./gradlew --continue compileClientJava compileTestJava > "$RUNNER_TEMP/log2.txt" 2>&1; r=$?; tail -5 "$RUNNER_TEMP/log2.txt"
+          cd "$GITHUB_WORKSPACE"
+          python3 probe/errors.py "$RUNNER_TEMP/log2.txt" "$RUNNER_TEMP/rep2.txt" > /dev/null
+          cat "$RUNNER_TEMP/rename-stat.txt" >> "$RUNNER_TEMP/rep2.txt"
+          exit $r
       - name: discover renamed api
         if: always() && (matrix.mc == '26.1' || matrix.mc == '26.3')
-        run: bash probe/discover.sh "$RUNNER_TEMP/port/build/probe-cp.txt" > "$RUNNER_TEMP/javap.txt" 2>&1 || true
-      - name: report 1
+        run: bash probe/discover2.sh "$RUNNER_TEMP/port/build/probe-cp.txt" > "$RUNNER_TEMP/javap.txt" 2>&1 || true
+      - name: report wave 1
         if: always()
-        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 0 10
-      - name: report 2
+        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 0 8
+      - name: report wave 2a
         if: always()
-        run: python3 probe/emit.py "$RUNNER_TEMP/rep.txt" "real $MC" 10 10
+        run: python3 probe/emit.py "$RUNNER_TEMP/rep2.txt" "wave2 $MC" 0 10
+      - name: report wave 2b
+        if: always()
+        run: python3 probe/emit.py "$RUNNER_TEMP/rep2.txt" "wave2 $MC" 10 6
       - name: report discover 1
         if: always()
         run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "disc $MC" 0 10
       - name: report discover 2
         if: always()
-        run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "disc $MC" 10 10
+        run: python3 probe/emit.py "$RUNNER_TEMP/javap.txt" "disc $MC" 10 6
       - name: verdict
         if: always()
         run: |
-          if grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/log.txt"; then echo "::notice title=real $MC verdict::compiles cleanly (client + tests)"; else echo "::error title=real $MC verdict::$(head -1 "$RUNNER_TEMP/rep.txt")"; fi
+          if grep -q 'BUILD SUCCESSFUL' "$RUNNER_TEMP/log.txt"; then echo "::notice title=real $MC verdict::compiles cleanly (client + tests)"; else echo "::warning title=real $MC verdict::wave1 $(head -1 "$RUNNER_TEMP/rep.txt") / wave2 $(head -1 "$RUNNER_TEMP/rep2.txt" 2>/dev/null)"; fi
