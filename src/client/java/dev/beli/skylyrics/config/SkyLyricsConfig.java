@@ -71,7 +71,11 @@ public final class SkyLyricsConfig {
 		/** A purple gradient with a striped retro sun low in the sky. */
 		SYNTHWAVE,
 		/** A black sun with a glowing ring and a flare, under a faint milky way. */
-		ECLIPSE
+		ECLIPSE,
+		/** Soft coloured light beams fanning up from the horizon. */
+		PRISM,
+		/** A bright spinning star throwing a long beam across a dark sky. */
+		PULSAR
 	}
 
 	public enum Layer {
@@ -123,6 +127,8 @@ public final class SkyLyricsConfig {
 	public float skyStrength = 0.7f;
 	/** Star patterns joined by thin lines in the night sky. */
 	public boolean constellations = true;
+	/** Picks another night sky (not Off) whenever the song changes. */
+	public boolean newSkyEachSong = false;
 
 	// Display
 	public float size = 1f;
