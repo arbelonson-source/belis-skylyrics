@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * Reads the signed-in user's Spotify songs for the song library and starts the one they pick.
  * Everything runs on one background thread; the screen just checks whether the answer has arrived.
  */
-public final class SpotifyLibrary {
+public final class SpotifyLibrary implements Library {
 	/** Spotify hands out at most this many search results per request. */
 	public static final int SEARCH_PAGE = 10;
 	/** Liked songs, playlists and playlist songs come this many at a time. */
@@ -60,6 +60,7 @@ public final class SpotifyLibrary {
 		this.spotify = spotify;
 	}
 
+	@Override
 	public CompletableFuture<Page<LibraryItem>> search(String query, int offset) {
 		String q = query.strip();
 		if (q.isEmpty()) {
@@ -68,14 +69,17 @@ public final class SpotifyLibrary {
 		return run(() -> parseSearch(get("/search?type=track&limit=" + SEARCH_PAGE + "&offset=" + offset + "&q=" + encode(q))));
 	}
 
+	@Override
 	public CompletableFuture<Page<LibraryItem>> liked(int offset) {
 		return run(() -> parseSaved(get("/me/tracks?limit=" + PAGE + "&offset=" + offset)));
 	}
 
+	@Override
 	public CompletableFuture<Page<LibraryPlaylist>> playlists(int offset) {
 		return run(() -> parsePlaylists(get("/me/playlists?limit=" + PAGE + "&offset=" + offset), myId()));
 	}
 
+	@Override
 	public CompletableFuture<Page<LibraryItem>> playlist(LibraryPlaylist playlist, int offset) {
 		return run(() -> parsePlaylistItems(get("/playlists/" + playlist.id() + "/items?limit=" + PAGE + "&offset=" + offset), playlist.uri()));
 	}
@@ -84,6 +88,7 @@ public final class SpotifyLibrary {
 	 * Starts {@code item}, then the songs listed after it (or the rest of its playlist).
 	 * Completes with an empty string when it worked, otherwise with a short message for the user.
 	 */
+	@Override
 	public CompletableFuture<String> play(LibraryItem item, List<LibraryItem> after) {
 		String body = playBody(item, after);
 		return run(() -> {

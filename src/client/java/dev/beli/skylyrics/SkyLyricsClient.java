@@ -28,14 +28,17 @@ import org.slf4j.LoggerFactory;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.dev.DevTestHook;
+import dev.beli.skylyrics.gui.LibraryScreen;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LrclibClient;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.ChosenSource;
+import dev.beli.skylyrics.media.Library;
 import dev.beli.skylyrics.media.MacMediaSource;
 import dev.beli.skylyrics.media.MediaSource;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.MprisSource;
+import dev.beli.skylyrics.media.SpotifyLibrary;
 import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.WindowsMediaSource;
@@ -52,6 +55,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private MediaTracker tracker;
 	private SpotifyWebSource spotify;
+	private Library library;
 	private LyricsService lyrics;
 	private AlbumArt art;
 	private LyricsRenderer renderer;
@@ -60,6 +64,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private DevTestHook testHook;
 
 	private KeyMapping openSettings;
+	private KeyMapping openLibrary;
 	private KeyMapping toggleLyrics;
 	private KeyMapping showNowPlaying;
 	private KeyMapping playPause;
@@ -86,6 +91,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		Path cache = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(MOD_ID);
 
 		spotify = new SpotifyWebSource(() -> SkyLyricsConfig.get().spotifyClientId, cache.resolve("spotify-login.json"));
+		library = new SpotifyLibrary(spotify);
 		MediaSource music = new ChosenSource(musicSource(cache), spotify, () -> SkyLyricsConfig.get().preferredPlayer);
 		tracker = new MediaTracker(music, () -> SkyLyricsConfig.get().demoMode);
 		lyrics = new LyricsService(new LrclibClient(version), cache);
@@ -160,6 +166,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void registerKeys() {
 		KeyMapping.Category category = KeyMapping.Category.register(id("main"));
 		openSettings = key("open_settings", GLFW.GLFW_KEY_J, category);
+		openLibrary = key("library", GLFW.GLFW_KEY_K, category);
 		toggleLyrics = key("toggle", InputConstants.UNKNOWN.getValue(), category);
 		showNowPlaying = key("now_playing", InputConstants.UNKNOWN.getValue(), category);
 		playPause = key("play_pause", InputConstants.UNKNOWN.getValue(), category);
@@ -179,6 +186,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		while (openSettings.consumeClick()) {
 			if (client.screen == null) {
 				client.setScreen(new SkyLyricsScreen(null));
+			}
+		}
+		while (openLibrary.consumeClick()) {
+			if (client.screen == null) {
+				client.setScreen(new LibraryScreen(null));
 			}
 		}
 		while (toggleLyrics.consumeClick()) {
@@ -236,6 +248,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		return spotify;
 	}
 
+	public Library library() {
+		return library;
+	}
+
 	public LyricsService lyrics() {
 		return lyrics;
 	}
@@ -247,6 +263,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	/** The key that opens the settings, so the screen can close on it too. */
 	public KeyMapping openSettingsKey() {
 		return openSettings;
+	}
+
+	/** The key that opens the song library, so the screen can close on it too. */
+	public KeyMapping libraryKey() {
+		return openLibrary;
 	}
 
 	public LyricsRenderer renderer() {
