@@ -7,16 +7,16 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -102,15 +102,15 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 		registerKeys();
 		sky = new SkyEffects(renderer, lyrics, art, tracker);
-		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
-		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::renderEarly);
-		WorldRenderEvents.END_MAIN.register(renderer::renderLate);
+		LevelRenderEvents.COLLECT_SUBMITS.register(sky::render);
+		LevelRenderEvents.COLLECT_SUBMITS.register(renderer::renderEarly);
+		LevelRenderEvents.END_MAIN.register(renderer::renderLate);
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
-				ScreenEvents.afterRender(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
+				ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
@@ -123,10 +123,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	/** Lyrics on the main menu, in the gap under its lowest button (the copyright line at the very bottom is a button too). */
-	private void renderTitle(Screen screen, GuiGraphics g) {
+	private void renderTitle(Screen screen, GuiGraphicsExtractor g) {
 		int bottom = screen.height - TITLE_FOOTER;
 		int top = 0;
-		for (AbstractWidget widget : Screens.getButtons(screen)) {
+		for (AbstractWidget widget : Screens.getWidgets(screen)) {
 			if (widget.visible && widget.getBottom() < bottom) {
 				top = Math.max(top, widget.getBottom());
 			}
@@ -170,15 +170,15 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
-		return KeyBindingHelper.registerKeyBinding(
+		return KeyMappingHelper.registerKeyMapping(
 				new KeyMapping("key.skylyrics." + name, InputConstants.Type.KEYSYM, code, category));
 	}
 
 	private void tick(Minecraft client) {
 		art.upload();
 		while (openSettings.consumeClick()) {
-			if (client.screen == null) {
-				client.setScreen(new SkyLyricsScreen(null));
+			if (client.gui.screen() == null) {
+				client.gui.setScreen(new SkyLyricsScreen(null));
 			}
 		}
 		while (toggleLyrics.consumeClick()) {
@@ -212,13 +212,13 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void nudgeTiming(Minecraft client, int ms) {
 		Track track = tracker.track();
 		if (track == Track.NONE) {
-			client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
+			client.gui.hud.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
 			return;
 		}
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		cfg.setSongOffset(track, cfg.songOffset(track) + ms);
 		cfg.save();
-		client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
+		client.gui.hud.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
 	}
 
 	private void shutdown() {

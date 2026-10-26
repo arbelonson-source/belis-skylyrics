@@ -14,11 +14,11 @@ import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import java.util.Objects;
 import java.util.Random;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -219,7 +219,7 @@ public final class SkyEffects {
 		return Math.round(clamp01(alpha) * 255) << 24 | rgb;
 	}
 
-	public void render(WorldRenderContext context) {
+	public void render(LevelRenderContext context) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -241,7 +241,7 @@ public final class SkyEffects {
 		if (presence <= 0 || !wanted || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
 			return;
 		}
-		Camera camera = mc.gameRenderer.getMainCamera();
+		Camera camera = mc.gameRenderer.mainCamera();
 		if (camera.getFluidInCamera() != FogType.NONE) {
 			return;
 		}
@@ -290,8 +290,8 @@ public final class SkyEffects {
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
 		// The added light leaves no depth behind either: it sits inside the world (at most 110 blocks out), and
 		// glass, water and ice are drawn after it, so marking its depth would cut holes in any of them further away.
-		OrderedSubmitNodeCollector sky = context.commandQueue().order(SKY_ORDER);
-		PoseStack pose = context.matrices();
+		OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
+		PoseStack pose = context.poseStack();
 		pose.pushPose();
 		if (painted()) {
 			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
@@ -485,7 +485,7 @@ public final class SkyEffects {
 		@Override
 		protected void put(float x, float y, float z, int argb) {
 			if (lit) {
-				vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightTexture.FULL_BRIGHT);
+				vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightCoordsUtil.FULL_BRIGHT);
 				return;
 			}
 			tx[corner] = x;

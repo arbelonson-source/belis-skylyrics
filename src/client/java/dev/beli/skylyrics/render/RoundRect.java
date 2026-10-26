@@ -4,7 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
@@ -22,8 +22,8 @@ final class RoundRect {
 
 	private RoundRect() {}
 
-	/** Draws in the current pose's units; corners are snapped to whole units like {@link GuiGraphics#fill}. */
-	static void draw(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
+	/** Draws in the current pose's units; corners are snapped to whole units like {@link GuiGraphicsExtractor#fill}. */
+	static void draw(GuiGraphicsExtractor g, float x, float y, float w, float h, float r, int color) {
 		if ((color >>> 24) == 0 || w <= 0 || h <= 0) {
 			return;
 		}

@@ -9,7 +9,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
@@ -746,7 +746,7 @@ final class WorldWords {
 				}
 				return true;
 			};
-			out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightTexture.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);
+			out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightCoordsUtil.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);
 			from = to;
 		}
 		pose.popPose();

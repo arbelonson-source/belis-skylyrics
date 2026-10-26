@@ -1,10 +1,13 @@
 plugins {
-	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 }
 
 base {
 	archivesName = project.archives_base_name
 }
+
+// The Minecraft version goes in the jar name so the two release jars are told apart
+version = "${project.version}+${project.minecraft_version}"
 
 repositories {
 	maven {
@@ -32,16 +35,15 @@ loom {
 
 dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
 	// Optional: adds a config button in Mod Menu when it is installed
-	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
 
 	// Only in the test game (runClient), to check the lyrics with Sodium + Iris shaders. Not shipped.
-	modLocalRuntime "maven.modrinth:sodium:${project.sodium_version}"
-	modLocalRuntime "maven.modrinth:iris:${project.iris_version}"
+	localRuntime "maven.modrinth:sodium:${project.sodium_version}"
+	localRuntime "maven.modrinth:iris:${project.iris_version}"
 	// Iris bundles these, but the test game needs them on the classpath directly
 	localRuntime "org.anarres:jcpp:1.4.14"
 	localRuntime "io.github.douira:glsl-transformer:3.0.0-pre3"
@@ -71,7 +73,7 @@ dependencies {
 }
 
 tasks.register("runProductionClient", net.fabricmc.loom.task.prod.ClientProductionRunTask) {
-	mods.from(remapJar)
+	mods.from(jar)
 	// -PmodsDir=/path/to/mods tries the jar next to a player's own mod list instead
 	if (project.hasProperty("modsDir")) {
 		mods.from(fileTree(project.property("modsDir").toString()) { include "*.jar" })
@@ -117,14 +119,14 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	it.options.release = 25
 }
 
 java {
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

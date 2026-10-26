@@ -113,41 +113,41 @@ public final class DevTestHook {
 				}
 				case "gui" -> {
 					SkyLyricsScreen screen = new SkyLyricsScreen(null);
-					client.setScreen(screen);
+					client.gui.setScreen(screen);
 					if (!arg.isEmpty()) {
 						screen.selectTab(Integer.parseInt(arg));
 					}
 				}
 				case "preview" -> {
-					if (client.screen instanceof SkyLyricsScreen screen) {
+					if (client.gui.screen() instanceof SkyLyricsScreen screen) {
 						screen.setPreview(true);
 					}
 				}
-				case "close" -> client.setScreen(null);
+				case "close" -> client.gui.setScreen(null);
 				case "screen" -> {
 					// Opens another mod's screen by class name, e.g. Mod Menu's list
 					try {
-						client.setScreen((Screen) Class.forName(arg).getConstructor(Screen.class).newInstance(client.screen));
+						client.gui.setScreen((Screen) Class.forName(arg).getConstructor(Screen.class).newInstance(client.gui.screen()));
 					} catch (ReflectiveOperationException e) {
 						throw new IllegalStateException(e);
 					}
 				}
 				case "scroll" -> {
-					if (client.screen != null) {
-						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
+					if (client.gui.screen() != null) {
+						client.gui.screen().mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
 					}
 				}
 				case "click" -> {
 					// x y in scaled GUI pixels, a left click and release
 					String[] xy = arg.split("\\s+");
-					if (client.screen != null) {
+					if (client.gui.screen() != null) {
 						var e = new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]),
 								new net.minecraft.client.input.MouseButtonInfo(0, 0));
-						client.screen.mouseClicked(e, false);
-						client.screen.mouseReleased(e);
+						client.gui.screen().mouseClicked(e, false);
+						client.gui.screen().mouseReleased(e);
 					}
 				}
-				case "hud" -> client.options.hideGui = arg.equals("off");
+				case "hud" -> { if (client.gui.hud.isHidden() != arg.equals("off")) client.gui.hud.toggle(); }
 				case "lang" -> {
 					client.getLanguageManager().setSelected(arg);
 					client.options.languageCode = arg;
@@ -155,7 +155,7 @@ public final class DevTestHook {
 				}
 				case "guiscale" -> {
 					client.options.guiScale().set(Integer.parseInt(arg));
-					client.resizeDisplay();
+					client.resizeGui();
 				}
 				case "cmd" -> {
 					MinecraftServer server = client.getSingleplayerServer();
@@ -175,7 +175,7 @@ public final class DevTestHook {
 					fpsSeen.clear();
 					fpsLeft = ((arg.isEmpty() ? 5 : Integer.parseInt(arg)) + 1) * 20;
 				}
-				case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.getMainRenderTarget(), 1,
+				case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.gameRenderer.mainRenderTarget(), 1,
 						message -> SkyLyricsClient.LOG.info("Test hook: {}", message.getString()));
 				default -> SkyLyricsClient.LOG.warn("Test hook: unknown command {}", parts[0]);
 			}

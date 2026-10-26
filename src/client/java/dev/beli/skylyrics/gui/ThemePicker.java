@@ -42,8 +42,8 @@ final class ThemePicker extends Controls.Row {
 		@Nullable Theme active = Themes.active(cfg);
 		String current = active == null ? Tr.t("Custom") : active.name().get();
 		int currentW = f.font().width(current);
-		f.g().drawString(f.font(), Ui.clip(f.font(), label, w - 28 - currentW), x + 10, y + 8, Ui.TEXT, false);
-		f.g().drawString(f.font(), current, x + w - 10 - currentW, y + 8, active == null ? Ui.MUTED : Ui.ACCENT, false);
+		f.g().text(f.font(), Ui.clip(f.font(), label, w - 28 - currentW), x + 10, y + 8, Ui.TEXT, false);
+		f.g().text(f.font(), current, x + w - 10 - currentW, y + 8, active == null ? Ui.MUTED : Ui.ACCENT, false);
 		renderControl(f);
 	}
 
@@ -62,7 +62,7 @@ final class ThemePicker extends Controls.Row {
 			String name = Ui.clip(f.font(), theme.name().get(), tw - 8);
 			Style style = LyricsFont.sky(look);
 			int nameW = Math.round(LyricsFont.width(f.font(), style, name));
-			f.g().drawString(f.font(), styled(look, style, name), tx + (tw - nameW) / 2, ty + (TILE_H - 8) / 2, 0xFFFFFFFF,
+			f.g().text(f.font(), styled(look, style, name), tx + (tw - nameW) / 2, ty + (TILE_H - 8) / 2, 0xFFFFFFFF,
 					look.shadow);
 		}
 	}

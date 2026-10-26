@@ -10,14 +10,14 @@ import java.util.Locale;
 import java.util.Map;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
@@ -200,30 +200,30 @@ public final class LyricsRenderer {
 	 * when see-through, or cut holes in them when not. Drawn after them instead, both look right.
 	 * Shader packs run their own passes, so with one on the lyrics stay at the earlier, tested spot.
 	 */
-	public void renderEarly(WorldRenderContext context) {
+	public void renderEarly(LevelRenderContext context) {
 		if (ScreenLayer.shadersOn()) {
 			render(context);
 		}
 	}
 
-	public void renderLate(WorldRenderContext context) {
+	public void renderLate(LevelRenderContext context) {
 		if (!ScreenLayer.shadersOn()) {
 			render(context);
 		}
 	}
 
-	private void render(WorldRenderContext context) {
+	private void render(LevelRenderContext context) {
 		pending = null;
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		Camera camera = mc.gameRenderer.getMainCamera();
+		Camera camera = mc.gameRenderer.mainCamera();
 		long now = System.nanoTime();
 		float dt = step(mc, cfg, now);
 		long time = takeLyrics(cfg);
 
 		boolean want = cfg.enabled && hasLyrics
-				&& !(cfg.hideWithF1 && mc.options.hideGui)
-				&& !(cfg.hideInMenus && mc.screen != null && !(mc.screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
+				&& !(cfg.hideWithF1 && mc.gui.hud.isHidden())
+				&& !(cfg.hideInMenus && mc.gui.screen() != null && !(mc.gui.screen() instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
 				&& !(cfg.hideWhenPaused && !tracker.playing()) && !Visibility.hidden(mc, cfg);
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
 		updateColor(cfg, dt, now);
@@ -267,9 +267,9 @@ public final class LyricsRenderer {
 			return;
 		}
 
-		PoseStack pose = context.matrices();
+		PoseStack pose = context.poseStack();
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
-		Draw draw = new Draw(new WorldCanvas(context.commandQueue(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
+		Draw draw = new Draw(new WorldCanvas(context.submitNodeCollector(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
 		for (Spot spot : spots) {
 			pose.pushPose();
 			pose.translate(spot.offset().x, spot.offset().y, spot.offset().z);
@@ -332,7 +332,7 @@ public final class LyricsRenderer {
 	 * Title screen: no world is drawn there, so the lines go flat in the gap between the lowest button
 	 * ({@code top}) and the copyright text ({@code bottom}), sized to fit it.
 	 */
-	public void renderMenu(GuiGraphics g, float top, float bottom) {
+	public void renderMenu(GuiGraphicsExtractor g, float top, float bottom) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -370,7 +370,7 @@ public final class LyricsRenderer {
 	}
 
 	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
-	private void renderWorldWords(WorldRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
+	private void renderWorldWords(LevelRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
 			long now) {
 		int index = shown.indexAt(time);
 		String text = null;
@@ -394,7 +394,7 @@ public final class LyricsRenderer {
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
 		int wordsRgb = cfg.worldTint ? SkyTint.tint(rgb(), SkyTint.sky(), SkyTint.AMOUNT) : rgb();
-		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
+		worldWords.render(context.poseStack(), context.submitNodeCollector(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
 	}
 
 	/** When the singing of a line counts as over, for spreading its words over its time. */
@@ -476,7 +476,7 @@ public final class LyricsRenderer {
 	}
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
-	public void renderHud(GuiGraphics g, DeltaTracker delta) {
+	public void renderHud(GuiGraphicsExtractor g, DeltaTracker delta) {
 		Pending frame = pending;
 		pending = null;
 		if (frame == null) {
@@ -702,14 +702,14 @@ public final class LyricsRenderer {
 				pose.pushPose();
 				pose.translate(0, 0, -LAYER_STEP * behind);
 			}
-			out.submitText(pose, x, y, seq, shadow, mode, LightTexture.FULL_BRIGHT, argb, 0, 0);
+			out.submitText(pose, x, y, seq, shadow, mode, LightCoordsUtil.FULL_BRIGHT, argb, 0, 0);
 			if (behind > 0) {
 				pose.popPose();
 			}
 		}
 	}
 
-	private record ScreenCanvas(GuiGraphics g, Font font) implements Canvas {
+	private record ScreenCanvas(GuiGraphicsExtractor g, Font font) implements Canvas {
 		@Override
 		public void push(float x, float y, float scale, float angle) {
 			g.pose().pushMatrix();
@@ -729,7 +729,7 @@ public final class LyricsRenderer {
 		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
 			g.pose().pushMatrix();
 			g.pose().translate(x, y);
-			g.drawString(font, seq, 0, 0, argb, shadow);
+			g.text(font, seq, 0, 0, argb, shadow);
 			g.pose().popMatrix();
 		}
 	}

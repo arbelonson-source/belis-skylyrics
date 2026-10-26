@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -30,7 +31,7 @@ public final class ScreenLayer {
 	private ScreenLayer() {}
 
 	/** Called at the start of every world frame (see LevelRendererMixin). */
-	public static void capture(Matrix4f view, Matrix4f projection) {
+	public static void capture(Matrix4fc view, Matrix4fc projection) {
 		viewProjection.set(projection).mul(view);
 		frustum.set(viewProjection);
 		pixelsPerUnit = projection.m11();
@@ -44,7 +45,7 @@ public final class ScreenLayer {
 
 	public static boolean active(SkyLyricsConfig cfg) {
 		// The HUD isn't drawn while F1 hides it, so lyrics that should stay visible go back to the world.
-		if (Minecraft.getInstance().options.hideGui) {
+		if (Minecraft.getInstance().gui.hud.isHidden()) {
 			return false;
 		}
 		return switch (cfg.layer) {

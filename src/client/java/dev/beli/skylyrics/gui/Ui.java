@@ -1,7 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
@@ -36,7 +36,7 @@ final class Ui {
 	}
 
 	/** Filled rectangle with rounded corners, drawn without overlapping fills so alpha stays even. */
-	static void rect(GuiGraphics g, int x, int y, int w, int h, int r, int color) {
+	static void rect(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {
 		if (w <= 0 || h <= 0 || ARGB.alpha(color) == 0) {
 			return;
 		}
@@ -55,7 +55,7 @@ final class Ui {
 	}
 
 	/** One pixel outline with rounded corners. */
-	static void outline(GuiGraphics g, int x, int y, int w, int h, int r, int color) {
+	static void outline(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {
 		r = Math.min(r, Math.min(w, h) / 2);
 		int[] inset = new int[Math.max(r, 1)];
 		for (int i = 0; i < r; i++) {

@@ -11,7 +11,7 @@ import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
@@ -22,7 +22,7 @@ final class Controls {
 	}
 
 	/** What a row needs to draw one frame. */
-	record Frame(GuiGraphics g, Font font, int mx, int my, float dt, boolean hoverAllowed) {
+	record Frame(GuiGraphicsExtractor g, Font font, int mx, int my, float dt, boolean hoverAllowed) {
 	}
 
 	/** A card on a tab: a small title and a group of rows. */
@@ -77,12 +77,12 @@ final class Controls {
 		void render(Frame f) {
 			int textW = w - 20 - controlWidth(f.font()) - 8;
 			if (desc == null) {
-				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 8, Ui.TEXT, false);
+				f.g().text(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 8, Ui.TEXT, false);
 			} else {
 				String d = desc.get();
-				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 7, Ui.TEXT, false);
+				f.g().text(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 7, Ui.TEXT, false);
 				descClipped = f.font().width(d) > textW;
-				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), d, textW)), x + 10, y + 18, Ui.MUTED, false);
+				f.g().text(f.font(), Ui.visual(Ui.clip(f.font(), d, textW)), x + 10, y + 18, Ui.MUTED, false);
 			}
 			renderControl(f);
 		}
@@ -194,7 +194,7 @@ final class Controls {
 			int kh = 10 + Math.round(knobAnim * 2);
 			Ui.rect(f.g(), sx + filled - kw / 2, cy - kh / 2, kw, kh, 2, 0xFFFFFFFF);
 			String text = format.apply(v);
-			f.g().drawString(f.font(), Ui.visual(text), sx - 8 - f.font().width(text), cy - 4, dragging ? Ui.TEXT : Ui.MUTED, false);
+			f.g().text(f.font(), Ui.visual(text), sx - 8 - f.font().width(text), cy - 4, dragging ? Ui.TEXT : Ui.MUTED, false);
 		}
 
 		@Override
@@ -289,7 +289,7 @@ final class Controls {
 				int ow = optionWidth(font, i);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), ox, by, ow, 16);
 				int color = i == selected ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
-				f.g().drawString(font, Ui.visual(options[i]), ox + 6, by + 4, color, false);
+				f.g().text(font, Ui.visual(options[i]), ox + 6, by + 4, color, false);
 				ox += ow;
 			}
 		}
@@ -357,14 +357,14 @@ final class Controls {
 			chevron(f.g(), bx + 6, by + 5, false, hover && leftHalf ? Ui.ACCENT : Ui.MUTED);
 			chevron(f.g(), bx + bw - 6 - CHEVRON_W, by + 5, true, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED);
 			String value = labels.get(Mth.clamp(get.getAsInt(), 0, labels.size() - 1));
-			f.g().drawCenteredString(font, Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
+			f.g().centeredText(font, Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
 		}
 
 		/**
 		 * A small ‹ or › drawn as pixels, top-left corner at x, y. The font's ‹ and › are mirrored in
 		 * right-to-left languages, which made both arrows point inwards in Hebrew.
 		 */
-		private static void chevron(GuiGraphics g, int x, int y, boolean right, int color) {
+		private static void chevron(GuiGraphicsExtractor g, int x, int y, boolean right, int color) {
 			int mid = y + CHEVRON_W - 1;
 			for (int c = 0; c < CHEVRON_W; c++) {
 				int fromTip = right ? CHEVRON_W - 1 - c : c;
@@ -522,7 +522,7 @@ final class Controls {
 		@Override
 		void renderControl(Frame f) {
 			String text = Ui.clip(f.font(), value.get(), 160);
-			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), centerY() - 4, Ui.MUTED, false);
+			f.g().text(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), centerY() - 4, Ui.MUTED, false);
 		}
 	}
 
@@ -562,7 +562,7 @@ final class Controls {
 		void render(Frame f) {
 			int ly = y + 7;
 			for (var line : lines) {
-				f.g().drawString(f.font(), line, x + 10, ly, Ui.MUTED, false);
+				f.g().text(f.font(), line, x + 10, ly, Ui.MUTED, false);
 				ly += 10;
 			}
 		}
@@ -586,6 +586,6 @@ final class Controls {
 			fg = hover ? 0xFFFFFFFF : Ui.TEXT;
 		}
 		Ui.rect(f.g(), x, y, w, h, 4, bg);
-		f.g().drawCenteredString(f.font(), Ui.visual(text), x + w / 2, y + (h - 8) / 2, fg);
+		f.g().centeredText(f.font(), Ui.visual(text), x + w / 2, y + (h - 8) / 2, fg);
 	}
 }

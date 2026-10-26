@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -155,7 +155,7 @@ public final class NowPlayingHud {
 		flash();
 	}
 
-	public void render(GuiGraphics g, DeltaTracker delta) {
+	public void render(GuiGraphicsExtractor g, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -166,11 +166,11 @@ public final class NowPlayingHud {
 		Content line = cfg.barLyrics ? currentLine(cfg) : null;
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
 		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg);
-		boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.options.hideGui
+		boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
-				&& !(mc.screen instanceof SkyLyricsScreen settings && settings.coversTopBar());
+				&& !(mc.gui.screen() instanceof SkyLyricsScreen settings && settings.coversTopBar());
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			content = null;
@@ -247,7 +247,7 @@ public final class NowPlayingHud {
 	 * as fit in the top third. The bar goes just below the last one instead of covering their names.
 	 */
 	static float topBelowBossBars(Minecraft mc, int guiHeight) {
-		int count = ((BossHealthOverlayAccessor) mc.gui.getBossOverlay()).skylyrics$getEvents().size();
+		int count = ((BossHealthOverlayAccessor) mc.gui.hud.getBossOverlay()).skylyrics$getEvents().size();
 		return topBelowBossBars(count, guiHeight);
 	}
 
@@ -272,7 +272,7 @@ public final class NowPlayingHud {
 	}
 
 	/** The capsule, its border, the cover and the equaliser, drawn in real pixels so round edges stay smooth. */
-	private void drawPill(GuiGraphics g, Minecraft mc, float x, float y, long now, float dt) {
+	private void drawPill(GuiGraphicsExtractor g, Minecraft mc, float x, float y, long now, float dt) {
 		float a = alpha;
 		float s = (float) mc.getWindow().getGuiScale();
 		// The cover and equaliser dim for a moment while the text crossfades
@@ -321,7 +321,7 @@ public final class NowPlayingHud {
 			g.pose().pushMatrix();
 			g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
 			g.pose().scale(0.85f, 0.85f);
-			g.drawCenteredString(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
+			g.centeredText(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
 			g.pose().popMatrix();
 		}
 	}
@@ -338,7 +338,7 @@ public final class NowPlayingHud {
 	}
 
 	/** Signal bars (lit by ping on a server, dim in single player), then the frame rate. */
-	private void drawStats(GuiGraphics g, Minecraft mc, Font font, Style style, float textScale, float x, float midY) {
+	private void drawStats(GuiGraphicsExtractor g, Minecraft mc, Font font, Style style, float textScale, float x, float midY) {
 		float a = alpha;
 		int lit = 0;
 		ClientPacketListener connection = mc.getConnection();
@@ -362,7 +362,7 @@ public final class NowPlayingHud {
 	}
 
 	/** The line or the song's name; the old one fades out where the new one fades in. */
-	private void drawText(GuiGraphics g, Font font, Style style, float scale, float x, float midY, long now, float dt) {
+	private void drawText(GuiGraphicsExtractor g, Font font, Style style, float scale, float x, float midY, long now, float dt) {
 		float tx = x + ART_INSET + ART + TEXT_GAP;
 		float room = TopBarLayout.textRoom(width);
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
@@ -381,7 +381,7 @@ public final class NowPlayingHud {
 		g.disableScissor();
 	}
 
-	private void drawContent(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
+	private void drawContent(GuiGraphicsExtractor g, Font font, Style style, float scale, Content c, float x, float midY, float room,
 			float a, boolean live, float dt) {
 		if (a <= 0.02f) {
 			return;
@@ -401,7 +401,7 @@ public final class NowPlayingHud {
 	}
 
 	/** The line word by word: sung words white, the rest grey, and the last two sung on the highlight. */
-	private void drawLyric(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
+	private void drawLyric(GuiGraphicsExtractor g, Font font, Style style, float scale, Content c, float x, float midY, float room,
 			float a, boolean live, float dt) {
 		Word[] words = words(font, style, scale, c.text(), c.sung());
 		if (words.length == 0) {
@@ -494,11 +494,11 @@ public final class NowPlayingHud {
 	}
 
 	/** Draws text with its middle at {@code midY}, scaled about its left end. */
-	private static void text(GuiGraphics g, Font font, Style style, String text, float x, float midY, float scale, int color) {
+	private static void text(GuiGraphicsExtractor g, Font font, Style style, String text, float x, float midY, float scale, int color) {
 		g.pose().pushMatrix();
 		g.pose().translate(x, midY);
 		g.pose().scale(scale, scale);
-		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
+		g.text(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
 		g.pose().popMatrix();
 	}
 
@@ -614,7 +614,7 @@ public final class NowPlayingHud {
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */
-	private static void roundRectGui(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
+	private static void roundRectGui(GuiGraphicsExtractor g, float x, float y, float w, float h, float r, int color) {
 		float s = (float) Minecraft.getInstance().getWindow().getGuiScale();
 		g.pose().pushMatrix();
 		g.pose().scale(1 / s, 1 / s);
@@ -623,7 +623,7 @@ public final class NowPlayingHud {
 	}
 
 	/** A rounded rectangle in the current pose's units, with smooth curves. */
-	static void roundRect(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
+	static void roundRect(GuiGraphicsExtractor g, float x, float y, float w, float h, float r, int color) {
 		RoundRect.draw(g, x, y, w, h, r, color);
 	}
 

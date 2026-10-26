@@ -9,7 +9,7 @@ import java.util.function.BooleanSupplier;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
@@ -491,7 +491,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		Row openKey = new Info(Tr.t("Open settings"), null, () -> keyName(mod.openSettingsKey()));
 		Row controls = new Buttons(Tr.t("More keys"), Tr.t("Toggle lyrics, play/pause, skip songs"),
-				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
+				new Button(Tr.t("Controls"), () -> minecraft.gui.setScreen(new KeyBindsScreen(this, minecraft.options))));
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
@@ -626,15 +626,15 @@ public final class SkyLyricsScreen extends Screen {
 	// ---- Drawing ----------------------------------------------------------------------------------
 
 	@Override
-	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		// In a world, leave it fully visible so changes can be seen on the real lyrics.
 		if (minecraft.level == null) {
-			super.renderBackground(g, mouseX, mouseY, partialTick);
+			super.extractBackground(g, mouseX, mouseY, partialTick);
 		}
 	}
 
 	@Override
-	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -663,15 +663,15 @@ public final class SkyLyricsScreen extends Screen {
 		renderFooter(g, frame);
 	}
 
-	private void renderSidebar(GuiGraphics g, Frame f) {
+	private void renderSidebar(GuiGraphicsExtractor g, Frame f) {
 		Ui.rect(g, px, py, SIDEBAR_W, ph, 8, Ui.SIDEBAR);
 		g.fill(px + SIDEBAR_W - 8, py, px + SIDEBAR_W, py + ph, Ui.SIDEBAR);
 		g.fill(px + SIDEBAR_W, py, px + SIDEBAR_W + 1, py + ph, Ui.DIVIDER);
 
 		Ui.rect(g, px + 10, py + 11, 16, 16, 4, Ui.ACCENT);
-		g.drawCenteredString(font, "♪", px + 18, py + 15, 0xFFFFFFFF);
-		g.drawString(font, Ui.visual("SkyLyrics"), px + 31, py + 10, Ui.TEXT, false);
-		g.drawString(font, Ui.visual("by Beli"), px + 31, py + 20, Ui.DIM, false);
+		g.centeredText(font, "♪", px + 18, py + 15, 0xFFFFFFFF);
+		g.text(font, Ui.visual("SkyLyrics"), px + 31, py + 10, Ui.TEXT, false);
+		g.text(font, Ui.visual("by Beli"), px + 31, py + 20, Ui.DIM, false);
 
 		int tabsY = py + 40;
 		float target = tabsY + tab * (TAB_H + 2);
@@ -686,17 +686,17 @@ public final class SkyLyricsScreen extends Screen {
 				Ui.rect(g, px + 6, ty, SIDEBAR_W - 12, TAB_H, 5, 0x14FFFFFF);
 			}
 			int color = i == tab ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
-			g.drawString(font, Ui.visual(TAB_ICONS[i]), px + 14, ty + 6, i == tab ? Ui.ACCENT : color, false);
-			g.drawString(font, Ui.visual(tabName(i)), px + 28, ty + 6, color, false);
+			g.text(font, Ui.visual(TAB_ICONS[i]), px + 14, ty + 6, i == tab ? Ui.ACCENT : color, false);
+			g.text(font, Ui.visual(tabName(i)), px + 28, ty + 6, color, false);
 		}
 
 		g.fill(px + 10, py + ph - 36, px + SIDEBAR_W - 10, py + ph - 35, Ui.DIVIDER);
 		masterToggle.render(f);
 	}
 
-	private void renderHeader(GuiGraphics g, Frame f) {
-		g.drawString(font, Ui.visual(tabName(tab)), viewX, py + 12, Ui.TEXT, false);
-		g.drawString(font, Ui.visual(tabSubtitle(tab)), viewX, py + 23, Ui.MUTED, false);
+	private void renderHeader(GuiGraphicsExtractor g, Frame f) {
+		g.text(font, Ui.visual(tabName(tab)), viewX, py + 12, Ui.TEXT, false);
+		g.text(font, Ui.visual(tabSubtitle(tab)), viewX, py + 23, Ui.MUTED, false);
 
 		int bw = font.width(Tr.t("Preview")) + 16;
 		int bx = px + pw - 12 - bw;
@@ -720,10 +720,10 @@ public final class SkyLyricsScreen extends Screen {
 		Ui.rect(g, pillX, py + 12, pillW, 16, 8, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 		int dot = track == Track.NONE ? Ui.DIM : mod.tracker().playing() ? 0xFF000000 | mod.art().color() : Ui.MUTED;
 		Ui.rect(g, pillX + 7, py + 18, 4, 4, 2, dot);
-		g.drawString(font, Ui.visual(Ui.clip(font, text, pillW - 22)), pillX + 15, py + 16, hover ? 0xFFFFFFFF : Ui.TEXT, false);
+		g.text(font, Ui.visual(Ui.clip(font, text, pillW - 22)), pillX + 15, py + 16, hover ? 0xFFFFFFFF : Ui.TEXT, false);
 	}
 
-	private void renderContent(GuiGraphics g, Frame f) {
+	private void renderContent(GuiGraphicsExtractor g, Frame f) {
 		boolean hoverOk = f.hoverAllowed() && inView(f.mx(), f.my());
 		Frame inner = new Frame(g, font, f.mx(), f.my(), f.dt(), hoverOk);
 		g.enableScissor(viewX - 4, viewY, px + pw - 4, viewY + viewH);
@@ -739,7 +739,7 @@ public final class SkyLyricsScreen extends Screen {
 			if (bottom < viewY - 20 || top - 12 > viewY + viewH) {
 				continue;
 			}
-			g.drawString(font, Ui.visual(card.title().toUpperCase(Locale.ROOT)), first.x + 2, top - 10, Ui.DIM, false);
+			g.text(font, Ui.visual(card.title().toUpperCase(Locale.ROOT)), first.x + 2, top - 10, Ui.DIM, false);
 			Ui.rect(g, first.x, top, first.w, bottom - top, 6, Ui.CARD);
 			for (Row row : rows) {
 				if (row != first) {
@@ -766,7 +766,7 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
-	private void renderFooter(GuiGraphics g, Frame f) {
+	private void renderFooter(GuiGraphicsExtractor g, Frame f) {
 		int fy = py + ph - FOOTER_H + 8;
 		g.fill(viewX, fy - 8, px + pw - 12, fy - 7, Ui.DIVIDER);
 		boolean armed = System.nanoTime() < resetArmedUntil;
@@ -786,11 +786,11 @@ public final class SkyLyricsScreen extends Screen {
 		String hint = Tr.t("%s or Esc to close", keyName(mod.openSettingsKey()));
 		int hintX = (viewX + rw + dx) / 2 - font.width(hint) / 2;
 		if (hintX > viewX + rw + 6 && hintX + font.width(hint) < dx - 6) {
-			g.drawString(font, Ui.visual(hint), hintX, fy + 4, Ui.DIM, false);
+			g.text(font, Ui.visual(hint), hintX, fy + 4, Ui.DIM, false);
 		}
 	}
 
-	private void renderPreviewHint(GuiGraphics g) {
+	private void renderPreviewHint(GuiGraphicsExtractor g) {
 		boolean nothing = mod.tracker().track() == Track.NONE;
 		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song in Music to try it.")
 				: Tr.t("Previewing. Click or press any key to go back.");
@@ -799,7 +799,7 @@ public final class SkyLyricsScreen extends Screen {
 		int y = height - 44;
 		Ui.rect(g, x, y, w, 18, 9, 0xE0141019);
 		Ui.rect(g, x + 8, y + 7, 4, 4, 2, Ui.ACCENT);
-		g.drawString(font, Ui.visual(text), x + 17, y + 5, Ui.TEXT, false);
+		g.text(font, Ui.visual(text), x + 17, y + 5, Ui.TEXT, false);
 	}
 
 	// ---- Input ------------------------------------------------------------------------------------
@@ -964,7 +964,7 @@ public final class SkyLyricsScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		minecraft.setScreen(parent);
+		minecraft.gui.setScreen(parent);
 	}
 
 	@Override
@@ -1013,7 +1013,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		@Override
 		void render(Frame f) {
-			GuiGraphics g = f.g();
+			GuiGraphicsExtractor g = f.g();
 			MediaTracker tracker = mod.tracker();
 			Track track = tracker.track();
 			int cx = x + 7;
@@ -1024,21 +1024,21 @@ public final class SkyLyricsScreen extends Screen {
 						AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE);
 			} else {
 				Ui.rect(g, cx, cy, COVER, COVER, 4, Ui.CONTROL);
-				g.drawCenteredString(font, "♪", cx + COVER / 2, cy + COVER / 2 - 4, Ui.MUTED);
+				g.centeredText(font, "♪", cx + COVER / 2, cy + COVER / 2 - 4, Ui.MUTED);
 			}
 
 			int tx = barX();
 			if (track == Track.NONE) {
-				g.drawString(font, Ui.visual(Tr.t("Nothing playing")), tx, y + 13, Ui.TEXT, false);
-				g.drawString(font, Ui.visual(Ui.clip(font, Tr.t("Play a song in Spotify, a browser or any player"), w - tx + x - 10)),
+				g.text(font, Ui.visual(Tr.t("Nothing playing")), tx, y + 13, Ui.TEXT, false);
+				g.text(font, Ui.visual(Ui.clip(font, Tr.t("Play a song in Spotify, a browser or any player"), w - tx + x - 10)),
 						tx, y + 25, Ui.MUTED, false);
 				return;
 			}
 
 			int textW = w - (tx - x) - 3 * 20 - 14;
-			g.drawString(font, Ui.visual(Ui.clip(font, track.title(), textW)), tx, y + 8, Ui.TEXT, false);
+			g.text(font, Ui.visual(Ui.clip(font, track.title(), textW)), tx, y + 8, Ui.TEXT, false);
 			String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
-			g.drawString(font, Ui.visual(Ui.clip(font, sub, textW)), tx, y + 19, Ui.MUTED, false);
+			g.text(font, Ui.visual(Ui.clip(font, sub, textW)), tx, y + 19, Ui.MUTED, false);
 
 			String[] glyphs = {"◀◀", tracker.playing() ? "❚❚" : "▶", "▶▶"};
 			for (int i = 0; i < 3; i++) {
@@ -1048,7 +1048,7 @@ public final class SkyLyricsScreen extends Screen {
 					Ui.rect(g, bx, y + 7, 18, 18, 9, i == 1 ? (hover ? Ui.lerp(0.25f, Ui.ACCENT, 0xFFFFFFFF) : Ui.ACCENT) : Ui.CONTROL_HOVER);
 				}
 				int gw = font.width(glyphs[i]);
-				g.drawString(font, Ui.visual(glyphs[i]), bx + 9 - gw / 2 + (gw % 2 == 0 ? 0 : 1), y + 12,
+				g.text(font, Ui.visual(glyphs[i]), bx + 9 - gw / 2 + (gw % 2 == 0 ? 0 : 1), y + 12,
 						i == 1 || hover ? 0xFFFFFFFF : Ui.MUTED, false);
 			}
 
@@ -1061,9 +1061,9 @@ public final class SkyLyricsScreen extends Screen {
 			boolean hoverBar = length > 0 && f.hoverAllowed() && Ui.inside(f.mx(), f.my(), bx, barY - 3, bw, 9);
 			Ui.rect(g, bx, barY, bw, hoverBar ? 4 : 3, 1, Ui.TRACK);
 			Ui.rect(g, bx, barY, Math.round(bw * t), hoverBar ? 4 : 3, 1, 0xFF000000 | art.color());
-			g.drawString(font, Ui.visual(time(pos)), bx, barY + 7, Ui.DIM, false);
+			g.text(font, Ui.visual(time(pos)), bx, barY + 7, Ui.DIM, false);
 			String total = length > 0 ? time(length) : "--:--";
-			g.drawString(font, Ui.visual(total), bx + bw - font.width(total), barY + 7, Ui.DIM, false);
+			g.text(font, Ui.visual(total), bx + bw - font.width(total), barY + 7, Ui.DIM, false);
 		}
 
 		@Override
