@@ -123,6 +123,12 @@ public final class SkyLyricsConfig {
 		LIGHT
 	}
 
+	public enum Hat {
+		NONE,
+		/** A glowing ring floating above your head. */
+		HALO
+	}
+
 	public enum Layer {
 		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
 		AUTO,
@@ -197,6 +203,10 @@ public final class SkyLyricsConfig {
 	public SkySpeed skySpeed = SkySpeed.NORMAL;
 	public boolean shootingStars = false;
 	public boolean twinkle = false;
+	/** Something glowing on your head, seen in third person. Only you can see it. */
+	public Hat hat = Hat.NONE;
+	/** The hat flares up with each new line. */
+	public boolean hatPulse = true;
 
 	// Display
 	public float size = 1f;
@@ -284,6 +294,7 @@ public final class SkyLyricsConfig {
 		if (skyColors == null) skyColors = d.skyColors;
 		if (skySpeed == null) skySpeed = d.skySpeed;
 		if (effects == null) effects = d.effects;
+		if (hat == null) hat = d.hat;
 		if (preferredPlayer == null) preferredPlayer = "";
 		if (spotifyClientId == null) spotifyClientId = "";
 		glow = clamp(glow, 0, 1);

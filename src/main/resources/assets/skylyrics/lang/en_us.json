@@ -314,5 +314,11 @@
   "skylyrics.ui.try_again": "Try again",
   "skylyrics.ui.try_made_up_songs": "Try made-up songs",
   "skylyrics.ui.type_to_find_a_song": "Type to find a song",
-  "skylyrics.ui.your_spotify_songs": "Your Spotify songs"
+  "skylyrics.ui.your_spotify_songs": "Your Spotify songs",
+  "skylyrics.ui.hat": "Hat",
+  "skylyrics.ui.see_it_in_third_person_f5_only_you_can_see_it": "See it in third person (F5). Only you can see it",
+  "skylyrics.ui.none": "None",
+  "skylyrics.ui.halo": "Halo",
+  "skylyrics.ui.glow_with_the_lyrics": "Glow with the lyrics",
+  "skylyrics.ui.flares_up_with_each_new_line": "Flares up with each new line"
 }
