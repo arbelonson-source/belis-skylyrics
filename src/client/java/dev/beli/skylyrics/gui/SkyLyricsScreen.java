@@ -158,7 +158,7 @@ public final class SkyLyricsScreen extends Screen {
 					case LINES -> Tr.t("The last, current and next line");
 					case WORLD -> Tr.t("Words appear around you");
 				});
-		// World words appear around wherever you look, so sky or floating and a compass direction don't apply
+		// World words float around you, so sky or floating doesn't apply; the direction says where they gather
 		Row placement = new Segmented(Tr.t("Placement"), Tr.t("Far up in the sky, or close by"),
 				new String[] {Tr.t("Sky"), Tr.t("Floating")}, () -> cfg.placement.ordinal(),
 				i -> cfg.placement = Placement.values()[i])
@@ -167,7 +167,7 @@ public final class SkyLyricsScreen extends Screen {
 				new String[] {Tr.t("Follow"), Tr.t("N"), Tr.t("E"), Tr.t("S"), Tr.t("W")},
 				() -> cfg.direction == Direction.FOLLOW ? 0 : cfg.direction.ordinal() + 1,
 				i -> cfg.direction = i == 0 ? Direction.FOLLOW : Direction.values()[i - 1])
-				.when(() -> cfg.placement == Placement.SKY && cfg.layout != Layout.WORLD);
+				.when(() -> cfg.placement == Placement.SKY || cfg.layout == Layout.WORLD);
 		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°");
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,

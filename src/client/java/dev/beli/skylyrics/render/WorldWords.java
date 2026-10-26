@@ -203,9 +203,10 @@ final class WorldWords {
 	 * @param text      that line's text (null in a break)
 	 * @param sungChars how many code points of the line have been sung so far
 	 * @param over      whether the line has been over for a moment, so its last words can go too
+	 * @param fixedYaw  the compass direction new words appear around, or NaN for wherever you look
 	 */
-	void update(int index, @Nullable String text, float sungChars, boolean over, Camera camera, @Nullable ClientLevel level,
-			Font font, Style style, long now) {
+	void update(int index, @Nullable String text, float sungChars, boolean over, float fixedYaw, Camera camera,
+			@Nullable ClientLevel level, Font font, Style style, long now) {
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			line = index;
 			lineRaw = text;
@@ -222,7 +223,7 @@ final class WorldWords {
 		}
 		for (; spawned < due; spawned++) {
 			letGo(now);
-			spawn(lineChunks.get(spawned), camera, level, font, style, now);
+			spawn(lineChunks.get(spawned), centre(fixedYaw, camera.yRot(), camera.xRot()), camera, level, font, style, now);
 		}
 		if (lineText == null || over) {
 			letGo(now);
@@ -245,7 +246,16 @@ final class WorldWords {
 		}
 	}
 
-	private void spawn(int[] chunk, Camera camera, @Nullable ClientLevel level, Font font, Style style, long now) {
+	/**
+	 * Yaw and pitch new words gather round: where you look, or with a fixed direction that way, a little above the
+	 * horizon, so you can look about and find them where you left them.
+	 */
+	static float[] centre(float fixedYaw, float yaw, float pitch) {
+		return Float.isNaN(fixedYaw) ? new float[] {yaw, pitch} : new float[] {fixedYaw, 0};
+	}
+
+	private void spawn(int[] chunk, float[] centre, Camera camera, @Nullable ClientLevel level, Font font, Style style,
+			long now) {
 		String piece = new String(lineText.codePoints().toArray(), chunk[0], chunk[1] - chunk[0]);
 		Display d = Display.of(piece);
 		float[] at = new float[d.cps().length + 1];
@@ -271,8 +281,8 @@ final class WorldWords {
 			if (slot == recent[0] || slot == recent[1]) {
 				continue;
 			}
-			float yaw = camera.yRot() - SPOTS[slot][0] + (next() * 2 - 1) * WOBBLE_X;
-			float pitch = Mth.clamp(camera.xRot() - LIFT - SPOTS[slot][1] + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
+			float yaw = centre[0] - SPOTS[slot][0] + (next() * 2 - 1) * WOBBLE_X;
+			float pitch = Mth.clamp(centre[1] - LIFT - SPOTS[slot][1] + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
 			float distance = Mth.lerp(next(), NEAR, FAR);
 			float halfW = halfAngle(at[at.length - 1] * size / 2, distance) + PAD_X, halfH = halfAngle(5 * size, distance) + PAD_Y;
 			float cost = 0;
@@ -291,8 +301,8 @@ final class WorldWords {
 			}
 		}
 		if (bestSlot < 0) { // every try hit a recent spot (unlikely); take the middle
-			bestYaw = camera.yRot();
-			bestPitch = camera.xRot() - LIFT;
+			bestYaw = centre[0];
+			bestPitch = centre[1] - LIFT;
 		}
 		recent[1] = recent[0];
 		recent[0] = bestSlot;
