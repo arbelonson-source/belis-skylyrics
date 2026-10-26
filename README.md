@@ -1,7 +1,7 @@
 # Beli's SkyLyrics
 
 Synced lyrics for the song you're listening to, glowing in the Minecraft sky.
-A free, open-source Fabric mod for Minecraft 1.21.11.
+A free, open-source Fabric mod for Minecraft 1.21.11 and 26.2.
 
 ![Lyrics fading in word by word over a sunset](docs/demo.webp)
 
@@ -44,25 +44,27 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 ## Install
 
+Each release has two jars. Pick the one whose name ends in your Minecraft version: `+1.21.11.jar` or `+26.2.jar`.
+
 Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether Minecraft may control them: click **OK**.
 
 ### With Prism Launcher (easiest)
 
-1. Click **Add Instance**, pick Minecraft **1.21.11**, and choose **Fabric** as the mod loader.
+1. Click **Add Instance**, pick Minecraft **1.21.11** or **26.2**, and choose **Fabric** as the mod loader.
 2. Select the instance, click **Edit**, then open **Mods**.
 3. Click **Download mods** and add **Fabric API**. You can also add **Sodium**, **Iris** and **Mod Menu** if you like.
-4. Click **Add file** and pick the SkyLyrics `.jar` from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases).
+4. Click **Add file** and pick the SkyLyrics `.jar` for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases).
 5. Start the game, play a song in Spotify or your browser, and look up.
 
 ### With the official launcher
 
-1. Run the [Fabric installer](https://fabricmc.net/use/installer/) and install Fabric for **1.21.11**.
-2. Download [Fabric API](https://modrinth.com/mod/fabric-api) and the SkyLyrics `.jar`.
+1. Run the [Fabric installer](https://fabricmc.net/use/installer/) and install Fabric for **1.21.11** or **26.2**.
+2. Download [Fabric API](https://modrinth.com/mod/fabric-api) and the SkyLyrics `.jar` for your Minecraft version.
 3. Put both files in your `mods` folder. Create it if it doesn't exist.
    - Linux: `~/.minecraft/mods`
    - Windows: `%appdata%\.minecraft\mods` (paste this into the File Explorer address bar)
    - macOS: `~/Library/Application Support/minecraft/mods` (in Finder, choose **Go → Go to Folder…** and paste this)
-4. In the launcher, pick the **fabric-loader-1.21.11** profile and press Play.
+4. In the launcher, pick the **fabric-loader** profile for your version and press Play.
 
 ### Using it
 
@@ -72,7 +74,7 @@ Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds y
 
 ## Building it yourself
 
-Gradle needs Java 25 to run. The mod itself targets Java 21.
+Gradle needs Java 25 to run. The `main` branch builds the 1.21.11 jar (Java 21) and the `mc-26.2` branch builds the 26.2 jar (Java 25). Changes go to `main` first, then `main` is merged into `mc-26.2`.
 
 ```
 JAVA_HOME=/path/to/java-25 ./gradlew build

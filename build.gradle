@@ -6,6 +6,9 @@ base {
 	archivesName = project.archives_base_name
 }
 
+// The Minecraft version goes in the jar name so the two release jars are told apart
+version = "${project.version}+${project.minecraft_version}"
+
 repositories {
 	maven {
 		name = 'Terraformers'
