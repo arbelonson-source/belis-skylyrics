@@ -1,5 +1,10 @@
 package dev.beli.skylyrics.gui;
 
+import java.util.Locale;
+
+import dev.beli.skylyrics.media.LibraryItem;
+import dev.beli.skylyrics.media.Track;
+
 /** The sums behind the song library's grid of covers, kept apart from drawing so they can be tested. */
 final class LibraryGrid {
 	static final int COVER = 56;
@@ -47,5 +52,30 @@ final class LibraryGrid {
 	/** A steady colour for a cover that has no picture yet, picked from the album or playlist name. */
 	static float hue(String name) {
 		return (name.hashCode() & 0xFFFF) / 65536f;
+	}
+
+	/**
+	 * True if this is the song playing now. Players list several artists differently
+	 * ("A, B", "A & B" or just "A"), so one artist in common is enough.
+	 */
+	static boolean isPlaying(LibraryItem item, Track track) {
+		if (track.isNone() || !item.title().strip().equalsIgnoreCase(track.title().strip())) {
+			return false;
+		}
+		if (track.artist().isBlank()) {
+			return true;
+		}
+		String artists = item.artists().toLowerCase(Locale.ROOT);
+		for (String name : track.artist().toLowerCase(Locale.ROOT).split(",|&|\\bfeat\\.")) {
+			if (!name.isBlank() && artists.contains(name.strip())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Height, 0 to 1, of bar {@code i} of the little moving bars on the song playing now. */
+	static float bar(int i, float clock) {
+		return 0.3f + 0.7f * (float) Math.abs(Math.sin(clock * (4.3f + i * 1.9f) + i * 1.1f));
 	}
 }

@@ -29,6 +29,7 @@ import dev.beli.skylyrics.gui.Controls.Frame;
 import dev.beli.skylyrics.media.DemoLibrary;
 import dev.beli.skylyrics.media.Library;
 import dev.beli.skylyrics.media.LibraryItem;
+import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.LibraryPlaylist;
 import dev.beli.skylyrics.media.SpotifyLibrary.Page;
 import dev.beli.skylyrics.media.SpotifyWebSource;
@@ -331,6 +332,8 @@ public final class LibraryScreen extends Screen {
 			return;
 		}
 
+		Track now = mod.tracker().track();
+		boolean moving = mod.tracker().playing();
 		boolean inView = Ui.inside(f.mx(), f.my(), viewX, viewY, viewW, viewH);
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
 		int top = viewY - Math.round(shelf.scroll);
@@ -347,7 +350,9 @@ public final class LibraryScreen extends Screen {
 			if (t <= 0) {
 				continue;
 			}
-			renderCard(g, shelf.items.get(i), x, y - Math.round(lift * 2), LibraryGrid.popIn(t), t, lift, i == selected);
+			Object entry = shelf.items.get(i);
+			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+			renderCard(g, entry, x, y - Math.round(lift * 2), LibraryGrid.popIn(t), t, lift, i == selected, current, moving);
 		}
 		if (shelf.pending != null) {
 			int y = top + contentHeight(shelf) - 12;
@@ -376,7 +381,8 @@ public final class LibraryScreen extends Screen {
 		};
 	}
 
-	private void renderCard(GuiGraphics g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen) {
+	private void renderCard(GuiGraphics g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen,
+			boolean current, boolean moving) {
 		String title;
 		String under;
 		String colorKey;
@@ -420,10 +426,19 @@ public final class LibraryScreen extends Screen {
 			int s = CoverCache.SIZE;
 			g.blit(RenderPipelines.GUI_TEXTURED, cover.id(), x, y, 0, 0, cellW, cellW, s, s, s, s, ARGB.white(alpha * shown));
 		}
+		if (current) {
+			// Little bars in the corner of the song playing now, still while it's paused
+			int bw = 16, bh = 12, bx = x + cellW - bw - 3, by = y + cellW - bh - 3;
+			Ui.rect(g, bx, by, bw, bh, 4, Ui.alpha(Ui.ACCENT, 0.95f * alpha));
+			for (int b = 0; b < 3; b++) {
+				int barH = Math.max(2, Math.round(7 * (moving ? LibraryGrid.bar(b, clock) : 0.35f)));
+				Ui.rect(g, bx + 3 + b * 4, by + bh - 2 - barH, 2, barH, 0, Ui.alpha(0xFFFFFFFF, alpha));
+			}
+		}
 		if (chosen) {
 			Ui.outline(g, x - 1, y - 1, cellW + 2, cellW + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
 		}
-		g.drawString(font, Ui.visual(Ui.clip(font, title, cellW)), x, y + cellW + 3, Ui.alpha(Ui.TEXT, alpha), false);
+		g.drawString(font, Ui.visual(Ui.clip(font, title, cellW)), x, y + cellW + 3, Ui.alpha(current ? Ui.ACCENT : Ui.TEXT, alpha), false);
 		g.drawString(font, Ui.visual(Ui.clip(font, under, cellW)), x, y + cellW + 12, Ui.alpha(Ui.DIM, alpha), false);
 		g.pose().popMatrix();
 	}

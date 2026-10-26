@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -43,5 +44,38 @@ class LibraryGridTest {
 		assertEquals(LibraryGrid.hue("Rainy cabin"), LibraryGrid.hue("Rainy cabin"));
 		float h = LibraryGrid.hue("anything");
 		assertTrue(h >= 0 && h < 1);
+	}
+
+	private static dev.beli.skylyrics.media.LibraryItem song(String title, String artists) {
+		return new dev.beli.skylyrics.media.LibraryItem("id", "spotify:track:id", title, artists, "", "", 0, "");
+	}
+
+	private static dev.beli.skylyrics.media.Track playing(String title, String artist) {
+		return new dev.beli.skylyrics.media.Track(title, artist, "", 0, "", "spotify");
+	}
+
+	@Test
+	void theSongPlayingNowIsFoundEvenWhenThePlayerListsArtistsDifferently() {
+		assertTrue(LibraryGrid.isPlaying(song("Neon Skyline", "SkyLyrics Demo"), playing("Neon Skyline", "SkyLyrics Demo")));
+		assertTrue(LibraryGrid.isPlaying(song("Glass Over", "Ana, The Quiet Birds"), playing("glass over ", "The Quiet Birds")));
+		assertTrue(LibraryGrid.isPlaying(song("Glass Over", "Ana, Bo"), playing("Glass Over", "Bo & Ana")));
+		assertTrue(LibraryGrid.isPlaying(song("Glass Over", "Ana"), playing("Glass Over", "")));
+	}
+
+	@Test
+	void otherSongsAreNotMarkedAsPlaying() {
+		assertFalse(LibraryGrid.isPlaying(song("Glass Over", "Ana"), playing("Glass Over", "Someone Else")));
+		assertFalse(LibraryGrid.isPlaying(song("Glass Over", "Ana"), playing("Lantern Home", "Ana")));
+		assertFalse(LibraryGrid.isPlaying(song("Glass Over", "Ana"), dev.beli.skylyrics.media.Track.NONE));
+	}
+
+	@Test
+	void thePlayingBarsStayInsideTheirBadge() {
+		for (int i = 0; i < 3; i++) {
+			for (float clock = 0; clock < 5; clock += 0.05f) {
+				float h = LibraryGrid.bar(i, clock);
+				assertTrue(h >= 0.3f - 1e-6f && h <= 1 + 1e-6f);
+			}
+		}
 	}
 }
