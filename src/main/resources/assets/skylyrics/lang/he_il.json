@@ -281,5 +281,10 @@
   "skylyrics.ui.words_travel_with_you_when_you_glide_ride_or_fly": "המילים נעות איתך בזמן רחיפה, רכיבה או תעופה",
   "skylyrics.ui.moonlit": "לאור הירח",
   "skylyrics.ui.drift": "ריחוף",
-  "skylyrics.ui.corona": "הילה"
+  "skylyrics.ui.corona": "הילה",
+  "skylyrics.ui.open_spotify_on_your_computer_or_phone_first": "פתחו את ספוטיפיי במחשב או בטלפון קודם",
+  "skylyrics.ui.spotify_premium_is_needed_to_start_songs": "צריך ספוטיפיי פרימיום כדי להפעיל שירים",
+  "skylyrics.ui.spotify_didn_t_start_the_song_try_again": "ספוטיפיי לא הפעיל את השיר, נסו שוב",
+  "skylyrics.ui.sign_in_again_to_use_the_library": "התחברו שוב כדי להשתמש בספרייה",
+  "skylyrics.ui.spotify_didn_t_answer_try_again": "ספוטיפיי לא ענה, נסו שוב"
 }

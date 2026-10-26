@@ -56,7 +56,10 @@ public final class SpotifyWebSource implements MediaSource {
 	/** Has to be added, exactly like this, to the app on the Spotify dashboard. */
 	public static final String REDIRECT = "http://127.0.0.1:" + PORT + "/callback";
 	public static final String DASHBOARD = "https://developer.spotify.com/dashboard";
-	static final String SCOPES = "user-read-currently-playing user-read-playback-state user-modify-playback-state";
+	static final String SCOPES = "user-read-currently-playing user-read-playback-state user-modify-playback-state"
+			+ " user-library-read playlist-read-private playlist-read-collaborative";
+	/** What the song library needs on top of reading the player; older sign-ins lack these. */
+	static final String LIBRARY_SCOPES = "user-library-read playlist-read-private";
 	private static final String ACCOUNTS = "https://accounts.spotify.com";
 	private static final String API = "https://api.spotify.com/v1";
 	/** The tracker's smooth clock fills the gaps, so once a second while playing is plenty. */
@@ -86,6 +89,8 @@ public final class SpotifyWebSource implements MediaSource {
 	private volatile @Nullable String refreshToken;
 	/** The Client ID the refresh token was made for; pasting another one means signing in again. */
 	private volatile String tokenClient = "";
+	/** What the user agreed to share at sign-in, space separated. */
+	private volatile String grantedScopes = "";
 	private @Nullable String accessToken;
 	private long accessUntilNs;
 	private volatile @Nullable ServerSocket loginServer;
@@ -117,6 +122,21 @@ public final class SpotifyWebSource implements MediaSource {
 			return Account.WAITING;
 		}
 		return refreshToken != null && id.equals(tokenClient) ? Account.SIGNED_IN : Account.SIGNED_OUT;
+	}
+
+	/** True when signed in with a sign-in that also lets us read saved songs and playlists. */
+	public boolean canBrowse() {
+		return account() == Account.SIGNED_IN && covers(grantedScopes, LIBRARY_SCOPES);
+	}
+
+	static boolean covers(String granted, String needed) {
+		List<String> have = List.of(granted.strip().split("\\s+"));
+		for (String scope : needed.split(" ")) {
+			if (!have.contains(scope)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** Why the last sign-in didn't work, or empty. */
@@ -162,6 +182,7 @@ public final class SpotifyWebSource implements MediaSource {
 		cancelLogin();
 		refreshToken = null;
 		tokenClient = "";
+		grantedScopes = "";
 		accessToken = null;
 		last = Snapshot.NOTHING;
 		problem = "";
@@ -323,9 +344,17 @@ public final class SpotifyWebSource implements MediaSource {
 		accessUntilNs = System.nanoTime() + seconds * 1_000_000_000L - EARLY_NS;
 		// Spotify may hand out a new refresh token; the old one then stops working
 		String refresh = string(json, "refresh_token");
+		String scope = string(json, "scope");
+		boolean changed = scope != null && !scope.equals(grantedScopes);
+		if (changed) {
+			grantedScopes = scope;
+		}
 		if (refresh != null && (!refresh.equals(refreshToken) || !id.equals(tokenClient))) {
 			refreshToken = refresh;
 			tokenClient = id;
+			changed = true;
+		}
+		if (changed && refreshToken != null) {
 			save();
 		}
 		problem = "";
@@ -359,6 +388,7 @@ public final class SpotifyWebSource implements MediaSource {
 					refreshToken = string(json, "refreshToken");
 					String client = string(json, "clientId");
 					tokenClient = client == null ? "" : client;
+					grantedScopes = orEmpty(string(json, "scopes"));
 				}
 			}
 		} catch (IOException e) {
@@ -370,6 +400,7 @@ public final class SpotifyWebSource implements MediaSource {
 		JsonObject json = new JsonObject();
 		json.addProperty("clientId", tokenClient);
 		json.addProperty("refreshToken", refreshToken);
+		json.addProperty("scopes", grantedScopes);
 		try {
 			Files.createDirectories(loginFile.getParent());
 			Path tmp = loginFile.resolveSibling(loginFile.getFileName() + ".tmp");
@@ -425,12 +456,31 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	private HttpResponse<String> api(String method, String path, String token) throws IOException, InterruptedException {
-		HttpRequest request = HttpRequest.newBuilder(URI.create(API + path))
+		return api(method, path, token, null);
+	}
+
+	private HttpResponse<String> api(String method, String path, String token, @Nullable String json) throws IOException, InterruptedException {
+		HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(API + path))
 				.timeout(Duration.ofSeconds(8))
-				.header("Authorization", "Bearer " + token)
-				.method(method, HttpRequest.BodyPublishers.noBody())
-				.build();
-		return http.send(request, HttpResponse.BodyHandlers.ofString());
+				.header("Authorization", "Bearer " + token);
+		if (json == null) {
+			request.method(method, HttpRequest.BodyPublishers.noBody());
+		} else {
+			request.header("Content-Type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(json));
+		}
+		return http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+	}
+
+	/** Calls the Web API as the signed-in user, fetching a fresh access token once if Spotify says it went stale. */
+	HttpResponse<String> call(String method, String path, @Nullable String json) throws IOException, InterruptedException {
+		HttpResponse<String> response = api(method, path, access(), json);
+		if (response.statusCode() == 401) {
+			synchronized (this) {
+				accessToken = null;
+			}
+			response = api(method, path, access(), json);
+		}
+		return response;
 	}
 
 	/** The answer of {@code /me/player/currently-playing}; an ad or a private session reads as nothing. */
@@ -472,7 +522,7 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	/** The picture closest to 300 pixels wide, big enough for the bar and the sky without downloading 640. */
-	private static String bestImage(@Nullable JsonArray images) {
+	static String bestImage(@Nullable JsonArray images) {
 		String best = "";
 		long bestDiff = Long.MAX_VALUE;
 		if (images != null) {
@@ -490,7 +540,7 @@ public final class SpotifyWebSource implements MediaSource {
 		return best;
 	}
 
-	private static @Nullable JsonObject object(@Nullable String text) {
+	static @Nullable JsonObject object(@Nullable String text) {
 		try {
 			JsonElement e = text == null || text.isBlank() ? null : JsonParser.parseString(text);
 			return e != null && e.isJsonObject() ? e.getAsJsonObject() : null;
@@ -499,27 +549,27 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
-	private static @Nullable JsonObject child(JsonObject o, String key) {
+	static @Nullable JsonObject child(JsonObject o, String key) {
 		JsonElement e = o.get(key);
 		return e != null && e.isJsonObject() ? e.getAsJsonObject() : null;
 	}
 
-	private static @Nullable JsonArray array(JsonObject o, String key) {
+	static @Nullable JsonArray array(JsonObject o, String key) {
 		JsonElement e = o.get(key);
 		return e != null && e.isJsonArray() ? e.getAsJsonArray() : null;
 	}
 
-	private static @Nullable String string(JsonObject o, String key) {
+	static @Nullable String string(JsonObject o, String key) {
 		JsonElement e = o.get(key);
 		return e != null && e.isJsonPrimitive() ? e.getAsString() : null;
 	}
 
-	private static long number(JsonObject o, String key) {
+	static long number(JsonObject o, String key) {
 		JsonElement e = o.get(key);
 		return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? e.getAsLong() : 0;
 	}
 
-	private static String orEmpty(@Nullable String s) {
+	static String orEmpty(@Nullable String s) {
 		return s == null ? "" : s;
 	}
 
