@@ -196,7 +196,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row tint = new Toggle(Tr.t("Sky tint"), Tr.t("Words take on a little of the sky colour"),
 				() -> cfg.worldTint, v -> cfg.worldTint = v)
 				.when(() -> cfg.layout == Layout.WORLD);
-		Row glide = new Toggle(Tr.t("Elytra mode"), Tr.t("Words fly along with you while you glide"),
+		Row glide = new Toggle(Tr.t("Elytra mode"), Tr.t("Words travel with you when you glide, ride or fly"),
 				() -> cfg.worldGlide, v -> cfg.worldGlide = v)
 				.when(() -> cfg.layout == Layout.WORLD);
 

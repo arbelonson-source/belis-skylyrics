@@ -115,7 +115,7 @@ final class WorldWords {
 	private static final class Card {
 		final Display display;
 		final float[] at;
-		/** Where it stands; moves along with you while you glide (elytra mode). */
+		/** Where it stands; moves along with you while you glide, ride or fly (elytra mode). */
 		Vec3 pos;
 		final float face, nod, lean, size;
 		final long born;
@@ -313,8 +313,8 @@ final class WorldWords {
 	}
 
 	/**
-	 * Elytra mode: while you glide, every card moves along with you, so the words fly with you instead of being left
-	 * behind in a few seconds. Call once a frame, before {@link #update}.
+	 * Elytra mode: while you glide, ride or fly, every card moves along with you, so the words travel with you instead
+	 * of being left behind in a few seconds. Call once a frame, before {@link #update}.
 	 */
 	void glide(Vec3 eye, boolean gliding) {
 		Vec3 moved = carry(lastEye, eye, gliding);
@@ -326,7 +326,7 @@ final class WorldWords {
 		}
 	}
 
-	/** How far the cards move with you this frame: as far as you went while gliding, otherwise nowhere. */
+	/** How far the cards move with you this frame: as far as you went while travelling, otherwise nowhere. */
 	static Vec3 carry(@Nullable Vec3 last, Vec3 eye, boolean gliding) {
 		if (!gliding || last == null || last.distanceToSqr(eye) > GLIDE_JUMP * GLIDE_JUMP) {
 			return Vec3.ZERO;
