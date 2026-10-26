@@ -1,9 +1,11 @@
 {
 	"required": true,
 	"package": "dev.beli.skylyrics.mixin",
+	"plugin": "dev.beli.skylyrics.mixin.SkyLyricsMixinPlugin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
 		"BossHealthOverlayAccessor",
+		"FontPageMixin",
 		"FontTextureMixin",
 		"LevelRendererMixin"
 	],
