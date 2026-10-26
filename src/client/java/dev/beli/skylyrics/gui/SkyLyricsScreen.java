@@ -356,8 +356,11 @@ public final class SkyLyricsScreen extends Screen {
 		Row plain = new Toggle(Tr.t("Untimed lyrics"), Tr.t("If a song has no timing, spread the lines out"),
 				() -> cfg.showPlainLyrics, v -> cfg.showPlainLyrics = v);
 
+		Row library = new Buttons(Tr.t("Song library"), Tr.t("Pick a song to play (key: %s)", keyName(mod.libraryKey())),
+				new Button(Tr.t("Open"), () -> minecraft.setScreen(new LibraryScreen(this))));
+
 		return List.of(
-				new Card(Tr.t("Now playing"), new NowPlayingRow(), status),
+				new Card(Tr.t("Now playing"), new NowPlayingRow(), status, library),
 				new Card(Tr.t("Player"), player, connection, connectionHelp, timing, songTiming, demo, plain),
 				spotifyCard());
 	}
