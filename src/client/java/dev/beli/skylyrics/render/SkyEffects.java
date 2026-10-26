@@ -17,6 +17,7 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
@@ -52,6 +53,8 @@ public final class SkyEffects {
 	private static final float DEG = (float) (Math.PI / 180);
 	/** At the default strength the synthwave sky and the suns show fully; lower strengths fade them. */
 	private static final float FULL_STRENGTH = 0.7f;
+	/** Batch the sky is drawn in; lower batches are drawn first and the world's own things use 0. */
+	private static final int SKY_ORDER = -1;
 	/** With the lyrics following the view, the suns sit where the real sun went down: the west. */
 	static final float FOLLOW_YAW = 90;
 	/** Constellations sit in front of the far sky shapes (and behind the aurora and the lyrics). */
@@ -250,16 +253,19 @@ public final class SkyEffects {
 		// The synthwave sky has to cover the vanilla one and the eclipse disc has to be black, so those
 		// blend normally; the rest adds light. Each render type gets its shapes far to near, so the
 		// layers stack the same way whether or not the pipeline sorts them.
+		// The whole sky goes in an earlier batch than the lyrics: shapes are drawn after text in a batch,
+		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
+		OrderedSubmitNodeCollector sky = context.commandQueue().order(SKY_ORDER);
 		PoseStack pose = context.matrices();
 		pose.pushPose();
 		if (painted()) {
-			context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
+			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
 		}
 		if (!painted() || sparkles || meteorsAlive > 0) {
-			context.commandQueue().submitCustomGeometry(pose, RenderTypes.lightning(), drawer);
+			sky.submitCustomGeometry(pose, RenderTypes.lightning(), drawer);
 		}
 		if (effect == SkyEffect.ECLIPSE) {
-			context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
+			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
 		}
 		pose.popPose();
 	}
