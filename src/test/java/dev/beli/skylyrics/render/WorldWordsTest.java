@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 class WorldWordsTest {
@@ -151,6 +152,19 @@ class WorldWordsTest {
 		assertEquals(-90, east[0], 1e-6f);
 		assertEquals(0, east[1], 1e-6f);
 		assertEquals(east[0], WorldWords.centre(-90, 150, 60)[0], 1e-6f);
+	}
+
+	@Test
+	void wordsFlyAlongOnlyWhileYouGlide() {
+		Vec3 last = new Vec3(10, 80, 10), eye = new Vec3(12, 79, 10.5);
+		Vec3 moved = WorldWords.carry(last, eye, true);
+		assertEquals(2, moved.x, 1e-9);
+		assertEquals(-1, moved.y, 1e-9);
+		assertEquals(0.5, moved.z, 1e-9);
+		// Walking, the first frame, and a teleport leave the words where they are
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, eye, false));
+		assertEquals(Vec3.ZERO, WorldWords.carry(null, eye, true));
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, new Vec3(500, 80, 10), true));
 	}
 
 	@Test

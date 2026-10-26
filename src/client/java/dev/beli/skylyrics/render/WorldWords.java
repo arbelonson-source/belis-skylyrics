@@ -81,6 +81,8 @@ final class WorldWords {
 	private static final float CULL = 0.3f;
 	/** Cards this far away are dropped, in blocks. */
 	private static final float GONE_DISTANCE = 48f;
+	/** A jump further than this in one frame is a teleport, not flying, so the words stay behind (blocks). */
+	private static final float GLIDE_JUMP = 16f;
 	/** Drop shadow: offset down-right in text units, colour, and opacity by night and by day (a bright sky needs it darker). */
 	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_NIGHT = 0.55f, SHADOW_DAY = 0.85f;
 	private static final int SHADOW_RGB = 0x05040C;
@@ -113,7 +115,8 @@ final class WorldWords {
 	private static final class Card {
 		final Display display;
 		final float[] at;
-		final Vec3 pos;
+		/** Where it stands; moves along with you while you glide (elytra mode). */
+		Vec3 pos;
 		final float face, nod, lean, size;
 		final long born;
 		long goneAt = -1;
@@ -139,6 +142,8 @@ final class WorldWords {
 	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
 	private boolean flow;
 	private boolean hold = true;
+	/** Where the camera was last frame, to carry the cards along while you glide. */
+	private @Nullable Vec3 lastEye;
 	private @Nullable Sentence sentence;
 	private int maxCards = MAX_CARDS;
 	private float fade = FADE;
@@ -305,6 +310,28 @@ final class WorldWords {
 				it.remove();
 			}
 		}
+	}
+
+	/**
+	 * Elytra mode: while you glide, every card moves along with you, so the words fly with you instead of being left
+	 * behind in a few seconds. Call once a frame, before {@link #update}.
+	 */
+	void glide(Vec3 eye, boolean gliding) {
+		Vec3 moved = carry(lastEye, eye, gliding);
+		lastEye = eye;
+		if (moved != Vec3.ZERO) {
+			for (Card c : cards) {
+				c.pos = c.pos.add(moved);
+			}
+		}
+	}
+
+	/** How far the cards move with you this frame: as far as you went while gliding, otherwise nowhere. */
+	static Vec3 carry(@Nullable Vec3 last, Vec3 eye, boolean gliding) {
+		if (!gliding || last == null || last.distanceToSqr(eye) > GLIDE_JUMP * GLIDE_JUMP) {
+			return Vec3.ZERO;
+		}
+		return eye.subtract(last);
 	}
 
 	/** Every card shown so far starts fading. */

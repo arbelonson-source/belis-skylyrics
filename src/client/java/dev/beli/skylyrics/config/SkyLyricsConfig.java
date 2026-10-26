@@ -148,6 +148,8 @@ public final class SkyLyricsConfig {
 	public boolean worldHold = true;
 	/** World layout: words take on a little of the sky's colour, as if lit by it. */
 	public boolean worldTint = true;
+	/** World layout: while you glide with an elytra, the words fly along with you instead of being left behind. */
+	public boolean worldGlide = true;
 
 	// Lyrics
 	public boolean showPrevious = true;
