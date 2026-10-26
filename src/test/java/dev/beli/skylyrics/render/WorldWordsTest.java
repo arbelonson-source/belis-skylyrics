@@ -59,6 +59,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void theSungWordsGlowMostAndLetGoWordsStopGlowing() {
+		assertTrue(WorldWords.glowFor(true, -1) > WorldWords.glowFor(false, -1), "the words being sung shine brightest");
+		assertEquals(WorldWords.glowFor(false, -1), WorldWords.glowFor(false, 0), 1e-6, "no jump when a lit card is let go");
+		float last = 2;
+		for (float s = 0; s <= WorldWords.GLOW_OUT; s += 0.05f) {
+			float g = WorldWords.glowFor(false, s);
+			assertTrue(g <= last, "goes out steadily");
+			last = g;
+		}
+		assertEquals(0, WorldWords.glowFor(false, WorldWords.GLOW_OUT), 1e-6);
+		assertTrue(WorldWords.GLOW_OUT < WorldWords.FADE, "the glow is gone well before the words");
+	}
+
+	@Test
 	void lingerSettingStretchesTheFade() {
 		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);

@@ -87,6 +87,9 @@ final class WorldWords {
 	/** Soft glow: copies of the word around it, how far out (text units) and how strong at full glow. */
 	private static final int GLOW_COPIES = 3, GLOW_LIGHT = 2;
 	private static final float GLOW_RADIUS = 1.1f, GLOW_ALPHA = 0.4f;
+	/** Glow on the words being sung and on the rest of the line still up, and how long (seconds) a let-go card's lasts. */
+	private static final float GLOW_SUNG = 1.3f, GLOW_LIT = 0.8f;
+	static final float GLOW_OUT = 0.6f;
 	/** By day the glow goes this far toward black: a dark halo shows against a bright sky, a light one doesn't. */
 	private static final float HALO_DAY = 0.75f;
 	/** Front to back, in text units, so the layers don't flicker against each other. */
@@ -514,6 +517,12 @@ final class WorldWords {
 		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
 		Vec3 eye = camera.position();
 		Vec3 look = direction(camera.yRot(), camera.xRot());
+		Card sung = null;
+		for (Card c : cards) {
+			if (c.goneAt < 0 && c.cutAt < 0) {
+				sung = c;
+			}
+		}
 		for (Card c : cards) {
 			float age = (now - c.born) / 1e9f;
 			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
@@ -545,7 +554,7 @@ final class WorldWords {
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
-			float ring = a * GLOW_ALPHA * glow * (c.goneAt < 0 ? 1.3f : 0.8f) / 2 * GLOW_COPIES / copies;
+			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung, c.goneAt < 0 ? -1 : gone) / 2 * GLOW_COPIES / copies;
 			int halo = mix(colour, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
@@ -555,6 +564,20 @@ final class WorldWords {
 			draw(pose, out, c, shown, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
+	}
+
+	/**
+	 * How strongly a card glows, before the Glow setting: most on the words being sung, a little less on the rest of
+	 * the line still up. Once a card is let go its glow goes out quickly as it greys, so fading words, a whole line of
+	 * them at a time, cost no glow to draw.
+	 *
+	 * @param gone seconds since the card was let go, or a negative number while it's still lit
+	 */
+	static float glowFor(boolean sung, float gone) {
+		if (gone < 0) {
+			return sung ? GLOW_SUNG : GLOW_LIT;
+		}
+		return GLOW_LIT * (1 - Mth.clamp(gone / GLOW_OUT, 0, 1));
 	}
 
 	/** How dark the drop shadow is: stronger by day, when the sky behind the words is bright. */
