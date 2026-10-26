@@ -377,7 +377,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row barEq = new Toggle(Tr.t("Equaliser"), Tr.t("Bars that move with the music"),
 				() -> cfg.barEqualiser, v -> cfg.barEqualiser = v).when(() -> cfg.nowPlayingHud);
 
-		Row effects = new Segmented(Tr.t("Effects"), Tr.t("Light draws less glow, for a smoother game"),
+		Row effects = new Segmented(Tr.t("Effects"), Tr.t("Less glow, more FPS"),
 				new String[] {Tr.t("Auto"), Tr.t("Full"), Tr.t("Light")}, () -> cfg.effects.ordinal(),
 				i -> cfg.effects = Effects.values()[i]);
 		Row effectsNow = new Info(Tr.t("Right now"), null, () -> {
