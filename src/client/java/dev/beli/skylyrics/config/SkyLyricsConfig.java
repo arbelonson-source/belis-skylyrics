@@ -139,6 +139,9 @@ public final class SkyLyricsConfig {
 	/** Follow waits until you turn away, then glides over, instead of staying right where you look. */
 	public boolean lazyFollow = false;
 	public Layout layout = Layout.ARC;
+	/** World layout: how many word groups float at once, and how many seconds sung ones take to fade away. */
+	public int worldWords = 7;
+	public float worldLinger = 2.2f;
 
 	// Lyrics
 	public boolean showPrevious = true;
@@ -273,6 +276,8 @@ public final class SkyLyricsConfig {
 		opacity = clamp(opacity, 0.2f, 1);
 		skyStrength = clamp(skyStrength, 0, 1);
 		size = clamp(size, 0.3f, 3);
+		worldWords = Math.max(1, Math.min(10, worldWords));
+		worldLinger = clamp(worldLinger, 0.8f, 6);
 		barSize = clamp(barSize, 0.75f, 1.5f);
 		barBackground = clamp(barBackground, 0, 1);
 		height = clamp(height, -10, 80);

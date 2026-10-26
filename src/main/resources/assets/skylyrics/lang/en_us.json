@@ -262,5 +262,9 @@
   "skylyrics.ui.spotify_account": "Spotify account",
   "skylyrics.ui.lyrics_on_the_title_screen": "Lyrics on the title screen",
   "skylyrics.ui.under_the_buttons_of_the_main_menu": "Under the buttons of the main menu",
-  "skylyrics.ui.main_menu": "Main menu"
+  "skylyrics.ui.main_menu": "Main menu",
+  "skylyrics.ui.words_at_once": "Words at once",
+  "skylyrics.ui.how_many_words_float_around_you": "How many words float around you",
+  "skylyrics.ui.linger": "Linger",
+  "skylyrics.ui.how_slowly_sung_words_fade": "How slowly sung words fade"
 }

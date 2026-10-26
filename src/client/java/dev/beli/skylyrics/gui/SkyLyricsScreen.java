@@ -181,6 +181,12 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)));
 		Row size = new Slider(Tr.t("Size"), null, 0.3, 3, 0.05,
 				() -> cfg.size, v -> cfg.size = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v));
+		Row worldWords = new Slider(Tr.t("Words at once"), Tr.t("How many words float around you"), 1, 10, 1,
+				() -> cfg.worldWords, v -> cfg.worldWords = (int) Math.round(v), v -> String.valueOf(Math.round(v)))
+				.when(() -> cfg.layout == Layout.WORLD);
+		Row linger = new Slider(Tr.t("Linger"), Tr.t("How slowly sung words fade"), 0.8, 6, 0.1,
+				() -> cfg.worldLinger, v -> cfg.worldLinger = (float) v, v -> String.format(Locale.ROOT, "%.1f s", v))
+				.when(() -> cfg.layout == Layout.WORLD);
 
 		Row previous = new Toggle(Tr.t("Previous line"), Tr.t("The line that just ended, faded"),
 				() -> cfg.showPrevious, v -> cfg.showPrevious = v)
@@ -202,7 +208,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, size),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, size, worldWords, linger),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 

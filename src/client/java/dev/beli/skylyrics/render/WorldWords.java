@@ -54,11 +54,13 @@ final class WorldWords {
 	private static final float SIZE = 0.046f;
 	/** Each card's size, times the setting. */
 	private static final float SIZE_MIN = 0.85f, SIZE_MAX = 1.3f;
-	/** At most this many cards at once; the oldest goes first. */
-	private static final int MAX_CARDS = 7;
+	/** At most this many cards at once by default (the setting); past it the oldest is cut short. */
+	static final int MAX_CARDS = 7;
+	/** A card cut short to make room fades out over this many seconds. */
+	private static final float CUT = 0.3f;
 	/** After a jump in the song, at most this many of the skipped pieces are spawned (the latest ones). */
 	private static final int CATCH_UP = 2;
-	/** Once its words are over, a card fades out over this many seconds. */
+	/** Once its words are over, a card fades out over this many seconds by default (the setting). */
 	static final float FADE = 2.2f;
 	/** ...and in the first of these seconds it dims towards grey, by this much. */
 	private static final float DIM_TIME = 0.24f, DIM = 0.5f;
@@ -98,6 +100,8 @@ final class WorldWords {
 		final float face, nod, lean, size;
 		final long born;
 		long goneAt = -1;
+		/** When it was cut short to make room for newer cards, or -1. */
+		long cutAt = -1;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -115,6 +119,8 @@ final class WorldWords {
 	private final int[] recent = {-1, -1};
 	private int line = Integer.MIN_VALUE;
 	private int spawned;
+	private int maxCards = MAX_CARDS;
+	private float fade = FADE;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
 	private @Nullable String lineRaw, lineText;
 	private List<int[]> lineChunks = List.of();
@@ -171,8 +177,23 @@ final class WorldWords {
 
 	/** How visible a card still is {@code seconds} after its words were over: slow at first, then quickly gone. */
 	static float goneAlpha(float seconds) {
-		float t = Mth.clamp(seconds / FADE, 0, 1);
+		return goneAlpha(seconds, FADE);
+	}
+
+	static float goneAlpha(float seconds, float fade) {
+		float t = Mth.clamp(seconds / fade, 0, 1);
 		return 1 - t * t;
+	}
+
+	/** How visible a card cut short {@code seconds} ago still is. */
+	static float cutAlpha(float seconds) {
+		return 1 - Mth.clamp(seconds / CUT, 0, 1);
+	}
+
+	/** How many cards float at once and how many seconds sung ones take to fade (the World words settings). */
+	void tune(int maxCards, float fade) {
+		this.maxCards = Math.max(1, maxCards);
+		this.fade = Math.max(0.1f, fade);
 	}
 
 	/** How much bigger than normal a card is {@code seconds} after it appeared: a quick pop that settles. */
@@ -231,7 +252,8 @@ final class WorldWords {
 		Vec3 eye = camera.position();
 		for (Iterator<Card> it = cards.iterator(); it.hasNext(); ) {
 			Card c = it.next();
-			if (c.goneAt >= 0 && now - c.goneAt > FADE * 1e9f || c.pos.distanceTo(eye) > GONE_DISTANCE) {
+			if (c.goneAt >= 0 && now - c.goneAt > fade * 1e9f || c.cutAt >= 0 && now - c.cutAt > CUT * 1e9f
+					|| c.pos.distanceTo(eye) > GONE_DISTANCE) {
 				it.remove();
 			}
 		}
@@ -269,7 +291,7 @@ final class WorldWords {
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
 			double far = to.length();
-			if (far > 1e-3 && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f) > 0.3f)) {
+			if (far > 1e-3 && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
 				taken.add(new float[] {yawOf(to), pitchOf(to), halfAngle(c.at[c.at.length - 1] * c.size / 2, far),
 						halfAngle(5 * c.size, far)});
 			}
@@ -316,8 +338,12 @@ final class WorldWords {
 		float turn = Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1);
 		float nod = (next() * 2 - 1) * NOD, lean = (next() * 2 - 1) * LEAN;
 		cards.add(new Card(d, at, pos, bestYaw + turn, nod, lean, size, now));
-		if (cards.size() > MAX_CARDS) {
-			cards.remove(0);
+		int kept = 0;
+		for (int k = cards.size() - 1; k >= 0; k--) {
+			Card c = cards.get(k);
+			if (c.cutAt < 0 && ++kept > maxCards) {
+				c.cutAt = now;
+			}
 		}
 	}
 
@@ -361,7 +387,8 @@ final class WorldWords {
 		for (Card c : cards) {
 			float age = (now - c.born) / 1e9f;
 			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
-			float a = alpha * Mth.clamp(age / FADE_IN, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone));
+			float a = alpha * Mth.clamp(age / FADE_IN, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade))
+					* (c.cutAt < 0 ? 1 : cutAlpha((now - c.cutAt) / 1e9f));
 			if (a < 0.03f) {
 				continue;
 			}
@@ -386,7 +413,7 @@ final class WorldWords {
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
-			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone));
+			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 			float ring = a * GLOW_ALPHA * glow * (c.goneAt < 0 ? 1.3f : 0.8f) / 2 * GLOW_COPIES / copies;
 			int halo = mix(colour, 0x000000, HALO_DAY * day);

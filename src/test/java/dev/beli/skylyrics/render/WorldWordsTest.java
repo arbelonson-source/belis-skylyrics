@@ -57,6 +57,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void lingerSettingStretchesTheFade() {
+		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
+		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);
+		assertTrue(WorldWords.goneAlpha(1f, 5f) > WorldWords.goneAlpha(1f, 1f), "a longer linger fades slower");
+	}
+
+	@Test
+	void cardsCutShortVanishQuickly() {
+		assertEquals(1, WorldWords.cutAlpha(0));
+		assertTrue(WorldWords.cutAlpha(0.1f) < 1);
+		assertEquals(0, WorldWords.cutAlpha(1), 1e-6);
+	}
+
+	@Test
 	void newCardsPopThenSettle() {
 		assertEquals(1 + WorldWords.POP, WorldWords.pop(0), 1e-6);
 		assertEquals(1, WorldWords.pop(WorldWords.POP_TIME), 1e-6);
