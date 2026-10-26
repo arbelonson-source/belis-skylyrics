@@ -266,5 +266,7 @@
   "skylyrics.ui.words_at_once": "מילים בבת אחת",
   "skylyrics.ui.how_many_words_float_around_you": "כמה מילים מרחפות סביבך",
   "skylyrics.ui.linger": "השתהות",
-  "skylyrics.ui.how_slowly_sung_words_fade": "כמה לאט מילים שהושרו נעלמות"
+  "skylyrics.ui.how_slowly_sung_words_fade": "כמה לאט מילים שהושרו נעלמות",
+  "skylyrics.ui.flowing_line": "שורה זורמת",
+  "skylyrics.ui.words_read_left_to_right_instead_of_scattering": "המילים נקראות משמאל לימין במקום להתפזר"
 }

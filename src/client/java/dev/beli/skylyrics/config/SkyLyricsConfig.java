@@ -142,6 +142,8 @@ public final class SkyLyricsConfig {
 	/** World layout: how many word groups float at once, and how many seconds sung ones take to fade away. */
 	public int worldWords = 7;
 	public float worldLinger = 2.2f;
+	/** World layout: a line's words read left to right in rows, like handwriting, instead of scattering. */
+	public boolean worldFlow = false;
 
 	// Lyrics
 	public boolean showPrevious = true;

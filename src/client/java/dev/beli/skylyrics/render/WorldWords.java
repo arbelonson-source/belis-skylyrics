@@ -95,6 +95,14 @@ final class WorldWords {
 	static final int SHORT_WORD = 3;
 	/** The scatter's spots, as degrees right of and above its middle. */
 	private static final float[][] SPOTS = slots();
+	/** How far a flowing line floats, and how far it may start off the middle of the view (degrees). */
+	private static final float SENTENCE_NEAR = 8f, SENTENCE_FAR = 12f, SENTENCE_SHIFT_X = 6f, SENTENCE_SHIFT_Y = 5f;
+	/** How far a flowing line turns towards you (degrees) and how much its pieces vary in distance (a fraction). */
+	private static final float SENTENCE_TURN = 15f, SENTENCE_DEPTH = 0.08f;
+	/** A flowing line's new rows start up to this far in, its pieces sit up to this far off the row (degrees). */
+	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 1.2f;
+	/** How much each piece of a flowing line turns differently from the rest (degrees). */
+	private static final float SENTENCE_WOBBLE = 4f;
 
 	/** One card: where it stands, what it shows, and how it's turned. */
 	private static final class Card {
@@ -123,6 +131,9 @@ final class WorldWords {
 	private final int[] recent = {-1, -1};
 	private int line = Integer.MIN_VALUE;
 	private int spawned;
+	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
+	private boolean flow;
+	private @Nullable Sentence sentence;
 	private int maxCards = MAX_CARDS;
 	private float fade = FADE;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
@@ -136,6 +147,7 @@ final class WorldWords {
 		spawned = 0;
 		lineRaw = null;
 		lineText = null;
+		sentence = null;
 		recent[0] = recent[1] = -1;
 	}
 
@@ -203,10 +215,17 @@ final class WorldWords {
 		return Mth.lerp(t, SIZE_SHORT, SIZE_LONG) * (1 + (roll * 2 - 1) * SIZE_JITTER);
 	}
 
-	/** How many cards float at once and how many seconds sung ones take to fade (the World words settings). */
-	void tune(int maxCards, float fade) {
+	/**
+	 * How many cards float at once, how many seconds sung ones take to fade and whether a line flows left to right
+	 * (the World words settings).
+	 */
+	void tune(int maxCards, float fade, boolean flow) {
 		this.maxCards = Math.max(1, maxCards);
 		this.fade = Math.max(0.1f, fade);
+		if (flow != this.flow) {
+			sentence = null;
+		}
+		this.flow = flow;
 	}
 
 	/** How much bigger than normal a card is {@code seconds} after it appeared: a quick pop that settles. */
@@ -247,6 +266,7 @@ final class WorldWords {
 			lineText = text == null ? null : text.toUpperCase(Locale.ROOT);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
 			spawned = 0;
+			sentence = null;
 		}
 		int due = 0;
 		while (due < lineChunks.size() && lineChunks.get(due)[0] <= sungChars) {
@@ -315,6 +335,29 @@ final class WorldWords {
 						halfAngle(5 * c.size, far)});
 			}
 		}
+		float[] spot = flow ? follow(centre, at, size, taken) : scatter(centre, at, size, taken);
+		Vec3 dir = direction(spot[0], spot[1]);
+		// Step closer while the spot is inside a block, so the card doesn't hide in a wall
+		float distance = spot[2];
+		while (level != null && distance > CLOSEST && !level.getBlockState(BlockPos.containing(eye.add(dir.scale(distance)))).isAir()) {
+			distance -= 1;
+		}
+		Vec3 pos = eye.add(dir.scale(Math.max(CLOSEST, distance)));
+		float turn = flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
+				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1);
+		float nod = (next() * 2 - 1) * NOD * (flow ? 0.5f : 1), lean = (next() * 2 - 1) * LEAN;
+		cards.add(new Card(d, at, pos, spot[0] + turn, nod, lean, size, now));
+		int kept = 0;
+		for (int k = cards.size() - 1; k >= 0; k--) {
+			Card c = cards.get(k);
+			if (c.cutAt < 0 && ++kept > maxCards) {
+				c.cutAt = now;
+			}
+		}
+	}
+
+	/** Yaw, pitch and distance for a card in the scatter: the free spot, of a few tried, that overlaps least. */
+	private float[] scatter(float[] centre, float[] at, float size, List<float[]> taken) {
 		float bestYaw = 0, bestPitch = 0, bestDistance = NEAR, bestCost = Float.MAX_VALUE;
 		int bestSlot = -1;
 		for (int t = 0; t < TRIES && bestCost > 0; t++) {
@@ -347,22 +390,69 @@ final class WorldWords {
 		}
 		recent[1] = recent[0];
 		recent[0] = bestSlot;
-		Vec3 dir = direction(bestYaw, bestPitch);
-		// Step closer while the spot is inside a block, so the card doesn't hide in a wall
-		float distance = bestDistance;
-		while (level != null && distance > CLOSEST && !level.getBlockState(BlockPos.containing(eye.add(dir.scale(distance)))).isAir()) {
-			distance -= 1;
-		}
-		Vec3 pos = eye.add(dir.scale(Math.max(CLOSEST, distance)));
-		float turn = Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1);
-		float nod = (next() * 2 - 1) * NOD, lean = (next() * 2 - 1) * LEAN;
-		cards.add(new Card(d, at, pos, bestYaw + turn, nod, lean, size, now));
-		int kept = 0;
-		for (int k = cards.size() - 1; k >= 0; k--) {
-			Card c = cards.get(k);
-			if (c.cutAt < 0 && ++kept > maxCards) {
-				c.cutAt = now;
+		return new float[] {bestYaw, bestPitch, bestDistance};
+	}
+
+	/**
+	 * Yaw, pitch and distance for the next piece of a flowing line. A line's first piece picks where the line goes
+	 * (a little above and left of the middle, where it overlaps the fading words least); the rest follow it.
+	 */
+	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken) {
+		if (sentence == null) {
+			float distance = Mth.lerp(next(), SENTENCE_NEAR, SENTENCE_FAR), bestCost = Float.MAX_VALUE;
+			float halfW = Sentence.WIDTH / 2, halfH = halfAngle(10 * SIZE, distance) + PAD_Y;
+			for (int t = 0; t < TRIES && bestCost > 0; t++) {
+				float left = centre[0] - Sentence.WIDTH / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
+				float top = Mth.clamp(centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y, -70, 40);
+				float cost = 0;
+				for (float[] o : taken) {
+					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + halfH / 2 - o[1]);
+					if (w > 0 && h > 0) {
+						cost += w * h;
+					}
+				}
+				if (cost < bestCost) {
+					bestCost = cost;
+					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1));
+				}
 			}
+		}
+		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
+		float[] at2 = sentence.place(halfAngle(at[at.length - 1] * size / 2, distance), halfAngle(5 * size, distance),
+				next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB);
+		return new float[] {at2[0], at2[1], distance};
+	}
+
+	/**
+	 * Where a flowing line's pieces go, in degrees: each one just right of the last, a little up or down, and on to
+	 * a new row below once the row is full, like handwriting across the sky.
+	 */
+	static final class Sentence {
+		/** How wide a row may get before the next piece starts a new one, in degrees. */
+		static final float WIDTH = 26f;
+		/** Space between pieces, in their own half heights (room for the pop-in), and between rows, in degrees. */
+		static final float GAP = 1.6f, ROW_GAP = 0.4f;
+		final float left, distance, turn;
+		/** The pitch of the row being written (bigger is lower) and its right end so far. */
+		float top, cursor;
+
+		Sentence(float left, float top, float distance, float turn) {
+			this.left = left;
+			this.top = top;
+			this.cursor = left;
+			this.distance = distance;
+			this.turn = turn;
+		}
+
+		/** Yaw and pitch of the next piece's middle, given its half size; {@code indent} and {@code bob} add a little chance. */
+		float[] place(float halfW, float halfH, float indent, float bob) {
+			float yaw = cursor + GAP * halfH + halfW;
+			if (cursor > left && yaw + halfW > left + WIDTH) {
+				top += 2 * halfH + ROW_GAP;
+				yaw = left + indent + halfW;
+			}
+			cursor = yaw + halfW;
+			return new float[] {yaw, top + bob};
 		}
 	}
 

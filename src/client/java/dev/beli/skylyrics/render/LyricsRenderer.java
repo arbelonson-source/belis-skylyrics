@@ -367,7 +367,7 @@ public final class LyricsRenderer {
 			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
 		}
 		Style style = LyricsFont.sky(cfg);
-		worldWords.tune(cfg.worldWords, cfg.worldLinger);
+		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldFlow);
 		worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);
 		float alpha = visibility * cfg.opacity;
 		if (alpha <= 0.01f) {
