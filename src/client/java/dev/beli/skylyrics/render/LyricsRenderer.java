@@ -52,6 +52,18 @@ public final class LyricsRenderer {
 	static final long LEAD_MS = 150;
 	/** Copies of a word drawn around it for the glow, in the inner and the outer ring. */
 	private static final int GLOW_INNER = 6, GLOW_OUTER = 4;
+
+	/**
+	 * Copies to draw in a glow ring (1 inner, 2 outer) at this strength. A faint glow can't show a rounder
+	 * halo, so it gets fewer copies of the same total brightness and no outer ring, which saves frames on
+	 * the lines not being sung.
+	 */
+	static int glowCopies(int ring, float strength) {
+		if (ring == 1) {
+			return strength >= 0.4f ? GLOW_INNER : 4;
+		}
+		return strength >= 0.3f ? GLOW_OUTER : 0;
+	}
 	/** In the WORLD layout, a line's last words stay this long after it's over before they fade too. */
 	private static final long WORLD_LINGER_MS = 450;
 	private static final float ROW_H = 10f;
@@ -944,7 +956,10 @@ public final class LyricsRenderer {
 							};
 							// Two rings of copies make the halo; few copies each, as every copy costs as much as the word itself
 							for (int ring = 1; ring <= 2; ring++) {
-								int copies = ring == 1 ? GLOW_INNER : GLOW_OUTER;
+								int copies = glowCopies(ring, ga);
+								if (copies == 0) {
+									continue;
+								}
 								float radius = ring * 0.85f * (1 + 0.7f * fl);
 								int alphaByte = Math.min(255, Math.round(ga * (ring == 1 ? 1.28f : 0.64f) / copies * 255));
 								if (alphaByte < 2) {
