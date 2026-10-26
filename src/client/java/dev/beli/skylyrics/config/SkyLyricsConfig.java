@@ -138,7 +138,7 @@ public final class SkyLyricsConfig {
 	public Direction direction = Direction.FOLLOW;
 	/** Follow waits until you turn away, then glides over, instead of staying right where you look. */
 	public boolean lazyFollow = false;
-	public Layout layout = Layout.ARC;
+	public Layout layout = Layout.WORLD;
 	/** World layout: how many word groups float at once, and how many seconds sung ones take to fade away. */
 	public int worldWords = 7;
 	public float worldLinger = 2.2f;
