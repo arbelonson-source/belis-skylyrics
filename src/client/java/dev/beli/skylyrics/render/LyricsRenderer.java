@@ -195,7 +195,24 @@ public final class LyricsRenderer {
 		return visibility > 0.01f;
 	}
 
-	public void render(WorldRenderContext context) {
+	/**
+	 * Water, ice and stained glass are drawn after entities, so lyrics drawn before them get painted over
+	 * when see-through, or cut holes in them when not. Drawn after them instead, both look right.
+	 * Shader packs run their own passes, so with one on the lyrics stay at the earlier, tested spot.
+	 */
+	public void renderEarly(WorldRenderContext context) {
+		if (ScreenLayer.shadersOn()) {
+			render(context);
+		}
+	}
+
+	public void renderLate(WorldRenderContext context) {
+		if (!ScreenLayer.shadersOn()) {
+			render(context);
+		}
+	}
+
+	private void render(WorldRenderContext context) {
 		pending = null;
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();

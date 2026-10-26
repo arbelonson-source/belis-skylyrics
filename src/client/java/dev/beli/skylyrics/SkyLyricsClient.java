@@ -103,7 +103,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		registerKeys();
 		sky = new SkyEffects(renderer, lyrics, art, tracker);
 		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
-		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::render);
+		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::renderEarly);
+		WorldRenderEvents.END_MAIN.register(renderer::renderLate);
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
