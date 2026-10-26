@@ -23,72 +23,96 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.render.LyricsRenderer.Display;
 
 /**
- * The "words in the world" layout: every word or two of a line pops up as it's sung, on its own upright card a few
- * blocks in front of where you were looking, and stays at that spot while you move around it. Older cards fade as
- * newer ones arrive, so only the last few are readable. These are drawn in the world pass on purpose: each card
- * has its own place and turn, which the flat screen layer can't show.
+ * The "words in the world" layout: every word or two of a line pops up as it's sung, on its own card floating a
+ * little above where you were looking, scattered so the cards don't cover each other. A card stays where it
+ * appeared (drifting slowly upwards) while you move around it; once the next words come, it greys and fades away
+ * over a couple of seconds. These are drawn in the world pass on purpose: each card has its own place and turn,
+ * which the flat screen layer can't show.
  */
 final class WorldWords {
 	private static final float DEG = Mth.DEG_TO_RAD;
 	/** Cards appear this far from your eyes, in blocks. */
-	private static final float NEAR = 4f, FAR = 8f;
+	private static final float NEAR = 6.5f, FAR = 15f;
 	/** Never closer than this, even when blocks are in the way. */
-	private static final float CLOSEST = 2.5f;
-	/** Left/right spread around where you look, and how far below and above the crosshair, in degrees. */
-	private static final float SPREAD = 18f, BELOW = 3f, ABOVE = 20f;
-	/** Cards look straight at you when they appear, give or take this many degrees (turn and tilt). */
-	private static final float TURN_JITTER = 10f, ROLL_JITTER = 6f;
-	/** Blocks per text unit: capital letters end up about 0.27 blocks tall. */
-	private static final float SIZE = 0.035f;
-	/** Each card's size varies by this much either way. */
-	private static final float SIZE_JITTER = 0.12f;
-	/** Cards are dropped once they're this old (in chunks) or this far away (blocks). */
-	private static final float GONE_AGE = 3f, GONE_DISTANCE = 48f;
-	/** How fast the shown age catches up with the real one, per second: older cards fade over about 0.3 s. */
-	private static final float AGE_SPEED = 3.5f;
-	/** A new card fades and grows in over this many seconds. */
-	private static final float APPEAR = 0.18f;
-	/** Hard drop shadow: offset down-right in text units (about 1/8 of a capital) and its opacity. */
-	private static final float SHADOW_OFFSET = 0.9f, SHADOW_ALPHA = 0.3f;
+	private static final float CLOSEST = 3f;
+	/** The middle of the scatter sits this many degrees above the crosshair. */
+	private static final float LIFT = 12f;
+	/** Half the width and half the height of the scatter around that middle, in degrees. */
+	private static final float SPREAD_X = 25f, SPREAD_Y = 15f;
+	/** Spots in the scatter, and how many of the last used ones a new card avoids. */
+	static final int SLOTS = 12;
+	private static final int RECENT = 2;
+	/** How far a card may land from its spot, in degrees, so the pattern doesn't look like a grid. */
+	private static final float WOBBLE_X = 3.5f, WOBBLE_Y = 3f;
+	/** Spots tried for each new card; the one overlapping the other cards least wins. */
+	private static final int TRIES = 24;
+	/** Room kept around each card when judging overlap, in degrees. */
+	private static final float PAD_X = 2f, PAD_Y = 1.7f;
+	/** Cards turn sideways by between these many degrees, and nod and lean a little, so they don't look pasted on. */
+	private static final float TURN_MIN = 10f, TURN_MAX = 30f, NOD = 7f, LEAN = 4f;
+	/** Blocks per text unit: capital letters end up about a third of a block tall. */
+	private static final float SIZE = 0.046f;
+	/** Each card's size, times the setting. */
+	private static final float SIZE_MIN = 0.85f, SIZE_MAX = 1.3f;
+	/** At most this many cards at once; the oldest goes first. */
+	private static final int MAX_CARDS = 7;
+	/** After a jump in the song, at most this many of the skipped pieces are spawned (the latest ones). */
+	private static final int CATCH_UP = 2;
+	/** Once its words are over, a card fades out over this many seconds. */
+	static final float FADE = 2.2f;
+	/** ...and in the first of these seconds it dims towards grey, by this much. */
+	private static final float DIM_TIME = 0.24f, DIM = 0.5f;
+	private static final int DIM_RGB = 0x8E92AA;
+	/** A new card fades in over this many seconds, and its letters type in over this many. */
+	private static final float FADE_IN = 0.14f, TYPE = 0.23f;
+	/** A new card starts this much bigger and settles back over this many seconds. */
+	static final float POP = 0.22f, POP_TIME = 0.24f;
+	/** Cards drift up this many blocks a second, up to this high. */
+	private static final float RISE = 0.25f, RISE_MAX = 1f;
+	/** Cards further from where you look than this (cosine of the angle) aren't drawn at all. */
+	private static final float CULL = 0.3f;
+	/** Cards this far away are dropped, in blocks. */
+	private static final float GONE_DISTANCE = 48f;
+	/** Drop shadow: offset down-right in text units, colour and opacity. */
+	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_ALPHA = 0.55f;
+	private static final int SHADOW_RGB = 0x05040C;
+	/** Soft glow: copies of the word around it, how far out (text units) and how strong at full glow. */
+	private static final int GLOW_COPIES = 3;
+	private static final float GLOW_RADIUS = 1.1f, GLOW_ALPHA = 0.4f;
+	/** Front to back, in text units, so the layers don't flicker against each other. */
+	private static final float SHADOW_Z = -0.5f, GLOW_Z = 0.1f, FACE_Z = 0.3f;
 	/** From the top of a row of text to the middle of its capitals. */
 	private static final float CAP_MIDDLE = 3.8f;
-	/** Behind the text, in text units, so the shadow doesn't flicker against it. */
-	private static final float BEHIND = 0.35f;
 	/** Words with at most this many letters lean on the next word ("I'M HIGH", "GET OUT"). */
 	static final int SHORT_WORD = 3;
-	/** How many cards a line may spawn at once after a jump in the song; older ones would fade right away. */
-	private static final int MAX_CATCH_UP = 3;
+	/** The scatter's spots, as degrees right of and above its middle. */
+	private static final float[][] SPOTS = slots();
 
-	/** One card: where it stands, which part of which line it shows, and how it's turned. */
+	/** One card: where it stands, what it shows, and how it's turned. */
 	private static final class Card {
-		final int line, order, from, to;
 		final Display display;
 		final float[] at;
 		final Vec3 pos;
-		final float yaw, roll, size;
+		final float face, nod, lean, size;
 		final long born;
-		float shownAge;
+		long goneAt = -1;
 
-		Card(int line, int order, int from, int to, Display display, float[] at, Vec3 pos, float yaw, float roll, float size,
-				long born) {
-			this.line = line;
-			this.order = order;
-			this.from = from;
-			this.to = to;
+		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
 			this.at = at;
 			this.pos = pos;
-			this.yaw = yaw;
-			this.roll = roll;
+			this.face = face;
+			this.nod = nod;
+			this.lean = lean;
 			this.size = size;
 			this.born = born;
 		}
 	}
 
 	private final List<Card> cards = new ArrayList<>();
+	private final int[] recent = {-1, -1};
 	private int line = Integer.MIN_VALUE;
 	private int spawned;
-	private int order;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
 	private @Nullable String lineRaw, lineText;
 	private List<int[]> lineChunks = List.of();
@@ -100,6 +124,7 @@ final class WorldWords {
 		spawned = 0;
 		lineRaw = null;
 		lineText = null;
+		recent[0] = recent[1] = -1;
 	}
 
 	/**
@@ -142,29 +167,43 @@ final class WorldWords {
 		return n;
 	}
 
-	/** How visible a card is when {@code age} newer cards came after it: 1, then 0.7, 0.5 and gone. */
-	static float ageAlpha(float age) {
-		if (age <= 0) {
-			return 1;
-		}
-		if (age < 1) {
-			return Mth.lerp(age, 1, 0.7f);
-		}
-		if (age < 2) {
-			return Mth.lerp(age - 1, 0.7f, 0.5f);
-		}
-		return Math.max(0, Mth.lerp(age - 2, 0.5f, 0f));
+	/** How visible a card still is {@code seconds} after its words were over: slow at first, then quickly gone. */
+	static float goneAlpha(float seconds) {
+		float t = Mth.clamp(seconds / FADE, 0, 1);
+		return 1 - t * t;
+	}
+
+	/** How much bigger than normal a card is {@code seconds} after it appeared: a quick pop that settles. */
+	static float pop(float seconds) {
+		float t = Mth.clamp(seconds / POP_TIME, 0, 1);
+		float settle = 1 - (1 - t) * (1 - t) * (1 - t);
+		return 1 + POP * (1 - settle);
 	}
 
 	/**
-	 * Spawns the cards that have started being sung.
+	 * The scatter: spots spread evenly over an oval, each one a golden angle around from the last, so neighbours in
+	 * the list land on opposite sides. Degrees right of and above the middle.
+	 */
+	static float[][] slots() {
+		float golden = Mth.PI * (3 - Mth.sqrt(5));
+		float[][] s = new float[SLOTS][];
+		for (int i = 0; i < SLOTS; i++) {
+			float r = Mth.sqrt((i + 0.5f) / SLOTS);
+			s[i] = new float[] {Mth.cos(i * golden) * r * SPREAD_X, Mth.sin(i * golden) * r * SPREAD_Y};
+		}
+		return s;
+	}
+
+	/**
+	 * Spawns the cards that have started being sung, and lets the sung ones go.
 	 *
 	 * @param index     the line being sung, or -1 / a break when nothing is
 	 * @param text      that line's text (null in a break)
 	 * @param sungChars how many code points of the line have been sung so far
+	 * @param over      whether the line has been over for a moment, so its last words can go too
 	 */
-	void update(int index, @Nullable String text, float sungChars, Camera camera, @Nullable ClientLevel level, Font font,
-			Style style, long now, float dt) {
+	void update(int index, @Nullable String text, float sungChars, boolean over, Camera camera, @Nullable ClientLevel level,
+			Font font, Style style, long now) {
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			line = index;
 			lineRaw = text;
@@ -176,24 +215,30 @@ final class WorldWords {
 		while (due < lineChunks.size() && lineChunks.get(due)[0] <= sungChars) {
 			due++;
 		}
-		if (due - spawned > MAX_CATCH_UP) {
-			spawned = due - MAX_CATCH_UP;
+		if (due - spawned > CATCH_UP) {
+			spawned = due - CATCH_UP;
 		}
 		for (; spawned < due; spawned++) {
+			letGo(now);
 			spawn(lineChunks.get(spawned), camera, level, font, style, now);
 		}
-
-		boolean quiet = lineText == null;
+		if (lineText == null || over) {
+			letGo(now);
+		}
+		Vec3 eye = camera.position();
 		for (Iterator<Card> it = cards.iterator(); it.hasNext(); ) {
 			Card c = it.next();
-			// In a break between lines everything fades away
-			float target = quiet ? GONE_AGE : order - 1 - c.order;
-			c.shownAge = Math.min(target, c.shownAge + dt * AGE_SPEED);
-			if (c.shownAge < target - 1) {
-				c.shownAge = target - 1; // don't lag more than one step behind after a jump
-			}
-			if (c.shownAge >= GONE_AGE || c.pos.distanceTo(camera.position()) > GONE_DISTANCE) {
+			if (c.goneAt >= 0 && now - c.goneAt > FADE * 1e9f || c.pos.distanceTo(eye) > GONE_DISTANCE) {
 				it.remove();
+			}
+		}
+	}
+
+	/** Every card shown so far starts fading. */
+	private void letGo(long now) {
+		for (Card c : cards) {
+			if (c.goneAt < 0) {
+				c.goneAt = now;
 			}
 		}
 	}
@@ -205,20 +250,79 @@ final class WorldWords {
 		for (int v = 1; v <= d.cps().length; v++) {
 			at[v] = LyricsFont.width(font, style, new String(d.cps(), 0, v));
 		}
-		float yaw = camera.yRot() + (next() * 2 - 1) * SPREAD;
-		float pitch = Mth.clamp(camera.xRot() + BELOW - next() * (BELOW + ABOVE), -60, 40);
-		Vec3 dir = new Vec3(-Mth.sin(yaw * DEG) * Mth.cos(pitch * DEG), -Mth.sin(pitch * DEG), Mth.cos(yaw * DEG) * Mth.cos(pitch * DEG));
+		float size = SIZE * Mth.lerp(next(), SIZE_MIN, SIZE_MAX);
 		Vec3 eye = camera.position();
-		float distance = NEAR + next() * (FAR - NEAR);
+		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
+		List<float[]> taken = new ArrayList<>(cards.size());
+		for (Card c : cards) {
+			Vec3 to = c.pos.subtract(eye);
+			double far = to.length();
+			if (far > 1e-3 && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f) > 0.3f)) {
+				taken.add(new float[] {yawOf(to), pitchOf(to), halfAngle(c.at[c.at.length - 1] * c.size / 2, far),
+						halfAngle(5 * c.size, far)});
+			}
+		}
+		float bestYaw = 0, bestPitch = 0, bestDistance = NEAR, bestCost = Float.MAX_VALUE;
+		int bestSlot = -1;
+		for (int t = 0; t < TRIES && bestCost > 0; t++) {
+			int slot = (int) (next() * SLOTS);
+			if (slot == recent[0] || slot == recent[1]) {
+				continue;
+			}
+			float yaw = camera.yRot() - SPOTS[slot][0] + (next() * 2 - 1) * WOBBLE_X;
+			float pitch = Mth.clamp(camera.xRot() - LIFT - SPOTS[slot][1] + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
+			float distance = Mth.lerp(next(), NEAR, FAR);
+			float halfW = halfAngle(at[at.length - 1] * size / 2, distance) + PAD_X, halfH = halfAngle(5 * size, distance) + PAD_Y;
+			float cost = 0;
+			for (float[] o : taken) {
+				float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(yaw - o[0])), h = halfH + o[3] - Math.abs(pitch - o[1]);
+				if (w > 0 && h > 0) {
+					cost += w * h;
+				}
+			}
+			if (cost < bestCost) {
+				bestCost = cost;
+				bestSlot = slot;
+				bestYaw = yaw;
+				bestPitch = pitch;
+				bestDistance = distance;
+			}
+		}
+		if (bestSlot < 0) { // every try hit a recent spot (unlikely); take the middle
+			bestYaw = camera.yRot();
+			bestPitch = camera.xRot() - LIFT;
+		}
+		recent[1] = recent[0];
+		recent[0] = bestSlot;
+		Vec3 dir = direction(bestYaw, bestPitch);
 		// Step closer while the spot is inside a block, so the card doesn't hide in a wall
+		float distance = bestDistance;
 		while (level != null && distance > CLOSEST && !level.getBlockState(BlockPos.containing(eye.add(dir.scale(distance)))).isAir()) {
 			distance -= 1;
 		}
 		Vec3 pos = eye.add(dir.scale(Math.max(CLOSEST, distance)));
-		float turn = yaw + (next() * 2 - 1) * TURN_JITTER;
-		float roll = (next() * 2 - 1) * ROLL_JITTER;
-		float size = SIZE * (1 + (next() * 2 - 1) * SIZE_JITTER);
-		cards.add(new Card(line, order++, chunk[0], chunk[1], d, at, pos, turn, roll, size, now));
+		float turn = Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1);
+		float nod = (next() * 2 - 1) * NOD, lean = (next() * 2 - 1) * LEAN;
+		cards.add(new Card(d, at, pos, bestYaw + turn, nod, lean, size, now));
+		if (cards.size() > MAX_CARDS) {
+			cards.remove(0);
+		}
+	}
+
+	private static Vec3 direction(float yaw, float pitch) {
+		return new Vec3(-Mth.sin(yaw * DEG) * Mth.cos(pitch * DEG), -Mth.sin(pitch * DEG), Mth.cos(yaw * DEG) * Mth.cos(pitch * DEG));
+	}
+
+	private static float yawOf(Vec3 v) {
+		return (float) Math.toDegrees(Math.atan2(-v.x, v.z));
+	}
+
+	private static float pitchOf(Vec3 v) {
+		return (float) -Math.toDegrees(Math.asin(Mth.clamp(v.y / v.length(), -1, 1)));
+	}
+
+	private static float halfAngle(float half, double distance) {
+		return (float) Math.toDegrees(Math.atan2(half, distance));
 	}
 
 	/** A number in [0, 1); cards only need to look scattered, not be reproducible. */
@@ -230,72 +334,97 @@ final class WorldWords {
 	/**
 	 * Draws the cards around the camera.
 	 *
-	 * @param sungChars letters of the current line sung so far, for typing its newest card out letter by letter
+	 * @param rgb   the lyrics colour
+	 * @param alpha overall opacity
+	 * @param glow  glow strength from the settings, 0 for none
+	 * @param scale the size setting
 	 */
-	void render(PoseStack pose, SubmitNodeCollector out, Camera camera, Font.DisplayMode mode, Style style, int rgb,
-			float alpha, float sungChars, long now) {
+	void render(PoseStack pose, SubmitNodeCollector out, Camera camera, Font.DisplayMode mode, Style style, int rgb, float alpha,
+			float glow, float scale, long now) {
 		Vec3 eye = camera.position();
+		Vec3 look = direction(camera.yRot(), camera.xRot());
 		for (Card c : cards) {
-			float in = Mth.clamp((now - c.born) / 1e9f / APPEAR, 0, 1);
-			float a = alpha * ageAlpha(c.shownAge) * in;
-			if (a <= 0.01f) {
+			float age = (now - c.born) / 1e9f;
+			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
+			float a = alpha * Mth.clamp(age / FADE_IN, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone));
+			if (a < 0.03f) {
 				continue;
 			}
-			int shown = c.line == line ? (int) Math.ceil(sungChars - c.from) : Integer.MAX_VALUE;
-			if (shown <= 0) {
+			float x = (float) (c.pos.x - eye.x), z = (float) (c.pos.z - eye.z);
+			float y = (float) (c.pos.y - eye.y) + Math.min(age * RISE, RISE_MAX);
+			float far = Mth.sqrt(x * x + y * y + z * z);
+			if (far > 1e-3f && (x * look.x + y * look.y + z * look.z) / far < CULL) {
 				continue;
 			}
-			float grow = c.size * (0.85f + 0.15f * (1 - (1 - in) * (1 - in)));
-			int letters = c.display.cps().length;
-			LyricsInView.check(new Vector3f((float) (c.pos.x - eye.x), (float) (c.pos.y - eye.y), (float) (c.pos.z - eye.z)),
-					c.at[letters] * grow / 2, 5 * grow);
+			int n = c.display.cps().length;
+			float grow = c.size * scale * pop(age);
+			if (c.goneAt < 0) {
+				LyricsInView.check(new Vector3f(x, y, z), c.at[n] * grow / 2, 5 * grow);
+			}
+			// A card seen from behind turns around, so its words never read mirrored
+			float face = c.face;
+			if (-x * Mth.sin(face * DEG) + z * Mth.cos(face * DEG) > 0) {
+				face += 180;
+			}
+			int shown = Mth.ceil(n * Math.min(1, age / TYPE));
+			int colour = c.goneAt < 0 ? rgb : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			pose.pushPose();
-			pose.translate((float) (c.pos.x - eye.x), (float) (c.pos.y - eye.y), (float) (c.pos.z - eye.z));
-			pose.mulPose(new Quaternionf().rotationY(Mth.PI - c.yaw * DEG).rotateZ(c.roll * DEG));
+			pose.translate(x, y, z);
+			pose.mulPose(new Quaternionf().rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG).rotateZ(c.lean * DEG));
 			pose.scale(grow, -grow, grow);
-			Display d = c.display;
-			int n = d.cps().length;
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
-			int shadow = Math.round(a * SHADOW_ALPHA * 255) << 24;
-			int face = Math.max(4, Math.round(a * 255)) << 24 | 0xFFFFFF;
-			// Letters show as they're sung; draw each unbroken run of shown letters where it sits in the whole word
-			for (int from = 0; from < n; ) {
-				if (d.logical()[from] >= shown) {
-					from++;
-					continue;
-				}
-				int to = from + 1;
-				while (to < n && d.logical()[to] < shown) {
-					to++;
-				}
-				int a0 = from, a1 = to;
-				FormattedCharSequence seq = sink -> {
-					for (int v = a0; v < a1; v++) {
-						if (!sink.accept(v, style.withColor(rgb), d.cps()[v])) {
-							return false;
-						}
-					}
-					return true;
-				};
-				float x = x0 + c.at[from];
-				if (shadow >>> 24 >= 2) {
-					pose.pushPose();
-					pose.translate(0, 0, -BEHIND);
-					FormattedCharSequence dark = sink -> {
-						for (int v = a0; v < a1; v++) {
-							if (!sink.accept(v, style.withColor(0), d.cps()[v])) {
-								return false;
-							}
-						}
-						return true;
-					};
-					out.submitText(pose, x + SHADOW_OFFSET, y0 + SHADOW_OFFSET, dark, false, mode, LightTexture.FULL_BRIGHT, shadow, 0, 0);
-					pose.popPose();
-				}
-				out.submitText(pose, x, y0, seq, false, mode, LightTexture.FULL_BRIGHT, face, 0, 0);
-				from = to;
+			draw(pose, out, c, shown, style, SHADOW_RGB, a * SHADOW_ALPHA, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+			float ring = a * GLOW_ALPHA * glow * (c.goneAt < 0 ? 1.3f : 0.8f) / 2;
+			for (int k = 0; k < GLOW_COPIES && ring * 255 >= 4; k++) {
+				float turn = k * Mth.TWO_PI / GLOW_COPIES + 0.5f;
+				draw(pose, out, c, shown, style, colour, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
+						GLOW_Z, mode);
 			}
+			draw(pose, out, c, shown, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
+	}
+
+	/** Draws the card's typed-in letters once, in one colour; each unbroken run where it sits in the whole word. */
+	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, Style style, int rgb, float alpha,
+			float x0, float y0, float z, Font.DisplayMode mode) {
+		int alphaByte = Math.round(alpha * 255);
+		if (alphaByte < 4) { // text this faint would be drawn fully opaque
+			return;
+		}
+		Display d = c.display;
+		int n = d.cps().length;
+		Style coloured = style.withColor(rgb);
+		pose.pushPose();
+		pose.translate(0, 0, z);
+		for (int from = 0; from < n; ) {
+			if (d.logical()[from] >= shown) {
+				from++;
+				continue;
+			}
+			int to = from + 1;
+			while (to < n && d.logical()[to] < shown) {
+				to++;
+			}
+			int a0 = from, a1 = to;
+			FormattedCharSequence seq = sink -> {
+				for (int v = a0; v < a1; v++) {
+					if (!sink.accept(v, coloured, d.cps()[v])) {
+						return false;
+					}
+				}
+				return true;
+			};
+			out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightTexture.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);
+			from = to;
+		}
+		pose.popPose();
+	}
+
+	private static int mix(int from, int to, float t) {
+		int r = Math.round(Mth.lerp(t, from >> 16 & 0xFF, to >> 16 & 0xFF));
+		int g = Math.round(Mth.lerp(t, from >> 8 & 0xFF, to >> 8 & 0xFF));
+		int b = Math.round(Mth.lerp(t, from & 0xFF, to & 0xFF));
+		return r << 16 | g << 8 | b;
 	}
 }

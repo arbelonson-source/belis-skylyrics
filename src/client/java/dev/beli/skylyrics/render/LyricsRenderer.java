@@ -50,6 +50,8 @@ public final class LyricsRenderer {
 	private static final long ANIM_NS = 450_000_000L;
 	/** Lines show a little before their timestamp so the animation has finished when the singing starts. */
 	static final long LEAD_MS = 150;
+	/** In the WORLD layout, a line's last words stay this long after it's over before they fade too. */
+	private static final long WORLD_LINGER_MS = 450;
 	private static final float ROW_H = 10f;
 	private static final float SECONDARY = 0.7f;
 	private static final float GAP = 5f;
@@ -193,7 +195,7 @@ public final class LyricsRenderer {
 		updateDaylight(mc, camera, dt);
 		updateAnchor(cfg, camera, dt);
 		if (cfg.layout == Layout.WORLD && !shown.instrumental()) {
-			renderWorldWords(context, mc, cfg, camera, time, now, dt);
+			renderWorldWords(context, mc, cfg, camera, time, now);
 			return;
 		}
 		worldWords.clear();
@@ -268,24 +270,26 @@ public final class LyricsRenderer {
 
 	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
 	private void renderWorldWords(WorldRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
-			long now, float dt) {
+			long now) {
 		int index = shown.indexAt(time);
 		String text = null;
 		float sungChars = 0;
+		boolean over = false;
 		if (sungLine(index)) {
 			LyricLine line = shown.get(index);
 			text = line.text();
 			int total = text.codePointCount(0, text.length());
 			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), lineEnd(index)) * total : total;
+			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
 		}
 		Style style = LyricsFont.sky(cfg);
-		worldWords.update(index, text, sungChars, camera, mc.level, mc.font, style, now, dt);
+		worldWords.update(index, text, sungChars, over, camera, mc.level, mc.font, style, now);
 		float alpha = visibility * cfg.opacity;
 		if (alpha <= 0.01f) {
 			return;
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
-		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, rgb(), alpha, sungChars, now);
+		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, rgb(), alpha, cfg.glow, cfg.size, now);
 	}
 
 	/** When the singing of a line counts as over, for spreading its words over its time. */

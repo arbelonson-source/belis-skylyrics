@@ -20,7 +20,7 @@ class WorldWordsTest {
 
 	@Test
 	void shortWordsLeanOnTheNextOne() {
-		assertEquals(List.of("BABY,", "I'M HIGH", "OCTANE"), pieces("BABY, I'M HIGH OCTANE"));
+		assertEquals(List.of("STARS,", "I'M OUT", "TONIGHT"), pieces("STARS, I'M OUT TONIGHT"));
 		assertEquals(List.of("THAT,", "YOU WANNA", "GET OUT"), pieces("THAT, YOU WANNA GET OUT"));
 		assertEquals(List.of("THAT", "YOU NEED", "IT RIGHT", "NOW"), pieces("THAT YOU NEED IT RIGHT NOW"));
 	}
@@ -42,17 +42,41 @@ class WorldWordsTest {
 	}
 
 	@Test
-	void olderCardsFade() {
-		assertEquals(1, WorldWords.ageAlpha(0));
-		assertEquals(0.7f, WorldWords.ageAlpha(1), 1e-6);
-		assertEquals(0.5f, WorldWords.ageAlpha(2), 1e-6);
-		assertEquals(0, WorldWords.ageAlpha(3), 1e-6);
-		assertEquals(0, WorldWords.ageAlpha(5), 1e-6);
+	void sungCardsFadeOutSlowlyThenQuickly() {
+		assertEquals(1, WorldWords.goneAlpha(0));
+		assertEquals(0.75f, WorldWords.goneAlpha(WorldWords.FADE / 2), 1e-6);
+		assertEquals(0, WorldWords.goneAlpha(WorldWords.FADE), 1e-6);
+		assertEquals(0, WorldWords.goneAlpha(10), 1e-6);
 		float last = 2;
-		for (float age = 0; age <= 3; age += 0.1f) {
-			float a = WorldWords.ageAlpha(age);
+		for (float s = 0; s <= WorldWords.FADE; s += 0.05f) {
+			float a = WorldWords.goneAlpha(s);
 			assertTrue(a <= last, "fades steadily");
 			last = a;
+		}
+	}
+
+	@Test
+	void newCardsPopThenSettle() {
+		assertEquals(1 + WorldWords.POP, WorldWords.pop(0), 1e-6);
+		assertEquals(1, WorldWords.pop(WorldWords.POP_TIME), 1e-6);
+		assertEquals(1, WorldWords.pop(5), 1e-6);
+		assertTrue(WorldWords.pop(WorldWords.POP_TIME / 2) < 1 + WorldWords.POP / 2, "settles fast, then eases in");
+	}
+
+	@Test
+	void scatterSpotsAreSpreadOut() {
+		float[][] s = WorldWords.slots();
+		assertEquals(WorldWords.SLOTS, s.length);
+		for (int i = 0; i < s.length; i++) {
+			assertTrue(Math.abs(s[i][0]) <= 25 && Math.abs(s[i][1]) <= 15, "inside the oval");
+			for (int j = i + 1; j < s.length; j++) {
+				float dx = s[i][0] - s[j][0], dy = s[i][1] - s[j][1];
+				assertTrue(dx * dx + dy * dy > 4 * 4, "spots " + i + " and " + j + " are apart");
+			}
+			if (i > 0) {
+				float dx = s[i][0] - s[i - 1][0], dy = s[i][1] - s[i - 1][1];
+				assertTrue(dx * dx + dy * dy > 8 * 8, "one spot to the next jumps across");
+			}
 		}
 	}
 }
