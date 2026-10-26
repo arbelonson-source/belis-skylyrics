@@ -91,7 +91,7 @@ final class WorldWords {
 	private static final float SHADOW_Z = -0.5f, GLOW_Z = 0.1f, FACE_Z = 0.3f;
 	/** From the top of a row of text to the middle of its capitals. */
 	private static final float CAP_MIDDLE = 3.8f;
-	/** Words with at most this many letters lean on the next word ("I'M HIGH", "GET OUT"). */
+	/** Words with at most this many letters lean on the next word ("CAN YOU", "THE BEAT"). */
 	static final int SHORT_WORD = 3;
 	/** The scatter's spots, as degrees right of and above its middle. */
 	private static final float[][] SPOTS = slots();

@@ -21,16 +21,18 @@ class WorldWordsTest {
 
 	@Test
 	void shortWordsLeanOnTheNextOne() {
-		assertEquals(List.of("STARS,", "I'M OUT", "TONIGHT"), pieces("STARS, I'M OUT TONIGHT"));
-		assertEquals(List.of("THAT,", "YOU WANNA", "GET OUT"), pieces("THAT, YOU WANNA GET OUT"));
-		assertEquals(List.of("THAT", "YOU NEED", "IT RIGHT", "NOW"), pieces("THAT YOU NEED IT RIGHT NOW"));
+		assertEquals(List.of("NEON", "SKYLINE,", "CAN YOU", "HEAR", "IT"), pieces("NEON SKYLINE, CAN YOU HEAR IT"));
+		assertEquals(List.of("UP WHERE", "THE CLOUDS", "ARE SLOWLY", "DRIFTING"),
+				pieces("UP WHERE THE CLOUDS ARE SLOWLY DRIFTING"));
+		assertEquals(List.of("SING", "IT BACK", "TO ME", "FROM", "WHERE", "YOU ARE"),
+				pieces("SING IT BACK TO ME FROM WHERE YOU ARE"));
 	}
 
 	@Test
 	void neverMoreThanTwoWords() {
-		assertEquals(List.of("I AM", "SO ON", "MY WAY"), pieces("I am so on my way").stream()
+		assertEquals(List.of("HOLD", "THE BEAT", "AND FOLLOW", "ME"), pieces("Hold the beat and follow me").stream()
 				.map(s -> s.toUpperCase(java.util.Locale.ROOT)).toList());
-		assertEquals(List.of("ALONE"), pieces("  alone ").stream().map(s -> s.toUpperCase(java.util.Locale.ROOT)).toList());
+		assertEquals(List.of("STARS"), pieces("  stars ").stream().map(s -> s.toUpperCase(java.util.Locale.ROOT)).toList());
 		assertTrue(WorldWords.chunks("   ").isEmpty());
 	}
 
