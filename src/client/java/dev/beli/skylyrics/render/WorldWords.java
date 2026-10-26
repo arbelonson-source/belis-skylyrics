@@ -467,7 +467,8 @@ final class WorldWords {
 			float yaw = centre[0] - SPOTS[slot][0] * out + (next() * 2 - 1) * WOBBLE_X;
 			float pitch = Mth.clamp(centre[1] - LIFT - SPOTS[slot][1] * out + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
 			float distance = Mth.lerp(next(), NEAR, FAR);
-			float halfW = halfAngle(at[at.length - 1] * size / 2, distance) + PAD_X, halfH = halfAngle(5 * size, distance) + PAD_Y;
+			// Up high a card is closer to the axis it turns around, so it takes up more yaw
+			float halfW = halfAngle(at[at.length - 1] * size / 2, distance * Mth.cos(pitch * DEG)) + PAD_X, halfH = halfAngle(5 * size, distance) + PAD_Y;
 			float cost = 0;
 			for (float[] o : taken) {
 				float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(yaw - o[0])), h = halfH + o[3] - Math.abs(pitch - o[1]);
@@ -579,12 +580,14 @@ final class WorldWords {
 	 * the eye that has floated up by {@code risen}. Every card floats up at the same pace until it stops, so next to
 	 * a new card an older one ends up back where it started; the patch covers both ends of that, or the new card
 	 * would be placed where the older one is right now and the two would cross.
+	 * The width is in yaw, which a card high up in the sky spans more of than one on the horizon.
 	 */
 	static float[] footprint(Vec3 to, float risen, float halfWidth, float halfHeight) {
 		Vec3 now = to.add(0, risen, 0);
 		float from = pitchOf(to), at = pitchOf(now);
 		double far = to.length();
-		return new float[] {yawOf(to), (from + at) / 2, halfAngle(halfWidth, far), halfAngle(halfHeight, far) + Math.abs(from - at) / 2};
+		double flat = Math.sqrt(to.x * to.x + to.z * to.z);
+		return new float[] {yawOf(to), (from + at) / 2, halfAngle(halfWidth, flat), halfAngle(halfHeight, far) + Math.abs(from - at) / 2};
 	}
 
 	static float halfAngle(float half, double distance) {

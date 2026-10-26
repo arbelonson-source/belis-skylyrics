@@ -279,4 +279,13 @@ class WorldWordsTest {
 		assertEquals(still[1] + still[3], risen[1] + risen[3], 1e-3);
 		assertEquals(-up - still[3], risen[1] - risen[3], 1e-2);
 	}
+
+	@Test
+	void aCardHighUpTakesUpMoreYawThanOneOnTheHorizon() {
+		float level = WorldWords.footprint(new Vec3(0, 0, 10), 0, 1, 0.3f)[2];
+		float high = WorldWords.footprint(new Vec3(0, Math.sqrt(50), Math.sqrt(50)), 0, 1, 0.3f)[2];
+		// 45 degrees up and just as far away, the card is only about 7 blocks from the axis it turns around, not 10
+		assertEquals(Math.toDegrees(Math.atan2(1, Math.sqrt(50))), high, 1e-3);
+		assertTrue(high > level * 1.3f);
+	}
 }
