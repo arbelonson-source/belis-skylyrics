@@ -85,7 +85,7 @@ public final class AlbumArt {
 					return;
 				}
 				int picked = pickColor(image);
-				NativeImage scaled = toNative(image);
+				NativeImage scaled = shrink(image, SIZE, SIZE / 2f);
 				if (generation.get() != gen) {
 					scaled.close();
 					return;
@@ -145,17 +145,17 @@ public final class AlbumArt {
 		return null; // data: URIs and other odd schemes aren't worth it
 	}
 
-	/** Center-crops to a square and scales to {@link #SIZE}. */
-	private static NativeImage toNative(BufferedImage src) {
+	/** Center-crops to a square, scales to {@code size} and rounds the corners ({@code size / 2} makes a circle). */
+	static NativeImage shrink(BufferedImage src, int size, float radius) {
 		int side = Math.min(src.getWidth(), src.getHeight());
 		int x0 = (src.getWidth() - side) / 2;
 		int y0 = (src.getHeight() - side) / 2;
-		NativeImage out = new NativeImage(SIZE, SIZE, false);
-		for (int y = 0; y < SIZE; y++) {
-			for (int x = 0; x < SIZE; x++) {
+		NativeImage out = new NativeImage(size, size, false);
+		for (int y = 0; y < size; y++) {
+			for (int x = 0; x < size; x++) {
 				// Box filter: average the source pixels that fall in this output pixel
-				int sx0 = x0 + x * side / SIZE, sx1 = Math.max(sx0 + 1, x0 + (x + 1) * side / SIZE);
-				int sy0 = y0 + y * side / SIZE, sy1 = Math.max(sy0 + 1, y0 + (y + 1) * side / SIZE);
+				int sx0 = x0 + x * side / size, sx1 = Math.max(sx0 + 1, x0 + (x + 1) * side / size);
+				int sy0 = y0 + y * side / size, sy1 = Math.max(sy0 + 1, y0 + (y + 1) * side / size);
 				long r = 0, g = 0, b = 0, n = 0;
 				for (int sy = sy0; sy < sy1; sy += Math.max(1, (sy1 - sy0) / 4)) {
 					for (int sx = sx0; sx < sx1; sx += Math.max(1, (sx1 - sx0) / 4)) {
@@ -166,14 +166,19 @@ public final class AlbumArt {
 						n++;
 					}
 				}
-				// Round cover: fade out past the circle's edge over about one pixel
-				float dx = x + 0.5f - SIZE / 2f, dy = y + 0.5f - SIZE / 2f;
-				float edge = SIZE / 2f - (float) Math.sqrt(dx * dx + dy * dy);
-				int a = Math.round(255 * Math.clamp(edge + 0.5f, 0f, 1f));
+				int a = Math.round(255 * cornerAlpha(x, y, size, radius));
 				out.setPixel(x, y, a << 24 | (int) (r / n) << 16 | (int) (g / n) << 8 | (int) (b / n));
 			}
 		}
 		return out;
+	}
+
+	/** How much of pixel (x, y) is inside a rounded square: fades out past the edge over about one pixel. */
+	static float cornerAlpha(int x, int y, int size, float radius) {
+		float cx = Math.clamp(x + 0.5f, radius, size - radius);
+		float cy = Math.clamp(y + 0.5f, radius, size - radius);
+		float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+		return Math.clamp(radius - (float) Math.sqrt(dx * dx + dy * dy) + 0.5f, 0f, 1f);
 	}
 
 	/**

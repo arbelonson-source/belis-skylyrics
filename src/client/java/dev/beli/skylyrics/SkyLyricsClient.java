@@ -43,6 +43,7 @@ import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.WindowsMediaSource;
 import dev.beli.skylyrics.render.AlbumArt;
+import dev.beli.skylyrics.render.CoverCache;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
 import dev.beli.skylyrics.render.SkyEffects;
@@ -58,6 +59,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private Library library;
 	private LyricsService lyrics;
 	private AlbumArt art;
+	private CoverCache covers;
 	private LyricsRenderer renderer;
 	private SkyEffects sky;
 	private NowPlayingHud hud;
@@ -96,6 +98,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker = new MediaTracker(music, () -> SkyLyricsConfig.get().demoMode);
 		lyrics = new LyricsService(new LrclibClient(version), cache);
 		art = new AlbumArt();
+		covers = new CoverCache(cache.resolve("covers"));
 		renderer = new LyricsRenderer(tracker, lyrics, art);
 		hud = new NowPlayingHud(tracker, lyrics, art);
 
@@ -238,6 +241,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker.shutdown();
 		lyrics.shutdown();
 		art.close();
+		covers.close();
 	}
 
 	public MediaTracker tracker() {
@@ -254,6 +258,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	public LyricsService lyrics() {
 		return lyrics;
+	}
+
+	public CoverCache covers() {
+		return covers;
 	}
 
 	public AlbumArt art() {
