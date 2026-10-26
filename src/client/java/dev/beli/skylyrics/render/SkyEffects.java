@@ -32,8 +32,8 @@ import net.minecraft.world.level.material.FogType;
  * sky with a striped retro sun, a moonlit night with drifting clouds, or an eclipse under a milky way, plus
  * constellations, shooting stars and sparkles
  * round the lyrics with any of them.
- * Drawn camera-relative through Minecraft's own pipelines (additive like lightning, or plain blending like
- * name tag backgrounds), so it needs no shader support and works with Iris and Sodium.
+ * Drawn camera-relative through Minecraft's own pipelines (additive like the ender dragon's death rays, or plain
+ * blending like name tag backgrounds), so it needs no shader support and works with Iris and Sodium.
  */
 public final class SkyEffects {
 	private static final float FADE_SECONDS = 1.5f;
@@ -288,6 +288,8 @@ public final class SkyEffects {
 		// layers stack the same way whether or not the pipeline sorts them.
 		// The whole sky goes in an earlier batch than the lyrics: shapes are drawn after text in a batch,
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
+		// The added light leaves no depth behind either: it sits inside the world (at most 110 blocks out), and
+		// glass, water and ice are drawn after it, so marking its depth would cut holes in any of them further away.
 		OrderedSubmitNodeCollector sky = context.commandQueue().order(SKY_ORDER);
 		PoseStack pose = context.matrices();
 		pose.pushPose();
@@ -295,7 +297,7 @@ public final class SkyEffects {
 			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
 		}
 		if (!painted() || sparkles || meteorsAlive > 0) {
-			sky.submitCustomGeometry(pose, RenderTypes.lightning(), drawer);
+			sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), drawer);
 		}
 		if (effect == SkyEffect.ECLIPSE) {
 			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
@@ -459,8 +461,14 @@ public final class SkyEffects {
 
 	/** Hands the sky shapes' corners to one render type's vertex buffer for this frame. */
 	private static final class Target extends SkyCanvas {
-		/** The normally blended type also takes a light level; full bright keeps the colours as given. */
+		/**
+		 * The normally blended type takes quads and a light level (full bright keeps the colours as given); the
+		 * added-light one takes triangles, so its corners wait until a quad is complete.
+		 */
 		private final boolean lit;
+		private final float[] tx = new float[4], ty = new float[4], tz = new float[4];
+		private final int[] tc = new int[4];
+		private int corner;
 		/** Set by {@link #begin} before any corner arrives. */
 		private PoseStack.Pose pose;
 		private VertexConsumer vc;
@@ -476,10 +484,27 @@ public final class SkyEffects {
 
 		@Override
 		protected void put(float x, float y, float z, int argb) {
-			VertexConsumer v = vc.addVertex(pose, x, y, z).setColor(argb);
 			if (lit) {
-				v.setLight(LightTexture.FULL_BRIGHT);
+				vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightTexture.FULL_BRIGHT);
+				return;
 			}
+			tx[corner] = x;
+			ty[corner] = y;
+			tz[corner] = z;
+			tc[corner] = argb;
+			if (++corner == 4) {
+				corner = 0;
+				triangles(vc, pose, tx, ty, tz, tc, FRONT);
+			}
+		}
+	}
+
+	/** Corner orders splitting a quad into the two triangles the added-light type takes, as wound, and turned round. */
+	private static final int[] FRONT = {0, 1, 2, 0, 2, 3}, BACK = {3, 2, 1, 3, 1, 0};
+
+	private static void triangles(VertexConsumer vc, PoseStack.Pose pose, float[] x, float[] y, float[] z, int[] c, int[] order) {
+		for (int k : order) {
+			vc.addVertex(pose, x[k], y[k], z[k]).setColor(c[k]);
 		}
 	}
 
@@ -677,7 +702,7 @@ public final class SkyEffects {
 		point(vc, pose, bx + rx * right + ux * up, by + uy * up, bz + rz * right + uz * up, color);
 	}
 
-	/** Collects four corners, then emits the quad twice (both windings), as the pipeline culls back faces. */
+	/** Collects four corners, then emits the quad twice (both windings) as triangles, as the pipeline culls back faces. */
 	private void point(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float z, int color) {
 		qx[corner] = x;
 		qy[corner] = y;
@@ -687,11 +712,7 @@ public final class SkyEffects {
 			return;
 		}
 		corner = 0;
-		for (int i = 0; i < 4; i++) {
-			vc.addVertex(pose, qx[i], qy[i], qz[i]).setColor(qc[i]);
-		}
-		for (int i = 3; i >= 0; i--) {
-			vc.addVertex(pose, qx[i], qy[i], qz[i]).setColor(qc[i]);
-		}
+		triangles(vc, pose, qx, qy, qz, qc, FRONT);
+		triangles(vc, pose, qx, qy, qz, qc, BACK);
 	}
 }
