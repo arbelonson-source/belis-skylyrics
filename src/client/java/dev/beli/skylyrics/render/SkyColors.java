@@ -95,4 +95,16 @@ final class SkyColors {
 		float d = hash((ix + 1) * 73856093 ^ (iy + 1) * 19349663 ^ seed);
 		return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
 	}
+
+	/** Like {@link #noise} but repeating every {@code period} grid steps along x, so it can go round the sky. */
+	static float noise(float x, float y, int seed, int period) {
+		int fl = (int) Math.floor(x), iy = (int) Math.floor(y);
+		int ix = Math.floorMod(fl, period), jx = (ix + 1) % period;
+		float fx = smooth(x - fl), fy = smooth(y - iy);
+		float a = hash(ix * 73856093 ^ iy * 19349663 ^ seed);
+		float b = hash(jx * 73856093 ^ iy * 19349663 ^ seed);
+		float c = hash(ix * 73856093 ^ (iy + 1) * 19349663 ^ seed);
+		float d = hash(jx * 73856093 ^ (iy + 1) * 19349663 ^ seed);
+		return (a + (b - a) * fx) + ((c + (d - c) * fx) - (a + (b - a) * fx)) * fy;
+	}
 }

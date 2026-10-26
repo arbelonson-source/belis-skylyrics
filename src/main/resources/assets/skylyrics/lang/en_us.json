@@ -220,5 +220,6 @@
   "skylyrics.ui.slow": "Slow",
   "skylyrics.ui.normal": "Normal",
   "skylyrics.ui.fast": "Fast",
-  "skylyrics.ui.aurora_nebula": "Aurora + nebula"
+  "skylyrics.ui.aurora_nebula": "Aurora + nebula",
+  "skylyrics.ui.moonlight": "Moonlight"
 }

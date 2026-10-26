@@ -33,6 +33,13 @@ final class SkyMesh {
 		rgb[k] = color;
 	}
 
+	/** Works out every point's colour again, for skies that change slowly. */
+	void repaint(Paint paint) {
+		for (int k = 0; k < rgb.length; k++) {
+			rgb[k] = paint.at(x[k], y[k], z[k]);
+		}
+	}
+
 	/** Turned by the yaw (given as cosine and sine) and pushed out to {@code r}. */
 	void draw(SkyCanvas c, float cos, float sin, float r, float level) {
 		for (int i = 0; i + 1 < rows; i++) {

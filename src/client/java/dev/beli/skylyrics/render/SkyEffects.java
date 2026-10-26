@@ -26,7 +26,8 @@ import net.minecraft.world.level.material.FogType;
 
 /**
  * Night sky effects while music plays: a soft aurora or nebula (or both) tinted by the lyrics colour, a synthwave
- * sky with a striped retro sun, or an eclipse under a milky way, plus constellations, shooting stars and sparkles
+ * sky with a striped retro sun, a moonlit night with drifting clouds, or an eclipse under a milky way, plus
+ * constellations, shooting stars and sparkles
  * round the lyrics with any of them.
  * Drawn camera-relative through Minecraft's own pipelines (additive like lightning, or plain blending like
  * name tag backgrounds), so it needs no shader support and works with Iris and Sodium.
@@ -87,6 +88,7 @@ public final class SkyEffects {
 	private int tint;
 
 	private final SynthwaveSky synthwave = new SynthwaveSky();
+	private final MoonlitSky moonlit = new MoonlitSky();
 	private final EclipseSky eclipse = new EclipseSky();
 	private final Constellations constellations = new Constellations();
 	private final Target light = new Target(false), paint = new Target(true);
@@ -250,10 +252,10 @@ public final class SkyEffects {
 		// layers stack the same way whether or not the pipeline sorts them.
 		PoseStack pose = context.matrices();
 		pose.pushPose();
-		if (effect == SkyEffect.SYNTHWAVE) {
+		if (painted()) {
 			context.commandQueue().submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
 		}
-		if (effect != SkyEffect.SYNTHWAVE || sparkles || meteorsAlive > 0) {
+		if (!painted() || sparkles || meteorsAlive > 0) {
 			context.commandQueue().submitCustomGeometry(pose, RenderTypes.lightning(), drawer);
 		}
 		if (effect == SkyEffect.ECLIPSE) {
@@ -262,10 +264,19 @@ public final class SkyEffects {
 		pose.popPose();
 	}
 
-	/** Normally blended: the synthwave sky and its constellations. */
+	/** True for the skies that cover the vanilla one: synthwave and moonlight. */
+	private boolean painted() {
+		return effect == SkyEffect.SYNTHWAVE || effect == SkyEffect.MOONLIGHT;
+	}
+
+	/** Normally blended: the synthwave or moonlit sky and its constellations. */
 	private void drawPainted(PoseStack.Pose pose, VertexConsumer vc) {
 		paint.begin(pose, vc);
-		synthwave.draw(paint, far, baseYaw, amount, clock, pixel);
+		if (effect == SkyEffect.MOONLIGHT) {
+			moonlit.draw(paint, far, baseYaw, amount, clock, pixel);
+		} else {
+			synthwave.draw(paint, far, baseYaw, amount, clock, pixel);
+		}
 		if (starPatterns) {
 			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
 		}
@@ -385,7 +396,7 @@ public final class SkyEffects {
 		if (effect == SkyEffect.ECLIPSE) {
 			eclipse.draw(light, far, baseYaw, amount, clock);
 		}
-		if (starPatterns && effect != SkyEffect.SYNTHWAVE) {
+		if (starPatterns && !painted()) {
 			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
 		}
 		if (nebula) {

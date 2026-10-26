@@ -86,7 +86,7 @@ public final class SkyLyricsScreen extends Screen {
 	};
 	/** Night sky choices in {@link SkyEffect} order. Five names don't fit side by side, so this is a Cycle. */
 	private static List<String> skyNames() {
-		return List.of(Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula"), Tr.t("Synthwave"), Tr.t("Eclipse"), Tr.t("Aurora + nebula"));
+		return List.of(Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula"), Tr.t("Synthwave"), Tr.t("Eclipse"), Tr.t("Aurora + nebula"), Tr.t("Moonlight"));
 	}
 	/** Part of the player name to look for, next to the name shown; the first one is Auto. */
 	private static final String[] PLAYER_KEYS = SkyLyricsClient.windows()

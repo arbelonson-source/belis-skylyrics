@@ -73,7 +73,9 @@ public final class SkyLyricsConfig {
 		/** A black sun with a glowing ring and a flare, under a faint milky way. */
 		ECLIPSE,
 		/** The aurora over a softer nebula. */
-		BOTH
+		BOTH,
+		/** A big full moon with a soft glow over low clouds drifting round the horizon. */
+		MOONLIGHT
 	}
 
 	public enum BarPosition {
