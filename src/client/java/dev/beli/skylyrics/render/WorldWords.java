@@ -138,6 +138,8 @@ final class WorldWords {
 	private float fade = FADE;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
 	private @Nullable String lineRaw, lineText;
+	/** Whether new lines are written in capitals; a change shows from the next line on. */
+	private boolean capitals;
 	private List<int[]> lineChunks = List.of();
 	private long rng = System.nanoTime();
 
@@ -219,7 +221,8 @@ final class WorldWords {
 	 * How many cards float at once, how many seconds sung ones take to fade and whether a line flows left to right
 	 * (the World words settings).
 	 */
-	void tune(int maxCards, float fade, boolean flow) {
+	void tune(int maxCards, float fade, boolean flow, boolean capitals) {
+		this.capitals = capitals;
 		this.maxCards = Math.max(1, maxCards);
 		this.fade = Math.max(0.1f, fade);
 		if (flow != this.flow) {
@@ -263,7 +266,7 @@ final class WorldWords {
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			line = index;
 			lineRaw = text;
-			lineText = text == null ? null : text.toUpperCase(Locale.ROOT);
+			lineText = text == null || !capitals ? text : text.toUpperCase(Locale.ROOT);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
 			spawned = 0;
 			sentence = null;
