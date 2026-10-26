@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 class WorldWordsTest {
@@ -78,6 +80,21 @@ class WorldWordsTest {
 		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);
 		assertTrue(WorldWords.goneAlpha(1f, 5f) > WorldWords.goneAlpha(1f, 1f), "a longer linger fades slower");
+	}
+
+	@Test
+	void onlyCardsThatCouldBeOnScreenAreDrawn() {
+		Vec3 ahead = new Vec3(0, 0, -1);
+		// Off to the side at 65°: past the edge of a normal view, so skipped
+		ScreenLayer.capture(new Matrix4f(), new Matrix4f().perspective((float) Math.toRadians(70), 16 / 9f, 0.05f, 1000));
+		Vector3f side = new Vector3f((float) Math.sin(Math.toRadians(65)) * 10, 0, (float) -Math.cos(Math.toRadians(65)) * 10);
+		assertFalse(WorldWords.showing(side, 1, 0.06f, ahead));
+		assertTrue(WorldWords.showing(new Vector3f(2, 1, -10), 1, 0.06f, ahead), "one in the middle shows");
+		// At 78° a wide card still reaches into a very wide view, so it isn't cut off at the edge
+		ScreenLayer.capture(new Matrix4f(), new Matrix4f().perspective((float) Math.toRadians(110), 16 / 9f, 0.05f, 1000));
+		Vector3f wide = new Vector3f((float) Math.sin(Math.toRadians(78)) * 10, 0, (float) -Math.cos(Math.toRadians(78)) * 10);
+		assertTrue(WorldWords.showing(wide, 3, 0.06f, ahead));
+		assertFalse(WorldWords.showing(new Vector3f(0, 0, 10), 3, 0.06f, ahead), "one behind you never shows");
 	}
 
 	@Test

@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -19,6 +20,7 @@ import org.joml.Vector4f;
 public final class ScreenLayer {
 	private static final Matrix4f viewProjection = new Matrix4f();
 	private static final Vector4f clip = new Vector4f();
+	private static final FrustumIntersection frustum = new FrustumIntersection();
 	private static float pixelsPerUnit;
 	private static float unitsAcross;
 	private static boolean captured;
@@ -30,6 +32,7 @@ public final class ScreenLayer {
 	/** Called at the start of every world frame (see LevelRendererMixin). */
 	public static void capture(Matrix4f view, Matrix4f projection) {
 		viewProjection.set(projection).mul(view);
+		frustum.set(viewProjection);
 		pixelsPerUnit = projection.m11();
 		unitsAcross = projection.m00();
 		captured = true;
@@ -88,6 +91,11 @@ public final class ScreenLayer {
 		float x = Math.abs(clip.x / clip.w) - halfW * unitsAcross / clip.w;
 		float y = Math.abs(clip.y / clip.w) - halfH * pixelsPerUnit / clip.w;
 		return x < 1 + 2 * margin && y < 1 + 2 * margin;
+	}
+
+	/** Whether a ball round a camera-relative point, radius in blocks, reaches into the view. Allocates nothing. */
+	static boolean ballInView(Vector3f centre, float radius) {
+		return captured && frustum.testSphere(centre.x, centre.y, centre.z, radius);
 	}
 
 	/** Asks Iris through its public API, without needing Iris to build or run. */

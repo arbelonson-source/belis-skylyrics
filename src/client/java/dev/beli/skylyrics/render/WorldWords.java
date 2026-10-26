@@ -77,8 +77,10 @@ final class WorldWords {
 	static final float POP = 0.22f, POP_TIME = 0.24f;
 	/** Cards drift up this many blocks a second, up to this high. */
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
-	/** Cards further from where you look than this (cosine of the angle) aren't drawn at all. */
+	/** Before the first frame's view is known, cards further from where you look than this (cosine of the angle) aren't drawn. */
 	private static final float CULL = 0.3f;
+	/** A card's half height, and how far its glow and shadow reach past the letters, in text units (for the on-screen check). */
+	private static final float HALF_HEIGHT = 6f, EDGE = 3f;
 	/** Cards this far away are dropped, in blocks. */
 	private static final float GONE_DISTANCE = 48f;
 	/** A jump further than this in one frame is a teleport, not flying, so the words stay behind (blocks). */
@@ -594,14 +596,14 @@ final class WorldWords {
 			}
 			float x = (float) (c.pos.x - eye.x), z = (float) (c.pos.z - eye.z);
 			float y = (float) (c.pos.y - eye.y) + Math.min(age * RISE, RISE_MAX);
-			float far = Mth.sqrt(x * x + y * y + z * z);
-			if (far > 1e-3f && (x * look.x + y * look.y + z * look.z) / far < CULL) {
-				continue;
-			}
 			int n = c.display.cps().length;
 			float grow = c.size * scale * pop(age);
+			Vector3f centre = new Vector3f(x, y, z);
+			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
+				continue;
+			}
 			if (c.goneAt < 0) {
-				LyricsInView.check(new Vector3f(x, y, z), c.at[n] * grow / 2, 5 * grow);
+				LyricsInView.check(centre, c.at[n] * grow / 2, 5 * grow);
 			}
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
@@ -625,6 +627,24 @@ final class WorldWords {
 			draw(pose, out, c, shown, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
+	}
+
+	/**
+	 * Whether any of a card could be on screen this frame, checked against the view the world was drawn with: a ball
+	 * round it, big enough for the card however it's turned plus its glow and shadow. So cards just off the edge cost
+	 * nothing, and a wide field of view doesn't cut off ones still in sight. Before the first frame, roughly whether
+	 * it's ahead.
+	 *
+	 * @param halfW half the card's width, in blocks
+	 * @param grow  blocks per text unit
+	 */
+	static boolean showing(Vector3f centre, float halfW, float grow, Vec3 look) {
+		if (ScreenLayer.ready()) {
+			float halfH = HALF_HEIGHT * grow;
+			return ScreenLayer.ballInView(centre, Mth.sqrt(halfW * halfW + halfH * halfH) + EDGE * grow);
+		}
+		float far = centre.length();
+		return far < 1e-3f || (centre.x * look.x + centre.y * look.y + centre.z * look.z) / far >= CULL;
 	}
 
 	/**
