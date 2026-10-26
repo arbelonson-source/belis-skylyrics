@@ -3,6 +3,7 @@ package dev.beli.skylyrics.mixin;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import dev.beli.skylyrics.render.ScreenLayer;
+import dev.beli.skylyrics.render.SkyTint;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -20,5 +21,6 @@ abstract class LevelRendererMixin {
 			Camera camera, Matrix4f view, Matrix4f projection, Matrix4f culling, GpuBufferSlice fog, Vector4f fogColor,
 			boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
+		SkyTint.fog(fogColor);
 	}
 }

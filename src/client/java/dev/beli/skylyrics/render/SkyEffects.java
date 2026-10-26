@@ -226,6 +226,7 @@ public final class SkyEffects {
 		float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
 		last = now;
 		lyrics.backdrop(0);
+		SkyTint.painted(0, 0);
 		boolean wanted = cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
 		SkyEffect next = pick(cfg.sky, tracker.track());
 		// A new song's random sky waits for the old one to fade out
@@ -256,6 +257,10 @@ public final class SkyEffects {
 		far = farRadius(mc.options.getEffectiveRenderDistance());
 		amount = clamp01(fade / FULL_STRENGTH);
 		lyrics.backdrop(painted() ? amount : 0);
+		if (painted()) {
+			SkyTint.painted(effect == SkyEffect.MOONLIGHT ? MoonlitSky.skyColor(SkyTint.WORDS_ELEVATION)
+					: SynthwaveSky.skyColor(SkyTint.WORDS_ELEVATION), amount);
+		}
 		baseYaw = baseYaw(cfg.direction);
 		// One screen pixel as a tangent of its angle, so lines stay about a pixel wide at any size
 		pixel = 2 * (float) Math.tan(mc.options.fov().get() * DEG / 2) / Math.max(1, mc.getWindow().getHeight());

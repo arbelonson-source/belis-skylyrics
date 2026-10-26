@@ -374,7 +374,8 @@ public final class LyricsRenderer {
 			return;
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
-		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, rgb(), alpha, cfg.glow, daylight, cfg.size, light, now);
+		int wordsRgb = cfg.worldTint ? SkyTint.tint(rgb(), SkyTint.sky(), SkyTint.AMOUNT) : rgb();
+		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
 	}
 
 	/** When the singing of a line counts as over, for spreading its words over its time. */

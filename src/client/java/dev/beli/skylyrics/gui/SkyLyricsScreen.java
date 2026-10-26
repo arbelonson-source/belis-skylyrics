@@ -190,6 +190,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row flow = new Toggle(Tr.t("Flowing line"), Tr.t("Words read left to right instead of scattering"),
 				() -> cfg.worldFlow, v -> cfg.worldFlow = v)
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row tint = new Toggle(Tr.t("Sky tint"), Tr.t("Words take on a little of the sky colour"),
+				() -> cfg.worldTint, v -> cfg.worldTint = v)
+				.when(() -> cfg.layout == Layout.WORLD);
 
 		Row previous = new Toggle(Tr.t("Previous line"), Tr.t("The line that just ended, faded"),
 				() -> cfg.showPrevious, v -> cfg.showPrevious = v)
@@ -211,7 +214,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, size, worldWords, linger, flow),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, size, worldWords, linger, flow, tint),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 

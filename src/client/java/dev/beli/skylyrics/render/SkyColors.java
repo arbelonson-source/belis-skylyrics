@@ -33,6 +33,11 @@ final class SkyColors {
 		return r << 16 | g << 8 | b;
 	}
 
+	/** How bright the colour looks, 0..255; green counts most and blue least, as for the eye. */
+	static float luma(int rgb) {
+		return 0.299f * (rgb >> 16 & 255) + 0.587f * (rgb >> 8 & 255) + 0.114f * (rgb & 255);
+	}
+
 	/** Channel-wise sum, capped at 255: light added on light. */
 	static int add(int a, int b) {
 		int r = Math.min(255, (a >> 16 & 255) + (b >> 16 & 255));
