@@ -98,6 +98,29 @@ class ThemesTest {
 		assertTrue(dreamy.glow > 0 && dreamy.glow <= 0.5f); // a soft glow; the default look has none
 
 		assertEquals(ColorMode.RAINBOW, theme("rainbow").preview().colorMode);
+
+		SkyLyricsConfig moonlit = theme("moonlit").preview();
+		assertEquals(SkyLyricsConfig.Layout.WORLD, moonlit.layout);
+		assertEquals(SkyEffect.MOONLIGHT, moonlit.sky);
+		assertTrue(moonlit.uppercase);
+
+		SkyLyricsConfig drift = theme("drift").preview();
+		assertEquals(SkyLyricsConfig.Layout.WORLD, drift.layout);
+		assertTrue(drift.worldFlow);
+		assertEquals(ColorMode.ALBUM, drift.colorMode);
+
+		SkyLyricsConfig corona = theme("corona").preview();
+		assertEquals(SkyEffect.ECLIPSE, corona.sky);
+		assertTrue(corona.size > 1 && corona.glow > 0);
+	}
+
+	@Test
+	void flowingWordsOnlyComeWithTheThemeThatAsksForThem() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		Themes.apply(theme("drift"), cfg);
+		assertTrue(cfg.worldFlow);
+		Themes.apply(theme("moonlit"), cfg);
+		assertFalse(cfg.worldFlow);
 	}
 
 	@Test

@@ -25,7 +25,8 @@ public final class Themes {
 	}
 
 	public static final List<String> LOOK = List.of("layout", "colorMode", "color", "smoothFont", "scriptFont", "boldFont",
-			"depth", "glow", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase");
+			"depth", "glow", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase",
+			"worldFlow");
 
 	public static final List<Theme> ALL = List.of(
 			new Theme("neon", () -> Tr.t("Neon"), c -> {
@@ -101,6 +102,52 @@ public final class Themes {
 				c.animation = Animation.POP;
 				c.sky = SkyEffect.SYNTHWAVE;
 				c.skyStrength = 0.9f;
+			}),
+			// Capital words popping up round you under the painted moon, pale as moonlight
+			new Theme("moonlit", () -> Tr.t("Moonlit"), c -> {
+				c.layout = Layout.WORLD;
+				c.colorMode = ColorMode.FIXED;
+				c.color = 0xDCE6FF;
+				c.smoothFont = true;
+				c.scriptFont = false;
+				c.boldFont = true;
+				c.depth = true;
+				c.glow = 0.45f;
+				c.animation = Animation.POP;
+				c.sky = SkyEffect.MOONLIGHT;
+				c.skyStrength = 0.9f;
+				c.uppercase = true;
+			}),
+			// The line drifting past as one flowing row of words, in the song's own colour under the aurora
+			new Theme("drift", () -> Tr.t("Drift"), c -> {
+				c.layout = Layout.WORLD;
+				c.worldFlow = true;
+				c.colorMode = ColorMode.ALBUM;
+				c.smoothFont = true;
+				c.scriptFont = false;
+				c.boldFont = false;
+				c.depth = false;
+				c.glow = 0.3f;
+				c.pulse = false;
+				c.size = 1.1f;
+				c.animation = Animation.FADE;
+				c.sky = SkyEffect.AURORA;
+				c.skyStrength = 0.8f;
+			}),
+			// Big golden lines under the black sun, like light round its rim
+			new Theme("corona", () -> Tr.t("Corona"), c -> {
+				c.layout = Layout.ARC;
+				c.colorMode = ColorMode.FIXED;
+				c.color = 0xFFD27A;
+				c.smoothFont = true;
+				c.scriptFont = false;
+				c.boldFont = true;
+				c.depth = true;
+				c.glow = 0.6f;
+				c.size = 1.25f;
+				c.animation = Animation.FADE;
+				c.sky = SkyEffect.ECLIPSE;
+				c.skyStrength = 1f;
 			}));
 
 	private static final List<Field> FIELDS = new ArrayList<>();

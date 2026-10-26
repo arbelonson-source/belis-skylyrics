@@ -270,5 +270,8 @@
   "skylyrics.ui.flowing_line": "שורה זורמת",
   "skylyrics.ui.words_read_left_to_right_instead_of_scattering": "המילים נקראות משמאל לימין במקום להתפזר",
   "skylyrics.ui.sky_tint": "גוון השמיים",
-  "skylyrics.ui.words_take_on_a_little_of_the_sky_colour": "המילים מקבלות מעט מצבע השמיים"
+  "skylyrics.ui.words_take_on_a_little_of_the_sky_colour": "המילים מקבלות מעט מצבע השמיים",
+  "skylyrics.ui.moonlit": "לאור הירח",
+  "skylyrics.ui.drift": "ריחוף",
+  "skylyrics.ui.corona": "הילה"
 }
