@@ -83,8 +83,13 @@ final class WorldWords {
 	private static final float HALF_HEIGHT = 6f, EDGE = 3f;
 	/** Cards this far away are dropped, in blocks. */
 	private static final float GONE_DISTANCE = 48f;
-	/** A jump further than this in one frame is a teleport, not flying, so the words stay behind (blocks). */
+	/**
+	 * A jump further than this in one frame is a teleport, not flying, so the words stay behind (blocks); after a slow
+	 * frame or a lag spike, up to {@link #GLIDE_SPEED} blocks a second still counts as flying.
+	 */
 	private static final float GLIDE_JUMP = 16f;
+	/** Faster than any dive or firework boost, in blocks a second. */
+	private static final float GLIDE_SPEED = 100f;
 	/** How far up or down, in degrees, cards turned along with your view may go, so they never flip over your head. */
 	private static final float SWING_PITCH = 80f;
 	/** Drop shadow: offset down-right in text units, colour, and opacity by night and by day (a bright sky needs it darker). */
@@ -151,6 +156,7 @@ final class WorldWords {
 	/** Where the camera was last frame, to carry the cards along while you glide. */
 	private @Nullable Vec3 lastEye;
 	private float lastYaw, lastPitch;
+	private long lastGlide;
 	/** Elytra mode is carrying the words this frame. */
 	private boolean gliding;
 	private @Nullable Sentence sentence;
@@ -329,8 +335,9 @@ final class WorldWords {
 	 * you instead of being left behind, and steering doesn't swing them (or the rest of the line) out of sight.
 	 * Call once a frame, before {@link #update}.
 	 */
-	void glide(Vec3 eye, float yaw, float pitch, boolean gliding) {
-		Vec3 moved = carry(lastEye, eye, gliding);
+	void glide(Vec3 eye, float yaw, float pitch, boolean gliding, long now) {
+		Vec3 moved = carry(lastEye, eye, gliding, (now - lastGlide) / 1e9f);
+		lastGlide = now;
 		this.gliding = gliding;
 		float turn = Mth.wrapDegrees(yaw - lastYaw), tilt = pitch - lastPitch;
 		lastEye = eye;
@@ -358,9 +365,13 @@ final class WorldWords {
 		return direction(yawOf(offset) + turn, pitch).scale(far);
 	}
 
-	/** How far the cards move with you this frame: as far as you went while travelling, otherwise nowhere. */
-	static Vec3 carry(@Nullable Vec3 last, Vec3 eye, boolean gliding) {
-		if (!gliding || last == null || last.distanceToSqr(eye) > GLIDE_JUMP * GLIDE_JUMP) {
+	/**
+	 * How far the cards move with you this frame, {@code seconds} after the last: as far as you went while travelling,
+	 * otherwise nowhere.
+	 */
+	static Vec3 carry(@Nullable Vec3 last, Vec3 eye, boolean gliding, float seconds) {
+		float jump = Math.max(GLIDE_JUMP, GLIDE_SPEED * Mth.clamp(seconds, 0, 1));
+		if (!gliding || last == null || last.distanceToSqr(eye) > jump * jump) {
 			return Vec3.ZERO;
 		}
 		return eye.subtract(last);

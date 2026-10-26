@@ -186,14 +186,19 @@ class WorldWordsTest {
 	@Test
 	void wordsFlyAlongOnlyWhileYouGlide() {
 		Vec3 last = new Vec3(10, 80, 10), eye = new Vec3(12, 79, 10.5);
-		Vec3 moved = WorldWords.carry(last, eye, true);
+		Vec3 moved = WorldWords.carry(last, eye, true, 0.016f);
 		assertEquals(2, moved.x, 1e-9);
 		assertEquals(-1, moved.y, 1e-9);
 		assertEquals(0.5, moved.z, 1e-9);
 		// Walking, the first frame, and a teleport leave the words where they are
-		assertEquals(Vec3.ZERO, WorldWords.carry(last, eye, false));
-		assertEquals(Vec3.ZERO, WorldWords.carry(null, eye, true));
-		assertEquals(Vec3.ZERO, WorldWords.carry(last, new Vec3(500, 80, 10), true));
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, eye, false, 0.016f));
+		assertEquals(Vec3.ZERO, WorldWords.carry(null, eye, true, 0.016f));
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, new Vec3(500, 80, 10), true, 0.016f));
+		// A lag spike mid-flight still carries them, however far a boosted flight went meanwhile
+		Vec3 boosted = new Vec3(10 + 30, 80, 10);
+		assertEquals(30, WorldWords.carry(last, boosted, true, 0.5f).x, 1e-9);
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, boosted, true, 0.05f));
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, new Vec3(500, 80, 10), true, 5f));
 	}
 
 	@Test
