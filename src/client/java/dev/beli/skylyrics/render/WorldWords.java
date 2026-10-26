@@ -38,7 +38,7 @@ final class WorldWords {
 	/** The middle of the scatter sits this many degrees above the crosshair. */
 	private static final float LIFT = 12f;
 	/** Half the width and half the height of the scatter around that middle, in degrees. */
-	private static final float SPREAD_X = 25f, SPREAD_Y = 15f;
+	private static final float SPREAD_X = 19f, SPREAD_Y = 11f;
 	/** Spots in the scatter, and how many of the last used ones a new card avoids. */
 	static final int SLOTS = 12;
 	private static final int RECENT = 2;
@@ -52,8 +52,12 @@ final class WorldWords {
 	private static final float TURN_MIN = 10f, TURN_MAX = 30f, NOD = 7f, LEAN = 4f;
 	/** Blocks per text unit: capital letters end up about a third of a block tall. */
 	private static final float SIZE = 0.046f;
-	/** Each card's size, times the setting. */
-	private static final float SIZE_MIN = 0.85f, SIZE_MAX = 1.3f;
+	/** Card size, times the setting, for short pieces and for long ones; sizes in between follow the letter count. */
+	private static final float SIZE_SHORT = 0.72f, SIZE_LONG = 1.3f;
+	/** Pieces with up to this many letters are the smallest, with this many more the biggest. */
+	private static final int SHORT_LETTERS = 3, LONG_LETTERS = 6;
+	/** Each card is randomly up to this much smaller or bigger than its letters say, so sizes don't look graded. */
+	private static final float SIZE_JITTER = 0.1f;
 	/** At most this many cards at once by default (the setting); past it the oldest is cut short. */
 	static final int MAX_CARDS = 7;
 	/** A card cut short to make room fades out over this many seconds. */
@@ -190,6 +194,15 @@ final class WorldWords {
 		return 1 - Mth.clamp(seconds / CUT, 0, 1);
 	}
 
+	/**
+	 * How big a card is, times the setting: little words stay small and long ones get big, so they sit together like
+	 * a collage instead of a row of equal labels. {@code roll} is a random number from 0 to 1.
+	 */
+	static float sizeFor(int letters, float roll) {
+		float t = Mth.clamp((letters - SHORT_LETTERS) / (float) LONG_LETTERS, 0, 1);
+		return Mth.lerp(t, SIZE_SHORT, SIZE_LONG) * (1 + (roll * 2 - 1) * SIZE_JITTER);
+	}
+
 	/** How many cards float at once and how many seconds sung ones take to fade (the World words settings). */
 	void tune(int maxCards, float fade) {
 		this.maxCards = Math.max(1, maxCards);
@@ -284,7 +297,13 @@ final class WorldWords {
 		for (int v = 1; v <= d.cps().length; v++) {
 			at[v] = LyricsFont.width(font, style, new String(d.cps(), 0, v));
 		}
-		float size = SIZE * Mth.lerp(next(), SIZE_MIN, SIZE_MAX);
+		int letters = 0;
+		for (int cp : d.cps()) {
+			if (Character.isLetterOrDigit(cp)) {
+				letters++;
+			}
+		}
+		float size = SIZE * sizeFor(letters, next());
 		Vec3 eye = camera.position();
 		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
 		List<float[]> taken = new ArrayList<>(cards.size());

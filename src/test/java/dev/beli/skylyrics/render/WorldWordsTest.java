@@ -64,6 +64,16 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void longWordsAreBiggerThanLittleOnes() {
+		assertTrue(WorldWords.sizeFor(9, 0) > WorldWords.sizeFor(2, 1), "a long word beats a little one even with bad luck");
+		assertEquals(WorldWords.sizeFor(1, 0.5f), WorldWords.sizeFor(3, 0.5f), 1e-6);
+		assertEquals(WorldWords.sizeFor(9, 0.5f), WorldWords.sizeFor(20, 0.5f), 1e-6);
+		for (int n = 1; n < 12; n++) {
+			assertTrue(WorldWords.sizeFor(n + 1, 0.5f) >= WorldWords.sizeFor(n, 0.5f), "grows with the letters");
+		}
+	}
+
+	@Test
 	void cardsCutShortVanishQuickly() {
 		assertEquals(1, WorldWords.cutAlpha(0));
 		assertTrue(WorldWords.cutAlpha(0.1f) < 1);
@@ -83,7 +93,7 @@ class WorldWordsTest {
 		float[][] s = WorldWords.slots();
 		assertEquals(WorldWords.SLOTS, s.length);
 		for (int i = 0; i < s.length; i++) {
-			assertTrue(Math.abs(s[i][0]) <= 25 && Math.abs(s[i][1]) <= 15, "inside the oval");
+			assertTrue(Math.abs(s[i][0]) <= 19 && Math.abs(s[i][1]) <= 11, "inside the oval");
 			for (int j = i + 1; j < s.length; j++) {
 				float dx = s[i][0] - s[j][0], dy = s[i][1] - s[j][1];
 				assertTrue(dx * dx + dy * dy > 4 * 4, "spots " + i + " and " + j + " are apart");
