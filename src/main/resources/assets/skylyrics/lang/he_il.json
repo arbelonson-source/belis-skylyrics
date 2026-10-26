@@ -222,5 +222,13 @@
   "skylyrics.ui.fast": "מהיר",
   "skylyrics.ui.aurora_nebula": "זוהר קוטבי + ערפילית",
   "skylyrics.ui.moonlight": "אור ירח",
-  "skylyrics.ui.random": "אקראי"
+  "skylyrics.ui.random": "אקראי",
+  "skylyrics.ui.performance": "ביצועים",
+  "skylyrics.ui.effects": "אפקטים",
+  "skylyrics.ui.light_draws_less_glow_for_a_smoother_game": "קל מצייר פחות זוהר, למשחק חלק יותר",
+  "skylyrics.ui.full": "מלא",
+  "skylyrics.ui.light": "קל",
+  "skylyrics.ui.right_now": "כרגע",
+  "skylyrics.ui.light_effects": "אפקטים קלים",
+  "skylyrics.ui.full_effects": "אפקטים מלאים"
 }

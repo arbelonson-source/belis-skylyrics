@@ -115,6 +115,14 @@ public final class SkyLyricsConfig {
 		}
 	}
 
+	public enum Effects {
+		/** Full effects, lighter while the frame rate is low. */
+		AUTO,
+		FULL,
+		/** Fewer glow copies around the letters, always. */
+		LIGHT
+	}
+
 	public enum Layer {
 		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
 		AUTO,
@@ -160,6 +168,8 @@ public final class SkyLyricsConfig {
 	public boolean pulse = true;
 	public boolean shadow = true;
 	public float opacity = 1f;
+	/** How much glow to draw: lighter costs fewer frames. */
+	public Effects effects = Effects.AUTO;
 	public SkyEffect sky = SkyEffect.AURORA;
 	public float skyStrength = 0.7f;
 	/** Star patterns joined by thin lines in the night sky. */
@@ -250,6 +260,7 @@ public final class SkyLyricsConfig {
 		if (barShow == null) barShow = d.barShow;
 		if (skyColors == null) skyColors = d.skyColors;
 		if (skySpeed == null) skySpeed = d.skySpeed;
+		if (effects == null) effects = d.effects;
 		if (preferredPlayer == null) preferredPlayer = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);

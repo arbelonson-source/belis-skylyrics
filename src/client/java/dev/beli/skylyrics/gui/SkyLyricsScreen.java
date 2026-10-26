@@ -28,6 +28,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.BarShow;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Effects;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyColors;
@@ -376,6 +377,15 @@ public final class SkyLyricsScreen extends Screen {
 		Row barEq = new Toggle(Tr.t("Equaliser"), Tr.t("Bars that move with the music"),
 				() -> cfg.barEqualiser, v -> cfg.barEqualiser = v).when(() -> cfg.nowPlayingHud);
 
+		Row effects = new Segmented(Tr.t("Effects"), Tr.t("Light draws less glow, for a smoother game"),
+				new String[] {Tr.t("Auto"), Tr.t("Full"), Tr.t("Light")}, () -> cfg.effects.ordinal(),
+				i -> cfg.effects = Effects.values()[i]);
+		Row effectsNow = new Info(Tr.t("Right now"), null, () -> {
+			int fps = Math.round(mod.renderer().fps());
+			String state = mod.renderer().lightEffects() ? Tr.t("light effects") : Tr.t("full effects");
+			return fps > 0 ? fps + " FPS · " + state : state;
+		}).when(() -> cfg.effects == Effects.AUTO);
+
 		Row openKey = new Info(Tr.t("Open settings"), null, () -> keyName(mod.openSettingsKey()));
 		Row controls = new Buttons(Tr.t("More keys"), Tr.t("Toggle lyrics, play/pause, skip songs"),
 				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
@@ -384,6 +394,7 @@ public final class SkyLyricsScreen extends Screen {
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barEq),
+				new Card(Tr.t("Performance"), effects, effectsNow),
 				new Card(Tr.t("Keys"), openKey, controls));
 	}
 

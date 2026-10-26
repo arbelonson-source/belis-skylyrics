@@ -77,7 +77,7 @@ final class WorldWords {
 	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_ALPHA = 0.55f;
 	private static final int SHADOW_RGB = 0x05040C;
 	/** Soft glow: copies of the word around it, how far out (text units) and how strong at full glow. */
-	private static final int GLOW_COPIES = 3;
+	private static final int GLOW_COPIES = 3, GLOW_LIGHT = 2;
 	private static final float GLOW_RADIUS = 1.1f, GLOW_ALPHA = 0.4f;
 	/** Front to back, in text units, so the layers don't flicker against each other. */
 	private static final float SHADOW_Z = -0.5f, GLOW_Z = 0.1f, FACE_Z = 0.3f;
@@ -338,9 +338,11 @@ final class WorldWords {
 	 * @param alpha overall opacity
 	 * @param glow  glow strength from the settings, 0 for none
 	 * @param scale the size setting
+	 * @param light fewer glow copies, of the same total strength, to save frames
 	 */
 	void render(PoseStack pose, SubmitNodeCollector out, Camera camera, Font.DisplayMode mode, Style style, int rgb, float alpha,
-			float glow, float scale, long now) {
+			float glow, float scale, boolean light, long now) {
+		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
 		Vec3 eye = camera.position();
 		Vec3 look = direction(camera.yRot(), camera.xRot());
 		for (Card c : cards) {
@@ -371,9 +373,9 @@ final class WorldWords {
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
 			draw(pose, out, c, shown, style, SHADOW_RGB, a * SHADOW_ALPHA, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
-			float ring = a * GLOW_ALPHA * glow * (c.goneAt < 0 ? 1.3f : 0.8f) / 2;
-			for (int k = 0; k < GLOW_COPIES && ring * 255 >= 4; k++) {
-				float turn = k * Mth.TWO_PI / GLOW_COPIES + 0.5f;
+			float ring = a * GLOW_ALPHA * glow * (c.goneAt < 0 ? 1.3f : 0.8f) / 2 * GLOW_COPIES / copies;
+			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
+				float turn = k * Mth.TWO_PI / copies + 0.5f;
 				draw(pose, out, c, shown, style, colour, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
 						GLOW_Z, mode);
 			}

@@ -52,13 +52,18 @@ public final class LyricsRenderer {
 	static final long LEAD_MS = 150;
 	/** Copies of a word drawn around it for the glow, in the inner and the outer ring. */
 	private static final int GLOW_INNER = 6, GLOW_OUTER = 4;
+	/** Copies in the one ring that light effects draw. */
+	private static final int GLOW_LIGHT = 3;
 
 	/**
 	 * Copies to draw in a glow ring (1 inner, 2 outer) at this strength. A faint glow can't show a rounder
 	 * halo, so it gets fewer copies of the same total brightness and no outer ring, which saves frames on
-	 * the lines not being sung.
+	 * the lines not being sung. Light effects draw just a small inner ring.
 	 */
-	static int glowCopies(int ring, float strength) {
+	static int glowCopies(int ring, float strength, boolean light) {
+		if (light) {
+			return ring == 1 ? GLOW_LIGHT : 0;
+		}
 		if (ring == 1) {
 			return strength >= 0.4f ? GLOW_INNER : 4;
 		}
@@ -111,6 +116,9 @@ public final class LyricsRenderer {
 	private final AlbumArt art;
 
 	private long lastFrame;
+	private final FrameBudget budget = new FrameBudget();
+	/** Fewer glow copies this frame, because the settings ask for it or the game is slow. */
+	private boolean light;
 	private float visibility;
 	private float daylight;
 	private float anchorYaw = Float.NaN;
@@ -166,6 +174,16 @@ public final class LyricsRenderer {
 	}
 
 	/** Whether the lyrics are (even partly) on screen; used to skip work. */
+	/** Whether the lyrics are drawing light effects right now. */
+	public boolean lightEffects() {
+		return light;
+	}
+
+	/** The frame rate as the lyrics see it, smoothed; 0 before the world was first drawn. */
+	public float fps() {
+		return budget.fps();
+	}
+
 	public boolean visible() {
 		return visibility > 0.01f;
 	}
@@ -178,6 +196,8 @@ public final class LyricsRenderer {
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
+		budget.update(dt, mc.getFramerateLimitTracker().getFramerateLimit());
+		light = cfg.effects == SkyLyricsConfig.Effects.LIGHT || cfg.effects == SkyLyricsConfig.Effects.AUTO && budget.light();
 
 		Lyrics current = service.lyrics();
 		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
@@ -303,7 +323,7 @@ public final class LyricsRenderer {
 			return;
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
-		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, rgb(), alpha, cfg.glow, cfg.size, now);
+		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, rgb(), alpha, cfg.glow, cfg.size, light, now);
 	}
 
 	/** When the singing of a line counts as over, for spreading its words over its time. */
@@ -808,11 +828,12 @@ public final class LyricsRenderer {
 			Display d = Display.of(word);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
 			if (cfg.glow > 0.01f) {
-				int glowByte = Math.round(cfg.glow * alpha * 1.28f / GLOW_INNER * 255);
+				int copies = LyricsRenderer.this.light ? GLOW_LIGHT : GLOW_INNER;
+				int glowByte = Math.round(cfg.glow * alpha * 1.28f / copies * 255);
 				if (glowByte >= 2) {
 					int halo = mix(face, 0x000000, 0.75f * daylight);
-					for (int k = 0; k < GLOW_INNER; k++) {
-						float ang = k * Mth.TWO_PI / GLOW_INNER + Mth.PI / GLOW_INNER;
+					for (int k = 0; k < copies; k++) {
+						float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
 						canvas.text(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
 					}
 				}
@@ -956,7 +977,7 @@ public final class LyricsRenderer {
 							};
 							// Two rings of copies make the halo; few copies each, as every copy costs as much as the word itself
 							for (int ring = 1; ring <= 2; ring++) {
-								int copies = glowCopies(ring, ga);
+								int copies = glowCopies(ring, ga, light);
 								if (copies == 0) {
 									continue;
 								}
