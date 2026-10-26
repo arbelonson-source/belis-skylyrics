@@ -35,6 +35,8 @@ public final class MprisSource implements MediaSource {
 		void Previous();
 
 		void SetPosition(DBusPath trackId, long positionUs);
+
+		void OpenUri(String uri);
 	}
 
 	private final Supplier<String> preferredPlayer;
@@ -137,6 +139,25 @@ public final class MprisSource implements MediaSource {
 		} catch (Exception e) {
 			return null;
 		}
+	}
+
+	/**
+	 * Asks the Spotify app on this computer to play {@code uri}. Unlike starting a song through Spotify's servers this
+	 * works without Premium, but it plays just that one song. False if the Spotify app isn't running.
+	 */
+	public static boolean openInSpotify(String uri) {
+		try (DBusConnection conn = DBusConnectionBuilder.forSessionBus().withShared(false).build()) {
+			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
+			for (String name : bus.ListNames()) {
+				if (name.equals(PREFIX + "spotify") || name.startsWith(PREFIX + "spotify.")) {
+					conn.getRemoteObject(name, PATH, Player.class).OpenUri(uri);
+					return true;
+				}
+			}
+		} catch (Exception e) {
+			// No session bus, or Spotify went away
+		}
+		return false;
 	}
 
 	@Override

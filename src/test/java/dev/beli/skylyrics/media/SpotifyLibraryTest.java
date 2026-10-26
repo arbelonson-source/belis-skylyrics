@@ -118,4 +118,22 @@ class SpotifyLibraryTest {
 		assertTrue(SpotifyWebSource.covers(old + " playlist-read-private user-library-read", SpotifyWebSource.LIBRARY_SCOPES));
 		assertFalse(SpotifyWebSource.covers("", SpotifyWebSource.LIBRARY_SCOPES));
 	}
+
+	@Test
+	void withoutPremiumTheSongIsPlayedInTheSpotifyAppOnThisComputer() {
+		List<String> opened = new java.util.ArrayList<>();
+		assertEquals("", SpotifyLibrary.outcome(403, "spotify:track:a", uri -> opened.add(uri)));
+		assertEquals("", SpotifyLibrary.outcome(404, "spotify:track:b", uri -> opened.add(uri)));
+		assertEquals(List.of("spotify:track:a", "spotify:track:b"), opened);
+	}
+
+	@Test
+	void whenSpotifyStartsTheSongTheAppIsLeftAlone() {
+		assertEquals("", SpotifyLibrary.outcome(204, "spotify:track:a", uri -> {
+			throw new AssertionError("asked the app as well");
+		}));
+		// No app either: the user is told why
+		assertFalse(SpotifyLibrary.outcome(403, "spotify:track:a", uri -> false).isEmpty());
+		assertFalse(SpotifyLibrary.outcome(500, "spotify:track:a", uri -> true).isEmpty());
+	}
 }
