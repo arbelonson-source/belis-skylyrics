@@ -76,7 +76,7 @@ final class SynthwaveSky {
 	private static final SkyFrame SUN_FRAME = new SkyFrame().aim(SUN_YAW, SUN_ELEV);
 	private static final SkyFrame SWIRL_FRAME = new SkyFrame().aim(0, SWIRL_ELEV);
 
-	private static final Mesh DOME_MESH, SWIRL_MESH, SUN_MESH;
+	private static final SkyMesh DOME_MESH, SWIRL_MESH, SUN_MESH;
 	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
 	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
 	private static final int[] STAR_SKY = new int[STAR_COUNT];
@@ -86,7 +86,7 @@ final class SynthwaveSky {
 	private static final int[] FACE_ROW_RGB;
 
 	static {
-		DOME_MESH = new Mesh(DOME_ROWS.length, DOME_COLUMNS + 1);
+		DOME_MESH = new SkyMesh(DOME_ROWS.length, DOME_COLUMNS + 1);
 		for (int i = 0; i < DOME_ROWS.length; i++) {
 			double e = DOME_ROWS[i] * DEG;
 			// Plain gradient: where the dome meets the swirl and the sun, their own meshes paint over it
@@ -101,8 +101,8 @@ final class SynthwaveSky {
 		for (int i = 0; i <= SWIRL_RINGS; i++) {
 			swirlRings[i] = (float) Math.tan(i * SWIRL_STEP * DEG);
 		}
-		SWIRL_MESH = polar(SWIRL_FRAME, swirlRings, SWIRL_SEGMENTS);
-		SUN_MESH = polar(SUN_FRAME, sunRings(), SUN_SEGMENTS);
+		SWIRL_MESH = SkyMesh.polar(SWIRL_FRAME, swirlRings, SWIRL_SEGMENTS, SynthwaveSky::background);
+		SUN_MESH = SkyMesh.polar(SUN_FRAME, sunRings(), SUN_SEGMENTS, SynthwaveSky::background);
 
 		SkyFrame f = new SkyFrame();
 		float lo = (float) Math.sin(10 * DEG), hi = (float) Math.sin(80 * DEG);
@@ -147,61 +147,6 @@ final class SynthwaveSky {
 	}
 
 	private final SkyFrame frame = new SkyFrame();
-
-	/** Points on the sky in rows and columns, with their colours; directions are for lyrics facing south. */
-	private static final class Mesh {
-		final int rows, cols;
-		final float[] x, y, z;
-		final int[] rgb;
-
-		Mesh(int rows, int cols) {
-			this.rows = rows;
-			this.cols = cols;
-			x = new float[rows * cols];
-			y = new float[rows * cols];
-			z = new float[rows * cols];
-			rgb = new int[rows * cols];
-		}
-
-		void set(int i, int j, float px, float py, float pz, int color) {
-			int k = i * cols + j;
-			x[k] = px;
-			y[k] = py;
-			z[k] = pz;
-			rgb[k] = color;
-		}
-
-		/** Turned by the yaw (given as cosine and sine) and pushed out to {@code r}. */
-		void draw(SkyCanvas c, float cos, float sin, float r, float level) {
-			for (int i = 0; i + 1 < rows; i++) {
-				for (int j = 0; j + 1 < cols; j++) {
-					corner(c, i * cols + j, cos, sin, r, level);
-					corner(c, i * cols + j + 1, cos, sin, r, level);
-					corner(c, (i + 1) * cols + j + 1, cos, sin, r, level);
-					corner(c, (i + 1) * cols + j, cos, sin, r, level);
-				}
-			}
-		}
-
-		private void corner(SkyCanvas c, int k, float cos, float sin, float r, float level) {
-			c.vertex((x[k] * cos - z[k] * sin) * r, y[k] * r, (z[k] * cos + x[k] * sin) * r, SkyColors.argb(rgb[k], level));
-		}
-	}
-
-	/** Rings (tangents of their angular radius) round the centre of {@code f}, coloured by {@link #background}. */
-	private static Mesh polar(SkyFrame f, float[] rings, int segments) {
-		Mesh mesh = new Mesh(rings.length, segments + 1);
-		for (int i = 0; i < rings.length; i++) {
-			for (int j = 0; j <= segments; j++) {
-				double a = 2 * Math.PI * j / segments;
-				float ta = rings[i] * (float) Math.cos(a), tb = rings[i] * (float) Math.sin(a);
-				float px = f.dx + ta * f.ux + tb * f.vx, py = f.dy + ta * f.uy + tb * f.vy, pz = f.dz + ta * f.uz + tb * f.vz;
-				float l = (float) Math.sqrt(px * px + py * py + pz * pz);
-				mesh.set(i, j, px / l, py / l, pz / l, background(px / l, py / l, pz / l));
-			}
-		}
-		return mesh;
-	}
 
 	/** Rings round the sun as tangents: its middle, then finely through the glow and coarser through the halo. */
 	private static float[] sunRings() {
