@@ -266,4 +266,17 @@ class WorldWordsTest {
 		assertEquals(0, wide[1], 1e-4);
 		assertTrue(line.place(1, 1, 0, 0)[1] > 0);
 	}
+
+	@Test
+	void aRisenCardTakesUpTheSkyFromWhereItStartedToWhereItIsNow() {
+		Vec3 to = new Vec3(0, 0, 10);
+		float[] still = WorldWords.footprint(to, 0, 1, 0.3f);
+		float[] risen = WorldWords.footprint(to, 1, 1, 0.3f);
+		assertEquals(still[0], risen[0], 1e-4);
+		assertEquals(still[2], risen[2], 1e-4);
+		// The patch reaches from the start (pitch 0) up to where it is now (about 5.7 degrees up)
+		float up = (float) Math.toDegrees(Math.atan2(1, 10));
+		assertEquals(still[1] + still[3], risen[1] + risen[3], 1e-3);
+		assertEquals(-up - still[3], risen[1] - risen[3], 1e-2);
+	}
 }
