@@ -50,8 +50,8 @@ final class WorldWords {
 	private static final float PAD_X = 2f, PAD_Y = 1.7f;
 	/** Cards turn sideways by between these many degrees, and nod and lean a little, so they don't look pasted on. */
 	private static final float TURN_MIN = 10f, TURN_MAX = 30f, NOD = 7f, LEAN = 4f;
-	/** Blocks per text unit: capital letters end up about a third of a block tall. */
-	private static final float SIZE = 0.046f;
+	/** Blocks per text unit: capital letters end up a bit under half a block tall, about two degrees across the scatter. */
+	private static final float SIZE = 0.06f;
 	/** Card size, times the setting, for short pieces and for long ones; sizes in between follow the letter count. */
 	private static final float SIZE_SHORT = 0.72f, SIZE_LONG = 1.3f;
 	/** Pieces with up to this many letters are the smallest, with this many more the biggest. */
