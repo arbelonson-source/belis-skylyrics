@@ -20,7 +20,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - The word being sung can grow a little in the sky (optional).
 - Four letter styles for the sky lyrics: Bold, Smooth, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
 - A soft periwinkle colour at first, with more soft colours to pick from. It can also take its colour from the album cover, or use rainbow.
-- At night, a sky of your choice can fill in behind the lyrics while music plays: an aurora, a nebula, **Synthwave** (a purple sky with a striped retro sun) or **Eclipse** (a dark sun with a glowing ring). **Constellations** join some of the stars with thin lines.
+- At night, a sky of your choice can fill in behind the lyrics while music plays: an aurora, a nebula, **Synthwave** (a purple sky with a striped retro sun), **Eclipse** (a dark sun with a glowing ring) or **Moonlight** (a big full moon over drifting clouds). **Constellations** join some of the stars with thin lines.
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
