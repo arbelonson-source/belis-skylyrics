@@ -85,6 +85,14 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void floatUpSettingScalesHowFarWordsDrift() {
+		assertEquals(0, WorldWords.riseAfter(0, 1), 1e-6, "a new word starts where it was put");
+		assertEquals(2 * WorldWords.riseAfter(1, 1), WorldWords.riseAfter(1, 2), 1e-6, "twice the setting, twice as far");
+		assertEquals(0, WorldWords.riseAfter(30, 0), 1e-6, "at 0 words stay still");
+		assertEquals(WorldWords.riseAfter(30, 1), WorldWords.riseAfter(60, 1), 1e-6, "they stop rising after a while");
+	}
+
+	@Test
 	void lingerSettingStretchesTheFade() {
 		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);

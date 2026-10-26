@@ -165,6 +165,8 @@ final class WorldWords {
 	/** How much further out than usual new cards float, and as much bigger, so they look the same size (the Distance setting). */
 	private float away = 1;
 	private float tilt = 1;
+	/** How far cards drift up, times the usual (the Float up setting). */
+	private float rise = 1;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
 	private @Nullable String lineRaw, lineText;
 	/** Whether new lines are written in capitals; a change shows from the next line on. */
@@ -248,11 +250,12 @@ final class WorldWords {
 
 	/**
 	 * How many cards float at once, how many seconds sung ones take to fade, how far out new ones float, how much they
-	 * turn and lean and whether a line flows left to right (the World words settings).
+	 * turn and lean, how far they drift up and whether a line flows left to right (the World words settings).
 	 */
-	void tune(int maxCards, float fade, float away, float tilt, boolean flow, boolean hold, boolean capitals) {
+	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals) {
 		this.away = Mth.clamp(away, 0.5f, 2);
 		this.tilt = Mth.clamp(tilt, 0, 2);
+		this.rise = Mth.clamp(rise, 0, 2);
 		this.hold = hold;
 		this.capitals = capitals;
 		this.maxCards = Math.max(1, maxCards);
@@ -614,7 +617,7 @@ final class WorldWords {
 				continue;
 			}
 			float x = (float) (c.pos.x - eye.x), z = (float) (c.pos.z - eye.z);
-			float y = (float) (c.pos.y - eye.y) + Math.min(age * RISE, RISE_MAX);
+			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise);
 			int n = c.display.cps().length;
 			float grow = c.size * scale * pop(age);
 			Vector3f centre = new Vector3f(x, y, z);
@@ -693,6 +696,11 @@ final class WorldWords {
 			g = Math.min(g, GLOW_LIT * (1 - Mth.clamp(replaced / GLOW_OUT, 0, 1)));
 		}
 		return g;
+	}
+
+	/** How many blocks a card has drifted up {@code age} seconds after it came, with the Float up setting {@code rise}. */
+	static float riseAfter(float age, float rise) {
+		return Math.min(age * RISE, RISE_MAX) * rise;
 	}
 
 	/** How dark the drop shadow is: stronger by day, when the sky behind the words is bright. */

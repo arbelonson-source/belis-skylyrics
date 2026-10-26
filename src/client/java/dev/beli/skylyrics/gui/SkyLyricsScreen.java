@@ -196,6 +196,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row tilt = new Slider(Tr.t("Tilt"), Tr.t("How much the words turn and lean, 0 faces you"), 0, 2, 0.05,
 				() -> cfg.worldTilt, v -> cfg.worldTilt = (float) v, v -> Math.round(v * 100) + "%")
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row rise = new Slider(Tr.t("Float up"), Tr.t("How far the words drift up, 0 keeps them still"), 0, 2, 0.05,
+				() -> cfg.worldRise, v -> cfg.worldRise = (float) v, v -> Math.round(v * 100) + "%")
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row flow = new Toggle(Tr.t("Flowing line"), Tr.t("Words read left to right instead of scattering"),
 				() -> cfg.worldFlow, v -> cfg.worldFlow = v)
 				.when(() -> cfg.layout == Layout.WORLD);
@@ -229,7 +232,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, flow, hold, tint, glide),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, hold, tint, glide),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 
