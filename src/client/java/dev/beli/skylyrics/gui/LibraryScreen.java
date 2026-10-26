@@ -12,10 +12,12 @@ import java.util.function.IntFunction;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -30,6 +32,7 @@ import dev.beli.skylyrics.media.LibraryItem;
 import dev.beli.skylyrics.media.LibraryPlaylist;
 import dev.beli.skylyrics.media.SpotifyLibrary.Page;
 import dev.beli.skylyrics.media.SpotifyWebSource;
+import dev.beli.skylyrics.render.CoverCache;
 
 /** Browse your songs as a grid of covers and click one to play it. Drawn by hand like the settings window. */
 public final class LibraryScreen extends Screen {
@@ -211,6 +214,7 @@ public final class LibraryScreen extends Screen {
 			selected = -1;
 		}
 		pollPlaying();
+		mod.covers().upload();
 		layout();
 
 		Frame f = new Frame(g, font, mouseX, mouseY, dt, true);
@@ -376,33 +380,46 @@ public final class LibraryScreen extends Screen {
 		String title;
 		String under;
 		String colorKey;
+		String coverUrl;
 		if (entry instanceof LibraryItem item) {
 			title = item.title();
 			under = item.artists();
 			colorKey = item.album().isEmpty() ? item.title() : item.album();
+			coverUrl = item.coverUrl();
 		} else {
 			LibraryPlaylist list = (LibraryPlaylist) entry;
 			title = list.name();
 			under = Tr.t("%s songs", list.songs());
 			colorKey = list.name();
+			coverUrl = list.coverUrl();
 		}
+		CoverCache.Cover cover = mod.covers().get(coverUrl);
+		float shown = cover == null ? 0 : cover.shown(System.nanoTime());
 		int rgb = Mth.hsvToRgb(LibraryGrid.hue(colorKey), 0.55f, 0.8f);
+		int glow = cover == null ? rgb : cover.color();
 
 		g.pose().pushMatrix();
 		g.pose().translate(x + cellW / 2f, y + cellW / 2f);
 		g.pose().scale(scale, scale);
 		g.pose().translate(-(x + cellW / 2f), -(y + cellW / 2f));
 		if (lift > 0.01f) {
-			Ui.rect(g, x - 2, y - 2, cellW + 4, cellW + 4, 7, Ui.alpha(0xFF000000 | rgb, 0.35f * lift * alpha));
+			Ui.rect(g, x - 2, y - 2, cellW + 4, cellW + 4, 7, Ui.alpha(0xFF000000 | glow, 0.35f * lift * alpha));
 		}
-		Ui.rect(g, x, y, cellW, cellW, 5, Ui.alpha(0xFF000000 | rgb, alpha));
-		Ui.rect(g, x, y + cellW / 2, cellW, cellW / 2, 5, Ui.alpha(0x30000000, alpha));
-		String initial = title.isEmpty() ? "♪" : title.substring(0, title.offsetByCodePoints(0, 1)).toUpperCase();
-		g.pose().pushMatrix();
-		g.pose().translate(x + cellW / 2f, y + cellW / 2f - 7);
-		g.pose().scale(2, 2);
-		g.drawCenteredString(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
-		g.pose().popMatrix();
+		if (shown < 1) {
+			// Coloured stand-in until the real cover arrives, then the cover fades in over it
+			Ui.rect(g, x, y, cellW, cellW, 5, Ui.alpha(0xFF000000 | rgb, alpha));
+			Ui.rect(g, x, y + cellW / 2, cellW, cellW / 2, 5, Ui.alpha(0x30000000, alpha));
+			String initial = title.isEmpty() ? "♪" : title.substring(0, title.offsetByCodePoints(0, 1)).toUpperCase();
+			g.pose().pushMatrix();
+			g.pose().translate(x + cellW / 2f, y + cellW / 2f - 7);
+			g.pose().scale(2, 2);
+			g.drawCenteredString(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
+			g.pose().popMatrix();
+		}
+		if (cover != null) {
+			int s = CoverCache.SIZE;
+			g.blit(RenderPipelines.GUI_TEXTURED, cover.id(), x, y, 0, 0, cellW, cellW, s, s, s, s, ARGB.white(alpha * shown));
+		}
 		if (chosen) {
 			Ui.outline(g, x - 1, y - 1, cellW + 2, cellW + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
 		}
