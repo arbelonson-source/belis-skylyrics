@@ -144,6 +144,8 @@ public final class SkyLyricsConfig {
 	public float worldLinger = 2.2f;
 	/** World layout: how far out the words float, times the usual 6 to 15 blocks; they grow to match, so they read the same. */
 	public float worldDistance = 1f;
+	/** World layout: how much the words turn sideways, nod and lean, times the usual; 0 has them face you straight on. */
+	public float worldTilt = 1f;
 	/** World layout: a line's words read left to right in rows, like handwriting, instead of scattering. */
 	public boolean worldFlow = false;
 	/** World layout: a line's earlier words stay lit until the line is over, so you can read it whole. */
@@ -289,6 +291,7 @@ public final class SkyLyricsConfig {
 		worldWords = Math.max(1, Math.min(10, worldWords));
 		worldLinger = clamp(worldLinger, 0.8f, 6);
 		worldDistance = clamp(worldDistance, 0.5f, 2);
+		worldTilt = clamp(worldTilt, 0, 2);
 		barSize = clamp(barSize, 0.75f, 1.5f);
 		barBackground = clamp(barBackground, 0, 1);
 		height = clamp(height, -10, 80);

@@ -164,6 +164,7 @@ final class WorldWords {
 	private float fade = FADE;
 	/** How much further out than usual new cards float, and as much bigger, so they look the same size (the Distance setting). */
 	private float away = 1;
+	private float tilt = 1;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
 	private @Nullable String lineRaw, lineText;
 	/** Whether new lines are written in capitals; a change shows from the next line on. */
@@ -246,11 +247,12 @@ final class WorldWords {
 	}
 
 	/**
-	 * How many cards float at once, how many seconds sung ones take to fade, how far out new ones float and whether a
-	 * line flows left to right (the World words settings).
+	 * How many cards float at once, how many seconds sung ones take to fade, how far out new ones float, how much they
+	 * turn and lean and whether a line flows left to right (the World words settings).
 	 */
-	void tune(int maxCards, float fade, float away, boolean flow, boolean hold, boolean capitals) {
+	void tune(int maxCards, float fade, float away, float tilt, boolean flow, boolean hold, boolean capitals) {
 		this.away = Mth.clamp(away, 0.5f, 2);
+		this.tilt = Mth.clamp(tilt, 0, 2);
 		this.hold = hold;
 		this.capitals = capitals;
 		this.maxCards = Math.max(1, maxCards);
@@ -429,9 +431,10 @@ final class WorldWords {
 			distance -= 1;
 		}
 		Vec3 pos = eye.add(dir.scale(Math.max(CLOSEST, distance)));
-		float turn = flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
-				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1);
-		float nod = (next() * 2 - 1) * NOD * (flow ? 0.5f : 1), lean = (next() * 2 - 1) * LEAN;
+		// The Tilt setting scales every angle, so at 0 a card faces you square on
+		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
+				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
+		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? 0.5f : 1), lean = tilt * (next() * 2 - 1) * LEAN;
 		cards.add(new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now));
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
