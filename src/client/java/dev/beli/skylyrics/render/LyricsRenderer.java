@@ -160,6 +160,8 @@ public final class LyricsRenderer {
 	/** An arc line's spot in the sky, and since when it's been there or out of view. */
 	private static final class ArcAnchor {
 		float yaw, pitch;
+		/** How far left or right of where you looked it was placed. */
+		float side;
 		long placed;
 		long lostSince = -1;
 	}
@@ -363,7 +365,8 @@ public final class LyricsRenderer {
 	/**
 	 * The line's spot: where you're looking when it starts, a little above the crosshair, and then it stays put
 	 * like the clouds. A line you've turned well away from for a moment comes back to where you look now, so a
-	 * long line isn't lost behind you. With a fixed compass direction the lines keep to it instead.
+	 * long line isn't lost behind you. In the sky it turns with you unless lazy follow is on; with a fixed
+	 * compass direction the lines keep to it instead.
 	 */
 	private ArcAnchor arcAnchor(SkyLyricsConfig cfg, Camera camera, int index, long now, boolean follow) {
 		boolean fixed = cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW;
@@ -386,6 +389,7 @@ public final class LyricsRenderer {
 			float up = ARC_ABOVE_MIN + ArcLayout.unit(seed, 0, SALT_UP) * (ARC_ABOVE_MAX - ARC_ABOVE_MIN);
 			anchor = new ArcAnchor();
 			anchor.placed = now;
+			anchor.side = side;
 			if (fixed) {
 				anchor.yaw = cfg.direction.yaw + side;
 				anchor.pitch = -cfg.height - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
@@ -394,6 +398,10 @@ public final class LyricsRenderer {
 				anchor.pitch = Mth.clamp(camera.xRot() - up, -85, 85);
 			}
 			arcAnchors.put(index, anchor);
+		}
+		if (follow && cfg.placement == Placement.SKY && cfg.direction == SkyLyricsConfig.Direction.FOLLOW
+				&& !cfg.lazyFollow) {
+			anchor.yaw = camera.yRot() + anchor.side; // turns with you, no waiting
 		}
 		return anchor;
 	}
@@ -1277,22 +1285,22 @@ public final class LyricsRenderer {
 			targetPitch = Mth.clamp(camPitch - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;
 		} else if (cfg.direction == SkyLyricsConfig.Direction.FOLLOW) {
-			// Lazy follow: stay put while you look around a bit, catch up when you turn away
+			// Right where you look; lazy follow stays put while you look around a bit and catches up when you turn away
 			float diff = Mth.wrapDegrees(camYaw - anchorYaw);
-			if (Math.abs(diff) > 38) {
+			if (!cfg.lazyFollow || Math.abs(diff) > 38) {
 				following = true;
 			} else if (Math.abs(diff) < 4) {
 				following = false;
 			}
 			targetYaw = following ? camYaw : anchorYaw;
 			targetPitch = -cfg.height;
-			speed = 2.2f;
+			speed = cfg.lazyFollow ? 2.2f : Float.POSITIVE_INFINITY;
 		} else {
 			targetYaw = cfg.direction.yaw;
 			targetPitch = -cfg.height;
 			speed = 3f;
 		}
-		float k = dt == 0 ? 1 : 1 - (float) Math.exp(-dt * speed);
+		float k = dt == 0 || Float.isInfinite(speed) ? 1 : 1 - (float) Math.exp(-dt * speed);
 		anchorYaw += Mth.wrapDegrees(targetYaw - anchorYaw) * k;
 		anchorPitch += (targetPitch - anchorPitch) * k;
 	}

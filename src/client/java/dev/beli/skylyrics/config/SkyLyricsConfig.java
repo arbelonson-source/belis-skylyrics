@@ -136,6 +136,8 @@ public final class SkyLyricsConfig {
 	public boolean enabled = true;
 	public Placement placement = Placement.SKY;
 	public Direction direction = Direction.FOLLOW;
+	/** Follow waits until you turn away, then glides over, instead of staying right where you look. */
+	public boolean lazyFollow = false;
 	public Layout layout = Layout.ARC;
 
 	// Lyrics

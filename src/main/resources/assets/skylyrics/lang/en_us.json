@@ -27,6 +27,8 @@
   "skylyrics.ui.floating": "Floating",
   "skylyrics.ui.direction": "Direction",
   "skylyrics.ui.follow_keeps_them_where_you_look": "Follow keeps them where you look",
+  "skylyrics.ui.lazy_follow": "Lazy follow",
+  "skylyrics.ui.wait_until_you_turn_away_then_glide_over": "Wait until you turn away, then glide over",
   "skylyrics.ui.follow": "Follow",
   "skylyrics.ui.n": "N",
   "skylyrics.ui.e": "E",

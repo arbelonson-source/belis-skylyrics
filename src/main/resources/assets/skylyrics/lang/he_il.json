@@ -27,6 +27,8 @@
   "skylyrics.ui.floating": "צף",
   "skylyrics.ui.direction": "כיוון",
   "skylyrics.ui.follow_keeps_them_where_you_look": "עוקב משאיר אותן במבט שלך",
+  "skylyrics.ui.lazy_follow": "מעקב איטי",
+  "skylyrics.ui.wait_until_you_turn_away_then_glide_over": "מחכה שתסתובב ואז מחליק אחריך",
   "skylyrics.ui.follow": "עוקב",
   "skylyrics.ui.n": "צ",
   "skylyrics.ui.e": "מז",

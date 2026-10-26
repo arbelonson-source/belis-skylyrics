@@ -168,6 +168,9 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.direction == Direction.FOLLOW ? 0 : cfg.direction.ordinal() + 1,
 				i -> cfg.direction = i == 0 ? Direction.FOLLOW : Direction.values()[i - 1])
 				.when(() -> cfg.placement == Placement.SKY || cfg.layout == Layout.WORLD);
+		Row lazyFollow = new Toggle(Tr.t("Lazy follow"), Tr.t("Wait until you turn away, then glide over"),
+				() -> cfg.lazyFollow, v -> cfg.lazyFollow = v)
+				.when(() -> cfg.placement == Placement.SKY && cfg.layout != Layout.WORLD && cfg.direction == Direction.FOLLOW);
 		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°");
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
@@ -195,7 +198,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, height, distance, size),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, size),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 
