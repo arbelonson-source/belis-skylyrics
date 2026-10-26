@@ -93,7 +93,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		Path cache = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(MOD_ID);
 
 		spotify = new SpotifyWebSource(() -> SkyLyricsConfig.get().spotifyClientId, cache.resolve("spotify-login.json"));
-		library = new SpotifyLibrary(spotify);
+		library = windows() || mac() ? new SpotifyLibrary(spotify) : new SpotifyLibrary(spotify, MprisSource::openInSpotify);
 		MediaSource music = new ChosenSource(musicSource(cache), spotify, () -> SkyLyricsConfig.get().preferredPlayer);
 		tracker = new MediaTracker(music, () -> SkyLyricsConfig.get().demoMode);
 		lyrics = new LyricsService(new LrclibClient(version), cache);

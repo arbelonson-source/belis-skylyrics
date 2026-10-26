@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Predicate;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -49,6 +50,7 @@ public final class SpotifyLibrary implements Library {
 	}
 
 	private final SpotifyWebSource spotify;
+	private final Predicate<String> openHere;
 	private final ExecutorService worker = Executors.newSingleThreadExecutor(r -> {
 		Thread t = new Thread(r, "SkyLyrics library");
 		t.setDaemon(true);
@@ -57,7 +59,16 @@ public final class SpotifyLibrary implements Library {
 	private volatile @Nullable String me;
 
 	public SpotifyLibrary(SpotifyWebSource spotify) {
+		this(spotify, uri -> false);
+	}
+
+	/**
+	 * @param openHere plays a song in the Spotify app on this computer, for when Spotify's servers won't start it
+	 *                 (no Premium, or no app open as far as they know); false if that didn't work either
+	 */
+	public SpotifyLibrary(SpotifyWebSource spotify, Predicate<String> openHere) {
 		this.spotify = spotify;
+		this.openHere = openHere;
 	}
 
 	@Override
@@ -95,18 +106,22 @@ public final class SpotifyLibrary implements Library {
 			HttpResponse<String> response = spotify.call("PUT", "/me/player/play", body);
 			if (response.statusCode() == 404) {
 				String device = firstDevice(get("/me/player/devices"));
-				if (device == null) {
-					return Tr.t("Open Spotify on your computer or phone first");
+				if (device != null) {
+					response = spotify.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 				}
-				response = spotify.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 			}
-			return switch (response.statusCode()) {
-				case 200, 202, 204 -> "";
-				case 403 -> Tr.t("Spotify Premium is needed to start songs");
-				case 404 -> Tr.t("Open Spotify on your computer or phone first");
-				default -> Tr.t("Spotify didn't start the song, try again");
-			};
+			return outcome(response.statusCode(), item.uri(), openHere);
 		}).exceptionally(e -> Tr.t("Spotify didn't start the song, try again"));
+	}
+
+	/** What to tell the user after Spotify answered {@code status}, trying the app on this computer if it said no. */
+	static String outcome(int status, String uri, Predicate<String> openHere) {
+		return switch (status) {
+			case 200, 202, 204 -> "";
+			case 403 -> openHere.test(uri) ? "" : Tr.t("Spotify Premium is needed to start songs");
+			case 404 -> openHere.test(uri) ? "" : Tr.t("Open Spotify on your computer or phone first");
+			default -> Tr.t("Spotify didn't start the song, try again");
+		};
 	}
 
 	private interface Job<T> {
