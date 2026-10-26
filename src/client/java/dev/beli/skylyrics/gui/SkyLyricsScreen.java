@@ -176,9 +176,15 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.lazyFollow, v -> cfg.lazyFollow = v)
 				.when(() -> cfg.placement == Placement.SKY && cfg.layout != Layout.WORLD && cfg.direction == Direction.FOLLOW);
 		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
-				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°");
+				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°")
+				.when(() -> cfg.layout != Layout.WORLD);
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
-				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)));
+				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)))
+				.when(() -> cfg.layout != Layout.WORLD);
+		// World words float at a mix of distances, so their setting is times the usual instead of blocks
+		Row worldDistance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 0.5, 2, 0.05,
+				() -> cfg.worldDistance, v -> cfg.worldDistance = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v))
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row size = new Slider(Tr.t("Size"), null, 0.3, 3, 0.05,
 				() -> cfg.size, v -> cfg.size = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v));
 		Row worldWords = new Slider(Tr.t("Words at once"), Tr.t("How many words float around you"), 1, 10, 1,
@@ -220,7 +226,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, size, worldWords, linger, flow, hold, tint, glide),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, flow, hold, tint, glide),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 

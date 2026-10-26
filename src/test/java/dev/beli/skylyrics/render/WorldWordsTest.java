@@ -81,6 +81,14 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void fartherWordsGrowSoTheyReadTheSameSize() {
+		// The Distance setting pushes a card out and makes it as much bigger, so it takes up the same bit of the view
+		for (float away : new float[] {0.5f, 1.5f, 2f}) {
+			assertEquals(WorldWords.halfAngle(40 * 0.06f, 10), WorldWords.halfAngle(40 * 0.06f * away, 10 * away), 1e-4);
+		}
+	}
+
+	@Test
 	void longWordsAreBiggerThanLittleOnes() {
 		assertTrue(WorldWords.sizeFor(9, 0) > WorldWords.sizeFor(2, 1), "a long word beats a little one even with bad luck");
 		assertEquals(WorldWords.sizeFor(1, 0.5f), WorldWords.sizeFor(3, 0.5f), 1e-6);
