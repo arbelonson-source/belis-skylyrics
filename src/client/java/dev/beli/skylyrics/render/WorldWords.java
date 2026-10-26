@@ -601,7 +601,8 @@ final class WorldWords {
 				sung = c;
 			}
 		}
-		for (Card c : cards) {
+		for (int i = 0; i < cards.size(); i++) {
+			Card c = cards.get(i);
 			float age = (now - c.born) / 1e9f;
 			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
 			float a = alpha * Mth.clamp(age / FADE_IN, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade))
@@ -632,7 +633,7 @@ final class WorldWords {
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
-			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung, c.goneAt < 0 ? -1 : gone) / 2 * GLOW_COPIES / copies;
+			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(colour, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
@@ -674,6 +675,21 @@ final class WorldWords {
 			return sung ? GLOW_SUNG : GLOW_LIT;
 		}
 		return GLOW_LIT * (1 - Mth.clamp(gone / GLOW_OUT, 0, 1));
+	}
+
+	/**
+	 * {@link #glowFor(boolean, float)} with the Effects setting: with light effects only the words being sung keep their
+	 * glow, as the ring costs most of what a card takes to draw and the rest of the line still reads by its shadow. A
+	 * word's glow goes out over {@link #GLOW_OUT} once the next one comes, the same way as when it's let go.
+	 *
+	 * @param replaced seconds since the next word came, or a negative number while this is the newest
+	 */
+	static float glowFor(boolean sung, float gone, float replaced, boolean light) {
+		float g = glowFor(sung, gone);
+		if (light && !sung && replaced >= 0) {
+			g = Math.min(g, GLOW_LIT * (1 - Mth.clamp(replaced / GLOW_OUT, 0, 1)));
+		}
+		return g;
 	}
 
 	/** How dark the drop shadow is: stronger by day, when the sky behind the words is bright. */

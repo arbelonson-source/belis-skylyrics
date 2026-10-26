@@ -76,6 +76,15 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void lightEffectsKeepTheGlowOnlyOnTheWordsBeingSung() {
+		assertEquals(WorldWords.glowFor(true, -1), WorldWords.glowFor(true, -1, -1, true), 1e-6, "the sung word glows as before");
+		assertEquals(WorldWords.glowFor(false, -1), WorldWords.glowFor(false, -1, 0, true), 1e-6, "no jump when the next word comes");
+		assertEquals(0, WorldWords.glowFor(false, -1, WorldWords.GLOW_OUT, true), 1e-6, "then it goes out");
+		assertEquals(WorldWords.glowFor(false, -1), WorldWords.glowFor(false, -1, 5, false), 1e-6, "full effects keep the line lit");
+		assertEquals(0, WorldWords.glowFor(false, WorldWords.GLOW_OUT, 0, true), 1e-6, "a let-go word stays dark");
+	}
+
+	@Test
 	void lingerSettingStretchesTheFade() {
 		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);
