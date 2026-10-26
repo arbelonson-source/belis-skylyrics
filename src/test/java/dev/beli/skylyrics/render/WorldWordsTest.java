@@ -168,6 +168,25 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void steeringTurnsTheWordsWithYou() {
+		// A word 10 blocks ahead stays 10 blocks ahead of a quarter turn
+		Vec3 turned = WorldWords.swing(new Vec3(0, 0, 10), 90, 0);
+		assertEquals(-10, turned.x, 1e-3);
+		assertEquals(0, turned.y, 1e-3);
+		assertEquals(0, turned.z, 1e-3);
+		// Looking down brings it down with you, but never over the top
+		Vec3 lower = WorldWords.swing(new Vec3(0, 0, 10), 0, 30);
+		assertEquals(-5, lower.y, 1e-3);
+		assertEquals(10, lower.length(), 1e-3);
+		assertTrue(WorldWords.swing(new Vec3(0, 0, 10), 0, -200).y < 10);
+		// The rest of a flowing line turns too
+		WorldWords.Sentence line = new WorldWords.Sentence(-10, 5, 10, 0);
+		line.swing(20, 3);
+		assertEquals(10, line.left, 1e-6f);
+		assertEquals(8, line.top, 1e-6f);
+	}
+
+	@Test
 	void aFlowingLineReadsLeftToRight() {
 		WorldWords.Sentence line = new WorldWords.Sentence(-10, 5, 10, 0);
 		float[] first = line.place(3, 1, 0, 0), second = line.place(2, 1, 0, 0);

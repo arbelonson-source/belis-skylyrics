@@ -83,6 +83,8 @@ final class WorldWords {
 	private static final float GONE_DISTANCE = 48f;
 	/** A jump further than this in one frame is a teleport, not flying, so the words stay behind (blocks). */
 	private static final float GLIDE_JUMP = 16f;
+	/** How far up or down, in degrees, cards turned along with your view may go, so they never flip over your head. */
+	private static final float SWING_PITCH = 80f;
 	/** Drop shadow: offset down-right in text units, colour, and opacity by night and by day (a bright sky needs it darker). */
 	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_NIGHT = 0.55f, SHADOW_DAY = 0.85f;
 	private static final int SHADOW_RGB = 0x05040C;
@@ -117,7 +119,9 @@ final class WorldWords {
 		final float[] at;
 		/** Where it stands; moves along with you while you glide, ride or fly (elytra mode). */
 		Vec3 pos;
-		final float face, nod, lean, size;
+		final float nod, lean, size;
+		/** The way the card faces, turned along with you while you travel. */
+		float face;
 		final long born;
 		long goneAt = -1;
 		/** When it was cut short to make room for newer cards, or -1. */
@@ -144,6 +148,7 @@ final class WorldWords {
 	private boolean hold = true;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
 	private @Nullable Vec3 lastEye;
+	private float lastYaw, lastPitch;
 	private @Nullable Sentence sentence;
 	private int maxCards = MAX_CARDS;
 	private float fade = FADE;
@@ -313,17 +318,36 @@ final class WorldWords {
 	}
 
 	/**
-	 * Elytra mode: while you glide, ride or fly, every card moves along with you, so the words travel with you instead
-	 * of being left behind in a few seconds. Call once a frame, before {@link #update}.
+	 * Elytra mode: while you glide, ride or fly, every card moves and turns along with you, so the words travel with
+	 * you instead of being left behind, and steering doesn't swing them (or the rest of the line) out of sight.
+	 * Call once a frame, before {@link #update}.
 	 */
-	void glide(Vec3 eye, boolean gliding) {
+	void glide(Vec3 eye, float yaw, float pitch, boolean gliding) {
 		Vec3 moved = carry(lastEye, eye, gliding);
+		float turn = Mth.wrapDegrees(yaw - lastYaw), tilt = pitch - lastPitch;
 		lastEye = eye;
-		if (moved != Vec3.ZERO) {
-			for (Card c : cards) {
-				c.pos = c.pos.add(moved);
-			}
+		lastYaw = yaw;
+		lastPitch = pitch;
+		if (moved == Vec3.ZERO) {
+			return;
 		}
+		for (Card c : cards) {
+			c.pos = eye.add(swing(c.pos.add(moved).subtract(eye), turn, tilt));
+			c.face += turn;
+		}
+		if (sentence != null) {
+			sentence.swing(turn, tilt);
+		}
+	}
+
+	/** An offset from the eye turned with the view: {@code turn} degrees round and {@code tilt} degrees down. */
+	static Vec3 swing(Vec3 offset, float turn, float tilt) {
+		double far = offset.length();
+		if (far < 1e-3 || turn == 0 && tilt == 0) {
+			return offset;
+		}
+		float pitch = Mth.clamp(pitchOf(offset) + tilt, -SWING_PITCH, SWING_PITCH);
+		return direction(yawOf(offset) + turn, pitch).scale(far);
 	}
 
 	/** How far the cards move with you this frame: as far as you went while travelling, otherwise nowhere. */
@@ -483,9 +507,9 @@ final class WorldWords {
 		static final float WIDTH = 26f;
 		/** Space between pieces, in their own half heights (room for the pop-in), and between rows, in degrees. */
 		static final float GAP = 1.6f, ROW_GAP = 0.4f;
-		final float left, distance, turn;
-		/** The pitch of the row being written (bigger is lower) and its right end so far. */
-		float top, cursor;
+		final float distance, turn;
+		/** Where rows start, the pitch of the row being written (bigger is lower) and its right end so far. */
+		float left, top, cursor;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this.left = left;
@@ -504,6 +528,13 @@ final class WorldWords {
 			}
 			cursor = yaw + halfW;
 			return new float[] {yaw, top + bob};
+		}
+
+		/** Turns the rest of the line along with you (see {@link WorldWords#glide}). */
+		void swing(float turn, float tilt) {
+			left += turn;
+			cursor += turn;
+			top = Mth.clamp(top + tilt, -SWING_PITCH, SWING_PITCH);
 		}
 	}
 

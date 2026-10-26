@@ -385,7 +385,7 @@ public final class LyricsRenderer {
 		}
 		Style style = LyricsFont.sky(cfg);
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldFlow, cfg.worldHold, cfg.uppercase);
-		worldWords.glide(camera.position(), cfg.worldGlide && mc.player != null
+		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying));
 		worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);
 		float alpha = visibility * cfg.opacity;
