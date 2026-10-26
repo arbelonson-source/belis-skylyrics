@@ -50,6 +50,8 @@ public final class LyricsRenderer {
 	private static final long ANIM_NS = 450_000_000L;
 	/** Lines show a little before their timestamp so the animation has finished when the singing starts. */
 	static final long LEAD_MS = 150;
+	/** Copies of a word drawn around it for the glow, in the inner and the outer ring. */
+	private static final int GLOW_INNER = 6, GLOW_OUTER = 4;
 	/** In the WORLD layout, a line's last words stay this long after it's over before they fade too. */
 	private static final long WORLD_LINGER_MS = 450;
 	private static final float ROW_H = 10f;
@@ -794,11 +796,11 @@ public final class LyricsRenderer {
 			Display d = Display.of(word);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
 			if (cfg.glow > 0.01f) {
-				int glowByte = Math.round(cfg.glow * alpha * 0.16f * 255);
+				int glowByte = Math.round(cfg.glow * alpha * 1.28f / GLOW_INNER * 255);
 				if (glowByte >= 2) {
 					int halo = mix(face, 0x000000, 0.75f * daylight);
-					for (int k = 0; k < 8; k++) {
-						float ang = k * Mth.PI / 4;
+					for (int k = 0; k < GLOW_INNER; k++) {
+						float ang = k * Mth.TWO_PI / GLOW_INNER + Mth.PI / GLOW_INNER;
 						canvas.text(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
 					}
 				}
@@ -940,15 +942,18 @@ public final class LyricsRenderer {
 								}
 								return true;
 							};
+							// Two rings of copies make the halo; few copies each, as every copy costs as much as the word itself
 							for (int ring = 1; ring <= 2; ring++) {
+								int copies = ring == 1 ? GLOW_INNER : GLOW_OUTER;
 								float radius = ring * 0.85f * (1 + 0.7f * fl);
-								int alphaByte = Math.min(255, Math.round(ga * (ring == 1 ? 0.16f : 0.08f) * 255));
+								int alphaByte = Math.min(255, Math.round(ga * (ring == 1 ? 1.28f : 0.64f) / copies * 255));
 								if (alphaByte < 2) {
 									continue;
 								}
 								int glowColor = alphaByte << 24 | halo;
-								for (int k = 0; k < 8; k++) {
-									float ang = k * Mth.PI / 4 + (ring == 2 ? Mth.PI / 8 : 0);
+								float offset = ring == 1 ? Mth.PI / copies : Mth.PI / 4;
+								for (int k = 0; k < copies; k++) {
+									float ang = k * Mth.TWO_PI / copies + offset;
 									canvas.text(sx + Mth.cos(ang) * radius, sy + Mth.sin(ang) * radius,
 											glowSeq, false, glowColor, 1);
 								}
