@@ -73,12 +73,14 @@ final class WorldWords {
 	private static final float CULL = 0.3f;
 	/** Cards this far away are dropped, in blocks. */
 	private static final float GONE_DISTANCE = 48f;
-	/** Drop shadow: offset down-right in text units, colour and opacity. */
-	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_ALPHA = 0.55f;
+	/** Drop shadow: offset down-right in text units, colour, and opacity by night and by day (a bright sky needs it darker). */
+	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_NIGHT = 0.55f, SHADOW_DAY = 0.85f;
 	private static final int SHADOW_RGB = 0x05040C;
 	/** Soft glow: copies of the word around it, how far out (text units) and how strong at full glow. */
 	private static final int GLOW_COPIES = 3, GLOW_LIGHT = 2;
 	private static final float GLOW_RADIUS = 1.1f, GLOW_ALPHA = 0.4f;
+	/** By day the glow goes this far toward black: a dark halo shows against a bright sky, a light one doesn't. */
+	private static final float HALO_DAY = 0.75f;
 	/** Front to back, in text units, so the layers don't flicker against each other. */
 	private static final float SHADOW_Z = -0.5f, GLOW_Z = 0.1f, FACE_Z = 0.3f;
 	/** From the top of a row of text to the middle of its capitals. */
@@ -337,11 +339,12 @@ final class WorldWords {
 	 * @param rgb   the lyrics colour
 	 * @param alpha overall opacity
 	 * @param glow  glow strength from the settings, 0 for none
+	 * @param day   how much it's daytime, 0 to 1; by day the shadow and glow go darker to stand out from the sky
 	 * @param scale the size setting
 	 * @param light fewer glow copies, of the same total strength, to save frames
 	 */
 	void render(PoseStack pose, SubmitNodeCollector out, Camera camera, Font.DisplayMode mode, Style style, int rgb, float alpha,
-			float glow, float scale, boolean light, long now) {
+			float glow, float day, float scale, boolean light, long now) {
 		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
 		Vec3 eye = camera.position();
 		Vec3 look = direction(camera.yRot(), camera.xRot());
@@ -372,16 +375,24 @@ final class WorldWords {
 			pose.mulPose(new Quaternionf().rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG).rotateZ(c.lean * DEG));
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
-			draw(pose, out, c, shown, style, SHADOW_RGB, a * SHADOW_ALPHA, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
+			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone));
+			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 			float ring = a * GLOW_ALPHA * glow * (c.goneAt < 0 ? 1.3f : 0.8f) / 2 * GLOW_COPIES / copies;
+			int halo = mix(colour, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
-				draw(pose, out, c, shown, style, colour, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
+				draw(pose, out, c, shown, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
 						GLOW_Z, mode);
 			}
 			draw(pose, out, c, shown, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
+	}
+
+	/** How dark the drop shadow is: stronger by day, when the sky behind the words is bright. */
+	static float shadowOpacity(float day) {
+		return Mth.lerp(Mth.clamp(day, 0, 1), SHADOW_NIGHT, SHADOW_DAY);
 	}
 
 	/**

@@ -93,4 +93,11 @@ class WorldWordsTest {
 			assertTrue(WorldWords.seenFromBehind(-x, -z, yaw), "card behind at yaw " + yaw);
 		}
 	}
+
+	@Test
+	void shadowIsDarkerByDay() {
+		assertTrue(WorldWords.shadowOpacity(1) > WorldWords.shadowOpacity(0));
+		assertEquals(WorldWords.shadowOpacity(1), WorldWords.shadowOpacity(3), 1e-6f);
+		assertTrue(WorldWords.shadowOpacity(1) <= 1);
+	}
 }
