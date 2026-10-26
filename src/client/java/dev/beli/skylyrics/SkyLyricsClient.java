@@ -25,10 +25,12 @@ import dev.beli.skylyrics.dev.DevTestHook;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LrclibClient;
 import dev.beli.skylyrics.lyrics.LyricsService;
+import dev.beli.skylyrics.media.ChosenSource;
 import dev.beli.skylyrics.media.MacMediaSource;
 import dev.beli.skylyrics.media.MediaSource;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.MprisSource;
+import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.WindowsMediaSource;
 import dev.beli.skylyrics.render.AlbumArt;
@@ -43,6 +45,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private static SkyLyricsClient instance;
 
 	private MediaTracker tracker;
+	private SpotifyWebSource spotify;
 	private LyricsService lyrics;
 	private AlbumArt art;
 	private LyricsRenderer renderer;
@@ -76,7 +79,9 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				.orElse("dev");
 		Path cache = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(MOD_ID);
 
-		tracker = new MediaTracker(musicSource(cache), () -> SkyLyricsConfig.get().demoMode);
+		spotify = new SpotifyWebSource(() -> SkyLyricsConfig.get().spotifyClientId, cache.resolve("spotify-login.json"));
+		MediaSource music = new ChosenSource(musicSource(cache), spotify, () -> SkyLyricsConfig.get().preferredPlayer);
+		tracker = new MediaTracker(music, () -> SkyLyricsConfig.get().demoMode);
 		lyrics = new LyricsService(new LrclibClient(version), cache);
 		art = new AlbumArt();
 		renderer = new LyricsRenderer(tracker, lyrics, art);
@@ -190,6 +195,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private void shutdown() {
+		spotify.cancelLogin();
 		tracker.shutdown();
 		lyrics.shutdown();
 		art.close();
@@ -197,6 +203,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	public MediaTracker tracker() {
 		return tracker;
+	}
+
+	public SpotifyWebSource spotify() {
+		return spotify;
 	}
 
 	public LyricsService lyrics() {

@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.gui;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarShow;
@@ -91,15 +93,15 @@ public final class SkyLyricsScreen extends Screen {
 	}
 	/** Part of the player name to look for, next to the name shown; the first one is Auto. */
 	private static final String[] PLAYER_KEYS = SkyLyricsClient.windows()
-			? new String[] {"", "spotify", "chrom", "edge", "firefox", "media player"}
+			? new String[] {"", "spotify", "chrom", "edge", "firefox", "media player", SpotifyWebSource.KEY}
 			: SkyLyricsClient.mac()
-					? new String[] {"", "spotify", "music"}
-					: new String[] {"", "spotify", "firefox", "chrom", "mpv", "vlc"};
+					? new String[] {"", "spotify", "music", SpotifyWebSource.KEY}
+					: new String[] {"", "spotify", "firefox", "chrom", "mpv", "vlc", SpotifyWebSource.KEY};
 	private static final List<String> PLAYER_NAMES = SkyLyricsClient.windows()
-			? List.of("Spotify", "Chrome", "Edge", "Firefox", "Media Player")
+			? List.of("Spotify", "Chrome", "Edge", "Firefox", "Media Player", "Spotify Web")
 			: SkyLyricsClient.mac()
-					? List.of("Spotify", "Music")
-					: List.of("Spotify", "Firefox", "Chrome", "mpv", "VLC");
+					? List.of("Spotify", "Music", "Spotify Web")
+					: List.of("Spotify", "Firefox", "Chrome", "mpv", "VLC", "Spotify Web");
 
 	private static final int SIDEBAR_W = 96;
 	private static final int TAB_H = 20;
@@ -113,6 +115,8 @@ public final class SkyLyricsScreen extends Screen {
 	private final @Nullable Screen parent;
 	private final SkyLyricsConfig cfg = SkyLyricsConfig.get();
 	private final SkyLyricsClient mod = SkyLyricsClient.get();
+	/** Why the last Spotify sign-in couldn't start, like the port being taken. */
+	private String spotifyError = "";
 	private final List<List<Card>> tabs = new ArrayList<>();
 	private final Toggle masterToggle;
 	private final float[] scroll = new float[TAB_COUNT];
@@ -324,7 +328,70 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Now playing"), new NowPlayingRow(), status),
-				new Card(Tr.t("Player"), player, connection, connectionHelp, timing, songTiming, demo, plain));
+				new Card(Tr.t("Player"), player, connection, connectionHelp, timing, songTiming, demo, plain),
+				spotifyCard());
+	}
+
+	/** Shown when "Spotify Web" is the player: the few steps to make a Spotify app and sign in with it. */
+	private Card spotifyCard() {
+		SpotifyWebSource spotify = mod.spotify();
+		BooleanSupplier web = () -> SpotifyWebSource.KEY.equals(cfg.preferredPlayer);
+		Row help = new Paragraph(() -> Tr.t("Follows your Spotify account on any device, even your phone. Spotify needs you to make a free app for this: open the dashboard, create an app with the Redirect URI below and Web API ticked, then paste its Client ID here."))
+				.when(web);
+		Row dashboard = new Buttons(Tr.t("Spotify dashboard"), Tr.t("Needs a Spotify Premium account"),
+				new Button(Tr.t("Open"), () -> ConfirmLinkScreen.confirmLinkNow(this, SpotifyWebSource.DASHBOARD)))
+				.when(web);
+		Row redirect = new Buttons(Tr.t("Redirect URI"), SpotifyWebSource.REDIRECT,
+				new Button(Tr.t("Copy"), () -> minecraft.keyboardHandler.setClipboard(SpotifyWebSource.REDIRECT)))
+				.when(web);
+		Row clientId = new Buttons(Tr.t("Client ID"), "",
+				new Button(Tr.t("Paste"), () -> {
+					String pasted = minecraft.keyboardHandler.getClipboard().strip();
+					cfg.spotifyClientId = pasted.length() > 64 ? pasted.substring(0, 64) : pasted;
+					tracker().refresh();
+				}))
+				.describe(() -> {
+					String id = cfg.spotifyClientId;
+					if (id.isEmpty()) {
+						return Tr.t("Not set yet");
+					}
+					return SpotifyWebSource.validClientId(id) ? id.substring(0, 4) + "…" + id.substring(28) : Tr.t("That isn't a Client ID");
+				})
+				.when(web);
+		Row account = new Buttons(Tr.t("Account"), "",
+				new Button(() -> switch (spotify.account()) {
+					case SIGNED_IN -> Tr.t("Sign out");
+					case WAITING -> Tr.t("Cancel");
+					default -> Tr.t("Sign in");
+				}, () -> {
+					switch (spotify.account()) {
+						case SIGNED_IN -> spotify.signOut();
+						case WAITING -> spotify.cancelLogin();
+						default -> {
+							try {
+								ConfirmLinkScreen.confirmLinkNow(this, spotify.startLogin());
+							} catch (IOException e) {
+								spotifyError = e.getMessage();
+							}
+						}
+					}
+					tracker().refresh();
+				}, () -> spotify.account() != SpotifyWebSource.Account.NO_CLIENT_ID, true))
+				.describe(() -> switch (spotify.account()) {
+					case NO_CLIENT_ID -> Tr.t("Paste your Client ID first");
+					case SIGNED_OUT -> Tr.t("Not signed in");
+					case WAITING -> Tr.t("Waiting for your browser…");
+					case SIGNED_IN -> Tr.t("Signed in");
+				})
+				.when(web);
+		Row problem = new Paragraph(() -> spotify.problem().isEmpty() ? spotifyError : spotify.problem())
+				.when(() -> web.getAsBoolean() && !(spotify.problem().isEmpty() && spotifyError.isEmpty())
+						&& spotify.account() != SpotifyWebSource.Account.SIGNED_IN);
+		return new Card(Tr.t("Spotify account"), help, dashboard, redirect, clientId, account, problem);
+	}
+
+	private MediaTracker tracker() {
+		return mod.tracker();
 	}
 
 	public static String seconds(double ms) {

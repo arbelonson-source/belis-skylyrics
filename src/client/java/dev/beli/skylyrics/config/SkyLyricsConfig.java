@@ -221,6 +221,8 @@ public final class SkyLyricsConfig {
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */
 	public String preferredPlayer = "";
+	/** From the player's own app on the Spotify dashboard; only used when preferredPlayer is "spotify-web". */
+	public String spotifyClientId = "";
 	public boolean demoMode = false;
 
 	private static SkyLyricsConfig instance;
@@ -264,6 +266,7 @@ public final class SkyLyricsConfig {
 		if (skySpeed == null) skySpeed = d.skySpeed;
 		if (effects == null) effects = d.effects;
 		if (preferredPlayer == null) preferredPlayer = "";
+		if (spotifyClientId == null) spotifyClientId = "";
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);
 		skyStrength = clamp(skyStrength, 0, 1);
