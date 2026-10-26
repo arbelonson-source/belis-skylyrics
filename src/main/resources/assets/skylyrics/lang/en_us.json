@@ -259,5 +259,8 @@
   "skylyrics.ui.not_signed_in": "Not signed in",
   "skylyrics.ui.waiting_for_your_browser": "Waiting for your browser…",
   "skylyrics.ui.signed_in": "Signed in",
-  "skylyrics.ui.spotify_account": "Spotify account"
+  "skylyrics.ui.spotify_account": "Spotify account",
+  "skylyrics.ui.lyrics_on_the_title_screen": "Lyrics on the title screen",
+  "skylyrics.ui.under_the_buttons_of_the_main_menu": "Under the buttons of the main menu",
+  "skylyrics.ui.main_menu": "Main menu"
 }

@@ -456,6 +456,9 @@ public final class SkyLyricsScreen extends Screen {
 			return fps > 0 ? fps + " FPS · " + state : state;
 		}).when(() -> cfg.effects == Effects.AUTO);
 
+		Row title = new Toggle(Tr.t("Lyrics on the title screen"), Tr.t("Under the buttons of the main menu"),
+				() -> cfg.titleScreenLyrics, v -> cfg.titleScreenLyrics = v);
+
 		Row openKey = new Info(Tr.t("Open settings"), null, () -> keyName(mod.openSettingsKey()));
 		Row controls = new Buttons(Tr.t("More keys"), Tr.t("Toggle lyrics, play/pause, skip songs"),
 				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
@@ -464,6 +467,7 @@ public final class SkyLyricsScreen extends Screen {
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barEq),
+				new Card(Tr.t("Main menu"), title),
 				new Card(Tr.t("Performance"), effects, effectsNow),
 				new Card(Tr.t("Keys"), openKey, controls));
 	}

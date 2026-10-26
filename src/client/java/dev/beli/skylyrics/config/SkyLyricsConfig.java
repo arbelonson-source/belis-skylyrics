@@ -190,6 +190,8 @@ public final class SkyLyricsConfig {
 	public boolean seeThroughBlocks = true;
 	public Layer layer = Layer.AUTO;
 	public boolean hideInMenus = false;
+	/** The lines around the one being sung, under the buttons of the main menu. */
+	public boolean titleScreenLyrics = true;
 	public boolean hideWhenPaused = false;
 	public boolean hideWithF1 = true;
 	public boolean hideInNether = false;

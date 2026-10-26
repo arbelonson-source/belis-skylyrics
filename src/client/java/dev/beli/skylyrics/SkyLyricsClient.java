@@ -11,9 +11,15 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -101,6 +107,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
+		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
+			if (screen instanceof TitleScreen) {
+				ScreenEvents.afterRender(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
+			}
+		});
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
@@ -109,6 +120,21 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
 		LOG.info("Beli's SkyLyrics {} ready (placement {}, demo {})", version, cfg.placement, cfg.demoMode);
 	}
+
+	/** Lyrics on the main menu, in the gap under its lowest button (the copyright line at the very bottom is a button too). */
+	private void renderTitle(Screen screen, GuiGraphics g) {
+		int bottom = screen.height - TITLE_FOOTER;
+		int top = 0;
+		for (AbstractWidget widget : Screens.getButtons(screen)) {
+			if (widget.visible && widget.getBottom() < bottom) {
+				top = Math.max(top, widget.getBottom());
+			}
+		}
+		renderer.renderMenu(g, top + 4, bottom);
+	}
+
+	/** Room left at the bottom of the title screen for the version and copyright lines. */
+	private static final int TITLE_FOOTER = 12;
 
 	/** True on Windows, where the song comes from Windows' media controls instead of MPRIS. */
 	public static boolean windows() {

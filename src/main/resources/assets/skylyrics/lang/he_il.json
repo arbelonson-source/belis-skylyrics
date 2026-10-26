@@ -259,5 +259,8 @@
   "skylyrics.ui.not_signed_in": "לא מחוברים",
   "skylyrics.ui.waiting_for_your_browser": "מחכה לדפדפן…",
   "skylyrics.ui.signed_in": "מחוברים",
-  "skylyrics.ui.spotify_account": "חשבון ספוטיפיי"
+  "skylyrics.ui.spotify_account": "חשבון ספוטיפיי",
+  "skylyrics.ui.lyrics_on_the_title_screen": "מילים במסך הפתיחה",
+  "skylyrics.ui.under_the_buttons_of_the_main_menu": "מתחת לכפתורים של התפריט הראשי",
+  "skylyrics.ui.main_menu": "תפריט ראשי"
 }

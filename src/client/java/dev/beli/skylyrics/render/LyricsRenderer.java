@@ -72,6 +72,8 @@ public final class LyricsRenderer {
 	/** In the WORLD layout, a line's last words stay this long after it's over before they fade too. */
 	private static final long WORLD_LINGER_MS = 450;
 	private static final float ROW_H = 10f;
+	/** Title screen: rows of height the lyrics need, the size limits, and the wrap width (in text pixels). */
+	private static final float MENU_ROWS = 3.6f * ROW_H, MENU_MAX_SCALE = 1.5f, MENU_MIN_SCALE = 0.55f, MENU_WRAP = 260;
 	private static final float SECONDARY = 0.7f;
 	private static final float GAP = 5f;
 	private static final String DOTS = "♪  ♪  ♪";
@@ -121,6 +123,7 @@ public final class LyricsRenderer {
 	private boolean light;
 	private float visibility;
 	private float daylight;
+	private boolean hasLyrics;
 	private float anchorYaw = Float.NaN;
 	private float anchorPitch;
 	private boolean following;
@@ -196,31 +199,8 @@ public final class LyricsRenderer {
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		Camera camera = mc.gameRenderer.getMainCamera();
 		long now = System.nanoTime();
-		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
-		lastFrame = now;
-		budget.update(dt, mc.getFramerateLimitTracker().getFramerateLimit());
-		light = cfg.effects == SkyLyricsConfig.Effects.LIGHT || cfg.effects == SkyLyricsConfig.Effects.AUTO && budget.light();
-
-		Lyrics current = service.lyrics();
-		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
-			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
-		}
-		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LEAD_MS;
-		boolean hasLyrics = !current.isEmpty() || current.instrumental();
-		if (hasLyrics) {
-			if (current != shown) {
-				shown = current;
-				lastIndex = Integer.MIN_VALUE;
-				wrapCache.clear();
-				offsetCache.clear();
-				arcCache.clear();
-				arcAnchors.clear();
-				worldWords.clear();
-			}
-			frozenTime = time;
-		} else {
-			time = frozenTime; // fade the old lyrics out where they were instead of jumping
-		}
+		float dt = step(mc, cfg, now);
+		long time = takeLyrics(cfg);
 
 		boolean want = cfg.enabled && hasLyrics
 				&& !(cfg.hideWithF1 && mc.options.hideGui)
@@ -246,16 +226,7 @@ public final class LyricsRenderer {
 		float angular = (sky ? 3.4f : 2.6f) * cfg.size;
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
-		Style wrapStyle = LyricsFont.sky(cfg);
-		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪");
-		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
-			wrapCacheProbe = probe;
-			wrapCache.clear();
-			offsetCache.clear();
-			arcCache.clear();
-			wrapCacheWidth = wrapWidth;
-			wrapCacheStyle = wrapStyle;
-		}
+		wrapAt(mc, cfg, wrapWidth);
 
 		List<Spot> spots = new ArrayList<>();
 		if (cfg.layout == Layout.ARC && !shown.instrumental()) {
@@ -288,6 +259,81 @@ public final class LyricsRenderer {
 			drawSpot(draw, spot, cfg, time, now);
 			pose.popPose();
 		}
+	}
+
+	/** Time since the last frame, in seconds, and whether the effects have to be light this frame. */
+	private float step(Minecraft mc, SkyLyricsConfig cfg, long now) {
+		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
+		lastFrame = now;
+		budget.update(dt, mc.getFramerateLimitTracker().getFramerateLimit());
+		light = cfg.effects == SkyLyricsConfig.Effects.LIGHT || cfg.effects == SkyLyricsConfig.Effects.AUTO && budget.light();
+		return dt;
+	}
+
+	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
+	private long takeLyrics(SkyLyricsConfig cfg) {
+		Lyrics current = service.lyrics();
+		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
+			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
+		}
+		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LEAD_MS;
+		hasLyrics = !current.isEmpty() || current.instrumental();
+		if (hasLyrics) {
+			if (current != shown) {
+				shown = current;
+				lastIndex = Integer.MIN_VALUE;
+				wrapCache.clear();
+				offsetCache.clear();
+				arcCache.clear();
+				arcAnchors.clear();
+				worldWords.clear();
+			}
+			frozenTime = time;
+		} else {
+			time = frozenTime; // fade the old lyrics out where they were instead of jumping
+		}
+		return time;
+	}
+
+	/** Lines are wrapped once and kept; this drops them when the width or the font changes. */
+	private void wrapAt(Minecraft mc, SkyLyricsConfig cfg, float wrapWidth) {
+		Style wrapStyle = LyricsFont.sky(cfg);
+		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪");
+		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
+			wrapCacheProbe = probe;
+			wrapCache.clear();
+			offsetCache.clear();
+			arcCache.clear();
+			wrapCacheWidth = wrapWidth;
+			wrapCacheStyle = wrapStyle;
+		}
+	}
+
+	/**
+	 * Title screen: no world is drawn there, so the lines go flat in the gap between the lowest button
+	 * ({@code top}) and the copyright text ({@code bottom}), sized to fit it.
+	 */
+	public void renderMenu(GuiGraphics g, float top, float bottom) {
+		Minecraft mc = Minecraft.getInstance();
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		long now = System.nanoTime();
+		float dt = step(mc, cfg, now);
+		long time = takeLyrics(cfg);
+		boolean want = cfg.enabled && cfg.titleScreenLyrics && hasLyrics && !(cfg.hideWhenPaused && !tracker.playing());
+		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
+		updateColor(cfg, dt, now);
+		daylight = approach(daylight, 1, dt * 2f); // menus have no time of day, and the dark halo reads on any backdrop
+		float scale = Math.min((bottom - top) / MENU_ROWS, MENU_MAX_SCALE * cfg.size);
+		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental() || scale < MENU_MIN_SCALE) {
+			return;
+		}
+		wrapAt(mc, cfg, MENU_WRAP);
+		Draw draw = new Draw(new ScreenCanvas(g, mc.font), mc.font, cfg, rgb(), MENU_WRAP);
+		g.pose().pushMatrix();
+		g.pose().translate(g.guiWidth() / 2f, (top + bottom) / 2f);
+		g.pose().scale(scale, scale);
+		drawContent(draw, cfg, time, now);
+		g.pose().popMatrix();
 	}
 
 	private static Spot spot(float yaw, float pitch, float distance, @Nullable ArcShot arc) {
