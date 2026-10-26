@@ -134,4 +134,24 @@ class SkyEffectsTest {
 		assertEquals(SkyEffects.RANDOM_SKIES.length, seen.size());
 		assertNotEquals(SkyEffect.RANDOM, SkyEffects.pick(SkyEffect.RANDOM, null));
 	}
+
+	@Test
+	void newSongsRandomSkyWaitsForTheOldOneToFadeThenComesIn() {
+		SkyEffect shown = SkyEffect.AURORA, next = SkyEffect.MOONLIGHT;
+		float presence = 1;
+		for (int frame = 0; frame < 400 && shown != next; frame++) {
+			boolean swapping = SkyEffects.waitsForFade(SkyEffect.RANDOM, shown, next, presence);
+			presence = SkyEffects.step(presence, !swapping, 0.02f);
+			if (!swapping || presence <= 0) {
+				shown = next;
+			}
+		}
+		assertEquals(next, shown);
+		assertEquals(0f, presence);
+		for (int frame = 0; frame < 200; frame++) {
+			presence = SkyEffects.step(presence, !SkyEffects.waitsForFade(SkyEffect.RANDOM, shown, next, presence), 0.02f);
+		}
+		assertEquals(1f, presence);
+		assertTrue(!SkyEffects.waitsForFade(SkyEffect.ECLIPSE, SkyEffect.AURORA, SkyEffect.ECLIPSE, 1));
+	}
 }

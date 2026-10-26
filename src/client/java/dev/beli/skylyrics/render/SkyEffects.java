@@ -166,6 +166,11 @@ public final class SkyEffects {
 		return RANDOM_SKIES[Math.floorMod(seed * 0x9E3779B9, RANDOM_SKIES.length)];
 	}
 
+	/** Whether the sky shown has to fade out before Random's pick for the new song can fade in. */
+	static boolean waitsForFade(SkyEffect chosen, SkyEffect shown, SkyEffect next, float presence) {
+		return chosen == SkyEffect.RANDOM && shown != null && next != shown && presence > 0;
+	}
+
 	/** Compass direction the lyrics face, which the suns and constellations are placed around. */
 	static float baseYaw(Direction direction) {
 		return direction == Direction.FOLLOW ? FOLLOW_YAW : direction.yaw;
@@ -223,9 +228,13 @@ public final class SkyEffects {
 		boolean wanted = cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
 		SkyEffect next = pick(cfg.sky, tracker.track());
 		// A new song's random sky waits for the old one to fade out
-		boolean swapping = cfg.sky == SkyEffect.RANDOM && effect != null && next != effect && presence > 0;
+		boolean swapping = waitsForFade(cfg.sky, effect, next, presence);
 		boolean on = wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg) && !swapping;
 		presence = step(presence, on, dt);
+		// Swap once the old sky is gone; it has to happen here, as nothing below runs while the sky is hidden
+		if (!swapping || presence <= 0) {
+			effect = next;
+		}
 		ClientLevel level = mc.level;
 		if (presence <= 0 || !wanted || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
 			return;
@@ -241,9 +250,6 @@ public final class SkyEffects {
 			return;
 		}
 		clock += dt * cfg.skySpeed.factor;
-		if (!swapping) {
-			effect = next;
-		}
 		starPatterns = cfg.constellations;
 		radius = radius(mc.options.getEffectiveRenderDistance());
 		far = farRadius(mc.options.getEffectiveRenderDistance());
