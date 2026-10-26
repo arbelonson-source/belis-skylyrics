@@ -144,6 +144,8 @@ public final class SkyLyricsConfig {
 	public float worldLinger = 2.2f;
 	/** World layout: a line's words read left to right in rows, like handwriting, instead of scattering. */
 	public boolean worldFlow = false;
+	/** World layout: a line's earlier words stay lit until the line is over, so you can read it whole. */
+	public boolean worldHold = true;
 	/** World layout: words take on a little of the sky's colour, as if lit by it. */
 	public boolean worldTint = true;
 

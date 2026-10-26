@@ -25,8 +25,8 @@ import dev.beli.skylyrics.render.LyricsRenderer.Display;
 /**
  * The "words in the world" layout: every word or two of a line pops up as it's sung, on its own card floating a
  * little above where you were looking, scattered so the cards don't cover each other. A card stays where it
- * appeared (drifting slowly upwards) while you move around it; once the next words come, it greys and fades away
- * over a couple of seconds. These are drawn in the world pass on purpose: each card has its own place and turn,
+ * appeared (drifting slowly upwards) while you move around it; once the line is over (or, without "Keep the whole
+ * line", once the next words come), it greys and fades away over a couple of seconds. These are drawn in the world pass on purpose: each card has its own place and turn,
  * which the flat screen layer can't show.
  */
 final class WorldWords {
@@ -46,6 +46,8 @@ final class WorldWords {
 	private static final float WOBBLE_X = 3.5f, WOBBLE_Y = 3f;
 	/** Spots tried for each new card; the one overlapping the other cards least wins. */
 	private static final int TRIES = 24;
+	/** How much further out than the spots the last tries may go, when a crowd (a whole line kept up) fills them. */
+	private static final float REACH = 0.6f;
 	/** Room kept around each card when judging overlap, in degrees. */
 	private static final float PAD_X = 2f, PAD_Y = 1.7f;
 	/** Cards turn sideways by between these many degrees, and nod and lean a little, so they don't look pasted on. */
@@ -133,6 +135,7 @@ final class WorldWords {
 	private int spawned;
 	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
 	private boolean flow;
+	private boolean hold = true;
 	private @Nullable Sentence sentence;
 	private int maxCards = MAX_CARDS;
 	private float fade = FADE;
@@ -221,7 +224,8 @@ final class WorldWords {
 	 * How many cards float at once, how many seconds sung ones take to fade and whether a line flows left to right
 	 * (the World words settings).
 	 */
-	void tune(int maxCards, float fade, boolean flow, boolean capitals) {
+	void tune(int maxCards, float fade, boolean flow, boolean hold, boolean capitals) {
+		this.hold = hold;
 		this.capitals = capitals;
 		this.maxCards = Math.max(1, maxCards);
 		this.fade = Math.max(0.1f, fade);
@@ -270,6 +274,9 @@ final class WorldWords {
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
 			spawned = 0;
 			sentence = null;
+			if (hold) {
+				letGo(now);
+			}
 		}
 		int due = 0;
 		while (due < lineChunks.size() && lineChunks.get(due)[0] <= sungChars) {
@@ -279,7 +286,9 @@ final class WorldWords {
 			spawned = due - CATCH_UP;
 		}
 		for (; spawned < due; spawned++) {
-			letGo(now);
+			if (!hold) {
+				letGo(now);
+			}
 			spawn(lineChunks.get(spawned), centre(fixedYaw, camera.yRot(), camera.xRot()), camera, level, font, style, now);
 		}
 		if (lineText == null || over) {
@@ -354,12 +363,20 @@ final class WorldWords {
 		for (int k = cards.size() - 1; k >= 0; k--) {
 			Card c = cards.get(k);
 			if (c.cutAt < 0 && ++kept > maxCards) {
-				c.cutAt = now;
+				// A lit card over the limit fades like a sung one; one already fading goes quickly
+				if (c.goneAt < 0) {
+					c.goneAt = now;
+				} else {
+					c.cutAt = now;
+				}
 			}
 		}
 	}
 
-	/** Yaw, pitch and distance for a card in the scatter: the free spot, of a few tried, that overlaps least. */
+	/**
+	 * Yaw, pitch and distance for a card in the scatter: the free spot, of a few tried, that overlaps least. Later
+	 * tries reach a little further out, so a crowded sky spreads wider instead of piling words up.
+	 */
 	private float[] scatter(float[] centre, float[] at, float size, List<float[]> taken) {
 		float bestYaw = 0, bestPitch = 0, bestDistance = NEAR, bestCost = Float.MAX_VALUE;
 		int bestSlot = -1;
@@ -368,8 +385,9 @@ final class WorldWords {
 			if (slot == recent[0] || slot == recent[1]) {
 				continue;
 			}
-			float yaw = centre[0] - SPOTS[slot][0] + (next() * 2 - 1) * WOBBLE_X;
-			float pitch = Mth.clamp(centre[1] - LIFT - SPOTS[slot][1] + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
+			float out = 1 + REACH * t / (TRIES - 1);
+			float yaw = centre[0] - SPOTS[slot][0] * out + (next() * 2 - 1) * WOBBLE_X;
+			float pitch = Mth.clamp(centre[1] - LIFT - SPOTS[slot][1] * out + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
 			float distance = Mth.lerp(next(), NEAR, FAR);
 			float halfW = halfAngle(at[at.length - 1] * size / 2, distance) + PAD_X, halfH = halfAngle(5 * size, distance) + PAD_Y;
 			float cost = 0;

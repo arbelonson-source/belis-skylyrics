@@ -269,6 +269,8 @@
   "skylyrics.ui.how_slowly_sung_words_fade": "How slowly sung words fade",
   "skylyrics.ui.flowing_line": "Flowing line",
   "skylyrics.ui.words_read_left_to_right_instead_of_scattering": "Words read left to right instead of scattering",
+  "skylyrics.ui.keep_the_whole_line": "Keep the whole line",
+  "skylyrics.ui.earlier_words_stay_lit_until_the_line_ends": "Earlier words stay lit until the line ends",
   "skylyrics.ui.sky_tint": "Sky tint",
   "skylyrics.ui.words_take_on_a_little_of_the_sky_colour": "Words take on a little of the sky colour",
   "skylyrics.ui.moonlit": "Moonlit",
