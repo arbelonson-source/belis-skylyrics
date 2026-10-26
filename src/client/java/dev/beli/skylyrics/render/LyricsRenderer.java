@@ -123,6 +123,8 @@ public final class LyricsRenderer {
 	private boolean light;
 	private float visibility;
 	private float daylight;
+	/** How strongly a bright painted sky (synthwave, moonlight) shows behind the lyrics, 0 to 1. */
+	private float backdrop;
 	private boolean hasLyrics;
 	private float anchorYaw = Float.NaN;
 	private float anchorPitch;
@@ -1278,7 +1280,15 @@ public final class LyricsRenderer {
 			target = daylight(camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial),
 					level.getRainLevel(partial));
 		}
-		daylight = approach(daylight, target, dt * 2f);
+		daylight = approach(daylight, Math.max(target, BACKDROP * backdrop), dt * 2f);
+	}
+
+	/** A painted sky this bright at full strength makes the lyrics stand out as they do by day: darker shadow, dark halo. */
+	static final float BACKDROP = 0.8f;
+
+	/** Set by the sky each frame: how strongly a bright painted sky shows, 0 to 1. */
+	public void backdrop(float strength) {
+		backdrop = Mth.clamp(strength, 0, 1);
 	}
 
 	/**
