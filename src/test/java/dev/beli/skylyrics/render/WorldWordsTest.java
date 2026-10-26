@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -77,6 +78,19 @@ class WorldWordsTest {
 				float dx = s[i][0] - s[i - 1][0], dy = s[i][1] - s[i - 1][1];
 				assertTrue(dx * dx + dy * dy > 8 * 8, "one spot to the next jumps across");
 			}
+		}
+	}
+
+	@Test
+	void cardsReadTheRightWayRound() {
+		for (float yaw = -180; yaw < 180; yaw += 15) {
+			float rad = yaw * (float) Math.PI / 180;
+			// Straight ahead of a camera looking along yaw, turned as spawned (towards that yaw, give or take 30 degrees)
+			float x = -(float) Math.sin(rad) * 10, z = (float) Math.cos(rad) * 10;
+			assertFalse(WorldWords.seenFromBehind(x, z, yaw), "card ahead at yaw " + yaw);
+			assertFalse(WorldWords.seenFromBehind(x, z, yaw + 30), "turned card ahead at yaw " + yaw);
+			// Walk past it and look back: now its back faces you
+			assertTrue(WorldWords.seenFromBehind(-x, -z, yaw), "card behind at yaw " + yaw);
 		}
 	}
 }

@@ -362,10 +362,7 @@ final class WorldWords {
 				LyricsInView.check(new Vector3f(x, y, z), c.at[n] * grow / 2, 5 * grow);
 			}
 			// A card seen from behind turns around, so its words never read mirrored
-			float face = c.face;
-			if (-x * Mth.sin(face * DEG) + z * Mth.cos(face * DEG) > 0) {
-				face += 180;
-			}
+			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = Mth.ceil(n * Math.min(1, age / TYPE));
 			int colour = c.goneAt < 0 ? rgb : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			pose.pushPose();
@@ -383,6 +380,14 @@ final class WorldWords {
 			draw(pose, out, c, shown, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
+	}
+
+	/**
+	 * Whether a card turned to {@code face} degrees, standing {@code x, z} blocks from the eye, shows you its back.
+	 * Its words read from the side its face points to: (sin face, 0, -cos face) after the turn used in render.
+	 */
+	static boolean seenFromBehind(float x, float z, float face) {
+		return -x * Mth.sin(face * DEG) + z * Mth.cos(face * DEG) < 0;
 	}
 
 	/** Draws the card's typed-in letters once, in one colour; each unbroken run where it sits in the whole word. */
