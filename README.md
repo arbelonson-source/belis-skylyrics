@@ -35,6 +35,10 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 | Sunset, with shaders | Aurora at night, with shaders |
 | ![Nebula at night](docs/nebula.jpg) | ![Daytime without shaders](docs/daytime.jpg) |
 | Nebula at night | Daytime, no shaders |
+| ![Synthwave sky](docs/synthwave.jpg) | ![Moonlight sky](docs/moonlight.jpg) |
+| Synthwave sky, with shaders | Moonlight sky, with shaders |
+| ![Eclipse sky](docs/eclipse.jpg) | ![World layout](docs/world-layout.jpg) |
+| Eclipse sky, with shaders | World layout: words placed around you |
 | ![Floating mode](docs/floating.jpg) | ![The settings screen](docs/settings.jpg) |
 | Floating mode, close by | The settings screen |
 
