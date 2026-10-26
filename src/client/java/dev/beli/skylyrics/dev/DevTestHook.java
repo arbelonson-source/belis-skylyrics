@@ -3,9 +3,11 @@ package dev.beli.skylyrics.dev;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.InactivityFpsLimit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.Screen;
@@ -21,11 +23,15 @@ import dev.beli.skylyrics.gui.SkyLyricsScreen;
  * once and deleted. Commands: {@code look <yaw> <pitch>}, {@code gui [tab]}, {@code preview},
  * {@code close}, {@code hud on|off}, {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
  * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
- * the desktop draws on top).
+ * the desktop draws on top), {@code uncap} (no frame limit, vsync or idle slowdown), {@code fps [seconds]} (logs the frame
+ * rate over that long).
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
 	private int countdown;
+	/** Ticks left of a frame-rate measurement, and the rate it saw each second so far. */
+	private int fpsLeft;
+	private final List<Integer> fpsSeen = new ArrayList<>();
 
 	/** On in the dev game, and in runProductionClient, which sets -Dskylyrics.testHook=true. */
 	public static boolean enabled() {
@@ -33,6 +39,16 @@ public final class DevTestHook {
 	}
 
 	public void tick(Minecraft client) {
+		if (fpsLeft > 0 && --fpsLeft % 20 == 0) {
+			fpsSeen.add(client.getFps());
+			if (fpsLeft == 0) {
+				// The first second still counts frames from before the command
+				List<Integer> seen = fpsSeen.subList(1, fpsSeen.size());
+				SkyLyricsClient.LOG.info("Test hook: fps average {} lowest {} over {}s",
+						seen.stream().mapToInt(Integer::intValue).average().orElse(0),
+						seen.stream().mapToInt(Integer::intValue).min().orElse(0), seen.size());
+			}
+		}
 		if (--countdown > 0) {
 			return;
 		}
@@ -149,6 +165,16 @@ public final class DevTestHook {
 					}
 				}
 				case "set" -> set(arg);
+				case "uncap" -> {
+					client.options.enableVsync().set(false);
+					client.options.framerateLimit().set(260);
+					// Otherwise the game drops to 30 fps after a minute without input, which spoils a measurement
+					client.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
+				}
+				case "fps" -> {
+					fpsSeen.clear();
+					fpsLeft = ((arg.isEmpty() ? 5 : Integer.parseInt(arg)) + 1) * 20;
+				}
 				case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.getMainRenderTarget(), 1,
 						message -> SkyLyricsClient.LOG.info("Test hook: {}", message.getString()));
 				default -> SkyLyricsClient.LOG.warn("Test hook: unknown command {}", parts[0]);
