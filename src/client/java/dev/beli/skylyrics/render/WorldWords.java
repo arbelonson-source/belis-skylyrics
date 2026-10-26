@@ -151,6 +151,8 @@ final class WorldWords {
 	/** Where the camera was last frame, to carry the cards along while you glide. */
 	private @Nullable Vec3 lastEye;
 	private float lastYaw, lastPitch;
+	/** Elytra mode is carrying the words this frame. */
+	private boolean gliding;
 	private @Nullable Sentence sentence;
 	private int maxCards = MAX_CARDS;
 	private float fade = FADE;
@@ -307,7 +309,7 @@ final class WorldWords {
 			if (!hold) {
 				letGo(now);
 			}
-			spawn(lineChunks.get(spawned), centre(fixedYaw, camera.yRot(), camera.xRot()), camera, level, font, style, now);
+			spawn(lineChunks.get(spawned), centre(fixedYaw, camera.yRot(), camera.xRot(), gliding), camera, level, font, style, now);
 		}
 		if (lineText == null || over) {
 			letGo(now);
@@ -329,6 +331,7 @@ final class WorldWords {
 	 */
 	void glide(Vec3 eye, float yaw, float pitch, boolean gliding) {
 		Vec3 moved = carry(lastEye, eye, gliding);
+		this.gliding = gliding;
 		float turn = Mth.wrapDegrees(yaw - lastYaw), tilt = pitch - lastPitch;
 		lastEye = eye;
 		lastYaw = yaw;
@@ -374,10 +377,11 @@ final class WorldWords {
 
 	/**
 	 * Yaw and pitch new words gather round: where you look, or with a fixed direction that way, a little above the
-	 * horizon, so you can look about and find them where you left them.
+	 * horizon, so you can look about and find them where you left them. While Elytra mode carries the words, always
+	 * where you look: the fixed spot would be off to the side or behind as soon as you fly another way.
 	 */
-	static float[] centre(float fixedYaw, float yaw, float pitch) {
-		return Float.isNaN(fixedYaw) ? new float[] {yaw, pitch} : new float[] {fixedYaw, 0};
+	static float[] centre(float fixedYaw, float yaw, float pitch, boolean gliding) {
+		return gliding || Float.isNaN(fixedYaw) ? new float[] {yaw, pitch} : new float[] {fixedYaw, 0};
 	}
 
 	private void spawn(int[] chunk, float[] centre, Camera camera, @Nullable ClientLevel level, Font font, Style style,

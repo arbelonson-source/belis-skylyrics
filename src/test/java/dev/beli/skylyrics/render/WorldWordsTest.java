@@ -169,14 +169,18 @@ class WorldWordsTest {
 
 	@Test
 	void wordsGatherWhereYouLookOrAtTheChosenDirection() {
-		float[] follow = WorldWords.centre(Float.NaN, 37, -20);
+		float[] follow = WorldWords.centre(Float.NaN, 37, -20, false);
 		assertEquals(37, follow[0], 1e-6f);
 		assertEquals(-20, follow[1], 1e-6f);
 		// A fixed direction ignores where you look: same spot whichever way you turn
-		float[] east = WorldWords.centre(-90, 37, -20);
+		float[] east = WorldWords.centre(-90, 37, -20, false);
 		assertEquals(-90, east[0], 1e-6f);
 		assertEquals(0, east[1], 1e-6f);
-		assertEquals(east[0], WorldWords.centre(-90, 150, 60)[0], 1e-6f);
+		assertEquals(east[0], WorldWords.centre(-90, 150, 60, false)[0], 1e-6f);
+		// Flying with Elytra mode, new words come where you look even with a fixed direction, not off to the side
+		float[] flying = WorldWords.centre(-90, 150, 30, true);
+		assertEquals(150, flying[0], 1e-6f);
+		assertEquals(30, flying[1], 1e-6f);
 	}
 
 	@Test
