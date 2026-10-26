@@ -1,11 +1,16 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
+import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
+import dev.beli.skylyrics.media.Track;
+import java.util.EnumSet;
+import java.util.Set;
 
 class SkyEffectsTest {
 	@Test
@@ -112,5 +117,21 @@ class SkyEffectsTest {
 		assertEquals(1, SkyEffects.glint(1), 1e-6f);
 		assertEquals(0, SkyEffects.glint(-1), 1e-6f);
 		assertEquals(0.125f, SkyEffects.glint(0), 1e-6f);
+	}
+
+	@Test
+	void randomSkyHoldsForASongAndVariesAcrossSongs() {
+		assertEquals(SkyEffect.ECLIPSE, SkyEffects.pick(SkyEffect.ECLIPSE, new Track("Song 1", "Band", "", 0, "", "")));
+		Set<SkyEffect> seen = EnumSet.noneOf(SkyEffect.class);
+		for (int n = 0; n < 60; n++) {
+			Track song = new Track("Song " + n, "Band", "", 0, "", "");
+			SkyEffect sky = SkyEffects.pick(SkyEffect.RANDOM, song);
+			assertEquals(sky, SkyEffects.pick(SkyEffect.RANDOM, new Track("Song " + n, "Band", "Album", 1, "x", "y")));
+			assertNotEquals(SkyEffect.RANDOM, sky);
+			assertNotEquals(SkyEffect.OFF, sky);
+			seen.add(sky);
+		}
+		assertEquals(SkyEffects.RANDOM_SKIES.length, seen.size());
+		assertNotEquals(SkyEffect.RANDOM, SkyEffects.pick(SkyEffect.RANDOM, null));
 	}
 }

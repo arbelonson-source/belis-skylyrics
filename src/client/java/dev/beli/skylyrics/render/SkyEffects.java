@@ -11,6 +11,8 @@ import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
+import dev.beli.skylyrics.media.Track;
+import java.util.Objects;
 import java.util.Random;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Camera;
@@ -151,6 +153,19 @@ public final class SkyEffects {
 		return fogStart * 0.9f;
 	}
 
+	/** The skies Random picks from. */
+	static final SkyEffect[] RANDOM_SKIES = {SkyEffect.AURORA, SkyEffect.NEBULA, SkyEffect.BOTH, SkyEffect.SYNTHWAVE,
+			SkyEffect.ECLIPSE, SkyEffect.MOONLIGHT};
+
+	/** The sky to draw: the chosen one, or for Random one picked by the song, so it holds for the whole song. */
+	static SkyEffect pick(SkyEffect chosen, Track track) {
+		if (chosen != SkyEffect.RANDOM) {
+			return chosen;
+		}
+		int seed = track == null ? 0 : Objects.hash(track.title(), track.artist());
+		return RANDOM_SKIES[Math.floorMod(seed * 0x9E3779B9, RANDOM_SKIES.length)];
+	}
+
 	/** Compass direction the lyrics face, which the suns and constellations are placed around. */
 	static float baseYaw(Direction direction) {
 		return direction == Direction.FOLLOW ? FOLLOW_YAW : direction.yaw;
@@ -206,7 +221,10 @@ public final class SkyEffects {
 		float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
 		last = now;
 		boolean wanted = cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
-		boolean on = wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg);
+		SkyEffect next = pick(cfg.sky, tracker.track());
+		// A new song's random sky waits for the old one to fade out
+		boolean swapping = cfg.sky == SkyEffect.RANDOM && effect != null && next != effect && presence > 0;
+		boolean on = wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg) && !swapping;
 		presence = step(presence, on, dt);
 		ClientLevel level = mc.level;
 		if (presence <= 0 || !wanted || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
@@ -223,7 +241,9 @@ public final class SkyEffects {
 			return;
 		}
 		clock += dt * cfg.skySpeed.factor;
-		effect = cfg.sky;
+		if (!swapping) {
+			effect = next;
+		}
 		starPatterns = cfg.constellations;
 		radius = radius(mc.options.getEffectiveRenderDistance());
 		far = farRadius(mc.options.getEffectiveRenderDistance());
@@ -233,8 +253,8 @@ public final class SkyEffects {
 		pixel = 2 * (float) Math.tan(mc.options.fov().get() * DEG / 2) / Math.max(1, mc.getWindow().getHeight());
 		tint = lyrics.color();
 		radius = radius(mc.options.getEffectiveRenderDistance());
-		aurora = cfg.sky == SkyEffect.AURORA || cfg.sky == SkyEffect.BOTH;
-		nebula = cfg.sky == SkyEffect.NEBULA || cfg.sky == SkyEffect.BOTH;
+		aurora = effect == SkyEffect.AURORA || effect == SkyEffect.BOTH;
+		nebula = effect == SkyEffect.NEBULA || effect == SkyEffect.BOTH;
 		// Under an aurora the clouds step back so the two together don't wash out
 		cloudAlpha = aurora ? 0.55f : 1;
 		// Sparkles gather round the lyrics, so they come and go with them

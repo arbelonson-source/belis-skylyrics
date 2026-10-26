@@ -221,5 +221,6 @@
   "skylyrics.ui.normal": "רגיל",
   "skylyrics.ui.fast": "מהיר",
   "skylyrics.ui.aurora_nebula": "זוהר קוטבי + ערפילית",
-  "skylyrics.ui.moonlight": "אור ירח"
+  "skylyrics.ui.moonlight": "אור ירח",
+  "skylyrics.ui.random": "אקראי"
 }

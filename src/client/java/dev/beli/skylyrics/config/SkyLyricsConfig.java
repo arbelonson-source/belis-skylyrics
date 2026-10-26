@@ -75,7 +75,9 @@ public final class SkyLyricsConfig {
 		/** The aurora over a softer nebula. */
 		BOTH,
 		/** A big full moon with a soft glow over low clouds drifting round the horizon. */
-		MOONLIGHT
+		MOONLIGHT,
+		/** One of the other skies, a different one for each song. */
+		RANDOM
 	}
 
 	public enum BarPosition {
