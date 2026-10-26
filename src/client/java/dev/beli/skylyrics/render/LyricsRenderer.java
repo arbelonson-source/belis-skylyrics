@@ -1347,6 +1347,11 @@ public final class LyricsRenderer {
 		return rgb();
 	}
 
+	/** Seconds since the lyrics last moved to a new line, for things that flare up with them. */
+	public float secondsSinceLineChange() {
+		return (System.nanoTime() - changedAt) / 1e9f;
+	}
+
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
 		float camYaw = camera.yRot();
 		float camPitch = camera.xRot();

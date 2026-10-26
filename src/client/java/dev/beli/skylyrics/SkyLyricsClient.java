@@ -8,6 +8,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
@@ -17,6 +18,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -44,6 +46,7 @@ import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.WindowsMediaSource;
 import dev.beli.skylyrics.render.AlbumArt;
 import dev.beli.skylyrics.render.CoverCache;
+import dev.beli.skylyrics.render.HatLayer;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
 import dev.beli.skylyrics.render.SkyEffects;
@@ -114,6 +117,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::renderEarly);
 		WorldRenderEvents.END_MAIN.register(renderer::renderLate);
+		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, entityRenderer, layers, context) -> {
+			if (entityRenderer instanceof AvatarRenderer<?> avatar) {
+				layers.register(new HatLayer(avatar, renderer));
+			}
+		});
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);

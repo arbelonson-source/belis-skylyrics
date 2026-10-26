@@ -31,6 +31,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Effects;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyColors;
@@ -300,12 +301,17 @@ public final class SkyLyricsScreen extends Screen {
 				.when(anySky);
 		Row constellations = new Toggle(Tr.t("Constellations"), Tr.t("Star patterns joined by thin lines"),
 				() -> cfg.constellations, v -> cfg.constellations = v);
+		Row hat = new Segmented(Tr.t("Hat"), Tr.t("See it in third person (F5). Only you can see it"),
+				new String[] {Tr.t("None"), Tr.t("Halo")}, () -> cfg.hat.ordinal(), i -> cfg.hat = Hat.values()[i]);
+		Row hatPulse = new Toggle(Tr.t("Glow with the lyrics"), Tr.t("Flares up with each new line"),
+				() -> cfg.hatPulse, v -> cfg.hatPulse = v).when(() -> cfg.hat != Hat.NONE);
 
 		return List.of(
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
 				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
-				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength));
+				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength),
+				new Card(Tr.t("Hat"), hat, hatPulse));
 	}
 
 	private List<Card> musicTab() {

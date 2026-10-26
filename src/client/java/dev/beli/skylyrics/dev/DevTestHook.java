@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.CameraType;
 import net.minecraft.client.InactivityFpsLimit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
@@ -21,7 +22,8 @@ import dev.beli.skylyrics.gui.SkyLyricsScreen;
  * Development-only remote control, so the mod can be checked on a hidden screen without a keyboard.
  * Write commands, one per line, to {@code skylyrics-test.txt} in the game folder; the file is read
  * once and deleted. Commands: {@code look <yaw> <pitch>}, {@code gui [tab]}, {@code preview},
- * {@code close}, {@code hud on|off}, {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
+ * {@code close}, {@code hud on|off}, {@code view <0-2>} (first person, behind, in front),
+ * {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
  * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
  * the desktop draws on top), {@code uncap} (no frame limit, vsync or idle slowdown), {@code fps [seconds]} (logs the frame
  * rate over that long).
@@ -148,6 +150,7 @@ public final class DevTestHook {
 					}
 				}
 				case "hud" -> client.options.hideGui = arg.equals("off");
+				case "view" -> client.options.setCameraType(CameraType.values()[Integer.parseInt(arg)]);
 				case "lang" -> {
 					client.getLanguageManager().setSelected(arg);
 					client.options.languageCode = arg;

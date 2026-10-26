@@ -314,5 +314,11 @@
   "skylyrics.ui.try_again": "נסו שוב",
   "skylyrics.ui.try_made_up_songs": "ניסיון עם שירים מומצאים",
   "skylyrics.ui.type_to_find_a_song": "הקלידו כדי למצוא שיר",
-  "skylyrics.ui.your_spotify_songs": "השירים שלכם ב-Spotify"
+  "skylyrics.ui.your_spotify_songs": "השירים שלכם ב-Spotify",
+  "skylyrics.ui.hat": "כובע",
+  "skylyrics.ui.see_it_in_third_person_f5_only_you_can_see_it": "רואים אותו בגוף שלישי (F5). רק אתם רואים אותו",
+  "skylyrics.ui.none": "בלי",
+  "skylyrics.ui.halo": "הילה",
+  "skylyrics.ui.glow_with_the_lyrics": "זוהר עם המילים",
+  "skylyrics.ui.flares_up_with_each_new_line": "מתלקח עם כל שורה חדשה"
 }
