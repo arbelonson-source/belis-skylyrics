@@ -10,7 +10,7 @@ import java.util.concurrent.CompletionException;
 import java.util.function.IntFunction;
 
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -191,14 +191,14 @@ public final class LibraryScreen extends Screen {
 	}
 
 	@Override
-	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		if (minecraft.level == null) {
-			super.renderBackground(g, mouseX, mouseY, partialTick);
+			super.extractBackground(g, mouseX, mouseY, partialTick);
 		}
 	}
 
 	@Override
-	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -232,20 +232,20 @@ public final class LibraryScreen extends Screen {
 		renderToast(g);
 	}
 
-	private void renderHeader(GuiGraphics g, Frame f) {
+	private void renderHeader(GuiGraphicsExtractor g, Frame f) {
 		Ui.rect(g, px + 10, py + 9, 16, 16, 4, Ui.ACCENT);
-		g.drawCenteredString(font, "♪", px + 18, py + 13, 0xFFFFFFFF);
-		g.drawString(font, Ui.visual(Tr.t("Song library")), px + 31, py + 8, Ui.TEXT, false);
+		g.centeredText(font, "♪", px + 18, py + 13, 0xFFFFFFFF);
+		g.text(font, Ui.visual(Tr.t("Song library")), px + 31, py + 8, Ui.TEXT, false);
 		String subtitle = library == null ? Tr.t("Your Spotify songs")
 				: demo ? Tr.t("Made-up songs, for trying it out") : Tr.t("From your Spotify");
-		g.drawString(font, Ui.visual(subtitle), px + 31, py + 18, Ui.DIM, false);
+		g.text(font, Ui.visual(subtitle), px + 31, py + 18, Ui.DIM, false);
 
 		int cx = px + pw - 22;
 		boolean closeHover = Ui.inside(f.mx(), f.my(), cx, py + 8, 14, 14);
 		if (closeHover) {
 			Ui.rect(g, cx, py + 8, 14, 14, 4, Ui.CONTROL_HOVER);
 		}
-		g.drawCenteredString(font, "×", cx + 7, py + 11, closeHover ? 0xFFFFFFFF : Ui.MUTED);
+		g.centeredText(font, "×", cx + 7, py + 11, closeHover ? 0xFFFFFFFF : Ui.MUTED);
 
 		if (library != null) {
 			int sx = searchX();
@@ -258,8 +258,8 @@ public final class LibraryScreen extends Screen {
 			String clipped = shown.length() > 0 && font.width(shown) > SEARCH_W - 20
 					? "…" + tail(shown, SEARCH_W - 26) : shown;
 			boolean caret = typing && (clock % 1f) < 0.55f;
-			g.drawString(font, "⌕", sx + 5, py + 12, Ui.DIM, false);
-			g.drawString(font, Ui.visual(clipped + (caret ? "_" : "")), sx + 15, py + 12,
+			g.text(font, "⌕", sx + 5, py + 12, Ui.DIM, false);
+			g.text(font, Ui.visual(clipped + (caret ? "_" : "")), sx + 15, py + 12,
 					query.isEmpty() && !typing ? Ui.DIM : Ui.TEXT, false);
 		}
 
@@ -269,8 +269,8 @@ public final class LibraryScreen extends Screen {
 			int w = font.width(back) + 14;
 			boolean hover = Ui.inside(f.mx(), f.my(), px + 10, y, w, 14);
 			Ui.rect(g, px + 10, y, w, 14, 7, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
-			g.drawString(font, Ui.visual(back), px + 17, y + 3, Ui.TEXT, false);
-			g.drawString(font, Ui.visual(Ui.clip(font, openedName, pw - w - 40)), px + 18 + w, y + 3, Ui.MUTED, false);
+			g.text(font, Ui.visual(back), px + 17, y + 3, Ui.TEXT, false);
+			g.text(font, Ui.visual(Ui.clip(font, openedName, pw - w - 40)), px + 18 + w, y + 3, Ui.MUTED, false);
 		} else if (library != null) {
 			int x = px + 10;
 			for (Section s : Section.values()) {
@@ -282,7 +282,7 @@ public final class LibraryScreen extends Screen {
 				} else if (hover) {
 					Ui.rect(g, x, y, w, 14, 7, 0x14FFFFFF);
 				}
-				g.drawString(font, Ui.visual(name), x + 7, y + 3, s == section ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED, false);
+				g.text(font, Ui.visual(name), x + 7, y + 3, s == section ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED, false);
 				x += w + 4;
 			}
 		}
@@ -309,7 +309,7 @@ public final class LibraryScreen extends Screen {
 		};
 	}
 
-	private void renderShelf(GuiGraphics g, Frame f, Shelf shelf) {
+	private void renderShelf(GuiGraphicsExtractor g, Frame f, Shelf shelf) {
 		if (shelf.items.isEmpty()) {
 			String text;
 			if (!shelf.error.isEmpty()) {
@@ -319,7 +319,7 @@ public final class LibraryScreen extends Screen {
 			} else {
 				text = emptyText();
 			}
-			g.drawCenteredString(font, Ui.visual(text), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+			g.centeredText(font, Ui.visual(text), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
 			if (!shelf.error.isEmpty()) {
 				int bx = px + pw / 2 - 40, by = viewY + viewH / 2 + 4;
 				Controls.drawButton(f, bx, by, 80, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, 80, 16), true, true);
@@ -347,9 +347,9 @@ public final class LibraryScreen extends Screen {
 		}
 		if (shelf.pending != null) {
 			int y = top + contentHeight(shelf) - 12;
-			g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
+			g.centeredText(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
 		} else if (!shelf.error.isEmpty()) {
-			g.drawCenteredString(font, Ui.visual(shelf.error), px + pw / 2, top + contentHeight(shelf) + 4, Ui.MUTED);
+			g.centeredText(font, Ui.visual(shelf.error), px + pw / 2, top + contentHeight(shelf) + 4, Ui.MUTED);
 		}
 		g.disableScissor();
 
@@ -372,7 +372,7 @@ public final class LibraryScreen extends Screen {
 		};
 	}
 
-	private void renderCard(GuiGraphics g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen) {
+	private void renderCard(GuiGraphicsExtractor g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen) {
 		String title;
 		String under;
 		String colorKey;
@@ -401,17 +401,17 @@ public final class LibraryScreen extends Screen {
 		g.pose().pushMatrix();
 		g.pose().translate(x + cellW / 2f, y + cellW / 2f - 7);
 		g.pose().scale(2, 2);
-		g.drawCenteredString(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
+		g.centeredText(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
 		g.pose().popMatrix();
 		if (chosen) {
 			Ui.outline(g, x - 1, y - 1, cellW + 2, cellW + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
 		}
-		g.drawString(font, Ui.visual(Ui.clip(font, title, cellW)), x, y + cellW + 3, Ui.alpha(Ui.TEXT, alpha), false);
-		g.drawString(font, Ui.visual(Ui.clip(font, under, cellW)), x, y + cellW + 12, Ui.alpha(Ui.DIM, alpha), false);
+		g.text(font, Ui.visual(Ui.clip(font, title, cellW)), x, y + cellW + 3, Ui.alpha(Ui.TEXT, alpha), false);
+		g.text(font, Ui.visual(Ui.clip(font, under, cellW)), x, y + cellW + 12, Ui.alpha(Ui.DIM, alpha), false);
 		g.pose().popMatrix();
 	}
 
-	private void renderSignIn(GuiGraphics g, Frame f) {
+	private void renderSignIn(GuiGraphicsExtractor g, Frame f) {
 		SpotifyWebSource spotify = mod.spotify();
 		String text = switch (spotify.account()) {
 			case NO_CLIENT_ID -> Tr.t("Connect Spotify on the Music tab to see your songs here");
@@ -422,14 +422,14 @@ public final class LibraryScreen extends Screen {
 		Ui.rect(g, x, y, w, 80, 8, Ui.CARD);
 		List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(text), w - 24);
 		for (int i = 0; i < Math.min(2, lines.size()); i++) {
-			g.drawCenteredString(font, lines.get(i), x + w / 2, y + 14 + i * 11, Ui.TEXT);
+			g.centeredText(font, lines.get(i), x + w / 2, y + 14 + i * 11, Ui.TEXT);
 		}
 		int by = y + 50;
 		Controls.drawButton(f, x + w / 2 - 104, by, 100, 18, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), x + w / 2 - 104, by, 100, 18), true, true);
 		Controls.drawButton(f, x + w / 2 + 4, by, 100, 18, Tr.t("Try made-up songs"), Ui.inside(f.mx(), f.my(), x + w / 2 + 4, by, 100, 18), false, true);
 	}
 
-	private void renderToast(GuiGraphics g) {
+	private void renderToast(GuiGraphicsExtractor g) {
 		if (toast.isEmpty() || toastAge >= TOAST_TIME) {
 			return;
 		}
@@ -437,7 +437,7 @@ public final class LibraryScreen extends Screen {
 		String text = Ui.clip(font, toast, pw - 60);
 		int w = font.width(text) + 20, x = px + (pw - w) / 2, y = py + ph - 24 + Math.round((1 - a) * 6);
 		Ui.rect(g, x, y, w, 16, 8, Ui.alpha(Ui.CONTROL_HOVER, a));
-		g.drawCenteredString(font, Ui.visual(text), px + pw / 2, y + 4, Ui.alpha(Ui.TEXT, a));
+		g.centeredText(font, Ui.visual(text), px + pw / 2, y + 4, Ui.alpha(Ui.TEXT, a));
 	}
 
 	private void say(String text) {
@@ -574,12 +574,12 @@ public final class LibraryScreen extends Screen {
 	private void openMusicTab() {
 		if (parent instanceof SkyLyricsScreen settings) {
 			settings.selectTab(2);
-			minecraft.setScreen(settings);
+			minecraft.gui.setScreen(settings);
 			return;
 		}
 		SkyLyricsScreen settings = new SkyLyricsScreen(this);
 		settings.selectTab(2);
-		minecraft.setScreen(settings);
+		minecraft.gui.setScreen(settings);
 	}
 
 	@Override
@@ -687,7 +687,7 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		minecraft.setScreen(parent);
+		minecraft.gui.setScreen(parent);
 	}
 
 	@Override

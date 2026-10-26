@@ -357,7 +357,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.showPlainLyrics, v -> cfg.showPlainLyrics = v);
 
 		Row library = new Buttons(Tr.t("Song library"), Tr.t("Pick a song to play (key: %s)", keyName(mod.libraryKey())),
-				new Button(Tr.t("Open"), () -> minecraft.setScreen(new LibraryScreen(this))));
+				new Button(Tr.t("Open"), () -> minecraft.gui.setScreen(new LibraryScreen(this))));
 
 		return List.of(
 				new Card(Tr.t("Now playing"), new NowPlayingRow(), status, library),

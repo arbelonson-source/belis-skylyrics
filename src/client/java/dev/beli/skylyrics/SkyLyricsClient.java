@@ -189,8 +189,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			}
 		}
 		while (openLibrary.consumeClick()) {
-			if (client.screen == null) {
-				client.setScreen(new LibraryScreen(null));
+			if (client.gui.screen() == null) {
+				client.gui.setScreen(new LibraryScreen(null));
 			}
 		}
 		while (toggleLyrics.consumeClick()) {
