@@ -420,10 +420,8 @@ final class WorldWords {
 		List<float[]> taken = new ArrayList<>(cards.size());
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
-			double far = to.length();
-			if (far > 1e-3 && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
-				taken.add(new float[] {yawOf(to), pitchOf(to), halfAngle(c.at[c.at.length - 1] * c.size / 2, far),
-						halfAngle(5 * c.size, far)});
+			if (to.length() > 1e-3 && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
+				taken.add(footprint(to, riseAfter((now - c.born) / 1e9f, rise), c.at[c.at.length - 1] * c.size / 2, 5 * c.size));
 			}
 		}
 		float[] spot = flow ? follow(centre, at, size, taken) : scatter(centre, at, size, taken);
@@ -574,6 +572,19 @@ final class WorldWords {
 
 	private static float pitchOf(Vec3 v) {
 		return (float) -Math.toDegrees(Math.asin(Mth.clamp(v.y / v.length(), -1, 1)));
+	}
+
+	/**
+	 * The patch of sky a card takes up, as yaw, pitch and half width/height in degrees, for a card at {@code to} from
+	 * the eye that has floated up by {@code risen}. Every card floats up at the same pace until it stops, so next to
+	 * a new card an older one ends up back where it started; the patch covers both ends of that, or the new card
+	 * would be placed where the older one is right now and the two would cross.
+	 */
+	static float[] footprint(Vec3 to, float risen, float halfWidth, float halfHeight) {
+		Vec3 now = to.add(0, risen, 0);
+		float from = pitchOf(to), at = pitchOf(now);
+		double far = to.length();
+		return new float[] {yawOf(to), (from + at) / 2, halfAngle(halfWidth, far), halfAngle(halfHeight, far) + Math.abs(from - at) / 2};
 	}
 
 	static float halfAngle(float half, double distance) {
