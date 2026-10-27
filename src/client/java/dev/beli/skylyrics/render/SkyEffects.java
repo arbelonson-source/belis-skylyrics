@@ -31,8 +31,12 @@ import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
+//? if >=1.21.11 {
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.dimension.DimensionType.Skybox;
+//?} else {
+/*import net.minecraft.client.renderer.DimensionSpecialEffects;
+*///?}
 import net.minecraft.world.level.material.FogType;
 
 /**
@@ -262,7 +266,7 @@ public final class SkyEffects {
 			effect = next;
 		}
 		ClientLevel level = mc.level;
-		if (presence <= 0 || !wanted || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
+		if (presence <= 0 || !wanted || level == null || !overworldSky(level)) {
 			return;
 		}
 		//? if >=26.2 {
@@ -274,7 +278,7 @@ public final class SkyEffects {
 			return;
 		}
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		float stars = camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial);
+		float stars = starBrightness(level, camera, partial);
 		fade = visibility(stars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
 				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 		if (fade < 0.01f) {
@@ -752,5 +756,23 @@ public final class SkyEffects {
 		corner = 0;
 		triangles(vc, pose, qx, qy, qz, qc, FRONT);
 		triangles(vc, pose, qx, qy, qz, qc, BACK);
+	}
+
+	/** Whether the level has the normal overworld sky, with a sun, moon and stars */
+	static boolean overworldSky(ClientLevel level) {
+		//? if >=1.21.11 {
+		return level.dimensionType().skybox() == Skybox.OVERWORLD;
+		//?} else {
+		/*return level.effects().skyType() == DimensionSpecialEffects.SkyType.OVERWORLD;
+		*///?}
+	}
+
+	/** How bright the stars are: 0 in the day, highest on a clear night */
+	static float starBrightness(ClientLevel level, Camera camera, float partial) {
+		//? if >=1.21.11 {
+		return camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial);
+		//?} else {
+		/*return level.getStarBrightness(partial);
+		*///?}
 	}
 }

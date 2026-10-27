@@ -30,8 +30,6 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
-import net.minecraft.world.attribute.EnvironmentAttributes;
-import net.minecraft.world.level.dimension.DimensionType.Skybox;
 import net.minecraft.world.level.material.FogType;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -1394,10 +1392,10 @@ public final class LyricsRenderer {
 	private void updateDaylight(Minecraft mc, Camera camera, float dt) {
 		ClientLevel level = mc.level;
 		float target = 0;
-		if (level != null && level.dimensionType().skybox() == Skybox.OVERWORLD
+		if (level != null && SkyEffects.overworldSky(level)
 				&& camera.getFluidInCamera() == FogType.NONE) {
 			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			target = daylight(camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial),
+			target = daylight(SkyEffects.starBrightness(level, camera, partial),
 					level.getRainLevel(partial));
 		}
 		daylight = approach(daylight, Math.max(target, BACKDROP * backdrop), dt * 2f);

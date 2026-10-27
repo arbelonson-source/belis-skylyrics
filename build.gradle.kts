@@ -39,6 +39,9 @@ dependencies {
 	modImplementation("net.fabricmc:fabric-loader:${property("deps.fabric_loader")}")
 	modImplementation("net.fabricmc.fabric-api:fabric-api:${property("deps.fabric_api")}")
 
+	// Newer Minecraft ships these null annotations itself; older ones need them to compile
+	compileOnly("org.jspecify:jspecify:1.0.0")
+
 	// Optional: adds a config button in Mod Menu when it is installed
 	modCompileOnly("com.terraformersmc:modmenu:${property("deps.modmenu")}")
 
