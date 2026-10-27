@@ -45,6 +45,11 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/** The top hat sits just above the head's outer layer; its brim is wide enough to clear that layer's corners. */
 	static final float TOP_HAT_BRIM_Y = HEAD_TOP - 0.035f, TOP_HAT_HEIGHT = 0.38f, TOP_HAT_RADIUS = 0.27f, TOP_HAT_BRIM = 0.43f;
 	private static final int SILK = 0xFF3A3A4A;
+	/** Each horn starts inside the head's outer layer and curls from leaning out to just past straight up. */
+	static final float HORN_X = 0.14f, HORN_BASE = HEAD_TOP - 0.01f, HORN_Z = -0.06f, HORN_LENGTH = 0.3f, HORN_RADIUS = 0.06f;
+	private static final float HORN_LEAN = 40, HORN_CURL = 105;
+	static final int HORN_STEPS = 8;
+	private static final int HORN_SIDES = 10, HORN = 0xFF8A1622, HORN_DARK = 0xFF5A0E18;
 	private static final int ORANGE = 0xFFE3801F, ORANGE_DARK = 0xFFC9661A, STEM = 0xFF4F6A2B;
 
 	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
@@ -114,6 +119,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			case CAT_EARS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
 			case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
 			case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
+			case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
 			case NONE -> { }
 		}
 		pose.popPose();
@@ -279,6 +285,52 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			quad(p, vc, FULL_BRIGHT, glow, glow, c0, s0, c1, s1, r + 0.004f, r + 0.004f, brim - 0.025f, brim - 0.08f); // band
 		}
 		tube(p, vc, TOP_HAT_BRIM, 0.008f, brim, glow, FULL_BRIGHT);
+	}
+
+	/** Two ridged red horns that curl up from the top of the head, their tips glowing. */
+	private static void horns(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		for (float side : new float[] {-1, 1}) {
+			float[][] h = horn(side);
+			for (int j = 0; j < HORN_STEPS; j++) {
+				float[] a = h[j], b = h[j + 1];
+				boolean tip = j >= HORN_STEPS - 2;
+				int from = tip ? glow : j % 2 == 0 ? HORN : HORN_DARK;
+				int to = j + 1 >= HORN_STEPS - 2 ? glow : (j + 1) % 2 == 0 ? HORN : HORN_DARK;
+				for (int i = 0; i < HORN_SIDES; i++) {
+					float k0 = i * Mth.TWO_PI / HORN_SIDES, k1 = (i + 1) * Mth.TWO_PI / HORN_SIDES;
+					face(p, vc, tip ? FULL_BRIGHT : light, from, to, ring(a, k0, 0), ring(a, k0, 1), ring(a, k0, 2),
+							ring(a, k1, 0), ring(a, k1, 1), ring(a, k1, 2), ring(b, k1, 0), ring(b, k1, 1), ring(b, k1, 2),
+							ring(b, k0, 0), ring(b, k0, 1), ring(b, k0, 2));
+				}
+			}
+		}
+	}
+
+	/**
+	 * The middle of one horn from base to tip, as x, y, z, radius and the way it points (sideways, up) at each step.
+	 * {@code side} is -1 for the left horn and 1 for the right.
+	 */
+	static float[][] horn(float side) {
+		float[][] points = new float[HORN_STEPS + 1][];
+		float x = side * HORN_X, y = HORN_BASE, z = HORN_Z, step = HORN_LENGTH / HORN_STEPS;
+		for (int j = 0; j <= HORN_STEPS; j++) {
+			float t = (float) j / HORN_STEPS, angle = Mth.lerp(t, HORN_LEAN, HORN_CURL) * Mth.DEG_TO_RAD;
+			float out = side * Mth.cos(angle), up = Mth.sin(angle);
+			points[j] = new float[] {x, y, z, HORN_RADIUS * (1 - t) + 0.006f, out, up};
+			x += out * step;
+			y -= up * step;
+		}
+		return points;
+	}
+
+	/** One coordinate of the point at angle {@code k} round a horn's ring, square to the way the horn points there. */
+	private static float ring(float[] c, float k, int axis) {
+		float across = Mth.cos(k) * c[3], deep = Mth.sin(k) * c[3];
+		return switch (axis) {
+			case 0 -> c[0] + across * c[5];
+			case 1 -> c[1] + across * c[4];
+			default -> c[2] + deep;
+		};
 	}
 
 	/** A carved pumpkin over the whole head, ribbed in two oranges, with a stem and a face that glows. */

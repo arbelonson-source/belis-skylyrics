@@ -73,4 +73,17 @@ class HatLayerTest {
 		assertTrue(HatLayer.grinColumn(1)[2] > HatLayer.grinColumn(0)[3], "a tooth hangs down from the top");
 		assertTrue(middle[4] < HatLayer.grinColumn(1)[5], "a tooth stands up in the middle");
 	}
+
+	@Test
+	void hornsGrowOutOfTheHeadAndCurlUpAndOut() {
+		for (float side : new float[] {-1, 1}) {
+			float[][] h = HatLayer.horn(side);
+			float[] base = h[0], tip = h[HatLayer.HORN_STEPS];
+			assertTrue(base[1] > -0.53f, "the base hides inside the head's outer layer");
+			assertTrue(tip[1] < base[1] - 0.2f, "the tip stands well above the head");
+			assertTrue(tip[0] * side > base[0] * side, "each horn leans out to its own side");
+			assertTrue(tip[3] < base[3], "the horn narrows to its tip");
+			assertTrue(tip[4] * side < 0, "the tip curls back in");
+		}
+	}
 }

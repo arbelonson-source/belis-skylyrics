@@ -146,7 +146,9 @@ public final class SkyLyricsConfig {
 		/** A carved pumpkin with a glowing face. */
 		PUMPKIN,
 		/** A tall top hat with a glowing band. */
-		TOP_HAT
+		TOP_HAT,
+		/** Two curled red horns with glowing tips. */
+		DEVIL_HORNS
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */
