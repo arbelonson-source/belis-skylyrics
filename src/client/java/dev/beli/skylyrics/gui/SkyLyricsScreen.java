@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.gui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
@@ -65,6 +67,8 @@ public final class SkyLyricsScreen extends Screen {
 	private static final String LRCLIB = "https://lrclib.net";
 
 	private static final int TAB_COUNT = 5;
+	/** Not a real tab: the matches for what is typed in the search box. */
+	private static final int SEARCH_TAB = TAB_COUNT;
 	private static final String[] TAB_ICONS = {"☁", "✦", "♫", "◐", "ℹ"};
 	private static String tabName(int i) {
 		return switch (i) {
@@ -72,6 +76,7 @@ public final class SkyLyricsScreen extends Screen {
 			case 1 -> Tr.t("Look");
 			case 2 -> Tr.t("Music");
 			case 3 -> Tr.t("Display");
+			case SEARCH_TAB -> Tr.t("Search");
 			default -> Tr.t("About");
 		};
 	}
@@ -82,6 +87,7 @@ public final class SkyLyricsScreen extends Screen {
 			case 1 -> Tr.t("Colours, glow and style");
 			case 2 -> Tr.t("Your music player and lyrics");
 			case 3 -> Tr.t("When to show things");
+			case SEARCH_TAB -> Tr.t("Find any setting by its name");
 			default -> Tr.t("About this mod");
 		};
 	}
@@ -109,6 +115,9 @@ public final class SkyLyricsScreen extends Screen {
 
 	private static final int SIDEBAR_W = 96;
 	private static final int TAB_H = 20;
+	private static final int SEARCH_Y = 35;
+	private static final int SEARCH_H = 15;
+	private static final int TABS_Y = 56;
 	private static final int HEADER_H = 40;
 	private static final int FOOTER_H = 32;
 	private static final long SOLO_DELAY_NS = 180_000_000L;
@@ -123,8 +132,12 @@ public final class SkyLyricsScreen extends Screen {
 	private String spotifyError = "";
 	private final List<List<Card>> tabs = new ArrayList<>();
 	private final Toggle masterToggle;
-	private final float[] scroll = new float[TAB_COUNT];
-	private final float[] scrollTarget = new float[TAB_COUNT];
+	private final float[] scroll = new float[TAB_COUNT + 1];
+	private final float[] scrollTarget = new float[TAB_COUNT + 1];
+	private String query = "";
+	private boolean typing;
+	/** The tab to go back to when the search is cleared. */
+	private int searchFrom;
 
 	private int tab = lastTab;
 	private int px, py, pw, ph;
@@ -170,6 +183,7 @@ public final class SkyLyricsScreen extends Screen {
 		tabs.add(musicTab());
 		tabs.add(displayTab());
 		tabs.add(aboutTab());
+		tabs.add(List.of());
 	}
 
 	// ---- Tabs -------------------------------------------------------------------------------------
@@ -771,12 +785,15 @@ public final class SkyLyricsScreen extends Screen {
 		g.drawString(font, Ui.visual("SkyLyrics"), px + 31, py + 10, Ui.TEXT, false);
 		g.drawString(font, Ui.visual("by Beli"), px + 31, py + 20, Ui.DIM, false);
 
-		int tabsY = py + 40;
+		int tabsY = py + TABS_Y;
+		renderSearch(g, f);
 		float target = tabsY + tab * (TAB_H + 2);
 		indicatorY = Float.isNaN(indicatorY) ? target : Ui.approach(indicatorY, target, f.dt(), 16);
 		int iy = Math.round(indicatorY);
-		Ui.rect(g, px + 6, iy, SIDEBAR_W - 12, TAB_H, 5, Ui.ACCENT_SOFT);
-		Ui.rect(g, px + 6, iy + 5, 2, TAB_H - 10, 1, Ui.ACCENT);
+		if (tab != SEARCH_TAB) {
+			Ui.rect(g, px + 6, iy, SIDEBAR_W - 12, TAB_H, 5, Ui.ACCENT_SOFT);
+			Ui.rect(g, px + 6, iy + 5, 2, TAB_H - 10, 1, Ui.ACCENT);
+		}
 		for (int i = 0; i < TAB_COUNT; i++) {
 			int ty = tabsY + i * (TAB_H + 2);
 			boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), px + 6, ty, SIDEBAR_W - 12, TAB_H);
@@ -790,6 +807,82 @@ public final class SkyLyricsScreen extends Screen {
 
 		g.fill(px + 10, py + ph - 36, px + SIDEBAR_W - 10, py + ph - 35, Ui.DIVIDER);
 		masterToggle.render(f);
+	}
+
+	private void renderSearch(GuiGraphics g, Frame f) {
+		int sx = px + 8;
+		int sy = py + SEARCH_Y;
+		int sw = SIDEBAR_W - 16;
+		boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), sx, sy, sw, SEARCH_H);
+		Ui.rect(g, sx, sy, sw, SEARCH_H, 4, typing || hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
+		if (typing) {
+			Ui.outline(g, sx, sy, sw, SEARCH_H, 4, Ui.ACCENT);
+		}
+		g.drawString(font, "⌕", sx + 4, sy + 4, Ui.DIM, false);
+		int textW = sw - 16 - (query.isEmpty() ? 0 : 10);
+		boolean placeholder = query.isEmpty() && !typing;
+		String shown = placeholder ? Tr.t("Search") : query;
+		if (font.width(shown) > textW) {
+			shown = placeholder ? Ui.clip(font, shown, textW) : "…" + tail(shown, textW - font.width("…"));
+		}
+		String caret = typing && System.currentTimeMillis() % 1000 < 550 ? "_" : "";
+		g.drawString(font, Ui.visual(shown + caret), sx + 13, sy + 4, placeholder ? Ui.DIM : Ui.TEXT, false);
+		if (!query.isEmpty()) {
+			boolean clearHover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), sx + sw - 12, sy, 12, SEARCH_H);
+			g.drawString(font, "×", sx + sw - 9, sy + 4, clearHover ? Ui.TEXT : Ui.DIM, false);
+		}
+	}
+
+	/** The end of {@code text} that fits in {@code maxW}, so the letters being typed stay in sight. */
+	private String tail(String text, int maxW) {
+		int i = 0;
+		while (i < text.length() && font.width(text.substring(i)) > maxW) {
+			i++;
+		}
+		return text.substring(i);
+	}
+
+	/** Every row whose name, description or card matches the search, in cards named after their tab. */
+	private List<Card> searchResults() {
+		List<Card> found = new ArrayList<>();
+		for (int i = 0; i < TAB_COUNT; i++) {
+			for (Card card : tabs.get(i)) {
+				List<Row> rows = new ArrayList<>();
+				for (Row row : card.rows()) {
+					String text = card.title() + " " + row.label + " " + (row.desc == null ? "" : row.desc.get());
+					if (!(row instanceof Paragraph) && SettingsSearch.matches(text, query)) {
+						rows.add(row);
+					}
+				}
+				if (!rows.isEmpty()) {
+					found.add(new Card(tabName(i) + " · " + card.title(), rows));
+				}
+			}
+		}
+		return found;
+	}
+
+	private void editSearch(String text) {
+		query = text.length() > 60 ? text.substring(0, 60) : text;
+		if (tab != SEARCH_TAB) {
+			searchFrom = tab;
+			tab = SEARCH_TAB;
+			tabAnim = 0;
+		}
+		tabs.set(SEARCH_TAB, query.isBlank() ? List.of() : searchResults());
+		scrollTarget[SEARCH_TAB] = 0;
+		scroll[SEARCH_TAB] = 0;
+	}
+
+	/** Empties the search box and goes back to the tab you were on. */
+	private void clearSearch() {
+		query = "";
+		typing = false;
+		tabs.set(SEARCH_TAB, List.of());
+		if (tab == SEARCH_TAB) {
+			tab = searchFrom;
+			tabAnim = 0;
+		}
 	}
 
 	private void renderHeader(GuiGraphics g, Frame f) {
@@ -853,6 +946,10 @@ public final class SkyLyricsScreen extends Screen {
 			}
 		}
 		g.disableScissor();
+		if (tab == SEARCH_TAB && tabs.get(tab).stream().allMatch(c -> shownRows(c).isEmpty())) {
+			String hint = query.isBlank() ? Tr.t("Type what you're looking for") : Tr.t("Nothing matches, try another word");
+			g.drawCenteredString(font, Ui.visual(hint), viewX + viewW / 2, viewY + 30, Ui.DIM);
+		}
 
 		float max = maxScroll();
 		if (max > 0) {
@@ -919,7 +1016,16 @@ public final class SkyLyricsScreen extends Screen {
 			return super.mouseClicked(event, doubleClick);
 		}
 
-		int tabsY = py + 40;
+		if (Ui.inside(mx, my, px + 8, py + SEARCH_Y, SIDEBAR_W - 16, SEARCH_H)) {
+			if (!query.isEmpty() && mx >= px + SIDEBAR_W - 20) {
+				clearSearch();
+			} else {
+				typing = true;
+			}
+			return true;
+		}
+		typing = false;
+		int tabsY = py + TABS_Y;
 		for (int i = 0; i < TAB_COUNT; i++) {
 			if (Ui.inside(mx, my, px + 6, tabsY + i * (TAB_H + 2), SIDEBAR_W - 12, TAB_H)) {
 				selectTab(i);
@@ -1040,6 +1146,11 @@ public final class SkyLyricsScreen extends Screen {
 		return keyPressed(new KeyEvent(key, scancode, modifiers));
 	}
 
+	@Override
+	public boolean charTyped(char c, int modifiers) {
+		return charTyped(new CharacterEvent(c));
+	}
+
 	*///?}
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
@@ -1061,6 +1172,27 @@ public final class SkyLyricsScreen extends Screen {
 			preview = false;
 			return true;
 		}
+		if (typing) {
+			if (event.isEscape()) {
+				clearSearch();
+			} else if (event.isConfirmation()) {
+				typing = false;
+			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
+				editSearch(event.hasControlDown() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
+			} else if (event.isPaste()) {
+				editSearch(query + minecraft.keyboardHandler.getClipboard().replaceAll("\\s+", " "));
+			}
+			// Letters come in through charTyped; the rest must not close the screen or change a setting
+			return true;
+		}
+		if (event.key() == InputConstants.KEY_F && event.hasControlDown()) {
+			typing = true;
+			return true;
+		}
+		if (tab == SEARCH_TAB && event.isEscape()) {
+			clearSearch();
+			return true;
+		}
 		KeyMapping open = mod.openSettingsKey();
 		if (open != null && open.matches(event)) {
 			onClose();
@@ -1073,11 +1205,24 @@ public final class SkyLyricsScreen extends Screen {
 			dirty = true;
 			return true;
 		}
-		if (event.isUp() || event.isDown()) {
+		if ((event.isUp() || event.isDown()) && tab != SEARCH_TAB) {
 			selectTab(Math.floorMod(tab + (event.isDown() ? 1 : -1), TAB_COUNT));
 			return true;
 		}
 		return super.keyPressed(event);
+	}
+
+	//? if >=1.21.9 {
+	@Override
+	//?}
+	public boolean charTyped(CharacterEvent event) {
+		if (!typing || !event.isAllowedChatCharacter()) {
+			return false;
+		}
+		if (query.length() < 60) {
+			editSearch(query + event.codepointAsString());
+		}
+		return true;
 	}
 
 	/** At big GUI scales the panel reaches the top of the screen, where the top bar would peek out from under it. */
@@ -1090,6 +1235,9 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	public void selectTab(int index) {
+		if (tab == SEARCH_TAB) {
+			clearSearch();
+		}
 		if (index != tab) {
 			tab = index;
 			tabAnim = 0;
@@ -1114,7 +1262,7 @@ public final class SkyLyricsScreen extends Screen {
 
 	@Override
 	public void removed() {
-		lastTab = tab;
+		lastTab = tab == SEARCH_TAB ? searchFrom : tab;
 		if (dirty) {
 			cfg.save();
 			dirty = false;

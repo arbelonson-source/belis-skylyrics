@@ -396,5 +396,8 @@
   "skylyrics.ui.hit_to_knock": "Hit to knock",
   "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "Hitting a word knocks it away and it springs back",
   "skylyrics.ui.keep_the_middle_clear": "Keep the middle clear",
-  "skylyrics.ui.words_float_off_to_the_side_so_you_can_always_se": "Words float off to the side so you can always see the game"
+  "skylyrics.ui.words_float_off_to_the_side_so_you_can_always_se": "Words float off to the side so you can always see the game",
+  "skylyrics.ui.find_any_setting_by_its_name": "Find any setting by its name",
+  "skylyrics.ui.type_what_you_re_looking_for": "Type what you're looking for",
+  "skylyrics.ui.nothing_matches_try_another_word": "Nothing matches, try another word"
 }
