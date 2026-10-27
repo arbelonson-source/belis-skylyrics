@@ -165,6 +165,8 @@ final class WorldWords {
 	}
 
 	private final List<Card> cards = new ArrayList<>();
+	/** Reused for each card's turn while drawing, which only happens on the render thread. */
+	private static final Quaternionf TURN = new Quaternionf();
 	private final int[] recent = {-1, -1};
 	private int line = Integer.MIN_VALUE;
 	private int spawned;
@@ -726,7 +728,7 @@ final class WorldWords {
 			int colour = c.goneAt < 0 ? rgb : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			pose.pushPose();
 			pose.translate(x, y, z);
-			pose.mulPose(new Quaternionf().rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
+			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
 					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway)) * DEG));
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
@@ -797,7 +799,6 @@ final class WorldWords {
 		return g;
 	}
 
-	/** How many blocks a card has drifted up {@code age} seconds after it came, with the Float up setting {@code rise}. */
 	/**
 	 * How far through its slow sway a card is, as an angle: each card starts at its own point (from when it came) so
 	 * neighbours don't rock in step.
@@ -806,6 +807,7 @@ final class WorldWords {
 		return age * (Mth.TWO_PI / SWAY_TIME) + (born >>> 16 & 1023) * (Mth.TWO_PI / 1024);
 	}
 
+	/** How many blocks a card has drifted up {@code age} seconds after it came, with the Float up setting {@code rise}. */
 	static float riseAfter(float age, float rise) {
 		return Math.min(age * RISE, RISE_MAX) * rise;
 	}
