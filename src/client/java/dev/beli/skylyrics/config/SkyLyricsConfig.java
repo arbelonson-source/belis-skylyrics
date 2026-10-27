@@ -211,6 +211,8 @@ public final class SkyLyricsConfig {
 	public SkySpeed skySpeed = SkySpeed.NORMAL;
 	public boolean shootingStars = false;
 	public boolean twinkle = false;
+	/** The sky effect brightens for a moment as each new line starts, and sits a little dimmer in between. */
+	public boolean skyPulse = false;
 	/** Something glowing on your head, seen in third person. Only you can see it. */
 	public Hat hat = Hat.NONE;
 	/** The hat flares up with each new line. */

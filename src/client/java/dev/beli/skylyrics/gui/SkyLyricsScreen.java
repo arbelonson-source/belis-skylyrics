@@ -302,6 +302,8 @@ public final class SkyLyricsScreen extends Screen {
 		Row skyStrength = new Slider(Tr.t("Strength"), null, 0.1, 1, 0.05,
 				() -> cfg.skyStrength, v -> cfg.skyStrength = (float) v, SkyLyricsScreen::percent)
 				.when(anySky);
+		Row skyPulse = new Toggle(Tr.t("Pulse with the lyrics"), Tr.t("Brightens as each new line starts"),
+				() -> cfg.skyPulse, v -> cfg.skyPulse = v).when(() -> cfg.sky != SkyEffect.OFF);
 		Row constellations = new Toggle(Tr.t("Constellations"), Tr.t("Star patterns joined by thin lines"),
 				() -> cfg.constellations, v -> cfg.constellations = v);
 		Row hat = new Cycle(Tr.t("Hat"), Tr.t("See it in third person (F5). Only you can see it"),
@@ -315,7 +317,7 @@ public final class SkyLyricsScreen extends Screen {
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
 				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
-				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength),
+				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength, skyPulse),
 				new Card(Tr.t("Hat"), hat, hatPulse));
 	}
 

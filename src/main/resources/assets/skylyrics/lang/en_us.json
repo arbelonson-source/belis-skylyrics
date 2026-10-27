@@ -326,5 +326,7 @@
   "skylyrics.ui.crown": "Crown",
   "skylyrics.ui.song_title": "Song title",
   "skylyrics.ui.a_new_song_s_name_floats_up_in_the_sky": "A new song's name floats up in the sky",
-  "skylyrics.ui.cat_ears": "Cat ears"
+  "skylyrics.ui.cat_ears": "Cat ears",
+  "skylyrics.ui.pulse_with_the_lyrics": "Pulse with the lyrics",
+  "skylyrics.ui.brightens_as_each_new_line_starts": "Brightens as each new line starts"
 }
