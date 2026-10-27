@@ -38,6 +38,7 @@ import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
+import dev.beli.skylyrics.media.TitleCleaner;
 import dev.beli.skylyrics.media.Track;
 
 /**
@@ -372,6 +373,12 @@ public final class LyricsRenderer {
 		}
 	}
 
+	/** A title without "- Remastered 2011", "(feat. …)" and the like, unless that would leave nothing. */
+	static String shownTitle(String title) {
+		String clean = TitleCleaner.forSearch(title);
+		return clean.isEmpty() ? title : clean;
+	}
+
 	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
 	private void renderWorldWords(LevelRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
 			long now) {
@@ -396,7 +403,7 @@ public final class LyricsRenderer {
 		if (!track.isNone() && !key.equals(announced)) {
 			announced = key;
 			if (cfg.worldTitle) {
-				worldWords.announce(track.title(), cfg.direction.yaw, camera, mc.font, style, now);
+				worldWords.announce(shownTitle(track.title()), TitleCleaner.mainArtist(track.artist()), cfg.direction.yaw, camera, mc.font, style, now);
 			}
 		}
 		worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);

@@ -121,6 +121,8 @@ final class WorldWords {
 	private static final float SENTENCE_WOBBLE = 4f;
 	/** A new song's title: how much bigger than a word, how many seconds it stays, degrees above the words and blocks out. */
 	static final float TITLE_SIZE = 1.7f, TITLE_HOLD = 4f, TITLE_LIFT = 9f, TITLE_DISTANCE = 13f;
+	/** The artist under a title: how much smaller, and how many degrees lower. */
+	static final float ARTIST_SIZE = 0.55f, ARTIST_DROP = 4.2f;
 	/** Longest title shown, in characters; longer ones are cut with an ellipsis. */
 	static final int TITLE_MAX = 32;
 
@@ -412,17 +414,27 @@ final class WorldWords {
 	 * Shows a new song's title as a big card above where the words gather, facing you, for a few seconds. It stays
 	 * while the lyrics change over, and new words keep clear of it.
 	 */
-	void announce(String title, float fixedYaw, Camera camera, Font font, Style style, long now) {
+	void announce(String title, String artist, float fixedYaw, Camera camera, Font font, Style style, long now) {
 		cards.removeIf(c -> c.title);
 		String text = titleText(title, capitals);
 		if (text.isEmpty()) {
 			return;
 		}
 		float[] centre = centre(fixedYaw, camera.yRot(), camera.xRot(), gliding);
+		float pitch = Mth.clamp(centre[1] - LIFT - TITLE_LIFT, -75, 60);
+		addTitle(text, centre[0], pitch, TITLE_SIZE, camera, font, style, now);
+		// The artist, smaller, just under it
+		String by = titleText(artist, capitals);
+		if (!by.isEmpty()) {
+			addTitle(by, centre[0], pitch + ARTIST_DROP, TITLE_SIZE * ARTIST_SIZE, camera, font, style, now);
+		}
+	}
+
+	private void addTitle(String text, float yaw, float pitch, float size, Camera camera, Font font, Style style, long now) {
 		Display d = Display.of(text);
-		Vec3 dir = direction(centre[0], Mth.clamp(centre[1] - LIFT - TITLE_LIFT, -75, 60));
-		Card c = new Card(d, widths(d, font, style), camera.position().add(dir.scale(TITLE_DISTANCE * away)), centre[0], 0, 0,
-				SIZE * TITLE_SIZE * away, now);
+		Vec3 dir = direction(yaw, pitch);
+		Card c = new Card(d, widths(d, font, style), camera.position().add(dir.scale(TITLE_DISTANCE * away)), yaw, 0, 0,
+				SIZE * size * away, now);
 		c.title = true;
 		cards.add(c);
 	}
