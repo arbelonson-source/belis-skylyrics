@@ -888,7 +888,9 @@ final class WorldWords {
 		List<Card> live = new ArrayList<>(cards.size());
 		List<float[]> seen = new ArrayList<>(cards.size());
 		for (Card c : cards) {
-			if (c.goneAt >= 0 || c.cutAt >= 0 || c.fellAt >= 0) {
+			// Fading words still take part until they're almost gone, so nothing glides onto them and they glide too
+			if (c.fellAt >= 0 || c.goneAt >= 0 && goneAlpha((now - c.goneAt) / 1e9f, fade) < 0.1f
+					|| c.cutAt >= 0 && cutAlpha((now - c.cutAt) / 1e9f) < 0.1f) {
 				continue;
 			}
 			Vec3 to = c.pos.add(c.slide).subtract(eye);
