@@ -9,8 +9,13 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 ## Rules for whoever picks this up (incl. the cron loop)
 - Build: `JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./gradlew build` (Loom needs Java 25 to run; the mod targets Java 21).
 - Test in game WITHOUT stealing the owner's screen: run the game on a Hyprland headless
-  output (`hyprctl output create headless SKYLYRICS`, window rule `workspace name:skylyrics silent`).
-  Never test while the owner is playing (`pgrep -fa 'java.*minecraft'` shows their game).
+  output (`hyprctl output create headless SKYLYRICS`). Create it only while a test is running
+  and `hyprctl output remove SKYLYRICS` at the end of EVERY test session (first move any
+  non-test workspace back to DP-3); a leftover output makes the owner's PC think it has two screens.
+  Never add a window rule matching `Minecraft.*`: it grabs the owner's own game if they start
+  it mid-test. Move only the test client's window, by its PID, to the test workspace.
+  Never test while the owner is playing (`pgrep -fa 'java.*minecraft'` shows their game), and
+  check `hyprctl clients -j` again just before each batch of shots.
 - Demo screenshots/videos use the built-in DEMO song with original lyrics, never real lyrics.
 - Never hard-code real lyrics. Lyrics come from LRCLIB at runtime.
 - Keep the owner's main Prism instance ("donut") untouched until a release is ready.
