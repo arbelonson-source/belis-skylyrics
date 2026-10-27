@@ -134,7 +134,7 @@ public final class Themes {
 				c.sky = SkyEffect.AURORA;
 				c.skyStrength = 0.8f;
 			}),
-			// The line written out word by word across a plain night sky, lilac with a soft pink glow
+			// The line written out word by word across a plain night sky, lilac with a gentle glow
 			new Theme("lilac", () -> Tr.t("Lilac"), c -> {
 				c.layout = Layout.WORLD;
 				c.worldFlow = true;
