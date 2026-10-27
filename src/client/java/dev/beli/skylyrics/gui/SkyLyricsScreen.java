@@ -134,6 +134,23 @@ public final class SkyLyricsScreen extends Screen {
 	private float openAnim;
 	private float tabAnim = 1;
 	private long lastFrame;
+	private final ClickRescue rescue = new ClickRescue();
+	private final ClickRescue.Target rescueTarget = new ClickRescue.Target() {
+		@Override
+		public boolean click(MouseButtonEvent event) {
+			return mouseClicked(event, false);
+		}
+
+		@Override
+		public boolean drag(MouseButtonEvent event, double dx, double dy) {
+			return mouseDragged(event, dx, dy);
+		}
+
+		@Override
+		public boolean release(MouseButtonEvent event) {
+			return mouseReleased(event);
+		}
+	};
 	private boolean dirty;
 	private boolean preview;
 	private long resetArmedUntil;
@@ -700,6 +717,7 @@ public final class SkyLyricsScreen extends Screen {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		rescue.poll(mouseX, mouseY, rescueTarget);
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -873,6 +891,9 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (event.button() == 0 && !rescue.pressed()) {
+			return true;
+		}
 		double mx = event.x();
 		double my = event.y();
 		if (preview) {
@@ -968,6 +989,9 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseReleased(MouseButtonEvent event) {
+		if (event.button() == 0 && !rescue.released()) {
+			return true;
+		}
 		if (active != null) {
 			active.release();
 			active = null;

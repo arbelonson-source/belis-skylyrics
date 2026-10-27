@@ -77,6 +77,23 @@ public final class LibraryScreen extends Screen {
 
 	private float clock;
 	private long lastFrame;
+	private final ClickRescue rescue = new ClickRescue();
+	private final ClickRescue.Target rescueTarget = new ClickRescue.Target() {
+		@Override
+		public boolean click(MouseButtonEvent event) {
+			return mouseClicked(event, false);
+		}
+
+		@Override
+		public boolean drag(MouseButtonEvent event, double dx, double dy) {
+			return false;
+		}
+
+		@Override
+		public boolean release(MouseButtonEvent event) {
+			return false;
+		}
+	};
 	private float openAnim;
 	private int px, py, pw, ph;
 	private int viewX, viewY, viewW, viewH;
@@ -241,6 +258,7 @@ public final class LibraryScreen extends Screen {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		rescue.poll(mouseX, mouseY, rescueTarget);
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -785,6 +803,9 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		if (event.button() == 0 && !rescue.pressed()) {
+			return true;
+		}
 		double mx = event.x();
 		double my = event.y();
 		if (event.button() != 0) {
