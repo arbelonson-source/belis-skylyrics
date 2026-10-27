@@ -438,7 +438,7 @@ public final class LyricsRenderer {
 			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), lineEnd(index)) * total : total;
 			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
 		}
-		Style style = LyricsFont.sky(cfg);
+		Style style = LyricsFont.world(cfg);
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);

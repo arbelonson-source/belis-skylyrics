@@ -18,6 +18,13 @@ public final class LyricsFont {
 	public static final FontDescription BOLD = new FontDescription.Resource(SkyLyricsClient.id("bold"));
 	/** Handwritten brush letters for the sky lyrics (assets/skylyrics/font/script.json). */
 	public static final FontDescription SCRIPT = new FontDescription.Resource(SkyLyricsClient.id("script"));
+	/**
+	 * The same three fonts drawn from finer letter images (assets/skylyrics/font/world*.json). World layout words
+	 * float a few blocks away and show far bigger than any other text, so the usual images look soft up close.
+	 */
+	static final FontDescription WORLD = new FontDescription.Resource(SkyLyricsClient.id("world"));
+	static final FontDescription WORLD_BOLD = new FontDescription.Resource(SkyLyricsClient.id("world_bold"));
+	static final FontDescription WORLD_SCRIPT = new FontDescription.Resource(SkyLyricsClient.id("world_script"));
 
 	private LyricsFont() {
 	}
@@ -33,6 +40,14 @@ public final class LyricsFont {
 			return Style.EMPTY.withFont(SCRIPT);
 		}
 		return cfg.smoothFont && cfg.boldFont ? Style.EMPTY.withFont(BOLD) : base(cfg);
+	}
+
+	/** Like {@link #sky}, for the World layout's floating words: the same choice of font, from the finer images. */
+	public static Style world(SkyLyricsConfig cfg) {
+		if (!cfg.smoothFont) {
+			return Style.EMPTY;
+		}
+		return Style.EMPTY.withFont(cfg.scriptFont ? WORLD_SCRIPT : cfg.boldFont ? WORLD_BOLD : WORLD);
 	}
 
 	/** Exact width in text units (the plain {@code Font.width(String)} always measures Minecraft's font). */
