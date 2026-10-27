@@ -265,6 +265,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aSlopedLineRisesToTheRightRowAfterRow() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 5);
+		float[] first = line.place(2, 1, 0, 0), second = line.place(2, 1, 0, 0);
+		assertTrue(second[1] < first[1]);
+		assertEquals((second[0] - first[0]) * Math.tan(Math.toRadians(5)), first[1] - second[1], 1e-4);
+		float[] last = second;
+		while (last[0] > first[0]) {
+			last = line.place(2, 1, 0, 0);
+		}
+		// The next row starts from the left again, a row lower, on a line just as steep as the first
+		assertEquals(2 + WorldWords.Sentence.ROW_GAP - 1 - last[0] * Math.tan(Math.toRadians(5)), last[1], 1e-4);
+	}
+
+	@Test
 	void aFullRowCarriesOnBelowFromTheLeft() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		float[] last = line.place(5, 1, 0, 0);

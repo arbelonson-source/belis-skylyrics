@@ -130,7 +130,9 @@ final class WorldWords {
 	/** A flowing line's new rows start up to this far in, its pieces sit up to this far off the row (degrees). */
 	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 0.7f;
 	/** How much each piece of a flowing line turns differently from the rest (degrees), and how much of the usual nod and lean it keeps, so the line reads as one. */
-	private static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 0.5f;
+	private static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 0.25f;
+	/** A flowing line rises or falls by between these many degrees, words and all, like a line written across a page. */
+	private static final float SENTENCE_SLOPE_MIN = 1.5f, SENTENCE_SLOPE_MAX = 5f;
 	/** A new song's title: how much bigger than a word, how many seconds it stays, degrees above the words and blocks out. */
 	static final float TITLE_SIZE = 1.7f, TITLE_HOLD = 4f, TITLE_LIFT = 9f, TITLE_DISTANCE = 13f;
 	/** The artist under a title: how much smaller, and how many degrees lower. */
@@ -536,6 +538,10 @@ final class WorldWords {
 		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
 		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? SENTENCE_NOD : 1), lean = tilt * (next() * 2 - 1) * LEAN * (flow ? SENTENCE_LEAN : 1);
+		if (flow && sentence != null) {
+			// Every word leans with the line's slope, so the line reads as one tilted piece
+			lean += sentence.slope;
+		}
 		cards.add(new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now));
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
@@ -614,7 +620,8 @@ final class WorldWords {
 				}
 				if (cost < bestCost) {
 					bestCost = cost;
-					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1));
+					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1),
+							tilt * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1));
 				}
 			}
 		}
@@ -634,10 +641,17 @@ final class WorldWords {
 		/** Space between pieces, in their own half heights (about a letter, like a written word space), and between rows, in degrees. */
 		static final float GAP = 0.7f, ROW_GAP = 0.4f;
 		final float distance, turn;
+		/** How far the line rises to the right, in degrees (negative falls). */
+		final float slope;
 		/** Where rows start, the pitch of the line the row being written sits on (bigger is lower) and its right end so far. */
 		float left, top, cursor;
 
 		Sentence(float left, float top, float distance, float turn) {
+			this(left, top, distance, turn, 0);
+		}
+
+		Sentence(float left, float top, float distance, float turn, float slope) {
+			this.slope = slope;
 			this.left = left;
 			this.top = top;
 			this.cursor = left;
@@ -656,7 +670,8 @@ final class WorldWords {
 				yaw = left + indent + halfW;
 			}
 			cursor = yaw + halfW;
-			return new float[] {yaw, top - halfH + bob};
+			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets
+			return new float[] {yaw, top - halfH + bob - (yaw - left) * (float) Math.tan(slope * DEG)};
 		}
 
 		/** Turns the rest of the line along with you (see {@link WorldWords#glide}). */
