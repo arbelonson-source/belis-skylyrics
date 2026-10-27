@@ -75,6 +75,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private AlbumArt art;
 	private CoverCache covers;
 	private LyricsRenderer renderer;
+	private boolean attackHeld;
 	private SkyEffects sky;
 	private NowPlayingHud hud;
 	private DevTestHook testHook;
@@ -299,6 +300,16 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			client.gui.getChat().addMessage(line);
 			//?}
 		}
+		// A fresh press of the attack key in the world may knock a World word under the crosshair
+		//? if >=26.2 {
+		/*boolean attack = client.gui.screen() == null && client.player != null && client.options.keyAttack.isDown();
+		*///?} else {
+		boolean attack = client.screen == null && client.player != null && client.options.keyAttack.isDown();
+		//?}
+		if (attack && !attackHeld) {
+			renderer.swing();
+		}
+		attackHeld = attack;
 		if (!keysChecked) {
 			keysChecked = true;
 			moveOffShaderToggle(client, openLibrary);

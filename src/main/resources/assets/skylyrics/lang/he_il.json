@@ -386,5 +386,9 @@
   "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "מילים שעולות זו על זו מחליקות הצידה",
   "skylyrics.ui.skylyrics_s_downloaded": "SkyLyrics %s הורדה",
   "skylyrics.ui.restart_minecraft_to_use_it": "הפעילו מחדש את Minecraft כדי להשתמש בה",
-  "skylyrics.ui.get_it_from_the_github_page": "אפשר להוריד אותה מעמוד ה-GitHub"
+  "skylyrics.ui.get_it_from_the_github_page": "אפשר להוריד אותה מעמוד ה-GitHub",
+  "skylyrics.ui.keep_off_players": "להתרחק משחקנים",
+  "skylyrics.ui.words_move_out_of_the_way_of_other_players_for_p": "המילים זזות מהדרך של שחקנים אחרים, בשביל PvP",
+  "skylyrics.ui.hit_to_knock": "מכה מעיפה",
+  "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "מכה במילה מעיפה אותה והיא קופצת בחזרה"
 }

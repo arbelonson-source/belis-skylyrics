@@ -61,6 +61,8 @@ final class WorldWords {
 	 */
 	private static final int CLEAR_TRIES = 6;
 	/** Players closer than this are kept clear of words; how much room to leave around them, in blocks. */
+	static final float KNOCK_TIME = 2.2f, KNOCK_PEAK = 0.3f, KNOCK_DISTANCE = 0.12f, KNOCK_SPIN = 50, KNOCK_DAMP = 3, KNOCK_RATE = 18,
+			KNOCK_SQUASH = 0.25f, KNOCK_FLASH = 6, KNOCK_MARGIN = 1;
 	private static final double PLAYER_RANGE = 64;
 	private static final float PLAYER_MARGIN = 0.6f;
 	private static final float CLEAR_PAD = 0.4f;
@@ -185,6 +187,10 @@ final class WorldWords {
 		boolean rtl;
 		/** Where it's been nudged to, out of another word's way, and how far along it has glided there so far. */
 		Vec3 slide = Vec3.ZERO, slid = Vec3.ZERO;
+		/** When you last hit it, which way it was knocked, and how far and which way it spins. */
+		long hitAt = -1;
+		Vec3 knock = Vec3.ZERO;
+		float spin;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -207,7 +213,7 @@ final class WorldWords {
 	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
 	private boolean flow;
 	private boolean hold = true;
-	private boolean nudge = true;
+	private boolean nudge = true, avoidPlayers = true, knock = true, swung;
 	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
 	private @Nullable Vec3 lastEye;
@@ -344,6 +350,37 @@ final class WorldWords {
 	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
 	void nudge(boolean on) {
 		this.nudge = on;
+	}
+
+	/** Whether words keep out of the way of other players, for PvP, and whether hitting a word knocks it. */
+	void players(boolean avoid, boolean knock) {
+		this.avoidPlayers = avoid;
+		this.knock = knock;
+	}
+
+	/** You swung: the next frame knocks the word under the crosshair, if there is one. */
+	void swing() {
+		swung = knock;
+	}
+
+	/**
+	 * Where the other players near you are, as boxes of yaw, pitch and half sizes in degrees seen from {@code eye}. A
+	 * player's box reaches up a little, since words float upwards and would otherwise rise into them.
+	 */
+	private static List<float[]> players(@Nullable ClientLevel level, Vec3 eye) {
+		List<float[]> spots = new ArrayList<>();
+		if (level == null) {
+			return spots;
+		}
+		for (Player p : level.players()) {
+			Vec3 to = p.position().add(0, p.getBbHeight() / 2, 0).subtract(eye);
+			double far = to.length();
+			if (far > 1 && far < PLAYER_RANGE && !p.isSpectator() && p != Minecraft.getInstance().player) {
+				spots.add(new float[] {yawOf(to), pitchOf(to), halfAngle(p.getBbWidth() / 2 + PLAYER_MARGIN, far),
+						halfAngle(p.getBbHeight() / 2 + PLAYER_MARGIN, far)});
+			}
+		}
+		return spots;
 	}
 
 	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals, float scale) {
@@ -595,16 +632,9 @@ final class WorldWords {
 		}
 		// Other players count as taken too, so in a fight the words don't cover the person you're aiming at
 		List<float[]> avoid = taken;
-		if (level != null) {
+		if (avoidPlayers) {
 			avoid = new ArrayList<>(taken);
-			for (Player p : level.players()) {
-				Vec3 to = p.position().add(0, p.getBbHeight() / 2, 0).subtract(eye);
-				double far = to.length();
-				if (far > 1 && far < PLAYER_RANGE && !p.isSpectator() && p != Minecraft.getInstance().player) {
-					avoid.add(new float[] {yawOf(to), pitchOf(to), halfAngle(p.getBbWidth() / 2 + PLAYER_MARGIN, far),
-							halfAngle(p.getBbHeight() / 2 + PLAYER_MARGIN, far)});
-				}
-			}
+			avoid.addAll(players(level, eye));
 		}
 		float[] spot = flow ? follow(centre, at, size, avoid) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
@@ -903,6 +933,8 @@ final class WorldWords {
 	private void separate(Vec3 eye, long now) {
 		float dt = lastNudge == 0 ? 0 : Mth.clamp((now - lastNudge) / 1e9f, 0, 0.1f);
 		lastNudge = now;
+		// Players come first and never move, so a word in front of someone glides off them, even as they walk about
+		List<float[]> people = avoidPlayers ? players(Minecraft.getInstance().level, eye) : List.of();
 		List<Card> live = new ArrayList<>(cards.size());
 		List<float[]> seen = new ArrayList<>(cards.size());
 		for (Card c : cards) {
@@ -917,7 +949,7 @@ final class WorldWords {
 			}
 			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
 			float[] mine = footprint(to, riseAfter((now - c.born) / 1e9f, rise), halfW, 5 * c.size * wordScale);
-			for (float[] o : seen) {
+			for (float[] o : join(people, nudge ? seen : List.of())) {
 				float[] move = push(o, mine);
 				if (move[0] != 0 || move[1] != 0) {
 					double far = to.length(), flat = Math.sqrt(to.x * to.x + to.z * to.z);
@@ -935,6 +967,60 @@ final class WorldWords {
 		for (Card c : cards) {
 			c.slid = c.slid.add(c.slide.subtract(c.slid).scale(ease));
 		}
+	}
+
+	/** Knocks the nearest word under the crosshair away from you; it spins, squashes and springs back. */
+	private void knockAt(Vec3 eye, Vec3 look, long now) {
+		float yaw = yawOf(look), pitch = pitchOf(look);
+		Card best = null;
+		double bestFar = Double.MAX_VALUE;
+		for (Card c : cards) {
+			if (c.fellAt >= 0 || c.cutAt >= 0 || c.goneAt >= 0 && goneAlpha((now - c.goneAt) / 1e9f, fade) < 0.2f) {
+				continue;
+			}
+			Vec3 to = c.pos.add(c.slid).add(0, riseAfter((now - c.born) / 1e9f, rise), 0).subtract(eye);
+			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
+			float[] box = footprint(to, 0, halfW + KNOCK_MARGIN, 5 * c.size * wordScale + KNOCK_MARGIN);
+			if (Math.abs(Mth.wrapDegrees(yaw - box[0])) < box[2] && Math.abs(pitch - box[1]) < box[3] && to.length() < bestFar) {
+				best = c;
+				bestFar = to.length();
+			}
+		}
+		if (best != null) {
+			best.hitAt = now;
+			// It flies up and off to one side, a bit further the further away it is, so the hit reads from where you stand
+			Vec3 to = best.pos.add(best.slid).subtract(eye);
+			Vec3 away = to.normalize(), side = new Vec3(-away.z, 0, away.x).normalize();
+			best.knock = away.scale(0.3).add(side.scale((next() < 0.5f ? -1 : 1) * Mth.lerp(next(), 0.5f, 0.9f))).add(0, 0.7, 0)
+					.scale(Math.max(2.5, to.length() * KNOCK_DISTANCE));
+			best.spin = (next() < 0.5f ? -1 : 1) * Mth.lerp(next(), KNOCK_SPIN * 0.6f, KNOCK_SPIN);
+		}
+	}
+
+	/** How far out a knocked word is, 0 to 1: it flies off fast, then floats back to where it was. */
+	static float knockOut(float seconds) {
+		if (seconds <= 0 || seconds >= KNOCK_TIME) {
+			return 0;
+		}
+		float t = seconds / KNOCK_PEAK;
+		return t * (float) Math.exp(1 - t);
+	}
+
+	/** A knocked word's wobble, -1 to 1, dying away. */
+	static float knockWobble(float seconds) {
+		if (seconds <= 0 || seconds >= KNOCK_TIME) {
+			return 0;
+		}
+		return (float) (Math.exp(-KNOCK_DAMP * seconds) * Math.sin(KNOCK_RATE * seconds));
+	}
+
+	private static List<float[]> join(List<float[]> a, List<float[]> b) {
+		if (a.isEmpty()) {
+			return b;
+		}
+		List<float[]> both = new ArrayList<>(a);
+		both.addAll(b);
+		return both;
 	}
 
 	/**
@@ -981,10 +1067,14 @@ final class WorldWords {
 			float glow, float day, float scale, boolean light, long now) {
 		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
 		Vec3 eye = camera.position();
-		if (nudge) {
+		if (nudge || avoidPlayers) {
 			separate(eye, now);
 		}
 		Vec3 look = direction(camera.yRot(), camera.xRot());
+		if (swung) {
+			swung = false;
+			knockAt(eye, look, now);
+		}
 		Card sung = null;
 		for (Card c : cards) {
 			if (c.goneAt < 0 && c.cutAt < 0 && !c.title) {
@@ -1007,9 +1097,17 @@ final class WorldWords {
 			float x = (float) (c.pos.x + c.slid.x - eye.x), z = (float) (c.pos.z + c.slid.z - eye.z);
 			float sway = swayAngle(age, c.born);
 			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
+			float hit = c.hitAt < 0 ? -1 : (now - c.hitAt) / 1e9f, spin = 0, squash = 1, shove = knockOut(hit);
+			if (shove > 0) {
+				x += (float) c.knock.x * shove;
+				y += (float) c.knock.y * shove;
+				z += (float) c.knock.z * shove;
+				spin = c.spin * knockWobble(hit);
+				squash = 1 + KNOCK_SQUASH * knockWobble(hit * 1.6f);
+			}
 			int n = c.display.cps().length;
 			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
-			float grow = c.size * scale * (flow ? 1 : pop(age)) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade));
+			float grow = c.size * scale * (flow ? 1 : pop(age)) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade)) * squash;
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
@@ -1021,10 +1119,13 @@ final class WorldWords {
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = flow ? n : Mth.ceil(n * Math.min(1, age / TYPE));
 			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age)) : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
+			if (shove > 0) {
+				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
+			}
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
-					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell) * DEG));
+					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell + spin) * DEG));
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f - (flow ? (c.rtl ? -1 : 1) * slideIn(age) : 0), y0 = -CAP_MIDDLE;
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge

@@ -229,6 +229,12 @@ public final class SkyLyricsScreen extends Screen {
 		Row nudge = new Toggle(Tr.t("Slide apart"), Tr.t("Words that overlap glide out of each other's way"),
 				() -> cfg.worldNudge, v -> cfg.worldNudge = v)
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row avoid = new Toggle(Tr.t("Keep off players"), Tr.t("Words move out of the way of other players, for PvP"),
+				() -> cfg.worldAvoidPlayers, v -> cfg.worldAvoidPlayers = v)
+				.when(() -> cfg.layout == Layout.WORLD);
+		Row knock = new Toggle(Tr.t("Hit to knock"), Tr.t("Hitting a word knocks it away and it springs back"),
+				() -> cfg.worldKnock, v -> cfg.worldKnock = v)
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row tint = new Toggle(Tr.t("Sky tint"), Tr.t("Words take on a little of the sky colour"),
 				() -> cfg.worldTint, v -> cfg.worldTint = v)
 				.when(() -> cfg.layout == Layout.WORLD);
@@ -262,7 +268,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, hold, nudge, tint, glide, death, songTitle),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, hold, nudge, avoid, knock, tint, glide, death, songTitle),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 

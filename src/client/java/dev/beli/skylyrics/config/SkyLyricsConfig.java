@@ -202,6 +202,10 @@ public final class SkyLyricsConfig {
 	public boolean worldHold = true;
 	/** World layout: words that end up on top of each other glide apart. */
 	public boolean worldNudge = true;
+	/** World layout: words keep out of the way of other players, so they never cover someone in a fight. */
+	public boolean worldAvoidPlayers = true;
+	/** World layout: hitting a word knocks it away; it spins and springs back. */
+	public boolean worldKnock = true;
 	/** World layout: words take on a little of the sky's colour, as if lit by it. */
 	public boolean worldTint = true;
 	/** World layout: while you glide with an elytra, ride something or fly, the words travel with you instead of being left behind. */

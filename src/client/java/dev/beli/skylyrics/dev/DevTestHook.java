@@ -251,6 +251,7 @@ public final class DevTestHook {
 								.performPrefixedCommand(server.createCommandSourceStack(), arg));
 					}
 				}
+				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
 				case "lines" -> lines(client, arg);
 				case "uncap" -> {

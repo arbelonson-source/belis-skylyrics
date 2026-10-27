@@ -155,6 +155,11 @@ public final class LyricsRenderer {
 	private float wrapCacheProbe;
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
+
+	/** You swung at something; a World word under the crosshair gets knocked. */
+	public void swing() {
+		worldWords.swing();
+	}
 	/** Whether the player was dead last frame, so the words start fresh once you respawn. */
 	private boolean wasDead;
 	/** The world the words were placed in; joining another server or world starts them over there. */
@@ -448,6 +453,7 @@ public final class LyricsRenderer {
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
 		worldWords.nudge(cfg.worldNudge);
+		worldWords.players(cfg.worldAvoidPlayers, cfg.worldKnock);
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);

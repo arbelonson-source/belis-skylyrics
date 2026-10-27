@@ -386,5 +386,9 @@
   "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "Words that overlap glide out of each other's way",
   "skylyrics.ui.skylyrics_s_downloaded": "SkyLyrics %s downloaded",
   "skylyrics.ui.restart_minecraft_to_use_it": "Restart Minecraft to use it",
-  "skylyrics.ui.get_it_from_the_github_page": "Get it from the GitHub page"
+  "skylyrics.ui.get_it_from_the_github_page": "Get it from the GitHub page",
+  "skylyrics.ui.keep_off_players": "Keep off players",
+  "skylyrics.ui.words_move_out_of_the_way_of_other_players_for_p": "Words move out of the way of other players, for PvP",
+  "skylyrics.ui.hit_to_knock": "Hit to knock",
+  "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "Hitting a word knocks it away and it springs back"
 }
