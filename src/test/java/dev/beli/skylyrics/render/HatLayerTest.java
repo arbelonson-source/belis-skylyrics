@@ -86,4 +86,11 @@ class HatLayerTest {
 			assertTrue(tip[4] * side < 0, "the tip curls back in");
 		}
 	}
+
+	@Test
+	void theMusicNotesClockStartsOverWithoutAJump() {
+		for (float speed : new float[] {HatLayer.NOTE_ORBIT, HatLayer.NOTE_BOB_SPEED, HatLayer.NOTE_SWAY_SPEED}) {
+			assertEquals(0, Math.IEEEremainder(HatLayer.NOTE_LOOP * speed, 2 * Math.PI), 1e-5, "full turns at speed " + speed);
+		}
+	}
 }

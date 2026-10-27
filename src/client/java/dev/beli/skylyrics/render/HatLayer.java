@@ -45,8 +45,10 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	 */
 	private static final int NOTES = 3;
 	private static final float NOTE_RADIUS = 0.42f, NOTE_Y = HEAD_TOP + 0.16f, NOTE_SPREAD = 0.13f, NOTE_DEPTH = 0.014f;
-	private static final float NOTE_ORBIT = 0.6f, NOTE_BOB = 0.035f, NOTE_BOB_SPEED = 2.2f, NOTE_SWAY = 0.2f,
-			NOTE_SWAY_SPEED = 1.6f, NOTE_POP = 0.2f;
+	static final float NOTE_ORBIT = 0.6f, NOTE_BOB = 0.035f, NOTE_BOB_SPEED = 2.2f, NOTE_SWAY = 0.2f, NOTE_SWAY_SPEED = 1.6f;
+	private static final float NOTE_POP = 0.2f;
+	/** The notes' clock starts over after this many seconds, when every one of their motions has come full circle. */
+	static final double NOTE_LOOP = 10 * Math.PI;
 	private static final int EAR_DARK = 0xFF24202E;
 	private static final float PUMPKIN_HALF = 0.32f, PUMPKIN_TOP = HEAD_TOP - 0.07f, PUMPKIN_BOTTOM = 0.07f;
 	private static final int RIBS = 4, GRIN_COLUMNS = 5;
@@ -312,9 +314,12 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		tube(p, vc, TOP_HAT_BRIM, 0.008f, brim, glow, FULL_BRIGHT);
 	}
 
-	/** Seconds on a steady clock, for things that move on their own. */
+	/**
+	 * Seconds on a steady clock, for things that move on their own. It starts over at a moment when the notes are back
+	 * where they began, so the restart never shows as a jump, and stays small enough for smooth float maths.
+	 */
 	private static float seconds() {
-		return System.nanoTime() / 1_000_000L % 3_600_000L / 1000f;
+		return (float) (System.nanoTime() / 1e9 % NOTE_LOOP);
 	}
 
 	/**
