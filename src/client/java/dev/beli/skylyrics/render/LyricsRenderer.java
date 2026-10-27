@@ -445,7 +445,7 @@ public final class LyricsRenderer {
 		}
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
-		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase);
+		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
 		// While you're dead the words drop away and nothing new comes; after respawning they start over

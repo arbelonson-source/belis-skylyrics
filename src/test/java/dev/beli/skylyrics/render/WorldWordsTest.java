@@ -316,6 +316,22 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aWordOnlyGoesWhereNothingElseIs() {
+		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
+		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
+		assertFalse(WorldWords.clear(358, 0, 1, 1, taken));
+		assertTrue(WorldWords.clear(4, 0, 1, 1, taken));
+		assertTrue(WorldWords.clear(0, 3, 1, 1, taken));
+		// A bouncy word on the row below still clears the row above
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
+		float[] up = line.place(5, 1, 0, 1.2f);
+		while (line.place(5, 1, 0, 1.2f)[1] <= up[1] + 0.01f) {
+		}
+		float[] down = line.place(1, 1, 0, -1.2f);
+		assertTrue(down[1] - up[1] >= 2 + WorldWords.Sentence.ROW_GAP - 1e-4f);
+	}
+
+	@Test
 	void aFullRowCarriesOnBelowFromTheLeft() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		float[] last = line.place(5, 1, 0, 0);

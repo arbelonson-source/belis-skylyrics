@@ -51,6 +51,14 @@ final class WorldWords {
 	private static final float WOBBLE_X = 3.5f, WOBBLE_Y = 3f;
 	/** Spots tried for each new card; the one overlapping the other cards least wins. */
 	private static final int TRIES = 24;
+	/**
+	 * A flowing line's next word moves on along the line this many times at most to find a spot clear of older words,
+	 * which it keeps this many degrees from.
+	 */
+	private static final int CLEAR_TRIES = 6;
+	private static final float CLEAR_PAD = 0.4f;
+	/** Older words are kept clear of where they'll have drifted up to this many seconds from now, not just where they are. */
+	private static final float LOOK_AHEAD = 1.5f;
 	/** How much further out than the spots the last tries may go, when a crowd (a whole line kept up) fills them. */
 	private static final float REACH = 0.6f;
 	/** Room kept around each card when judging overlap, in degrees. */
@@ -129,6 +137,8 @@ final class WorldWords {
 	/** The scatter's spots, as degrees right of and above its middle. */
 	private static final float[][] SPOTS = slots();
 	/** How far a flowing line floats, and how far it may start off the middle of the view (degrees). */
+	/** A line's words, with their mixed sizes and the gaps between, take about this much more room than its plain text; rows fill to about this much. */
+	private static final float LINE_SPREAD = 1.25f, ROW_FILL = 0.85f;
 	private static final float SENTENCE_NEAR = 8f, SENTENCE_FAR = 12f, SENTENCE_SHIFT_X = 6f, SENTENCE_SHIFT_Y = 5f;
 	/** How far a flowing line turns towards you (degrees) and how much its pieces vary in distance (a fraction). */
 	private static final float SENTENCE_TURN = 15f, SENTENCE_DEPTH = 0.03f;
@@ -162,6 +172,8 @@ final class WorldWords {
 		boolean title;
 		/** When it started dropping away because you died, or -1. */
 		long fellAt = -1;
+		/** The flowing line it's part of, or null. */
+		@Nullable Sentence of;
 		/** Part of a right-to-left line (Hebrew, Arabic), so it slides in from the right. */
 		boolean rtl;
 
@@ -207,6 +219,10 @@ final class WorldWords {
 	/** Whether new lines are written in capitals; a change shows from the next line on. */
 	private boolean capitals;
 	private List<int[]> lineChunks = List.of();
+	/** How wide the whole line is, in font pixels, to tell how many rows it will take. */
+	private float lineWidth;
+	/** The Size setting: placing a card has to know how big it will be drawn. */
+	private float wordScale = 1;
 	/** Whether the line reads right to left, so a flowing line is written from the right. */
 	private boolean lineRtl;
 	private long rng = System.nanoTime();
@@ -314,7 +330,8 @@ final class WorldWords {
 		glowRgb = rgb;
 	}
 
-	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals) {
+	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals, float scale) {
+		this.wordScale = Mth.clamp(scale, 0.25f, 4);
 		this.away = Mth.clamp(away, 0.5f, 2);
 		this.tilt = Mth.clamp(tilt, 0, 2);
 		this.rise = Mth.clamp(rise, 0, 2);
@@ -383,6 +400,8 @@ final class WorldWords {
 			lineRaw = text;
 			lineText = text == null || !capitals ? text : text.toUpperCase(Locale.ROOT);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
+			float[] whole = lineText == null ? null : widths(Display.of(lineText), font, style);
+			lineWidth = whole == null || whole.length == 0 ? 0 : whole[whole.length - 1];
 			lineRtl = lineText != null && rightToLeft(lineText);
 			spawned = 0;
 			sentence = null;
@@ -550,8 +569,10 @@ final class WorldWords {
 		List<float[]> taken = new ArrayList<>(cards.size());
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
-			if (to.length() > 1e-3 && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
-				taken.add(footprint(to, riseAfter((now - c.born) / 1e9f, rise), c.at[c.at.length - 1] * c.size / 2, 5 * c.size));
+			// The words of the line being written are spaced by the line itself
+			if (to.length() > 1e-3 && (c.of == null || c.of != sentence) && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
+				taken.add(footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise), c.at[c.at.length - 1] * c.size * wordScale / 2,
+						5 * c.size * wordScale));
 			}
 		}
 		float[] spot = flow ? follow(centre, at, size, taken) : scatter(centre, at, size, taken);
@@ -572,6 +593,7 @@ final class WorldWords {
 		}
 		Card card = new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now);
 		card.rtl = flow && lineRtl;
+		card.of = flow ? sentence : null;
 		cards.add(card);
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
@@ -605,7 +627,8 @@ final class WorldWords {
 			float pitch = Mth.clamp(centre[1] - LIFT - SPOTS[slot][1] * out + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
 			float distance = Mth.lerp(next(), NEAR, FAR);
 			// Up high a card is closer to the axis it turns around, so it takes up more yaw
-			float halfW = halfAngle(at[at.length - 1] * size / 2, distance * Mth.cos(pitch * DEG)) + PAD_X, halfH = halfAngle(5 * size, distance) + PAD_Y;
+			float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance * Mth.cos(pitch * DEG)) + PAD_X;
+			float halfH = halfAngle(5 * size * wordScale, distance) + PAD_Y;
 			float cost = 0;
 			for (float[] o : taken) {
 				float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(yaw - o[0])), h = halfH + o[3] - Math.abs(pitch - o[1]);
@@ -637,13 +660,17 @@ final class WorldWords {
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken) {
 		if (sentence == null) {
 			float distance = Mth.lerp(next(), SENTENCE_NEAR, SENTENCE_FAR), bestCost = Float.MAX_VALUE;
-			float halfW = Sentence.WIDTH / 2, halfH = halfAngle(10 * SIZE, distance) + PAD_Y;
+			// The whole line's box: as wide as it reads, or a full row, and as many rows deep as it will need
+			float wide = (float) Math.toDegrees(lineWidth * SIZE * wordScale * LINE_SPREAD / distance);
+			int rows = Math.max(1, Mth.ceil(wide / (Sentence.WIDTH * ROW_FILL)));
+			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
+			float halfW = Math.min(wide, Sentence.WIDTH) / 2, halfH = rows * row / 2 + PAD_Y, below = (rows - 2) * row / 2;
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
 				float left = centre[0] - Sentence.WIDTH / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
 				float top = Mth.clamp(centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y, -70, 40);
 				float cost = 0;
 				for (float[] o : taken) {
-					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top - o[1]);
+					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + below - o[1]);
 					if (w > 0 && h > 0) {
 						cost += w * h;
 					}
@@ -656,9 +683,23 @@ final class WorldWords {
 			}
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
-		float[] at2 = sentence.place(halfAngle(at[at.length - 1] * size / 2, distance), halfAngle(5 * size, distance),
-				next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB);
+		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
+		// Look before placing: while older words are in the way, carry on along the line past them
+		float[] at2 = null;
+		for (int t = 0; t < CLEAR_TRIES && (at2 == null || !clear(at2[0], at2[1], halfW, halfH, taken)); t++) {
+			at2 = sentence.place(halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB);
+		}
 		return new float[] {at2[0], at2[1], distance};
+	}
+
+	/** Whether a card of this half size, in degrees, has room here away from the given footprints. */
+	static boolean clear(float yaw, float pitch, float halfW, float halfH, List<float[]> taken) {
+		for (float[] o : taken) {
+			if (Math.abs(Mth.wrapDegrees(yaw - o[0])) < halfW + o[2] + CLEAR_PAD && Math.abs(pitch - o[1]) < halfH + o[3] + CLEAR_PAD) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -680,6 +721,8 @@ final class WorldWords {
 		 * from where rows start it's written so far.
 		 */
 		float left, top, cursor;
+		/** Pitch of the bottom of the rows above and of the lowest word on this row so far (before the slope). */
+		float above = Float.NEGATIVE_INFINITY, low = Float.NEGATIVE_INFINITY;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this(left, top, distance, turn, 0, false);
@@ -706,23 +749,31 @@ final class WorldWords {
 		float[] place(float halfW, float halfH, float indent, float bob) {
 			float yaw = cursor + GAP * halfH + halfW;
 			if (cursor > left && yaw + halfW > left + WIDTH) {
-				top += 2 * halfH + ROW_GAP;
+				// The new row starts below the lowest word of the last one, however its words bobbed
+				above = low;
+				top = low + ROW_GAP + 2 * halfH;
 				yaw = left + indent + halfW;
 			}
 			cursor = yaw + halfW;
+			// A word never reaches up into the row above, however big it is or however it bobs
+			float middle = Math.max(top - halfH + bob, above + ROW_GAP + halfH);
+			low = Math.max(low, middle + halfH);
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
 				yaw = 2 * left + WIDTH - yaw;
 			}
 			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets
-			return new float[] {yaw, top - halfH + bob - (yaw - left) * (float) Math.tan(slope * DEG)};
+			return new float[] {yaw, middle - (yaw - left) * (float) Math.tan(slope * DEG)};
 		}
 
 		/** Turns the rest of the line along with you (see {@link WorldWords#glide}). */
 		void swing(float turn, float tilt) {
 			left += turn;
 			cursor += turn;
-			top = Mth.clamp(top + tilt, -SWING_PITCH, SWING_PITCH);
+			float moved = Mth.clamp(top + tilt, -SWING_PITCH, SWING_PITCH) - top;
+			top += moved;
+			above += moved;
+			low += moved;
 		}
 	}
 
