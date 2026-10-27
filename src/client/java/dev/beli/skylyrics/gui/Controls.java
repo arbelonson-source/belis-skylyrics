@@ -51,6 +51,11 @@ final class Controls {
 			return this;
 		}
 
+		/** The words the settings search looks through: the name, the description and, for pickers, every choice. */
+		String searchText() {
+			return label + " " + (desc == null ? "" : desc.get());
+		}
+
 		/** Only show this row while {@code condition} is true. */
 		Row when(BooleanSupplier condition) {
 			this.shownIf = condition;
@@ -249,6 +254,11 @@ final class Controls {
 			this.set = set;
 		}
 
+		@Override
+		String searchText() {
+			return super.searchText() + " " + String.join(" ", options);
+		}
+
 		private int optionWidth(Font font, int i) {
 			return font.width(options[i]) + 12;
 		}
@@ -334,6 +344,11 @@ final class Controls {
 			this.labels = labels;
 			this.get = get;
 			this.set = set;
+		}
+
+		@Override
+		String searchText() {
+			return super.searchText() + " " + String.join(" ", labels);
 		}
 
 		@Override

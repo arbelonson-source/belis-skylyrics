@@ -849,7 +849,7 @@ public final class SkyLyricsScreen extends Screen {
 			for (Card card : tabs.get(i)) {
 				List<Row> rows = new ArrayList<>();
 				for (Row row : card.rows()) {
-					String text = card.title() + " " + row.label + " " + (row.desc == null ? "" : row.desc.get());
+					String text = card.title() + " " + row.searchText();
 					if (!(row instanceof Paragraph) && SettingsSearch.matches(text, query)) {
 						rows.add(row);
 					}
