@@ -52,7 +52,11 @@ If LRCLIB doesn't have a song, the mod can't show lyrics for it.
 
 ## Does it need internet?
 
-Only to look up lyrics for songs it hasn't seen before, and to download album covers that your player gives as a web link. Songs whose lyrics are already saved work offline.
+Only to look up lyrics for songs it hasn't seen before, and to download album covers that your player gives as a web link. Songs whose lyrics are already saved work offline. It also checks GitHub once when the game starts to see if a new version is out.
+
+## How do I update it?
+
+From 0.7.0 on, it updates itself. When a new version is out, it downloads in the background and a pop-up tells you to restart Minecraft; the new version is used from the next start. To choose this yourself, open the settings, go to **About → Updates** and pick **Install**, **Tell me** (just a notice) or **Off**. Versions before 0.7.0 can't update themselves: download the new jar from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases) and replace the old one in your `mods` folder.
 
 ## Does it work with shaders, Sodium and Iris?
 
