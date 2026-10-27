@@ -27,9 +27,13 @@ public final class LrcParser {
 		List<LyricLine> lines = new ArrayList<>();
 		for (String raw : lines(lrc)) {
 			raw = raw.stripLeading();
+			// Only a line that starts with the tag sets it; a broken huge number is ignored instead of losing the lyrics
 			Matcher off = OFFSET.matcher(raw);
-			if (off.find()) {
-				offset = Long.parseLong(off.group(1));
+			if (off.lookingAt()) {
+				try {
+					offset = Long.parseLong(off.group(1));
+				} catch (NumberFormatException ignored) {
+				}
 				continue;
 			}
 			Matcher m = TIME.matcher(raw);

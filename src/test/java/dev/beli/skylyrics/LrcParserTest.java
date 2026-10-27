@@ -114,4 +114,14 @@ class LrcParserTest {
 		assertTrue(l.lines().size() > 8);
 		assertTrue(l.lines().getLast().timeMs() < DemoSource.TRACK.lengthMs());
 	}
+
+	@Test
+	void brokenOrMisplacedOffsetKeepsTheLyrics() {
+		Lyrics huge = LrcParser.parseSynced("[offset:99999999999999999999]\n[00:02.00] x");
+		assertEquals(1, huge.lines().size());
+		assertEquals(2000, huge.lines().getFirst().timeMs());
+		Lyrics inside = LrcParser.parseSynced("[00:02.00] sing [offset:500] along");
+		assertEquals(1, inside.lines().size());
+		assertEquals(2000, inside.lines().getFirst().timeMs());
+	}
 }
