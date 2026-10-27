@@ -778,6 +778,9 @@ final class WorldWords {
 		return new float[] {at2[0], at2[1], distance};
 	}
 
+	/** How far apart, in blocks, the spots on a card's face are that get checked for blocks. */
+	private static final float BURY_STEP = 0.5f;
+
 	/** How much two cards must cover each other, as a share of their summed half sizes, before the older one goes. */
 	private static final float OVERLAP = 0.6f;
 
@@ -791,9 +794,13 @@ final class WorldWords {
 		}
 		double flat = Math.sqrt(dir.x * dir.x + dir.z * dir.z);
 		Vec3 right = flat < 1e-4 ? new Vec3(1, 0, 0) : new Vec3(-dir.z / flat, 0, dir.x / flat);
-		for (int i = -1; i <= 1; i++) {
-			for (int j = -1; j <= 1; j++) {
-				BlockPos at = BlockPos.containing(pos.add(right.scale(i * halfW)).add(0, j * halfH, 0));
+		// A tilted word dips a corner, so keep a little room under and over it
+		halfH += BURY_STEP / 2;
+		// Check every half block across the face, so a step or a fence post between the corners still counts
+		int across = Math.max(1, Mth.ceil(halfW / BURY_STEP)), down = Math.max(1, Mth.ceil(halfH / BURY_STEP));
+		for (int i = -across; i <= across; i++) {
+			for (int j = -down; j <= down; j++) {
+				BlockPos at = BlockPos.containing(pos.add(right.scale(i * halfW / across)).add(0, j * halfH / down, 0));
 				if (!level.getBlockState(at).getCollisionShape(level, at).isEmpty()) {
 					return true;
 				}
@@ -934,7 +941,8 @@ final class WorldWords {
 		float dt = lastNudge == 0 ? 0 : Mth.clamp((now - lastNudge) / 1e9f, 0, 0.1f);
 		lastNudge = now;
 		// Players come first and never move, so a word in front of someone glides off them, even as they walk about
-		List<float[]> people = avoidPlayers ? players(Minecraft.getInstance().level, eye) : List.of();
+		ClientLevel level = Minecraft.getInstance().level;
+		List<float[]> people = avoidPlayers ? players(level, eye) : List.of();
 		List<Card> live = new ArrayList<>(cards.size());
 		List<float[]> seen = new ArrayList<>(cards.size());
 		for (Card c : cards) {
@@ -955,7 +963,20 @@ final class WorldWords {
 					double far = to.length(), flat = Math.sqrt(to.x * to.x + to.z * to.z);
 					// Sideways is across the line of sight, up is straight up; both as far as the angles ask at that distance
 					Vec3 side = new Vec3(-to.z, 0, to.x).normalize().scale(-flat * Math.tan(move[0] * DEG));
-					c.slide = c.slide.add(side).add(0, far * Math.tan(-move[1] * DEG), 0);
+					Vec3 up = new Vec3(0, far * Math.tan(-move[1] * DEG), 0);
+					Vec3 dir = to.normalize();
+					float halfBlocks = c.at[c.at.length - 1] * c.size * wordScale / 2, tall = 5 * c.size * wordScale;
+					if (buried(level, c.pos.add(c.slide).add(side).add(up), dir, halfBlocks, tall)) {
+						// That way is into the ground or a wall: go over the top instead, or stay put
+						up = new Vec3(0, Math.abs(up.y) + Math.abs(far * Math.tan(move[0] * DEG)), 0);
+						side = Vec3.ZERO;
+						if (buried(level, c.pos.add(c.slide).add(up), dir, halfBlocks, tall)) {
+							continue;
+						}
+						move[0] = 0;
+						move[1] = -halfAngle((float) up.y, far);
+					}
+					c.slide = c.slide.add(side).add(up);
 					mine[0] += move[0];
 					mine[1] += move[1];
 				}
