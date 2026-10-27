@@ -30,6 +30,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -267,23 +268,36 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				new KeyMapping("key.skylyrics." + name, code, category));
 	}
 
+	/** The update news, kept for chat until a world is open. */
+	private Component updateLine;
+
 	private void tick(Minecraft client) {
 		art.upload();
-		// The update check runs in the background; its answer is told in chat once a world is open
-		if (client.player != null) {
-			Updater.Notice update = Updater.takeNotice();
-			if (update != null) {
-				Component line = Component.literal(update.downloaded()
-						? Tr.t("SkyLyrics %s is downloaded — restart Minecraft to use it", update.version())
-						: Tr.t("SkyLyrics %s is out", update.version()));
-				//? if >=26.2 {
-				/*client.gui.hud.getChat().addClientSystemMessage(line);
-				*///?} else if >=26.1 {
-				/*client.gui.getChat().addClientSystemMessage(line);
-				*///?} else {
-				client.gui.getChat().addMessage(line);
-				//?}
-			}
+		// The update check runs in the background; its answer pops up straight away, and is told in chat once a world is open
+		Updater.Notice update = Updater.takeNotice();
+		if (update != null) {
+			Component title = Component.literal(update.downloaded() ? Tr.t("SkyLyrics %s downloaded", update.version())
+					: Tr.t("SkyLyrics %s is out", update.version()));
+			Component body = Component.literal(update.downloaded() ? Tr.t("Restart Minecraft to use it") : Tr.t("Get it from the GitHub page"));
+			//? if >=26.2 {
+			/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
+			*///?} else {
+			SystemToast.addOrUpdate(client.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
+			//?}
+			updateLine = Component.literal(update.downloaded()
+					? Tr.t("SkyLyrics %s is downloaded — restart Minecraft to use it", update.version())
+					: Tr.t("SkyLyrics %s is out", update.version()));
+		}
+		if (client.player != null && updateLine != null) {
+			Component line = updateLine;
+			updateLine = null;
+			//? if >=26.2 {
+			/*client.gui.hud.getChat().addClientSystemMessage(line);
+			*///?} else if >=26.1 {
+			/*client.gui.getChat().addClientSystemMessage(line);
+			*///?} else {
+			client.gui.getChat().addMessage(line);
+			//?}
 		}
 		if (!keysChecked) {
 			keysChecked = true;

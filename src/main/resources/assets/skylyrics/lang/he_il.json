@@ -383,5 +383,8 @@
   "skylyrics.ui.recent_searches": "חיפושים אחרונים",
   "skylyrics.ui.spotify_keeps_this_playlist_s_songs_hidden_so_it": "ספוטיפיי מסתיר את השירים ברשימה הזאת, אז היא מתנגנת מההתחלה",
   "skylyrics.ui.slide_apart": "הזזה הצידה",
-  "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "מילים שעולות זו על זו מחליקות הצידה"
+  "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "מילים שעולות זו על זו מחליקות הצידה",
+  "skylyrics.ui.skylyrics_s_downloaded": "SkyLyrics %s הורדה",
+  "skylyrics.ui.restart_minecraft_to_use_it": "הפעילו מחדש את Minecraft כדי להשתמש בה",
+  "skylyrics.ui.get_it_from_the_github_page": "אפשר להוריד אותה מעמוד ה-GitHub"
 }

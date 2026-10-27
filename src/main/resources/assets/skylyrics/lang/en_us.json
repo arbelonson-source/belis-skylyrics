@@ -383,5 +383,8 @@
   "skylyrics.ui.recent_searches": "Recent searches",
   "skylyrics.ui.spotify_keeps_this_playlist_s_songs_hidden_so_it": "Spotify keeps this playlist's songs hidden, so it plays from the top",
   "skylyrics.ui.slide_apart": "Slide apart",
-  "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "Words that overlap glide out of each other's way"
+  "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "Words that overlap glide out of each other's way",
+  "skylyrics.ui.skylyrics_s_downloaded": "SkyLyrics %s downloaded",
+  "skylyrics.ui.restart_minecraft_to_use_it": "Restart Minecraft to use it",
+  "skylyrics.ui.get_it_from_the_github_page": "Get it from the GitHub page"
 }
