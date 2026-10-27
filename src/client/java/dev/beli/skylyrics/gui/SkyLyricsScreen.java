@@ -470,7 +470,10 @@ public final class SkyLyricsScreen extends Screen {
 		Row clock = new Toggle(Tr.t("Clock"), Tr.t("The time on the left of the bar"),
 				() -> cfg.barClock, v -> cfg.barClock = v)
 				.when(() -> cfg.nowPlayingHud);
-		Row stats = new Toggle(Tr.t("Stats"), Tr.t("Frames per second and ping, right of the bar"),
+		Row ping = new Toggle(Tr.t("Ping"), Tr.t("Signal bars for your connection to the server"),
+				() -> cfg.barPing, v -> cfg.barPing = v)
+				.when(() -> cfg.nowPlayingHud);
+		Row frameRate = new Toggle(Tr.t("FPS"), Tr.t("Frames per second, right of the bar"),
 				() -> cfg.barStats, v -> cfg.barStats = v)
 				.when(() -> cfg.nowPlayingHud);
 		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
@@ -516,7 +519,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
-				new Card(Tr.t("Top bar"), card, barLyrics, clock, stats, onlyOnChange, showBar, barPosition, barSize,
+				new Card(Tr.t("Top bar"), card, barLyrics, clock, ping, frameRate, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barEq),
 				new Card(Tr.t("Main menu"), title),
 				new Card(Tr.t("Performance"), effects, effectsNow),
