@@ -3,6 +3,7 @@ package dev.beli.skylyrics.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
 import net.minecraft.client.Minecraft;
@@ -11,7 +12,9 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 /**
@@ -37,11 +40,26 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final int RIBS = 4, GRIN_COLUMNS = 5;
 	private static final int ORANGE = 0xFFE3801F, ORANGE_DARK = 0xFFC9661A, STEM = 0xFF4F6A2B;
 
+	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
+	private static final Identifier WHITE = SkyLyricsClient.id("textures/misc/white.png");
+
 	private final LyricsRenderer lyrics;
 
 	public HatLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent, LyricsRenderer lyrics) {
 		super(parent);
 		this.lyrics = lyrics;
+	}
+
+	/**
+	 * Plain colour that takes the light where you stand. 26.3 dropped the untextured lit type, so there the colours are
+	 * text drawn from a white patch, which the light still reaches.
+	 */
+	private static RenderType paint() {
+		//? if >=26.3 {
+		/*return RenderTypes.text(WHITE);
+		*///?} else {
+		return RenderTypes.textBackground();
+		//?}
 	}
 
 	@Override
@@ -60,24 +78,24 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		switch (cfg.hat) {
 			case HALO -> {
 				pose.translate(0, HEAD_TOP - HALO_LIFT, 0);
-				out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> tube(p, vc, HALO_RADIUS, HALO_TUBE, 0, glow, FULL_BRIGHT));
+				out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, HALO_RADIUS, HALO_TUBE, 0, glow, FULL_BRIGHT));
 				int shine = Math.round(150 * bright) << 24 | rgb;
 				out.submitCustomGeometry(pose, RenderTypes.lightning(), (p, vc) -> shine(p, vc, HALO_RADIUS, HALO_SHINE, shine));
 			}
 			case HEADPHONES -> {
-				out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> headphones(p, vc, light, glow));
+				out.submitCustomGeometry(pose, paint(), (p, vc) -> headphones(p, vc, light, glow));
 				for (int side = -1; side <= 1; side += 2) {
 					pose.pushPose();
 					pose.translate(side * (CUP_OUT + 0.003f), CUP_Y, 0);
 					pose.mulPose(Axis.ZP.rotationDegrees(90));
-					out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> tube(p, vc, 0.065f, 0.011f, 0, glow, FULL_BRIGHT));
+					out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, 0.065f, 0.011f, 0, glow, FULL_BRIGHT));
 					pose.popPose();
 				}
 			}
-			case CONICAL -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> conical(p, vc, light, glow));
-			case CROWN -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> crown(p, vc, light, glow));
-			case CAT_EARS -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> catEars(p, vc, light, glow));
-			case PUMPKIN -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> pumpkin(p, vc, light, glow));
+			case CONICAL -> out.submitCustomGeometry(pose, paint(), (p, vc) -> conical(p, vc, light, glow));
+			case CROWN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> crown(p, vc, light, glow));
+			case CAT_EARS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
+			case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
 			case NONE -> { }
 		}
 		pose.popPose();
@@ -130,10 +148,10 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/** Four corners (x, y, z each), drawn both ways round; the first two take {@code from}, the last two {@code to}. */
 	private static void face(PoseStack.Pose p, VertexConsumer vc, int light, int from, int to, float... xyz) {
 		for (int k = 0; k < 4; k++) {
-			vc.addVertex(p, xyz[k * 3], xyz[k * 3 + 1], xyz[k * 3 + 2]).setColor(k < 2 ? from : to).setLight(light);
+			vc.addVertex(p, xyz[k * 3], xyz[k * 3 + 1], xyz[k * 3 + 2]).setColor(k < 2 ? from : to).setUv(0.5f, 0.5f).setLight(light);
 		}
 		for (int k = 3; k >= 0; k--) {
-			vc.addVertex(p, xyz[k * 3], xyz[k * 3 + 1], xyz[k * 3 + 2]).setColor(k < 2 ? from : to).setLight(light);
+			vc.addVertex(p, xyz[k * 3], xyz[k * 3 + 1], xyz[k * 3 + 2]).setColor(k < 2 ? from : to).setUv(0.5f, 0.5f).setLight(light);
 		}
 	}
 
