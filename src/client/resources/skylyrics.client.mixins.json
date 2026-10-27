@@ -7,6 +7,7 @@
 		"BossHealthOverlayAccessor",
 		"FontPageMixin",
 		"FontTextureMixin",
+		"GuiMixin",
 		"LevelRendererMixin"
 	],
 	"injectors": {

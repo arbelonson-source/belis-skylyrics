@@ -328,5 +328,11 @@
   "skylyrics.ui.a_new_song_s_name_floats_up_in_the_sky": "שם של שיר חדש מרחף בשמיים",
   "skylyrics.ui.cat_ears": "אוזני חתול",
   "skylyrics.ui.pulse_with_the_lyrics": "פועם עם המילים",
-  "skylyrics.ui.brightens_as_each_new_line_starts": "מתבהר כשכל שורה חדשה מתחילה"
+  "skylyrics.ui.brightens_as_each_new_line_starts": "מתבהר כשכל שורה חדשה מתחילה",
+  "skylyrics.ui.crosshair": "כוונת",
+  "skylyrics.ui.drawn_in_your_lyrics_colour": "בצבע המילים שלך",
+  "skylyrics.ui.dot": "נקודה",
+  "skylyrics.ui.cross": "צלב",
+  "skylyrics.ui.circle": "עיגול",
+  "skylyrics.ui.corners": "פינות"
 }
