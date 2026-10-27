@@ -16,11 +16,15 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - Three layouts. **Arc** shows the line being sung on a gentle curve, each word tilted a little. **Lines** shows the previous, current and next lines, straight and centred. **World** places each word or two in the world around you as it's sung.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
-- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left and your frames per second and ping on its right. Each can be turned off.
+- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own.
 - The word being sung can grow a little in the sky (optional).
 - Four letter styles for the sky lyrics: Bold, Smooth, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
 - A soft periwinkle colour at first, with more soft colours to pick from. It can also take its colour from the album cover, or use rainbow.
-- At night, a sky of your choice can fill in behind the lyrics while music plays: an aurora, a nebula, **Synthwave** (a purple sky with a striped retro sun), **Eclipse** (a dark sun with a glowing ring), **Moonlight** (a big full moon over drifting clouds), or **Random** for a different one with each song. **Constellations** join some of the stars with thin lines.
+- At night, a sky of your choice can fill in behind the lyrics while music plays: an aurora, a nebula, **Synthwave** (a purple sky with a striped retro sun), **Eclipse** (a dark sun with a glowing ring), **Moonlight** (a big full moon over drifting clouds), or **Random** for a different one with each song. **Constellations** join some of the stars with thin lines. **Pulse with the lyrics** makes the sky brighten for a moment with each new line.
+- When a new song starts, its name and artist can float up in the sky.
+- A hat for your character, seen in third person (F5): halo, neon headphones, conical hat, crown, cat ears or pumpkin head, with parts that glow in your lyrics colour. Only you can see it.
+- Crosshair styles: Minecraft's normal one, or a dot, cross, circle or corners in your lyrics colour.
+- A **song library** (press **N**) with your Spotify liked songs and playlists. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first.
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
@@ -68,7 +72,7 @@ Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds y
 
 ### Using it
 
-- **J** opens the settings. Change the key under *Options → Controls → Key Binds → Beli's SkyLyrics*.
+- **J** opens the settings and **N** opens the song library. Change the keys under *Options → Controls → Key Binds → Beli's SkyLyrics*.
 - The same place has optional keys for play/pause, next and previous song, and "lyrics are early / late" for the song playing now.
 - No lyrics showing? Open the settings and look at the **Music** tab. It tells you which player it's following and whether lyrics were found. Some songs simply have no lyrics on LRCLIB. More help in [Troubleshooting](docs/TROUBLESHOOTING.md).
 
