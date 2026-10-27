@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.dev.DevTestHook;
+import dev.beli.skylyrics.gui.IntroScreen;
 import dev.beli.skylyrics.gui.LibraryScreen;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LrclibClient;
@@ -156,6 +157,15 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
+				if (!cfg.introSeen) {
+					client.execute(() -> {
+						//? if >=26.2 {
+						/*client.gui.setScreen(new IntroScreen(screen));
+						*///?} else {
+						client.setScreen(new IntroScreen(screen));
+						//?}
+					});
+				}
 				//? if >=26.1 {
 				/*ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
 				*///?} else {

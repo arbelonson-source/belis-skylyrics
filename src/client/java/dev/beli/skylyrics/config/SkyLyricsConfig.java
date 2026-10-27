@@ -308,6 +308,9 @@ public final class SkyLyricsConfig {
 	/** From the player's own app on the Spotify dashboard; only used when preferredPlayer is "spotify-web". */
 	public String spotifyClientId = "";
 	public boolean demoMode = false;
+
+	/** Whether the first-run tour has been shown. Settings files from before the tour count as seen. */
+	public boolean introSeen = false;
 	/** How the song library shows its covers. */
 	public LibraryView libraryView = LibraryView.GRID;
 
@@ -330,6 +333,7 @@ public final class SkyLyricsConfig {
 				SkyLyricsConfig loaded = GSON.fromJson(json, SkyLyricsConfig.class);
 				if (loaded != null) {
 					if (!json.has("barPing")) loaded.barPing = loaded.barStats;
+					if (!json.has("introSeen")) loaded.introSeen = true;
 					loaded.fix();
 					return loaded;
 				}
