@@ -797,17 +797,27 @@ final class WorldWords {
 			float wide = (float) Math.toDegrees(lineWidth * SIZE * wordScale * LINE_SPREAD / distance);
 			int rows = Math.max(1, Mth.ceil(wide / (Sentence.WIDTH * ROW_FILL)));
 			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
-			if (verse && last.low + rows * row <= centre[1] - LIFT + VERSE_REACH) {
+			// Under a line that sits over the kept-clear middle, the next one must still end above it
+			float reach = centre[1] - LIFT + VERSE_REACH;
+			if (verse && clearMiddle && Math.abs(Mth.wrapDegrees(last.left + Sentence.WIDTH / 2 - centre[0])) < Sentence.WIDTH / 2 + MIDDLE_W) {
+				reach = Math.min(reach, centre[1] + MIDDLE_DROP - MIDDLE_H - PAD_Y);
+			}
+			if (verse && last.low + rows * row <= reach) {
 				// The next line of a verse goes just under the last one, while that still keeps it above the middle
 				bestCost = 0;
 				sentence = last.under();
 			}
 			float halfW = Math.min(wide, Sentence.WIDTH) / 2, halfH = rows * row / 2 + PAD_Y, below = (rows - 2) * row / 2;
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
-				// With the middle kept clear, a line goes off to the left or the right of where you look
-				float side = clearMiddle ? (next() < 0.5f ? -SIDE_YAW : SIDE_YAW) : 0;
+				// With the middle kept clear, a line goes just over it, or off to the left or the right of where you look
+				float roll = next(), side = !clearMiddle || roll < OVER_MIDDLE ? 0 : roll < (1 + OVER_MIDDLE) / 2 ? -SIDE_YAW : SIDE_YAW;
 				float left = centre[0] + side - Sentence.WIDTH / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
-				float top = Mth.clamp(centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y, -70, 40);
+				float top = centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y;
+				if (clearMiddle && side == 0) {
+					// All its rows end above the kept-clear part
+					top = Math.min(top, centre[1] + MIDDLE_DROP - MIDDLE_H - PAD_Y - rows * row);
+				}
+				top = Mth.clamp(top, -70, 40);
 				float cost = 0;
 				for (float[] o : taken) {
 					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + below - o[1]);
@@ -838,6 +848,8 @@ final class WorldWords {
 	private static final float VERSE_REACH = 9f;
 	/** With the middle kept clear: how far to the side a line's middle goes, in degrees. */
 	private static final float SIDE_YAW = 30f;
+	/** With the middle kept clear: how often a line tries the sky just over the middle first, as the reference does. */
+	private static final float OVER_MIDDLE = 0.5f;
 	/** The part of your view kept clear, as half width and half height in degrees round a spot a little below the crosshair. */
 	private static final float MIDDLE_W = 15f, MIDDLE_H = 11f, MIDDLE_DROP = 2f;
 	/** How much of a word shows right over the crosshair, and from what share of the way out it starts coming back. */
