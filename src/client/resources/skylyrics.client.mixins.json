@@ -7,8 +7,10 @@
 		"BossHealthOverlayAccessor",
 		"FontPageMixin",
 		"FontTextureMixin",
+		"GlyphStitcherMixin",
 		"GuiMixin",
-		"LevelRendererMixin"
+		"LevelRendererMixin",
+		"TrueTypeGlyphMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

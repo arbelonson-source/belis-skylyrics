@@ -54,9 +54,7 @@ public final class LyricsFont {
 
 	/** Like {@link #sky}, for the World layout's floating words: the same choice of font, from the finer images. */
 	public static Style world(SkyLyricsConfig cfg) {
-		// Smooth letters are stored as see-through masks, which some shader packs (AstraLex) draw in the world as solid
-		// black boxes; Minecraft's own letters are full pictures that every pack draws right
-		if (!cfg.smoothFont || ScreenLayer.shadersOn()) {
+		if (!cfg.smoothFont) {
 			return Style.EMPTY;
 		}
 		return Style.EMPTY.withFont(cfg.scriptFont ? WORLD_SCRIPT : cfg.boldFont ? WORLD_BOLD : WORLD);
