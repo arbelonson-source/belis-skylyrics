@@ -60,8 +60,8 @@ public final class NowPlayingHud {
 	private static final long SWAP_NS = 180_000_000L;
 	/** The pill's resize when the text changes, eased out. */
 	private static final long RESIZE_NS = 290_000_000L;
-	/** Highlight edges close about a tenth of the way to their target per frame at 60 fps. */
-	private static final float HL_RATE = 7;
+	/** Highlight edges close about a quarter of the way to their target per frame at 60 fps, quick enough to keep up with fast words. */
+	private static final float HL_RATE = 18;
 	/** How fast a scrolled long line follows the word being sung, and eases back once the pill has grown. */
 	private static final float SCROLL_RATE = 5;
 	/** At a line's start the highlight grows out of a sliver this wide at the first word. */
