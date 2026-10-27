@@ -278,6 +278,13 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.depth, v -> cfg.depth = v);
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
+		Row glowMode = new Segmented(Tr.t("Glow colour"), Tr.t("The words' colour, or one of its own"),
+				new String[] {Tr.t("Same"), Tr.t("Pick")}, () -> cfg.glowPick ? 1 : 0, i -> cfg.glowPick = i == 1)
+				.when(() -> cfg.glow > 0.01f);
+		Row glowSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
+				() -> cfg.glowPick ? cfg.glowColor : -1,
+				c -> { cfg.glowColor = c; cfg.glowPick = true; })
+				.when(() -> cfg.glow > 0.01f && cfg.glowPick);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
 				() -> cfg.shadow, v -> cfg.shadow = v);
 		Row opacity = new Slider(Tr.t("Opacity"), null, 0.2, 1, 0.05,
@@ -324,7 +331,7 @@ public final class SkyLyricsScreen extends Screen {
 		return List.of(
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
-				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
+				new Card(Tr.t("Style"), font, depth, glow, glowMode, glowSwatches, shadow, opacity, seeThrough, layer),
 				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength, skyPulse),
 				new Card(Tr.t("Hat"), hat, hatPulse),
 				new Card(Tr.t("Crosshair"), crosshair));

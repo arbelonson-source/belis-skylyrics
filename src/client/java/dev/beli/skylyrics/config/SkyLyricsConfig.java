@@ -216,6 +216,9 @@ public final class SkyLyricsConfig {
 	/** Solid darker and lighter copies of the letters just behind them, for a raised 3D look. */
 	public boolean depth = true;
 	public float glow = 0f;
+	/** The glow takes its own colour instead of the words'. */
+	public boolean glowPick = false;
+	public int glowColor = 0xFF8FD8;
 	/** The glow flares up for a moment whenever a new line starts. */
 	public boolean pulse = true;
 	public boolean shadow = true;
@@ -354,6 +357,7 @@ public final class SkyLyricsConfig {
 		songOffsets.replaceAll((k, v) -> Math.max(-MAX_SONG_OFFSET, Math.min(MAX_SONG_OFFSET, v)));
 		color &= 0xFFFFFF;
 		barAccentColor &= 0xFFFFFF;
+		glowColor &= 0xFFFFFF;
 	}
 
 	private static Path file() {

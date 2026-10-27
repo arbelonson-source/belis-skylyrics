@@ -25,7 +25,7 @@ public final class Themes {
 	}
 
 	public static final List<String> LOOK = List.of("layout", "colorMode", "color", "smoothFont", "scriptFont", "boldFont",
-			"depth", "glow", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase",
+			"depth", "glow", "glowPick", "glowColor", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase",
 			"worldFlow");
 
 	public static final List<Theme> ALL = List.of(
@@ -134,7 +134,7 @@ public final class Themes {
 				c.sky = SkyEffect.AURORA;
 				c.skyStrength = 0.8f;
 			}),
-			// The line written out word by word across a plain night sky, lilac with a gentle glow
+			// The line written out word by word across a plain night sky, lilac with a soft pink glow
 			new Theme("lilac", () -> Tr.t("Lilac"), c -> {
 				c.layout = Layout.WORLD;
 				c.worldFlow = true;
@@ -145,6 +145,8 @@ public final class Themes {
 				c.boldFont = false;
 				c.depth = false;
 				c.glow = 0.7f;
+				c.glowPick = true;
+				c.glowColor = 0xFF8FD8;
 				c.pulse = false;
 				c.size = 1.1f;
 				c.animation = Animation.FADE;
@@ -206,7 +208,7 @@ public final class Themes {
 	static boolean sameLook(SkyLyricsConfig a, SkyLyricsConfig b) {
 		try {
 			for (Field f : FIELDS) {
-				if (f.getName().equals("color") && a.colorMode != ColorMode.FIXED) {
+				if (f.getName().equals("color") && a.colorMode != ColorMode.FIXED || f.getName().equals("glowColor") && !a.glowPick) {
 					continue;
 				}
 				Object x = f.get(a), y = f.get(b);

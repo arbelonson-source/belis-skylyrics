@@ -185,6 +185,8 @@ final class WorldWords {
 	private boolean gliding;
 	private @Nullable Sentence sentence;
 	private int maxCards = MAX_CARDS;
+	/** The glow's own colour, or -1 to glow in the words' colour. */
+	private int glowRgb = -1;
 	private float fade = FADE;
 	/** How much further out than usual new cards float, and as much bigger, so they look the same size (the Distance setting). */
 	private float away = 1;
@@ -296,6 +298,11 @@ final class WorldWords {
 	 * How many cards float at once, how many seconds sung ones take to fade, how far out new ones float, how much they
 	 * turn and lean, how far they drift up and whether a line flows left to right (the World words settings).
 	 */
+	/** Glows in {@code rgb}, or in the words' own colour when it's -1. */
+	void glowColour(int rgb) {
+		glowRgb = rgb;
+	}
+
 	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals) {
 		this.away = Mth.clamp(away, 0.5f, 2);
 		this.tilt = Mth.clamp(tilt, 0, 2);
@@ -762,7 +769,7 @@ final class WorldWords {
 						SHADOW_Z, mode);
 			}
 			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
-			int halo = mix(colour, 0x000000, HALO_DAY * day);
+			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
 				draw(pose, out, c, shown, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,

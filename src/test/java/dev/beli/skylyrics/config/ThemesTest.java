@@ -113,6 +113,7 @@ class ThemesTest {
 		assertTrue(lilac.worldFlow);
 		assertFalse(lilac.uppercase);
 		assertEquals(SkyEffect.OFF, lilac.sky);
+		assertTrue(lilac.glowPick);
 
 		SkyLyricsConfig corona = theme("corona").preview();
 		assertEquals(SkyEffect.ECLIPSE, corona.sky);
@@ -147,6 +148,17 @@ class ThemesTest {
 		assertSame(theme("retro"), Themes.active(cfg));
 
 		cfg.color = 0x123456;
+		assertNull(Themes.active(cfg));
+	}
+
+	@Test
+	void pickedGlowColourOnlyCountsWhileTheGlowHasItsOwn() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.glowColor = 0x00FF00;
+		assertSame(theme("neon"), Themes.active(cfg));
+		Themes.apply(theme("lilac"), cfg);
+		assertSame(theme("lilac"), Themes.active(cfg));
+		cfg.glowColor = 0x00FF00;
 		assertNull(Themes.active(cfg));
 	}
 

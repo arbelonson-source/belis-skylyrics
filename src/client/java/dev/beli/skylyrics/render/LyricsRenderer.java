@@ -444,6 +444,7 @@ public final class LyricsRenderer {
 			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
 		}
 		Style style = LyricsFont.world(cfg);
+		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
@@ -1007,7 +1008,7 @@ public final class LyricsRenderer {
 				int copies = LyricsRenderer.this.light ? GLOW_LIGHT : GLOW_INNER;
 				int glowByte = Math.round(cfg.glow * alpha * 1.28f / copies * 255);
 				if (glowByte >= 2) {
-					int halo = mix(face, 0x000000, 0.75f * daylight);
+					int halo = mix(glowOf(face), 0x000000, 0.75f * daylight);
 					for (int k = 0; k < copies; k++) {
 						float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
 						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
@@ -1065,7 +1066,7 @@ public final class LyricsRenderer {
 			int bright = mix(color, 0xFFFFFF, 0.55f - 0.08f * day);
 			int dim = mix(color, 0x000000, 0.45f - 0.4f * day); // dark words would sink into the dark halo
 			int secondary = mix(color, 0xFFFFFF, 0.25f - 0.25f * day);
-			int halo = mix(color, 0x000000, 0.75f * day);
+			int halo = mix(glowOf(color), 0x000000, 0.75f * day);
 			float haloWeight = 1 + 0.9f * day;
 			boolean byWord = !Float.isNaN(wordsT);
 
@@ -1517,6 +1518,12 @@ public final class LyricsRenderer {
 	private static float easeOutBack(float t) {
 		float c1 = 1.70158f, c3 = c1 + 1;
 		return 1 + c3 * (float) Math.pow(t - 1, 3) + c1 * (float) Math.pow(t - 1, 2);
+	}
+
+	/** The glow's colour around words of the given colour: theirs, or the one picked for it. */
+	private static int glowOf(int words) {
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		return cfg.glowPick ? cfg.glowColor : words;
 	}
 
 	static int mix(int a, int b, float t) {
