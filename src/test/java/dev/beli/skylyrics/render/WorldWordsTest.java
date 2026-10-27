@@ -102,6 +102,13 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void letGoCardsShrinkALittleAsTheyFade() {
+		assertEquals(1, WorldWords.leaveSize(0, 2.2f), 1e-6, "full size when let go");
+		assertEquals(0.85f, WorldWords.leaveSize(2.2f, 2.2f), 1e-6, "a bit smaller once faded");
+		assertEquals(0.85f, WorldWords.leaveSize(9f, 2.2f), 1e-6, "and no smaller after that");
+	}
+
+	@Test
 	void lingerSettingStretchesTheFade() {
 		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);
