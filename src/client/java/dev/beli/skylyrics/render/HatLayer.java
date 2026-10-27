@@ -18,7 +18,8 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 /**
- * A hat on your own player, seen in third person (F5): a halo, neon headphones, a conical hat or a crown. It's only drawn
+ * A hat on your own player, seen in third person (F5): a halo, neon headphones, a conical hat, a crown, cat ears, a pumpkin head or a top
+ * hat. It's only drawn
  * here, so other players never see it. Its glowing parts take the lyrics colour and flare up whenever a new line starts.
  */
 public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
@@ -38,6 +39,9 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final int EAR_DARK = 0xFF24202E;
 	private static final float PUMPKIN_HALF = 0.32f, PUMPKIN_TOP = HEAD_TOP - 0.07f, PUMPKIN_BOTTOM = 0.07f;
 	private static final int RIBS = 4, GRIN_COLUMNS = 5;
+	/** The top hat sits just above the head's outer layer; its brim is wide enough to clear that layer's corners. */
+	static final float TOP_HAT_BRIM_Y = HEAD_TOP - 0.035f, TOP_HAT_HEIGHT = 0.38f, TOP_HAT_RADIUS = 0.27f, TOP_HAT_BRIM = 0.43f;
+	private static final int SILK = 0xFF3A3A4A;
 	private static final int ORANGE = 0xFFE3801F, ORANGE_DARK = 0xFFC9661A, STEM = 0xFF4F6A2B;
 
 	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
@@ -96,6 +100,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			case CROWN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> crown(p, vc, light, glow));
 			case CAT_EARS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
 			case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
+			case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
 			case NONE -> { }
 		}
 		pose.popPose();
@@ -247,6 +252,20 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			face(p, vc, FULL_BRIGHT, glow, glow, e[0] + in, base - 0.015f, z - 0.004f, e[1] - in, base - 0.015f, z - 0.004f,
 					Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f, Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f);
 		}
+	}
+
+	/** A tall black top hat with a silky sheen, a wide brim and a glowing band round it. */
+	private static void topHat(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		float brim = TOP_HAT_BRIM_Y, top = brim - TOP_HAT_HEIGHT, r = TOP_HAT_RADIUS;
+		for (int i = 0; i < SEGMENTS; i++) {
+			float a0 = i * Mth.TWO_PI / SEGMENTS, a1 = (i + 1) * Mth.TWO_PI / SEGMENTS;
+			float c0 = Mth.cos(a0), s0 = Mth.sin(a0), c1 = Mth.cos(a1), s1 = Mth.sin(a1);
+			quad(p, vc, light, DARK, SILK, c0, s0, c1, s1, r, r, brim, top); // side
+			quad(p, vc, light, SILK, SILK, c0, s0, c1, s1, r, 0, top, top); // lid
+			quad(p, vc, light, DARK, DARK, c0, s0, c1, s1, TOP_HAT_BRIM, r, brim, brim); // brim
+			quad(p, vc, FULL_BRIGHT, glow, glow, c0, s0, c1, s1, r + 0.004f, r + 0.004f, brim - 0.025f, brim - 0.08f); // band
+		}
+		tube(p, vc, TOP_HAT_BRIM, 0.008f, brim, glow, FULL_BRIGHT);
 	}
 
 	/** A carved pumpkin over the whole head, ribbed in two oranges, with a stem and a face that glows. */

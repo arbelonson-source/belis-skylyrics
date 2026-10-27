@@ -21,6 +21,13 @@ class HatLayerTest {
 	}
 
 	@Test
+	void theTopHatSitsOnTheHeadAndItsBrimClearsTheCorners() {
+		assertTrue(HatLayer.TOP_HAT_BRIM_Y < -0.53f, "above the head's outer layer");
+		assertTrue(HatLayer.TOP_HAT_BRIM > 0.375f, "wider than the corners of the head's outer layer");
+		assertTrue(HatLayer.TOP_HAT_RADIUS < HatLayer.TOP_HAT_BRIM);
+	}
+
+	@Test
 	void theConicalHatIsWidestAtItsBrimAndComesToAPoint() {
 		assertEquals(HatLayer.CONE_BRIM, HatLayer.coneRadius(HatLayer.CONE_BASE), 1e-5);
 		assertEquals(0, HatLayer.coneRadius(HatLayer.CONE_APEX), 1e-5);
