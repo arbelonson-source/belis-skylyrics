@@ -252,12 +252,15 @@ public final class LyricsRenderer {
 		long time = takeLyrics(cfg);
 
 		boolean want = cfg.enabled && hasLyrics
+				// The death screen isn't a menu: the world still shows through it, and the words drop away there
 				//? if >=26.2 {
 				/*&& !(cfg.hideWithF1 && mc.gui.hud.isHidden())
-				&& !(cfg.hideInMenus && mc.gui.screen() != null && !(mc.gui.screen() instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
+				&& !(cfg.hideInMenus && mc.gui.screen() != null && !(mc.gui.screen() instanceof dev.beli.skylyrics.gui.SkyLyricsScreen)
+						&& !(mc.gui.screen() instanceof net.minecraft.client.gui.screens.DeathScreen))
 				*///?} else {
 				&& !(cfg.hideWithF1 && mc.options.hideGui)
-				&& !(cfg.hideInMenus && mc.screen != null && !(mc.screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
+				&& !(cfg.hideInMenus && mc.screen != null && !(mc.screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen)
+						&& !(mc.screen instanceof net.minecraft.client.gui.screens.DeathScreen))
 				//?}
 				&& !(cfg.hideWhenPaused && !tracker.playing()) && !Visibility.hidden(mc, cfg);
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
