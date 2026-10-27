@@ -40,6 +40,8 @@ final class WorldWords {
 	private static final float NEAR = 6.5f, FAR = 15f;
 	/** Never closer than this, even when blocks are in the way. */
 	private static final float CLOSEST = 3f;
+	/** How many blocks a card may be lifted to get its whole face out of the ground or a wall. */
+	private static final int LIFT_STEPS = 8;
 	/** The middle of the scatter sits this many degrees above the crosshair. */
 	private static final float LIFT = 12f;
 	/** Half the width and half the height of the scatter around that middle, in degrees. */
@@ -567,22 +569,45 @@ final class WorldWords {
 		Vec3 eye = camera.position();
 		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
 		List<float[]> taken = new ArrayList<>(cards.size());
+		List<Card> under = new ArrayList<>(cards.size());
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
 			// The words of the line being written are spaced by the line itself
 			if (to.length() > 1e-3 && (c.of == null || c.of != sentence) && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
 				taken.add(footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise), c.at[c.at.length - 1] * c.size * wordScale / 2,
 						5 * c.size * wordScale));
+				under.add(c);
 			}
 		}
 		float[] spot = flow ? follow(centre, at, size, taken) : scatter(centre, at, size, taken);
 		Vec3 dir = direction(spot[0], spot[1]);
-		// Step closer while the spot is inside a block, so the card doesn't hide in a wall
+		// Step closer while any part of the card is inside a block, so it doesn't hide in a wall or the floor
+		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;
 		float distance = spot[2] * away;
-		while (level != null && distance > CLOSEST && !level.getBlockState(BlockPos.containing(eye.add(dir.scale(distance)))).isAir()) {
+		while (distance > CLOSEST && buried(level, eye.add(dir.scale(distance)), dir, halfW, halfH)) {
 			distance -= 1;
 		}
 		Vec3 pos = eye.add(dir.scale(Math.max(CLOSEST, distance)));
+		if (buried(level, pos, dir, halfW, halfH)) {
+			// Nowhere clear on the way in (standing in a cave or by a hill): lift it out where it was meant to be
+			Vec3 meant = eye.add(dir.scale(spot[2] * away));
+			for (int up = 1; up <= LIFT_STEPS; up++) {
+				if (!buried(level, meant.add(0, up, 0), dir, halfW, halfH)) {
+					pos = meant.add(0, up, 0);
+					break;
+				}
+			}
+		}
+		// Older words this one still lands on (a crowded sky) make way rather than show through each other
+		float[] mine = footprint(pos.subtract(eye), 0, halfW, halfH);
+		for (int k = 0; k < taken.size(); k++) {
+			float[] o = taken.get(k);
+			Card c = under.get(k);
+			if (c.goneAt < 0 && !c.title && Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * OVERLAP
+					&& Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * OVERLAP) {
+				c.goneAt = now;
+			}
+		}
 		// The Tilt setting scales every angle, so at 0 a card faces you square on
 		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
@@ -690,6 +715,30 @@ final class WorldWords {
 			at2 = sentence.place(halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB);
 		}
 		return new float[] {at2[0], at2[1], distance};
+	}
+
+	/** How much two cards must cover each other, as a share of their summed half sizes, before the older one goes. */
+	private static final float OVERLAP = 0.6f;
+
+	/**
+	 * Whether any of a card's face (its middle, corners and edge middles, half sizes in blocks) is inside something
+	 * solid. Grass, flowers and water don't count; they're see-through enough.
+	 */
+	static boolean buried(@Nullable ClientLevel level, Vec3 pos, Vec3 dir, float halfW, float halfH) {
+		if (level == null) {
+			return false;
+		}
+		double flat = Math.sqrt(dir.x * dir.x + dir.z * dir.z);
+		Vec3 right = flat < 1e-4 ? new Vec3(1, 0, 0) : new Vec3(-dir.z / flat, 0, dir.x / flat);
+		for (int i = -1; i <= 1; i++) {
+			for (int j = -1; j <= 1; j++) {
+				BlockPos at = BlockPos.containing(pos.add(right.scale(i * halfW)).add(0, j * halfH, 0));
+				if (!level.getBlockState(at).getCollisionShape(level, at).isEmpty()) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/** Whether a card of this half size, in degrees, has room here away from the given footprints. */
