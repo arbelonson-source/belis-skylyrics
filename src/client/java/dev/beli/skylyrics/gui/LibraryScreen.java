@@ -407,7 +407,7 @@ public final class LibraryScreen extends Screen {
 		} else {
 			LibraryPlaylist list = (LibraryPlaylist) entry;
 			title = list.name();
-			under = Tr.t("%s songs", list.songs());
+			under = list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs());
 			colorKey = list.name();
 			coverUrl = list.coverUrl();
 		}
