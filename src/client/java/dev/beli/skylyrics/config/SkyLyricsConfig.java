@@ -148,7 +148,9 @@ public final class SkyLyricsConfig {
 		/** A tall top hat with a glowing band. */
 		TOP_HAT,
 		/** Two curled red horns with glowing tips. */
-		DEVIL_HORNS
+		DEVIL_HORNS,
+		/** Glowing music notes circling the head. */
+		MUSIC_NOTES
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */

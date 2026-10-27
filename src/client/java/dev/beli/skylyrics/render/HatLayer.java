@@ -39,6 +39,14 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final float CUP_IN = 0.27f, CUP_OUT = 0.33f, CUP_Y = -0.23f, CUP_HALF = 0.11f, BAND_TOP = -0.6f;
 	static final float CONE_BRIM = 0.5f, CONE_BASE = HEAD_TOP + 0.05f, CONE_APEX = HEAD_TOP - 0.32f;
 	private static final int CROWN_POINTS = 8;
+	/**
+	 * Music notes: how many circle the head, how far out and at what height (head space, y down), how fast they go round
+	 * (radians a second), bob up and down and rock, and how much they swell when a line starts.
+	 */
+	private static final int NOTES = 3;
+	private static final float NOTE_RADIUS = 0.42f, NOTE_Y = HEAD_TOP + 0.16f, NOTE_SPREAD = 0.13f, NOTE_DEPTH = 0.014f;
+	private static final float NOTE_ORBIT = 0.6f, NOTE_BOB = 0.035f, NOTE_BOB_SPEED = 2.2f, NOTE_SWAY = 0.2f,
+			NOTE_SWAY_SPEED = 1.6f, NOTE_POP = 0.2f;
 	private static final int EAR_DARK = 0xFF24202E;
 	private static final float PUMPKIN_HALF = 0.32f, PUMPKIN_TOP = HEAD_TOP - 0.07f, PUMPKIN_BOTTOM = 0.07f;
 	private static final int RIBS = 4, GRIN_COLUMNS = 5;
@@ -120,6 +128,23 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
 			case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
 			case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
+			case MUSIC_NOTES -> {
+				float t = seconds();
+				// With Glow with the lyrics on, the notes swell a little as each new line starts
+				float pop = 1 + NOTE_POP * (bright - REST) / FLARE;
+				for (int i = 0; i < NOTES; i++) {
+					boolean pair = i % 2 == 1;
+					float phase = i * Mth.TWO_PI / NOTES;
+					pose.pushPose();
+					pose.translate(0, NOTE_Y + NOTE_BOB * Mth.sin(t * NOTE_BOB_SPEED + phase * 2), 0);
+					pose.mulPose(Axis.YP.rotation(t * NOTE_ORBIT + phase));
+					pose.translate(0, 0, NOTE_RADIUS);
+					pose.mulPose(Axis.ZP.rotation(NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
+					pose.scale(pop, pop, pop);
+					out.submitCustomGeometry(pose, paint(), (p, vc) -> note(p, vc, pair, glow));
+					pose.popPose();
+				}
+			}
 			case NONE -> { }
 		}
 		pose.popPose();
@@ -285,6 +310,32 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			quad(p, vc, FULL_BRIGHT, glow, glow, c0, s0, c1, s1, r + 0.004f, r + 0.004f, brim - 0.025f, brim - 0.08f); // band
 		}
 		tube(p, vc, TOP_HAT_BRIM, 0.008f, brim, glow, FULL_BRIGHT);
+	}
+
+	/** Seconds on a steady clock, for things that move on their own. */
+	private static float seconds() {
+		return System.nanoTime() / 1_000_000L % 3_600_000L / 1000f;
+	}
+
+	/**
+	 * One glowing note standing flat to the side as it circles: an eighth note with its flag, or two joined by a beam.
+	 * The head is two crossed boxes so it reads round rather than square.
+	 */
+	private static void note(PoseStack.Pose p, VertexConsumer vc, boolean pair, int glow) {
+		float d = NOTE_DEPTH, top = -0.24f;
+		int heads = pair ? 2 : 1;
+		for (int h = 0; h < heads; h++) {
+			float x = (h - (heads - 1) / 2f) * NOTE_SPREAD;
+			box(p, vc, FULL_BRIGHT, glow, x - 0.045f, -0.025f, -d, x + 0.03f, 0.005f, d);
+			box(p, vc, FULL_BRIGHT, glow, x - 0.035f, -0.035f, -d, x + 0.02f, 0.015f, d);
+			box(p, vc, FULL_BRIGHT, glow, x + 0.012f, top, -d, x + 0.03f, -0.02f, d);
+		}
+		if (pair) {
+			box(p, vc, FULL_BRIGHT, glow, -NOTE_SPREAD / 2 + 0.012f, top, -d, NOTE_SPREAD / 2 + 0.03f, top + 0.035f, d);
+		} else {
+			box(p, vc, FULL_BRIGHT, glow, 0.03f, top, -d, 0.07f, top + 0.03f, d);
+			box(p, vc, FULL_BRIGHT, glow, 0.055f, top + 0.02f, -d, 0.085f, top + 0.09f, d);
+		}
 	}
 
 	/** Two ridged red horns that curl up from the top of the head, their tips glowing. */
