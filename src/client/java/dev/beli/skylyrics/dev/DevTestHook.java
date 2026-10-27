@@ -22,7 +22,7 @@ import dev.beli.skylyrics.gui.SkyLyricsScreen;
  * Development-only remote control, so the mod can be checked on a hidden screen without a keyboard.
  * Write commands, one per line, to {@code skylyrics-test.txt} in the game folder; the file is read
  * once and deleted. Commands: {@code look <yaw> <pitch>}, {@code gui [tab]}, {@code preview},
- * {@code close}, {@code hud on|off}, {@code view <0-2>} (first person, behind, in front),
+ * {@code close}, {@code press <button text>}, {@code hud on|off}, {@code view <0-2>} (first person, behind, in front),
  * {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
  * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
  * the desktop draws on top), {@code uncap} (no frame limit, vsync or idle slowdown), {@code fps [seconds]} (logs the frame
@@ -178,6 +178,21 @@ public final class DevTestHook {
 						client.screen.mouseReleased(e);
 						//?}
 					}
+				}
+				case "press" -> {
+					// Presses the open screen's button whose label contains the text, e.g. "Respawn"
+					//? if >=26.2 {
+					/*Screen screen = client.gui.screen();
+					*///?} else {
+					Screen screen = client.screen;
+					//?}
+					var button = screen == null ? null : screen.children().stream()
+							.filter(c -> c instanceof net.minecraft.client.gui.components.AbstractButton b
+									&& b.getMessage().getString().contains(arg))
+							.map(c -> (net.minecraft.client.gui.components.AbstractButton) c)
+							.findFirst().orElseThrow(() -> new IllegalArgumentException("no button " + arg));
+					button.onPress(new net.minecraft.client.input.MouseButtonEvent(button.getX() + 1, button.getY() + 1,
+							new net.minecraft.client.input.MouseButtonInfo(0, 0)));
 				}
 				//? if >=26.2 {
 				/*case "hud" -> { if (client.gui.hud.isHidden() != arg.equals("off")) client.gui.hud.toggle(); }
