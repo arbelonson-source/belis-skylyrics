@@ -362,13 +362,13 @@ class WorldWordsTest {
 	@Test
 	void aBentRowArchesAndItsWordsLeanAlongIt() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 0, false, 2);
-		float[] first = line.place(2, 1, 0, 0), middle = null, last = first;
-		while (last[0] < WorldWords.Sentence.WIDTH - 3) {
-			last = line.place(2, 1, 0, 0);
-			if (middle == null && last[0] >= WorldWords.Sentence.WIDTH / 2 - 2) {
-				middle = last;
-			}
+		// One full row: words go right until the next one starts a new row
+		List<float[]> row = new ArrayList<>();
+		for (float[] at = line.place(2, 1, 0, 0); row.isEmpty() || at[0] > row.get(row.size() - 1)[0]; at = line.place(2, 1, 0, 0)) {
+			row.add(at);
 		}
+		assertTrue(row.size() >= 3);
+		float[] first = row.get(0), middle = row.get(row.size() / 2), last = row.get(row.size() - 1);
 		// Bigger pitch is lower: the middle sits above both ends, the start leans up, the end leans down
 		assertTrue(middle[1] < first[1] && middle[1] < last[1]);
 		assertTrue(first[2] > 0 && last[2] < 0);
