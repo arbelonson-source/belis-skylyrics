@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -90,6 +91,14 @@ class WorldWordsTest {
 		assertEquals(2 * WorldWords.riseAfter(1, 1), WorldWords.riseAfter(1, 2), 1e-6, "twice the setting, twice as far");
 		assertEquals(0, WorldWords.riseAfter(30, 0), 1e-6, "at 0 words stay still");
 		assertEquals(WorldWords.riseAfter(30, 1), WorldWords.riseAfter(60, 1), 1e-6, "they stop rising after a while");
+	}
+
+	@Test
+	void cardsSwayOnTheirOwnTime() {
+		long born = 123_456_789_000L;
+		float start = WorldWords.swayAngle(0, born);
+		assertEquals(Math.sin(start), Math.sin(WorldWords.swayAngle(5.5f, born)), 1e-4, "one sway takes 5.5 seconds");
+		assertNotEquals(start, WorldWords.swayAngle(0, born + (300L << 16)), 1e-3, "cards that came at different times aren't in step");
 	}
 
 	@Test
