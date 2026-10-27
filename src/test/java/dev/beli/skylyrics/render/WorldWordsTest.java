@@ -316,6 +316,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aLineStartsOverOnlyWhenYouTurnAway() {
+		WorldWords.Sentence line = new WorldWords.Sentence(-13, 0, 10, 0);
+		assertFalse(line.lost(0, 0));
+		assertFalse(line.lost(25, 5));
+		assertFalse(line.lost(-30, -10));
+		assertTrue(line.lost(180, 0));
+		assertTrue(line.lost(90, 0));
+		assertTrue(line.lost(0, 60));
+		// Wraps around: a line behind the seam is still in front of you
+		WorldWords.Sentence seam = new WorldWords.Sentence(170, 0, 10, 0);
+		assertFalse(seam.lost(-175, 0));
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));

@@ -683,6 +683,10 @@ final class WorldWords {
 	 * (a little above and left of the middle, where it overlaps the fading words least); the rest follow it.
 	 */
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken) {
+		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT)) {
+			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
+			sentence = null;
+		}
 		if (sentence == null) {
 			float distance = Mth.lerp(next(), SENTENCE_NEAR, SENTENCE_FAR), bestCost = Float.MAX_VALUE;
 			// The whole line's box: as wide as it reads, or a full row, and as many rows deep as it will need
@@ -814,6 +818,18 @@ final class WorldWords {
 			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets
 			return new float[] {yaw, middle - (yaw - left) * (float) Math.tan(slope * DEG)};
 		}
+
+		/**
+		 * Whether the view (yaw, and pitch where a line would start) has moved so far from this line that its next word
+		 * would be out of sight. Standing still or looking around a little keeps writing on the same line.
+		 */
+		boolean lost(float yaw, float pitch) {
+			float off = Mth.wrapDegrees(yaw - (left + WIDTH / 2));
+			return Math.abs(off) > WIDTH / 2 + LOST_YAW || Math.abs(pitch - top) > LOST_PITCH;
+		}
+
+		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */
+		static final float LOST_YAW = 22f, LOST_PITCH = 30f;
 
 		/** Turns the rest of the line along with you (see {@link WorldWords#glide}). */
 		void swing(float turn, float tilt) {
