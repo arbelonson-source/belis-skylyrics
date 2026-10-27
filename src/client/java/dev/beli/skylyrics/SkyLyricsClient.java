@@ -131,12 +131,23 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		LevelRenderEvents.END_MAIN.register(renderer::renderLate);
 		LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, entityRenderer, layers, context) -> {
 		*///?} else {
+		//? if >=1.21.9 {
 		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::renderEarly);
 		WorldRenderEvents.END_MAIN.register(renderer::renderLate);
+		//?} else {
+		/*// Before 1.21.9 the buffers and matrices only exist from here on, so everything is drawn into them
+		WorldRenderEvents.AFTER_ENTITIES.register(sky::render);
+		WorldRenderEvents.AFTER_ENTITIES.register(renderer::renderEarly);
+		WorldRenderEvents.AFTER_ENTITIES.register(renderer::renderLate);
+		*///?}
 		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, entityRenderer, layers, context) -> {
 		//?}
+			//? if >=1.21.9 {
 			if (entityRenderer instanceof AvatarRenderer<?> avatar) {
+			//?} else {
+			/*if (entityRenderer instanceof PlayerRenderer avatar) {
+			*///?}
 				layers.register(new HatLayer(avatar, renderer));
 			}
 		});
@@ -202,7 +213,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private void registerKeys() {
+		//? if >=1.21.9 {
 		KeyMapping.Category category = KeyMapping.Category.register(id("main"));
+		//?} else {
+		/*String category = "key.category.skylyrics.main";
+		*///?}
 		openSettings = key("open_settings", InputConstants.KEY_J, category);
 		openLibrary = key("library", InputConstants.KEY_N, category);
 		toggleLyrics = key("toggle", InputConstants.UNKNOWN.getValue(), category);
@@ -229,7 +244,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 	}
 
+	//? if >=1.21.9 {
 	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
+	//?} else {
+	/*private static KeyMapping key(String name, int code, String category) {
+	*///?}
 		//? if >=26.1 {
 		/*return KeyMappingHelper.registerKeyMapping(
 		*///?} else {

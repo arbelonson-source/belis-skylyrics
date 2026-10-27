@@ -1,7 +1,9 @@
 package dev.beli.skylyrics.render;
 
 import net.minecraft.client.gui.Font;
+//? if >=1.21.9 {
 import net.minecraft.network.chat.FontDescription;
+//?}
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 
@@ -13,20 +15,28 @@ import dev.beli.skylyrics.config.SkyLyricsConfig;
  * (assets/skylyrics/font/lyrics.json); letters it lacks fall back to Minecraft's font.
  */
 public final class LyricsFont {
-	public static final FontDescription SMOOTH = new FontDescription.Resource(SkyLyricsClient.id("lyrics"));
+	public static final FontDescription SMOOTH = font("lyrics");
 	/** Heavier letters, like big sung words on posters (assets/skylyrics/font/bold.json). */
-	public static final FontDescription BOLD = new FontDescription.Resource(SkyLyricsClient.id("bold"));
+	public static final FontDescription BOLD = font("bold");
 	/** Handwritten brush letters for the sky lyrics (assets/skylyrics/font/script.json). */
-	public static final FontDescription SCRIPT = new FontDescription.Resource(SkyLyricsClient.id("script"));
+	public static final FontDescription SCRIPT = font("script");
 	/**
 	 * The same three fonts drawn from finer letter images (assets/skylyrics/font/world*.json). World layout words
 	 * float a few blocks away and show far bigger than any other text, so the usual images look soft up close.
 	 */
-	static final FontDescription WORLD = new FontDescription.Resource(SkyLyricsClient.id("world"));
-	static final FontDescription WORLD_BOLD = new FontDescription.Resource(SkyLyricsClient.id("world_bold"));
-	static final FontDescription WORLD_SCRIPT = new FontDescription.Resource(SkyLyricsClient.id("world_script"));
+	static final FontDescription WORLD = font("world");
+	static final FontDescription WORLD_BOLD = font("world_bold");
+	static final FontDescription WORLD_SCRIPT = font("world_script");
 
 	private LyricsFont() {
+	}
+
+	private static FontDescription font(String name) {
+		//? if >=1.21.9 {
+		return new FontDescription.Resource(SkyLyricsClient.id(name));
+		//?} else {
+		/*return SkyLyricsClient.id(name);
+		*///?}
 	}
 
 	/** The style every lyric character starts from, before colour is added. */

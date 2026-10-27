@@ -781,7 +781,9 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		double mx = event.x();
 		double my = event.y();
@@ -913,6 +915,23 @@ public final class LibraryScreen extends Screen {
 		//?}
 	}
 
+	//? if <1.21.9 {
+	/*@Override
+	public boolean mouseClicked(double x, double y, int button) {
+		return mouseClicked(new MouseButtonEvent(x, y, button), false);
+	}
+
+	@Override
+	public boolean keyPressed(int key, int scancode, int modifiers) {
+		return keyPressed(new KeyEvent(key, scancode, modifiers));
+	}
+
+	@Override
+	public boolean charTyped(char c, int modifiers) {
+		return charTyped(new CharacterEvent(c));
+	}
+
+	*///?}
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
 		Shelf shelf = shelf();
@@ -929,7 +948,9 @@ public final class LibraryScreen extends Screen {
 		return super.mouseScrolled(mx, my, scrollX, scrollY);
 	}
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean keyPressed(KeyEvent event) {
 		if (event.isEscape()) {
 			if (typing) {
@@ -1012,7 +1033,9 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean charTyped(CharacterEvent event) {
 		if (library == null || !event.isAllowedChatCharacter()) {
 			return false;
