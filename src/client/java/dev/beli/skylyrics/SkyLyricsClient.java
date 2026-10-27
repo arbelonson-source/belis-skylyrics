@@ -77,6 +77,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private KeyMapping previousTrack;
 	private KeyMapping lyricsLate;
 	private KeyMapping lyricsEarly;
+	/** Whether the library key has been checked against the shader toggle yet. */
+	private boolean keysChecked;
 
 	public static SkyLyricsClient get() {
 		return instance;
@@ -177,7 +179,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void registerKeys() {
 		KeyMapping.Category category = KeyMapping.Category.register(id("main"));
 		openSettings = key("open_settings", GLFW.GLFW_KEY_J, category);
-		openLibrary = key("library", GLFW.GLFW_KEY_K, category);
+		openLibrary = key("library", GLFW.GLFW_KEY_N, category);
 		toggleLyrics = key("toggle", InputConstants.UNKNOWN.getValue(), category);
 		showNowPlaying = key("now_playing", InputConstants.UNKNOWN.getValue(), category);
 		playPause = key("play_pause", InputConstants.UNKNOWN.getValue(), category);
@@ -187,6 +189,21 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		lyricsEarly = key("lyrics_early", InputConstants.UNKNOWN.getValue(), category);
 	}
 
+	/**
+	 * The library key was K until 0.6.2, which is also Iris's key for turning shaders on and off, so pressing it did both.
+	 * If ours still sits on the same key as that toggle, move ours back to its default.
+	 */
+	private static void moveOffShaderToggle(Minecraft client, KeyMapping ours) {
+		for (KeyMapping other : client.options.keyMappings) {
+			if (other != ours && other.getName().equals("iris.keybind.toggleShaders") && other.same(ours)
+					&& !ours.isDefault()) {
+				ours.setKey(ours.getDefaultKey());
+				KeyMapping.resetMapping();
+				client.options.save();
+			}
+		}
+	}
+
 	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
 		return KeyMappingHelper.registerKeyMapping(
 				new KeyMapping("key.skylyrics." + name, InputConstants.Type.KEYSYM, code, category));
@@ -194,6 +211,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private void tick(Minecraft client) {
 		art.upload();
+		if (!keysChecked) {
+			keysChecked = true;
+			moveOffShaderToggle(client, openLibrary);
+		}
 		while (openSettings.consumeClick()) {
 			if (client.gui.screen() == null) {
 				client.gui.setScreen(new SkyLyricsScreen(null));
