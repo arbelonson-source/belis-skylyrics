@@ -213,7 +213,7 @@ final class WorldWords {
 	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
 	private boolean flow;
 	private boolean hold = true;
-	private boolean nudge = true, avoidPlayers = true, knock = true, swung;
+	private boolean nudge = true, avoidPlayers = true, knock = true, swung, clearMiddle = true;
 	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
 	private @Nullable Vec3 lastEye;
@@ -350,6 +350,11 @@ final class WorldWords {
 	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
 	void nudge(boolean on) {
 		this.nudge = on;
+	}
+
+	/** Whether new words keep out of the middle of your view (the Keep the middle clear setting). */
+	void clearMiddle(boolean on) {
+		this.clearMiddle = on;
 	}
 
 	/** Whether words keep out of the way of other players, for PvP, and whether hitting a word knocks it. */
@@ -636,6 +641,11 @@ final class WorldWords {
 			avoid = new ArrayList<>(taken);
 			avoid.addAll(players(level, eye));
 		}
+		if (clearMiddle) {
+			// The middle of your view is for the game: new words go round it, never across it
+			avoid = new ArrayList<>(avoid);
+			avoid.add(new float[] {centre[0], centre[1] + MIDDLE_DROP, MIDDLE_W, MIDDLE_H});
+		}
 		float[] spot = flow ? follow(centre, at, size, avoid) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Step closer while any part of the card is inside a block, so it doesn't hide in a wall or the floor
@@ -740,7 +750,7 @@ final class WorldWords {
 	 * (a little above and left of the middle, where it overlaps the fading words least); the rest follow it.
 	 */
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken) {
-		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT)) {
+		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT, clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0)) {
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
 			sentence = null;
 		}
@@ -752,7 +762,9 @@ final class WorldWords {
 			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
 			float halfW = Math.min(wide, Sentence.WIDTH) / 2, halfH = rows * row / 2 + PAD_Y, below = (rows - 2) * row / 2;
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
-				float left = centre[0] - Sentence.WIDTH / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
+				// With the middle kept clear, a line goes off to the left or the right of where you look
+				float side = clearMiddle ? (next() < 0.5f ? -SIDE_YAW : SIDE_YAW) : 0;
+				float left = centre[0] + side - Sentence.WIDTH / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
 				float top = Mth.clamp(centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y, -70, 40);
 				float cost = 0;
 				for (float[] o : taken) {
@@ -777,6 +789,13 @@ final class WorldWords {
 		}
 		return new float[] {at2[0], at2[1], distance};
 	}
+
+	/** With the middle kept clear: how far to the side a line's middle goes, in degrees. */
+	private static final float SIDE_YAW = 30f;
+	/** The part of your view kept clear, as half width and half height in degrees round a spot a little below the crosshair. */
+	private static final float MIDDLE_W = 15f, MIDDLE_H = 11f, MIDDLE_DROP = 2f;
+	/** How much of a word shows right over the crosshair, and from what share of the way out it starts coming back. */
+	private static final float MIDDLE_ALPHA = 0.12f, MIDDLE_SOFT = 0.35f;
 
 	/** How far apart, in blocks, the spots on a card's face are that get checked for blocks. */
 	private static final float BURY_STEP = 0.5f;
@@ -888,8 +907,13 @@ final class WorldWords {
 		 * would be out of sight. Standing still or looking around a little keeps writing on the same line.
 		 */
 		boolean lost(float yaw, float pitch) {
+			return lost(yaw, pitch, 0);
+		}
+
+		/** The same, for a line placed up to {@code aside} degrees to the side of where you looked. */
+		boolean lost(float yaw, float pitch, float aside) {
 			float off = Mth.wrapDegrees(yaw - (left + WIDTH / 2));
-			return Math.abs(off) > WIDTH / 2 + LOST_YAW || Math.abs(pitch - top) > LOST_PITCH;
+			return Math.abs(off) > WIDTH / 2 + LOST_YAW + aside || Math.abs(pitch - top) > LOST_PITCH;
 		}
 
 		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */
@@ -906,7 +930,24 @@ final class WorldWords {
 		}
 	}
 
-	private static Vec3 direction(float yaw, float pitch) {
+	/**
+	 * How much of a word shows where it sits in your view: barely at all over the middle, where you need to see the
+	 * game, and fully once it's off to the side. {@code to} is the word's centre from the eye, the halves in blocks.
+	 */
+	static float middleFade(Vector3f to, float halfW, float halfH, float yaw, float pitch) {
+		Vec3 v = new Vec3(to.x, to.y, to.z);
+		double far = v.length(), flat = Math.sqrt(v.x * v.x + v.z * v.z);
+		if (far < 1e-3) {
+			return 1;
+		}
+		// How far the word's nearest edge is from the crosshair, as a share of the middle's size
+		float x = (Math.abs(Mth.wrapDegrees(yawOf(v) - yaw)) - halfAngle(halfW, flat)) / MIDDLE_W;
+		float y = (Math.abs(pitchOf(v) - pitch - MIDDLE_DROP) - halfAngle(halfH, far)) / MIDDLE_H;
+		float out = Mth.clamp((Math.max(x, y) - MIDDLE_SOFT) / (1 - MIDDLE_SOFT), 0, 1);
+		return Mth.lerp(out * out * (3 - 2 * out), MIDDLE_ALPHA, 1);
+	}
+
+	static Vec3 direction(float yaw, float pitch) {
 		return new Vec3(-Mth.sin(yaw * DEG) * Mth.cos(pitch * DEG), -Mth.sin(pitch * DEG), Mth.cos(yaw * DEG) * Mth.cos(pitch * DEG));
 	}
 
@@ -1132,6 +1173,13 @@ final class WorldWords {
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
+			}
+			if (clearMiddle) {
+				// Whatever drifts over the crosshair as you look about goes see-through, so the game always shows
+				a *= middleFade(centre, c.at[n] * grow / 2, 5 * grow, camera.yRot(), camera.xRot());
+				if (a < 0.03f) {
+					continue;
+				}
 			}
 			if (c.goneAt < 0) {
 				LyricsInView.check(centre, c.at[n] * grow / 2, 5 * grow);

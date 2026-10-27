@@ -390,5 +390,7 @@
   "skylyrics.ui.keep_off_players": "Keep off players",
   "skylyrics.ui.words_move_out_of_the_way_of_other_players_for_p": "Words move out of the way of other players, for PvP",
   "skylyrics.ui.hit_to_knock": "Hit to knock",
-  "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "Hitting a word knocks it away and it springs back"
+  "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "Hitting a word knocks it away and it springs back",
+  "skylyrics.ui.keep_the_middle_clear": "Keep the middle clear",
+  "skylyrics.ui.words_float_off_to_the_side_so_you_can_always_se": "Words float off to the side so you can always see the game"
 }

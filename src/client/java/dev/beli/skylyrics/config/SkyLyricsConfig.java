@@ -202,6 +202,8 @@ public final class SkyLyricsConfig {
 	public boolean worldHold = true;
 	/** World layout: words that end up on top of each other glide apart. */
 	public boolean worldNudge = true;
+	/** World layout: new words go to the side of where you look, keeping the middle of the view free for the game. */
+	public boolean worldClearMiddle = true;
 	/** World layout: words keep out of the way of other players, so they never cover someone in a fight. */
 	public boolean worldAvoidPlayers = true;
 	/** World layout: hitting a word knocks it away; it spins and springs back. */

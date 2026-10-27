@@ -348,6 +348,18 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void wordsOverTheMiddleOfTheViewGoSeeThrough() {
+		Vector3f ahead = WorldWords.direction(20, 0).scale(10).toVector3f();
+		Vector3f aside = WorldWords.direction(70, 0).scale(10).toVector3f();
+		assertTrue(WorldWords.middleFade(ahead, 1, 0.5f, 20, 0) < 0.2f);
+		assertEquals(1, WorldWords.middleFade(aside, 1, 0.5f, 20, 0), 1e-4f);
+		// A long word reaching over the crosshair counts, even with its middle off to one side
+		Vector3f long_ = WorldWords.direction(32, 0).scale(10).toVector3f();
+		assertTrue(WorldWords.middleFade(long_, 3, 0.5f, 20, 0) < 0.2f);
+		assertTrue(WorldWords.middleFade(long_, 0.2f, 0.5f, 20, 0) > 0.5f);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));

@@ -390,5 +390,7 @@
   "skylyrics.ui.keep_off_players": "להתרחק משחקנים",
   "skylyrics.ui.words_move_out_of_the_way_of_other_players_for_p": "המילים זזות מהדרך של שחקנים אחרים, בשביל PvP",
   "skylyrics.ui.hit_to_knock": "מכה מעיפה",
-  "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "מכה במילה מעיפה אותה והיא קופצת בחזרה"
+  "skylyrics.ui.hitting_a_word_knocks_it_away_and_it_springs_bac": "מכה במילה מעיפה אותה והיא קופצת בחזרה",
+  "skylyrics.ui.keep_the_middle_clear": "שמירה על המרכז פנוי",
+  "skylyrics.ui.words_float_off_to_the_side_so_you_can_always_se": "המילים מרחפות בצד כדי שתמיד תראו את המשחק"
 }
