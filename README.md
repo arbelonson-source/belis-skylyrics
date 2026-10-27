@@ -46,9 +46,11 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 | ![Synthwave sky](docs/synthwave.jpg) | ![Moonlight sky](docs/moonlight.jpg) |
 | Synthwave sky, with shaders | Moonlight sky, with shaders |
 | ![Eclipse sky](docs/eclipse.jpg) | ![World layout](docs/world-layout.jpg) |
-| Eclipse sky, with shaders | World layout: words placed around you |
-| ![Floating mode](docs/floating.jpg) | ![The settings screen](docs/settings.jpg) |
-| Floating mode, close by | The settings screen |
+| Eclipse sky, with shaders | World layout: words flowing across the aurora |
+| ![Floating mode](docs/floating.jpg) | ![The settings screen, searching for a setting](docs/settings.jpg) |
+| Floating mode, close by | The settings screen, searching for "glow" |
+| ![A crown hat with words around it](docs/hat.jpg) | ![The song library](docs/library.jpg) |
+| A crown hat, seen from behind | The song library (made-up songs shown) |
 
 ## Install
 
