@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Our crosshair shapes, as pixels round the middle of the screen in GUI pixels, so they stay crisp at any GUI scale.
@@ -27,7 +27,7 @@ public final class CrosshairShape {
 	}
 
 	/** Draws the shape with its middle pixel at x, y, in the given colour (packed RGB). */
-	public static void draw(GuiGraphics g, int x, int y, Crosshair style, int rgb) {
+	public static void draw(GuiGraphicsExtractor g, int x, int y, Crosshair style, int rgb) {
 		for (int[] run : EDGES.computeIfAbsent(style, s -> runs(edge(pixels(s))))) {
 			g.fill(x + run[0], y + run[1], x + run[0] + run[2], y + run[1] + 1, EDGE);
 		}
