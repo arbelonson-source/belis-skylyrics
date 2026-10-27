@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.gui;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -20,7 +21,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
@@ -666,7 +666,7 @@ public final class LibraryScreen extends Screen {
 			return super.keyPressed(event);
 		}
 		if (typing) {
-			if (event.key() == GLFW.GLFW_KEY_BACKSPACE && !query.isEmpty()) {
+			if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
 				edit(event.hasControlDown() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 				return true;
 			}

@@ -33,7 +33,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -202,8 +201,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private void registerKeys() {
 		KeyMapping.Category category = KeyMapping.Category.register(id("main"));
-		openSettings = key("open_settings", GLFW.GLFW_KEY_J, category);
-		openLibrary = key("library", GLFW.GLFW_KEY_N, category);
+		openSettings = key("open_settings", InputConstants.KEY_J, category);
+		openLibrary = key("library", InputConstants.KEY_N, category);
 		toggleLyrics = key("toggle", InputConstants.UNKNOWN.getValue(), category);
 		showNowPlaying = key("now_playing", InputConstants.UNKNOWN.getValue(), category);
 		playPause = key("play_pause", InputConstants.UNKNOWN.getValue(), category);
@@ -234,7 +233,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		*///?} else {
 		return KeyBindingHelper.registerKeyBinding(
 		//?}
-				new KeyMapping("key.skylyrics." + name, InputConstants.Type.KEYSYM, code, category));
+				new KeyMapping("key.skylyrics." + name, code, category));
 	}
 
 	private void tick(Minecraft client) {

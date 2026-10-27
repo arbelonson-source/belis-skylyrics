@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -394,7 +395,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row help = new Paragraph(() -> Tr.t("Follows your Spotify account on any device, even your phone. Spotify needs you to make a free app for this: open the dashboard, create an app with the Redirect URI below and Web API ticked, then paste its Client ID here."))
 				.when(web);
 		Row dashboard = new Buttons(Tr.t("Spotify dashboard"), Tr.t("Needs a Spotify Premium account"),
-				new Button(Tr.t("Open"), () -> ConfirmLinkScreen.confirmLinkNow(this, SpotifyWebSource.DASHBOARD)))
+				new Button(Tr.t("Open"), () -> ConfirmLinkScreen.confirmLinkNow(this, URI.create(SpotifyWebSource.DASHBOARD))))
 				.when(web);
 		Row redirect = new Buttons(Tr.t("Redirect URI"), SpotifyWebSource.REDIRECT,
 				new Button(Tr.t("Copy"), () -> minecraft.keyboardHandler.setClipboard(SpotifyWebSource.REDIRECT)))
@@ -424,7 +425,7 @@ public final class SkyLyricsScreen extends Screen {
 						case WAITING -> spotify.cancelLogin();
 						default -> {
 							try {
-								ConfirmLinkScreen.confirmLinkNow(this, spotify.startLogin());
+								ConfirmLinkScreen.confirmLinkNow(this, URI.create(spotify.startLogin()));
 							} catch (IOException e) {
 								spotifyError = e.getMessage();
 							}
@@ -546,8 +547,8 @@ public final class SkyLyricsScreen extends Screen {
 				: Tr.t("The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, and are saved on your computer for next time."));
 		Row compat = new Paragraph(() -> Tr.t("Works with Sodium, Iris and shader packs."));
 		Row links = new Buttons(Tr.t("Links"), null,
-				new Button("GitHub", () -> ConfirmLinkScreen.confirmLinkNow(this, GITHUB)),
-				new Button("LRCLIB", () -> ConfirmLinkScreen.confirmLinkNow(this, LRCLIB)));
+				new Button("GitHub", () -> ConfirmLinkScreen.confirmLinkNow(this, URI.create(GITHUB))),
+				new Button("LRCLIB", () -> ConfirmLinkScreen.confirmLinkNow(this, URI.create(LRCLIB))));
 		return List.of(
 				new Card("Beli's SkyLyrics", intro, versionRow),
 				new Card(Tr.t("How it works"), how, compat, links));

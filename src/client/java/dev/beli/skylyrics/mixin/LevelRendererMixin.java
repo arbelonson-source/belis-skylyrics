@@ -28,14 +28,18 @@ abstract class LevelRendererMixin {
 	*///?} else {
 	@Inject(method = "renderLevel", at = @At("HEAD"))
 	//?}
-	private void skylyrics$captureMatrices(GraphicsResourceAllocator allocator, DeltaTracker delta, boolean outline,
-			//? if >=26.2 {
-			/*CameraRenderState camera, Matrix4fc view, GpuBufferSlice fog, Vector4f fogColor, boolean sky,
-			CallbackInfo ci) {
+	private void skylyrics$captureMatrices(GraphicsResourceAllocator allocator,
+			//? if >=26.3 {
+			/*boolean outline, CameraRenderState camera, GpuBufferSlice fog, Vector4f fogColor, boolean sky,
+			boolean sectionOcclusion, CallbackInfo ci) {
+		ScreenLayer.capture(camera.viewRotationMatrix, camera.projectionMatrix);
+			*///?} else if >=26.2 {
+			/*DeltaTracker delta, boolean outline, CameraRenderState camera, Matrix4fc view, GpuBufferSlice fog,
+			Vector4f fogColor, boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, camera.projectionMatrix);
 			*///?} else {
-			Camera camera, Matrix4f view, Matrix4f projection, Matrix4f culling, GpuBufferSlice fog, Vector4f fogColor,
-			boolean sky, CallbackInfo ci) {
+			DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection, Matrix4f culling,
+			GpuBufferSlice fog, Vector4f fogColor, boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
 			//?}
 		SkyTint.fog(fogColor);
