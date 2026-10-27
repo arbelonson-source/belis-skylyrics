@@ -130,7 +130,9 @@ public final class SkyLyricsConfig {
 		HEADPHONES,
 		/** A wide straw cone. */
 		CONICAL,
-		CROWN
+		CROWN,
+		/** Two cat ears with glowing insides. */
+		CAT_EARS
 	}
 
 	public enum Layer {
