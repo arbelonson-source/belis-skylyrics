@@ -126,7 +126,11 @@ public final class SkyLyricsConfig {
 	public enum Hat {
 		NONE,
 		/** A glowing ring floating above your head. */
-		HALO
+		HALO,
+		HEADPHONES,
+		/** A wide straw cone. */
+		CONICAL,
+		CROWN
 	}
 
 	public enum Layer {
