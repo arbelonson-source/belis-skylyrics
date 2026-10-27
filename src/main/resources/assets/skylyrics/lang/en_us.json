@@ -354,5 +354,8 @@
   "skylyrics.ui.only_say_when_a_new_version_is_out": "Only say when a new version is out",
   "skylyrics.ui.never_look_for_updates": "Never look for updates",
   "skylyrics.ui.skylyrics_s_is_downloaded_restart_minecraft_to_u": "SkyLyrics %s is downloaded — restart Minecraft to use it",
-  "skylyrics.ui.skylyrics_s_is_out": "SkyLyrics %s is out"
+  "skylyrics.ui.skylyrics_s_is_out": "SkyLyrics %s is out",
+  "skylyrics.ui.grid": "Grid",
+  "skylyrics.ui.shelf": "Shelf",
+  "skylyrics.ui.carousel": "Carousel"
 }

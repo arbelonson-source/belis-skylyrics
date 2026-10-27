@@ -354,5 +354,8 @@
   "skylyrics.ui.only_say_when_a_new_version_is_out": "רק להגיד כשיוצאת גרסה חדשה",
   "skylyrics.ui.never_look_for_updates": "לא לחפש עדכונים",
   "skylyrics.ui.skylyrics_s_is_downloaded_restart_minecraft_to_u": "SkyLyrics %s הורדה — הפעילו מחדש את Minecraft כדי להשתמש בה",
-  "skylyrics.ui.skylyrics_s_is_out": "SkyLyrics %s יצאה"
+  "skylyrics.ui.skylyrics_s_is_out": "SkyLyrics %s יצאה",
+  "skylyrics.ui.grid": "רשת",
+  "skylyrics.ui.shelf": "מדף",
+  "skylyrics.ui.carousel": "קרוסלה"
 }

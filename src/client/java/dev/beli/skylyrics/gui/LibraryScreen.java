@@ -40,6 +40,10 @@ public final class LibraryScreen extends Screen {
 	private static final int HEADER_H = 52;
 	private static final int TEXT_H = 22;
 	private static final int SEARCH_W = 130;
+	private static final int SHELF_COVER = 84;
+	/** Space under a shelf row for the floor line. */
+	private static final int SHELF_FLOOR = 12;
+	private static final int TOGGLE_W = 18;
 	private static final long SEARCH_WAIT_NS = 350_000_000L;
 	private static final float STAGGER = 0.03f;
 	private static final float POP = 0.35f;
@@ -77,6 +81,11 @@ public final class LibraryScreen extends Screen {
 	private int px, py, pw, ph;
 	private int viewX, viewY, viewW, viewH;
 	private int cols, cellW, cellH;
+	/** Shelf view: rows that fit and the distance between columns. */
+	private int shelfRows, shelfStride;
+	/** Carousel view: where the glide has got to, in item places. */
+	private float carPos;
+	private String tip = "";
 
 	public LibraryScreen(@Nullable Screen parent) {
 		super(Component.literal("SkyLyrics library"));
@@ -183,6 +192,16 @@ public final class LibraryScreen extends Screen {
 		cols = LibraryGrid.columns(viewW);
 		cellW = LibraryGrid.cellWidth(viewW);
 		cellH = cellW + TEXT_H;
+		shelfRows = LibraryViews.shelfRows(viewH - TEXT_H - 4, SHELF_COVER + SHELF_FLOOR);
+		shelfStride = SHELF_COVER + LibraryGrid.GAP;
+	}
+
+	private SkyLyricsConfig.LibraryView view() {
+		return SkyLyricsConfig.get().libraryView;
+	}
+
+	private int carSize() {
+		return Math.max(40, Math.min(Math.min(viewH - TEXT_H - 16, viewW / 3), 130));
 	}
 
 	private int contentHeight(Shelf shelf) {
@@ -191,6 +210,13 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private float maxScroll(Shelf shelf) {
+		if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+			return Math.max(0, LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP)
+					+ (shelf.pending != null ? 16 : 0) - viewW);
+		}
+		if (view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
+			return 0;
+		}
 		return Math.max(0, contentHeight(shelf) - viewH);
 	}
 
@@ -241,12 +267,28 @@ public final class LibraryScreen extends Screen {
 			shelf.poll();
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget, 0, maxScroll(shelf));
 			shelf.scroll = Ui.approach(shelf.scroll, shelf.scrollTarget, dt, 18);
-			if (shelf.scrollTarget + viewH > contentHeight(shelf) - cellH && shelf.error.isEmpty()) {
+			boolean nearEnd = switch (view()) {
+				case SHELF -> shelf.scrollTarget + shelfStride * 2 > maxScroll(shelf);
+				case CAROUSEL -> selected >= shelf.items.size() - 6;
+				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
+			};
+			if (nearEnd && shelf.error.isEmpty()) {
 				shelf.more();
 			}
+			if (view() == SkyLyricsConfig.LibraryView.CAROUSEL && selected < 0 && !shelf.items.isEmpty()) {
+				selected = 0;
+			}
+			carPos = LibraryViews.ease(carPos, Mth.clamp(selected, 0, Math.max(0, shelf.items.size() - 1)), dt, 12);
 			renderShelf(g, f, shelf);
 		}
 		renderToast(g);
+		if (!tip.isEmpty()) {
+			int w = font.width(tip) + 8;
+			int tx = px + pw - 10 - w;
+			Ui.rect(g, tx, py + HEADER_H + 2, w, 12, 4, 0xF0101216);
+			g.drawString(font, Ui.visual(tip), tx + 4, py + HEADER_H + 5, Ui.TEXT, false);
+			tip = "";
+		}
 	}
 
 	private void renderHeader(GuiGraphics g, Frame f) {
@@ -287,7 +329,7 @@ public final class LibraryScreen extends Screen {
 			boolean hover = Ui.inside(f.mx(), f.my(), px + 10, y, w, 14);
 			Ui.rect(g, px + 10, y, w, 14, 7, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			g.drawString(font, Ui.visual(back), px + 17, y + 3, Ui.TEXT, false);
-			g.drawString(font, Ui.visual(Ui.clip(font, openedName, pw - w - 40)), px + 18 + w, y + 3, Ui.MUTED, false);
+			g.drawString(font, Ui.visual(Ui.clip(font, openedName, pw - w - 100)), px + 18 + w, y + 3, Ui.MUTED, false);
 		} else if (library != null) {
 			int x = px + 10;
 			for (Section s : Section.values()) {
@@ -303,7 +345,53 @@ public final class LibraryScreen extends Screen {
 				x += w + 4;
 			}
 		}
+		if (library != null) {
+			renderViewToggle(g, f, y);
+		}
 		g.fill(px + 10, py + HEADER_H - 1, px + pw - 10, py + HEADER_H, Ui.DIVIDER);
+	}
+
+	private int toggleX(int i) {
+		return px + pw - 10 - (3 - i) * TOGGLE_W - (2 - i) * 2;
+	}
+
+	/** Three small buttons in the header to pick grid, shelf or carousel. */
+	private void renderViewToggle(GuiGraphics g, Frame f, int y) {
+		SkyLyricsConfig.LibraryView[] views = SkyLyricsConfig.LibraryView.values();
+		for (int i = 0; i < views.length; i++) {
+			int x = toggleX(i);
+			boolean on = views[i] == view();
+			boolean hover = Ui.inside(f.mx(), f.my(), x, y, TOGGLE_W, 14);
+			Ui.rect(g, x, y, TOGGLE_W, 14, 5, on ? Ui.ACCENT_SOFT : hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
+			int c = on ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
+			int cx = x + TOGGLE_W / 2, cy = y + 7;
+			switch (views[i]) {
+				case GRID -> {
+					g.fill(cx - 4, cy - 4, cx - 1, cy - 1, c);
+					g.fill(cx + 1, cy - 4, cx + 4, cy - 1, c);
+					g.fill(cx - 4, cy + 1, cx - 1, cy + 4, c);
+					g.fill(cx + 1, cy + 1, cx + 4, cy + 4, c);
+				}
+				case SHELF -> {
+					g.fill(cx - 5, cy - 4, cx + 5, cy - 3, c);
+					g.fill(cx - 5, cy + 3, cx + 5, cy + 4, c);
+					g.fill(cx - 4, cy - 2, cx - 1, cy + 2, c);
+					g.fill(cx + 1, cy - 2, cx + 4, cy + 2, c);
+				}
+				case CAROUSEL -> {
+					g.fill(cx - 5, cy - 2, cx - 3, cy + 2, c);
+					g.fill(cx - 2, cy - 4, cx + 2, cy + 4, c);
+					g.fill(cx + 3, cy - 2, cx + 5, cy + 2, c);
+				}
+			}
+			if (hover) {
+				tip = switch (views[i]) {
+					case GRID -> Tr.t("Grid");
+					case SHELF -> Tr.t("Shelf");
+					case CAROUSEL -> Tr.t("Carousel");
+				};
+			}
+		}
 	}
 
 	private String tail(String text, int maxW) {
@@ -347,6 +435,14 @@ public final class LibraryScreen extends Screen {
 		Track now = mod.tracker().track();
 		boolean moving = mod.tracker().playing();
 		boolean inView = Ui.inside(f.mx(), f.my(), viewX, viewY, viewW, viewH);
+		if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+			renderRows(g, f, shelf, now, moving, inView);
+			return;
+		}
+		if (view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
+			renderCarousel(g, shelf, now, moving);
+			return;
+		}
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
 		int top = viewY - Math.round(shelf.scroll);
 		for (int i = 0; i < shelf.items.size(); i++) {
@@ -382,6 +478,109 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
+	private int shelfTop() {
+		return viewY + Math.max(0, (viewH - TEXT_H - 4 - (SHELF_COVER + SHELF_FLOOR) * shelfRows) / 2);
+	}
+
+	/** Covers standing in rows on a shelf; the shelf scrolls sideways and the chosen cover shows its name. */
+	private void renderRows(GuiGraphics g, Frame f, Shelf shelf, Track now, boolean moving, boolean inView) {
+		int rowH = SHELF_COVER + SHELF_FLOOR;
+		int top = shelfTop();
+		int left = Math.round(shelf.scroll);
+		int width = LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP);
+		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
+		for (int r = 0; r < shelfRows; r++) {
+			int fy = top + r * rowH + SHELF_COVER + 4;
+			int end = Math.min(viewX + viewW, viewX - left + width);
+			if (end > viewX) {
+				g.fill(viewX, fy, end, fy + 1, Ui.DIVIDER);
+				g.fill(viewX + 2, fy + 1, end - 2, fy + 3, 0x18000000);
+				g.fill(viewX + 6, fy + 3, end - 6, fy + 4, 0x0C000000);
+			}
+		}
+		for (int i = 0; i < shelf.items.size(); i++) {
+			int x = viewX + LibraryViews.shelfCol(i, shelfRows) * shelfStride - left;
+			int y = top + LibraryViews.shelfRow(i, shelfRows) * rowH;
+			if (x + SHELF_COVER < viewX - 4 || x > viewX + viewW + 4) {
+				continue;
+			}
+			boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, SHELF_COVER, SHELF_COVER);
+			float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
+			shelf.lift.set(i, lift);
+			float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+			if (t <= 0) {
+				continue;
+			}
+			Object entry = shelf.items.get(i);
+			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+			renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == selected,
+					current, moving);
+		}
+		if (shelf.pending != null) {
+			g.drawString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), viewX - left + width + 8,
+					top + SHELF_COVER / 2, Ui.DIM, false);
+		}
+		g.disableScissor();
+		if (selected >= 0 && selected < shelf.items.size()) {
+			String[] text = labels(shelf.items.get(selected));
+			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[0], viewW - 20)), px + pw / 2, viewY + viewH - TEXT_H + 2, Ui.TEXT);
+			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[1], viewW - 20)), px + pw / 2, viewY + viewH - TEXT_H + 12, Ui.DIM);
+		}
+		float max = maxScroll(shelf);
+		if (max > 0) {
+			int barW = Math.max(16, viewW * viewW / (viewW + Math.round(max)));
+			int barX = viewX + Math.round((viewW - barW) * (shelf.scroll / max));
+			Ui.rect(g, barX, viewY + viewH - 3, barW, 2, 1, Ui.TRACK);
+		}
+	}
+
+	/** Items worth drawing around the glide position, the nearest to the middle last so they end up on top. */
+	private List<Integer> carouselOrder(Shelf shelf) {
+		List<Integer> order = new ArrayList<>();
+		for (int i = 0; i < shelf.items.size(); i++) {
+			if (LibraryViews.alpha(i - carPos) > 0) {
+				order.add(i);
+			}
+		}
+		order.sort((a, b) -> Float.compare(Math.abs(b - carPos), Math.abs(a - carPos)));
+		return order;
+	}
+
+	private int carTop(int size) {
+		return viewY + Math.max(2, (viewH - TEXT_H - size) / 2);
+	}
+
+	/** One big cover in the middle with dimmer, smaller, narrower neighbours on each side. */
+	private void renderCarousel(GuiGraphics g, Shelf shelf, Track now, boolean moving) {
+		int size = carSize();
+		int y = carTop(size);
+		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
+		for (int i : carouselOrder(shelf)) {
+			float o = i - carPos;
+			float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+			if (t <= 0) {
+				continue;
+			}
+			int x = Math.round(px + pw / 2f + LibraryViews.spread(o, size) - size / 2f);
+			boolean middle = i == selected;
+			Object entry = shelf.items.get(i);
+			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+			renderCard(g, entry, x, y, size, LibraryViews.squash(o), false, LibraryViews.scale(o) * LibraryGrid.popIn(t),
+					LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
+		}
+		if (shelf.pending != null) {
+			g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2,
+					viewY + viewH - 10, Ui.DIM);
+		}
+		g.disableScissor();
+		if (selected >= 0 && selected < shelf.items.size()) {
+			String[] text = labels(shelf.items.get(selected));
+			int ty = y + size + 6;
+			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[0], viewW - 20)), px + pw / 2, ty, Ui.TEXT);
+			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[1], viewW - 20)), px + pw / 2, ty + 10, Ui.DIM);
+		}
+	}
+
 	private String emptyText() {
 		if (opened != null) {
 			return Tr.t("This playlist is empty");
@@ -395,6 +594,21 @@ public final class LibraryScreen extends Screen {
 
 	private void renderCard(GuiGraphics g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen,
 			boolean current, boolean moving) {
+		renderCard(g, entry, x, y, cellW, 1, true, scale, alpha, lift, chosen, current, moving);
+	}
+
+	/** Title and second line of a card, as {title, under}. */
+	private static String[] labels(Object entry) {
+		if (entry instanceof LibraryItem item) {
+			return new String[] {item.title(), item.artists()};
+		}
+		LibraryPlaylist list = (LibraryPlaylist) entry;
+		return new String[] {list.name(), list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs())};
+	}
+
+	/** Draws one cover of the given size; xSquash below 1 narrows it to fake a turned cover. */
+	private void renderCard(GuiGraphics g, Object entry, int x, int y, int size, float xSquash, boolean withLabels, float scale,
+			float alpha, float lift, boolean chosen, boolean current, boolean moving) {
 		String title;
 		String under;
 		String colorKey;
@@ -417,30 +631,30 @@ public final class LibraryScreen extends Screen {
 		int glow = cover == null ? rgb : cover.color();
 
 		g.pose().pushMatrix();
-		g.pose().translate(x + cellW / 2f, y + cellW / 2f);
-		g.pose().scale(scale, scale);
-		g.pose().translate(-(x + cellW / 2f), -(y + cellW / 2f));
+		g.pose().translate(x + size / 2f, y + size / 2f);
+		g.pose().scale(scale * xSquash, scale);
+		g.pose().translate(-(x + size / 2f), -(y + size / 2f));
 		if (lift > 0.01f) {
-			Ui.rect(g, x - 2, y - 2, cellW + 4, cellW + 4, 7, Ui.alpha(0xFF000000 | glow, 0.35f * lift * alpha));
+			Ui.rect(g, x - 2, y - 2, size + 4, size + 4, 7, Ui.alpha(0xFF000000 | glow, 0.35f * lift * alpha));
 		}
 		if (shown < 1) {
 			// Coloured stand-in until the real cover arrives, then the cover fades in over it
-			Ui.rect(g, x, y, cellW, cellW, 5, Ui.alpha(0xFF000000 | rgb, alpha));
-			Ui.rect(g, x, y + cellW / 2, cellW, cellW / 2, 5, Ui.alpha(0x30000000, alpha));
+			Ui.rect(g, x, y, size, size, 5, Ui.alpha(0xFF000000 | rgb, alpha));
+			Ui.rect(g, x, y + size / 2, size, size / 2, 5, Ui.alpha(0x30000000, alpha));
 			String initial = title.isEmpty() ? "♪" : title.substring(0, title.offsetByCodePoints(0, 1)).toUpperCase();
 			g.pose().pushMatrix();
-			g.pose().translate(x + cellW / 2f, y + cellW / 2f - 7);
+			g.pose().translate(x + size / 2f, y + size / 2f - 7);
 			g.pose().scale(2, 2);
 			g.drawCenteredString(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
 			g.pose().popMatrix();
 		}
 		if (cover != null) {
 			int s = CoverCache.SIZE;
-			g.blit(RenderPipelines.GUI_TEXTURED, cover.id(), x, y, 0, 0, cellW, cellW, s, s, s, s, ARGB.white(alpha * shown));
+			g.blit(RenderPipelines.GUI_TEXTURED, cover.id(), x, y, 0, 0, size, size, s, s, s, s, ARGB.white(alpha * shown));
 		}
 		if (current) {
 			// Little bars in the corner of the song playing now, still while it's paused
-			int bw = 16, bh = 12, bx = x + cellW - bw - 3, by = y + cellW - bh - 3;
+			int bw = 16, bh = 12, bx = x + size - bw - 3, by = y + size - bh - 3;
 			Ui.rect(g, bx, by, bw, bh, 4, Ui.alpha(Ui.ACCENT, 0.95f * alpha));
 			for (int b = 0; b < 3; b++) {
 				int barH = Math.max(2, Math.round(7 * (moving ? LibraryGrid.bar(b, clock) : 0.35f)));
@@ -448,10 +662,12 @@ public final class LibraryScreen extends Screen {
 			}
 		}
 		if (chosen) {
-			Ui.outline(g, x - 1, y - 1, cellW + 2, cellW + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
+			Ui.outline(g, x - 1, y - 1, size + 2, size + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
 		}
-		g.drawString(font, Ui.visual(Ui.clip(font, title, cellW)), x, y + cellW + 3, Ui.alpha(current ? Ui.ACCENT : Ui.TEXT, alpha), false);
-		g.drawString(font, Ui.visual(Ui.clip(font, under, cellW)), x, y + cellW + 12, Ui.alpha(Ui.DIM, alpha), false);
+		if (withLabels) {
+			g.drawString(font, Ui.visual(Ui.clip(font, title, size)), x, y + size + 3, Ui.alpha(current ? Ui.ACCENT : Ui.TEXT, alpha), false);
+			g.drawString(font, Ui.visual(Ui.clip(font, under, size)), x, y + size + 12, Ui.alpha(Ui.DIM, alpha), false);
+		}
 		g.pose().popMatrix();
 	}
 
@@ -581,6 +797,22 @@ public final class LibraryScreen extends Screen {
 			return true;
 		}
 		int y = py + 31;
+		for (int i = 0; i < 3; i++) {
+			if (Ui.inside(mx, my, toggleX(i), y, TOGGLE_W, 14)) {
+				SkyLyricsConfig cfg = SkyLyricsConfig.get();
+				cfg.libraryView = SkyLyricsConfig.LibraryView.values()[i];
+				cfg.save();
+				typing = false;
+				Shelf current = shelf();
+				if (current != null) {
+					current.scrollTarget = 0;
+					current.scroll = 0;
+					carPos = Math.max(0, selected);
+					reveal(current);
+				}
+				return true;
+			}
+		}
 		if (opened != null) {
 			if (Ui.inside(mx, my, px + 10, y, font.width("‹ " + Tr.t("Playlists")) + 14, 14)) {
 				opened = null;
@@ -601,6 +833,40 @@ public final class LibraryScreen extends Screen {
 		if (shelf != null && Ui.inside(mx, my, viewX, viewY, viewW, viewH)) {
 			if (shelf.items.isEmpty() && !shelf.error.isEmpty()) {
 				shelf.more();
+				return true;
+			}
+			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+				int rowH = SHELF_COVER + SHELF_FLOOR;
+				int rtop = shelfTop();
+				int left = Math.round(shelf.scroll);
+				int c = (int) Math.floor((mx - viewX + left) / shelfStride);
+				int r = (int) Math.floor((my - rtop) / rowH);
+				int hit = LibraryViews.shelfIndex(c, r, shelfRows, shelf.items.size());
+				if (hit >= 0 && Ui.inside(mx, my, viewX + c * shelfStride - left, rtop + r * rowH, SHELF_COVER, SHELF_COVER)) {
+					selected = hit;
+					activate(shelf, hit);
+				}
+				return true;
+			}
+			if (view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
+				int size = carSize();
+				int cy = carTop(size);
+				List<Integer> order = carouselOrder(shelf);
+				for (int k = order.size() - 1; k >= 0; k--) {
+					int i = order.get(k);
+					float o = i - carPos;
+					int w = Math.round(size * LibraryViews.scale(o) * LibraryViews.squash(o));
+					int h = Math.round(size * LibraryViews.scale(o));
+					int cx = Math.round(px + pw / 2f + LibraryViews.spread(o, size));
+					if (Ui.inside(mx, my, cx - w / 2, cy + (size - h) / 2, w, h)) {
+						if (i == selected) {
+							activate(shelf, i);
+						} else {
+							selected = i;
+						}
+						break;
+					}
+				}
 				return true;
 			}
 			int top = viewY - Math.round(shelf.scroll);
@@ -637,6 +903,12 @@ public final class LibraryScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
 		Shelf shelf = shelf();
+		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
+			if (!shelf.items.isEmpty() && scrollY != 0) {
+				selected = Mth.clamp(Math.max(0, selected) + (scrollY > 0 ? -1 : 1), 0, shelf.items.size() - 1);
+			}
+			return true;
+		}
 		if (shelf != null) {
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) scrollY * 30, 0, maxScroll(shelf));
 			return true;
@@ -685,10 +957,18 @@ public final class LibraryScreen extends Screen {
 		if (shelf == null) {
 			return super.keyPressed(event);
 		}
-		int step = event.isLeft() ? -1 : event.isRight() ? 1 : event.isUp() ? -cols : event.isDown() ? cols : 0;
+		SkyLyricsConfig.LibraryView mode = view();
+		int rowStep = mode == SkyLyricsConfig.LibraryView.GRID ? cols : 1;
+		int step = event.isLeft() ? -1 : event.isRight() ? 1 : event.isUp() ? -rowStep : event.isDown() ? rowStep : 0;
 		if (step != 0 && !(typing && (event.isLeft() || event.isRight()))) {
 			typing = false;
-			selected = LibraryGrid.move(selected, step, shelf.items.size());
+			if (mode == SkyLyricsConfig.LibraryView.SHELF) {
+				int dCol = event.isLeft() ? -1 : event.isRight() ? 1 : 0;
+				int dRow = event.isUp() ? -1 : event.isDown() ? 1 : 0;
+				selected = LibraryViews.shelfMove(selected, dCol, dRow, shelfRows, shelf.items.size());
+			} else {
+				selected = LibraryGrid.move(selected, step, shelf.items.size());
+			}
 			reveal(shelf);
 			return true;
 		}
@@ -701,6 +981,14 @@ public final class LibraryScreen extends Screen {
 
 	private void reveal(Shelf shelf) {
 		if (selected < 0) {
+			return;
+		}
+		if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+			int x = LibraryViews.shelfCol(selected, shelfRows) * shelfStride;
+			shelf.scrollTarget = Mth.clamp(LibraryViews.reveal(shelf.scrollTarget, x, SHELF_COVER, viewW), 0, maxScroll(shelf));
+			return;
+		}
+		if (view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
 			return;
 		}
 		int y = (selected / cols) * (cellH + LibraryGrid.GAP);
