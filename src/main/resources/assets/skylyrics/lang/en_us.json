@@ -381,5 +381,7 @@
   "skylyrics.ui.you_can_change_the_keys_in_minecraft_s_controls": "You can change the keys in Minecraft's Controls settings.",
   "skylyrics.ui.searching": "Searching",
   "skylyrics.ui.recent_searches": "Recent searches",
-  "skylyrics.ui.spotify_keeps_this_playlist_s_songs_hidden_so_it": "Spotify keeps this playlist's songs hidden, so it plays from the top"
+  "skylyrics.ui.spotify_keeps_this_playlist_s_songs_hidden_so_it": "Spotify keeps this playlist's songs hidden, so it plays from the top",
+  "skylyrics.ui.slide_apart": "Slide apart",
+  "skylyrics.ui.words_that_overlap_glide_out_of_each_other_s_way": "Words that overlap glide out of each other's way"
 }

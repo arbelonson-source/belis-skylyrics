@@ -178,6 +178,8 @@ final class WorldWords {
 		@Nullable Sentence of;
 		/** Part of a right-to-left line (Hebrew, Arabic), so it slides in from the right. */
 		boolean rtl;
+		/** Where it's been nudged to, out of another word's way, and how far along it has glided there so far. */
+		Vec3 slide = Vec3.ZERO, slid = Vec3.ZERO;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -200,6 +202,8 @@ final class WorldWords {
 	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
 	private boolean flow;
 	private boolean hold = true;
+	private boolean nudge = true;
+	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
 	private @Nullable Vec3 lastEye;
 	private float lastYaw, lastPitch;
@@ -330,6 +334,11 @@ final class WorldWords {
 	/** Glows in {@code rgb}, or in the words' own colour when it's -1. */
 	void glowColour(int rgb) {
 		glowRgb = rgb;
+	}
+
+	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
+	void nudge(boolean on) {
+		this.nudge = on;
 	}
 
 	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals, float scale) {
@@ -869,6 +878,65 @@ final class WorldWords {
 		return new float[] {yawOf(to), (from + at) / 2, halfAngle(halfWidth, flat), halfAngle(halfHeight, far) + Math.abs(from - at) / 2};
 	}
 
+	/**
+	 * Finds words that sit on top of each other as seen from here and sends the newer one to the nearest clear side,
+	 * gliding there over a moment rather than jumping.
+	 */
+	private void separate(Vec3 eye, long now) {
+		float dt = lastNudge == 0 ? 0 : Mth.clamp((now - lastNudge) / 1e9f, 0, 0.1f);
+		lastNudge = now;
+		List<Card> live = new ArrayList<>(cards.size());
+		List<float[]> seen = new ArrayList<>(cards.size());
+		for (Card c : cards) {
+			if (c.goneAt >= 0 || c.cutAt >= 0 || c.fellAt >= 0) {
+				continue;
+			}
+			Vec3 to = c.pos.add(c.slide).subtract(eye);
+			if (to.length() < 1e-3) {
+				continue;
+			}
+			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
+			float[] mine = footprint(to, riseAfter((now - c.born) / 1e9f, rise), halfW, 5 * c.size * wordScale);
+			for (float[] o : seen) {
+				float[] move = push(o, mine);
+				if (move[0] != 0 || move[1] != 0) {
+					double far = to.length(), flat = Math.sqrt(to.x * to.x + to.z * to.z);
+					// Sideways is across the line of sight, up is straight up; both as far as the angles ask at that distance
+					Vec3 side = new Vec3(-to.z, 0, to.x).normalize().scale(-flat * Math.tan(move[0] * DEG));
+					c.slide = c.slide.add(side).add(0, far * Math.tan(-move[1] * DEG), 0);
+					mine[0] += move[0];
+					mine[1] += move[1];
+				}
+			}
+			live.add(c);
+			seen.add(mine);
+		}
+		float ease = 1 - (float) Math.exp(-SLIDE_SPEED * dt);
+		for (Card c : cards) {
+			c.slid = c.slid.add(c.slide.subtract(c.slid).scale(ease));
+		}
+	}
+
+	/**
+	 * How far to move {@code b} (yaw, pitch, half width, half height, in degrees) so it no longer covers {@code a}: along
+	 * whichever way is shorter, with a little room to spare, or nothing when they're already apart.
+	 */
+	static float[] push(float[] a, float[] b) {
+		float dx = Mth.wrapDegrees(b[0] - a[0]), dy = b[1] - a[1];
+		float w = a[2] + b[2] - Math.abs(dx), h = a[3] + b[3] - Math.abs(dy);
+		if (w <= 0 || h <= 0) {
+			return new float[] {0, 0};
+		}
+		// Words sit in rows, so going up or down past a short word is often the smaller step than going round it
+		if (h <= w) {
+			return new float[] {0, (dy < 0 ? -1 : 1) * (h + SLIDE_ROOM)};
+		}
+		return new float[] {(dx < 0 ? -1 : 1) * (w + SLIDE_ROOM), 0};
+	}
+
+	/** Spare degrees left between two words a slide has parted, and how quickly (per second) a word glides there. */
+	static final float SLIDE_ROOM = 0.6f, SLIDE_SPEED = 6f;
+
 	static float halfAngle(float half, double distance) {
 		return (float) Math.toDegrees(Math.atan2(half, distance));
 	}
@@ -893,6 +961,9 @@ final class WorldWords {
 			float glow, float day, float scale, boolean light, long now) {
 		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
 		Vec3 eye = camera.position();
+		if (nudge) {
+			separate(eye, now);
+		}
 		Vec3 look = direction(camera.yRot(), camera.xRot());
 		Card sung = null;
 		for (Card c : cards) {
@@ -913,9 +984,9 @@ final class WorldWords {
 			if (a < 0.03f) {
 				continue;
 			}
-			float x = (float) (c.pos.x - eye.x), z = (float) (c.pos.z - eye.z);
+			float x = (float) (c.pos.x + c.slid.x - eye.x), z = (float) (c.pos.z + c.slid.z - eye.z);
 			float sway = swayAngle(age, c.born);
-			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
+			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
 			int n = c.display.cps().length;
 			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
 			float grow = c.size * scale * (flow ? 1 : pop(age)) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade));

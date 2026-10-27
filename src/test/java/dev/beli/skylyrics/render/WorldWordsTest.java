@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -313,6 +314,23 @@ class WorldWordsTest {
 			last = rtl.place(5, 1, 0, 0);
 		}
 		assertEquals(-10 + WorldWords.Sentence.WIDTH - 5, last[0], 1e-4);
+	}
+
+	@Test
+	void overlappingWordsArePushedTheShortWay() {
+		float[] a = {0, 0, 4, 1};
+		assertArrayEquals(new float[] {0, 0}, WorldWords.push(a, new float[] {10, 0, 4, 1}));
+		// Wide words side by side on one row: stepping down a row is shorter than going round
+		float[] down = WorldWords.push(a, new float[] {1, -0.5f, 4, 1});
+		assertEquals(0, down[0]);
+		assertEquals(-(1.5f + WorldWords.SLIDE_ROOM), down[1], 1e-4f);
+		// Tall thin words: sideways is shorter
+		float[] side = WorldWords.push(new float[] {0, 0, 1, 4}, new float[] {-1.5f, 0, 1, 4});
+		assertEquals(-(0.5f + WorldWords.SLIDE_ROOM), side[0], 1e-4f);
+		assertEquals(0, side[1]);
+		// Across the 180 degree seam
+		float[] seam = WorldWords.push(new float[] {179, 0, 1, 4}, new float[] {-179.5f, 0, 1, 4});
+		assertTrue(seam[0] > 0);
 	}
 
 	@Test

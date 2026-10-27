@@ -445,6 +445,7 @@ public final class LyricsRenderer {
 		}
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
+		worldWords.nudge(cfg.worldNudge);
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
