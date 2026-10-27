@@ -14,7 +14,7 @@ import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import java.util.Objects;
 import java.util.Random;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 *///?} else {
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
@@ -22,7 +22,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.minecraft.util.LightCoordsUtil;
 *///?} else {
 import net.minecraft.client.renderer.LightTexture;
@@ -239,7 +239,7 @@ public final class SkyEffects {
 		return Math.round(clamp01(alpha) * 255) << 24 | rgb;
 	}
 
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*public void render(LevelRenderContext context) {
 	*///?} else {
 	public void render(WorldRenderContext context) {
@@ -319,7 +319,7 @@ public final class SkyEffects {
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
 		// The added light leaves no depth behind either: it sits inside the world (at most 110 blocks out), and
 		// glass, water and ice are drawn after it, so marking its depth would cut holes in any of them further away.
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
 		PoseStack pose = context.poseStack();
 		*///?} else {
@@ -519,7 +519,7 @@ public final class SkyEffects {
 		@Override
 		protected void put(float x, float y, float z, int argb) {
 			if (lit) {
-				//? if >=26.2 {
+				//? if >=26.1 {
 				/*vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightCoordsUtil.FULL_BRIGHT);
 				*///?} else {
 				vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightTexture.FULL_BRIGHT);

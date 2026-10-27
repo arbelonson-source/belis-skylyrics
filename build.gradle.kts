@@ -6,7 +6,8 @@ plugins {
 // Built once per Minecraft version (stonecutter.properties.toml). The version goes in the jar name so the jars are
 // told apart.
 val mc = sc.current.version
-version = "${property("mod.version")}+$mc"
+// mod.jar_mc names a jar that covers several patch releases, like 26.1 for 26.1 to 26.1.2
+version = "${property("mod.version")}+${findProperty("mod.jar_mc") ?: mc}"
 base.archivesName = property("mod.archives") as String
 
 val requiredJava: JavaVersion = if (sc.current.parsed >= "26.1") JavaVersion.VERSION_25 else JavaVersion.VERSION_21

@@ -15,7 +15,7 @@ public final class Tr {
 	/** The translation of an English UI text, or the English itself when the language has none. */
 	public static String t(String english, Object... args) {
 		String key = KEYS.computeIfAbsent(english, Tr::key);
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*if (net.minecraft.locale.Language.getInstance().has(key)) {
 		*///?} else {
 		if (I18n.exists(key)) {

@@ -8,7 +8,7 @@ stonecutter active "1.21.11"
 stonecutter parameters {
 	// Names Minecraft changed: written the 1.21.11 way in src/, swapped when building newer versions
 	replacements {
-		string(current.parsed >= "26.2") {
+		string(current.parsed >= "26.1") {
 			replace("GuiGraphics", "GuiGraphicsExtractor")
 			replace(".drawString(", ".text(")
 			replace(".drawCenteredString(", ".centeredText(")

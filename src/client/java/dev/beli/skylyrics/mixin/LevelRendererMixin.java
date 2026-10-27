@@ -4,12 +4,15 @@ import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import dev.beli.skylyrics.render.ScreenLayer;
 import dev.beli.skylyrics.render.SkyTint;
-//? if <26.2 {
+//? if <26.1 {
 import net.minecraft.client.Camera;
 //?}
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.LevelRenderer;
-//? if >=26.2 {
+//? if >=26.1 && <26.2 {
+/*import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
+*///?}
+//? if >=26.1 {
 /*import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.joml.Matrix4fc;
 *///?} else {
@@ -36,6 +39,10 @@ abstract class LevelRendererMixin {
 			*///?} else if >=26.2 {
 			/*DeltaTracker delta, boolean outline, CameraRenderState camera, Matrix4fc view, GpuBufferSlice fog,
 			Vector4f fogColor, boolean sky, CallbackInfo ci) {
+		ScreenLayer.capture(view, camera.projectionMatrix);
+			*///?} else if >=26.1 {
+			/*DeltaTracker delta, boolean outline, CameraRenderState camera, Matrix4fc view, GpuBufferSlice fog,
+			Vector4f fogColor, boolean sky, ChunkSectionsToRender sections, CallbackInfo ci) {
 		ScreenLayer.capture(view, camera.projectionMatrix);
 			*///?} else {
 			DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection, Matrix4f culling,

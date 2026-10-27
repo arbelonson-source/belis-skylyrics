@@ -10,7 +10,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 *///?} else {
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
@@ -21,7 +21,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.minecraft.util.LightCoordsUtil;
 *///?} else {
 import net.minecraft.client.renderer.LightTexture;
@@ -212,7 +212,7 @@ public final class LyricsRenderer {
 	 * when see-through, or cut holes in them when not. Drawn after them instead, both look right.
 	 * Shader packs run their own passes, so with one on the lyrics stay at the earlier, tested spot.
 	 */
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*public void renderEarly(LevelRenderContext context) {
 	*///?} else {
 	public void renderEarly(WorldRenderContext context) {
@@ -222,7 +222,7 @@ public final class LyricsRenderer {
 		}
 	}
 
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*public void renderLate(LevelRenderContext context) {
 	*///?} else {
 	public void renderLate(WorldRenderContext context) {
@@ -232,7 +232,7 @@ public final class LyricsRenderer {
 		}
 	}
 
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*private void render(LevelRenderContext context) {
 	*///?} else {
 	private void render(WorldRenderContext context) {
@@ -300,13 +300,13 @@ public final class LyricsRenderer {
 			return;
 		}
 
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*PoseStack pose = context.poseStack();
 		*///?} else {
 		PoseStack pose = context.matrices();
 		//?}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*Draw draw = new Draw(new WorldCanvas(context.submitNodeCollector(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
 		*///?} else {
 		Draw draw = new Draw(new WorldCanvas(context.commandQueue(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
@@ -417,7 +417,7 @@ public final class LyricsRenderer {
 	}
 
 	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*private void renderWorldWords(LevelRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
 	*///?} else {
 	private void renderWorldWords(WorldRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
@@ -429,7 +429,7 @@ public final class LyricsRenderer {
 		boolean over = false;
 		if (sungLine(index)) {
 			LyricLine line = shown.get(index);
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*text = line.drawString();
 			*///?} else {
 			text = line.text();
@@ -458,7 +458,7 @@ public final class LyricsRenderer {
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
 		int wordsRgb = cfg.worldTint ? SkyTint.tint(rgb(), SkyTint.sky(), SkyTint.AMOUNT) : rgb();
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*worldWords.render(context.poseStack(), context.submitNodeCollector(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
 		*///?} else {
 		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
@@ -521,7 +521,7 @@ public final class LyricsRenderer {
 			}
 		}
 		if (anchor == null) {
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*long seed = ArcLayout.seed(index, shown.get(index).drawString());
 			*///?} else {
 			long seed = ArcLayout.seed(index, shown.get(index).text());
@@ -668,7 +668,7 @@ public final class LyricsRenderer {
 					long end = shown.endOf(i, line.timeMs() + 4000);
 					sung = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
 				} else {
-					//? if >=26.2 {
+					//? if >=26.1 {
 					/*text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
 					*///?} else {
 					text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
@@ -778,7 +778,7 @@ public final class LyricsRenderer {
 				pose.pushPose();
 				pose.translate(0, 0, -LAYER_STEP * behind);
 			}
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*out.submitText(pose, x, y, seq, shadow, mode, LightCoordsUtil.FULL_BRIGHT, argb, 0, 0);
 			*///?} else {
 			out.submitText(pose, x, y, seq, shadow, mode, LightTexture.FULL_BRIGHT, argb, 0, 0);
@@ -913,7 +913,7 @@ public final class LyricsRenderer {
 		void arcLine(ArcShot shot, long time, long now) {
 			int index = shot.index();
 			LyricLine line = shown.get(index);
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*String text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
 			*///?} else {
 			String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();

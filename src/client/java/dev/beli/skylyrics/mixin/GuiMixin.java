@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(Gui.class)
 //?}
 abstract class GuiMixin {
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*@WrapOperation(method = "extractCrosshair", at = @At(value = "INVOKE", ordinal = 0,
 	*///?} else {
 	@WrapOperation(method = "renderCrosshair", at = @At(value = "INVOKE", ordinal = 0,

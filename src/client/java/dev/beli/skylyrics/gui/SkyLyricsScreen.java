@@ -659,14 +659,14 @@ public final class SkyLyricsScreen extends Screen {
 	// ---- Drawing ----------------------------------------------------------------------------------
 
 	@Override
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	*///?} else {
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
 		// In a world, leave it fully visible so changes can be seen on the real lyrics.
 		if (minecraft.level == null) {
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*super.extractBackground(g, mouseX, mouseY, partialTick);
 			*///?} else {
 			super.renderBackground(g, mouseX, mouseY, partialTick);
@@ -675,7 +675,7 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	@Override
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {

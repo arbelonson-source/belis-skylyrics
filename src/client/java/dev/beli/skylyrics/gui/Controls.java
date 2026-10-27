@@ -466,7 +466,7 @@ final class Controls {
 		}
 
 		private static int width(Font font, Button b) {
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*return Math.max(font.width(b.drawString().get()) + 16, 20);
 			*///?} else {
 			return Math.max(font.width(b.text().get()) + 16, 20);
@@ -488,7 +488,7 @@ final class Controls {
 			for (Button b : buttons) {
 				int bw = width(f.font(), b);
 				boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, centerY() - 8, bw, 16);
-				//? if >=26.2 {
+				//? if >=26.1 {
 				/*drawButton(f, bx, centerY() - 8, bw, 16, b.drawString().get(), hover, b.primary(), b.enabled().getAsBoolean());
 				*///?} else {
 				drawButton(f, bx, centerY() - 8, bw, 16, b.text().get(), hover, b.primary(), b.enabled().getAsBoolean());

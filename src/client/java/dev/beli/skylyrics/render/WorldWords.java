@@ -9,7 +9,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.multiplayer.ClientLevel;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.minecraft.util.LightCoordsUtil;
 *///?} else {
 import net.minecraft.client.renderer.LightTexture;
@@ -858,7 +858,7 @@ final class WorldWords {
 				}
 				return true;
 			};
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightCoordsUtil.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);
 			*///?} else {
 			out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightTexture.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);

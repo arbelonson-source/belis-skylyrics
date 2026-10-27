@@ -413,7 +413,7 @@ public final class NowPlayingHud {
 		if (!c.lyric()) {
 			// The song's name doesn't scroll: while the pill is narrow it ends in "…"
 			float limit = room / scale;
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*String title = clip(font, style, c.drawString(), limit);
 			*///?} else {
 			String title = clip(font, style, c.text(), limit);
@@ -431,7 +431,7 @@ public final class NowPlayingHud {
 	/** The line word by word: sung words white, the rest grey, and the last two sung on the highlight. */
 	private void drawLyric(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
 			float a, boolean live, float dt) {
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*Word[] words = words(font, style, scale, c.drawString(), c.sung());
 		*///?} else {
 		Word[] words = words(font, style, scale, c.text(), c.sung());
@@ -439,7 +439,7 @@ public final class NowPlayingHud {
 		if (words.length == 0) {
 			return;
 		}
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*boolean rtl = isRtl(c.drawString());
 		*///?} else {
 		boolean rtl = isRtl(c.text());
@@ -492,7 +492,7 @@ public final class NowPlayingHud {
 			// The old line greys out the moment it is replaced
 			int color = live && w.sung() ? sung : upcoming;
 			float wx = rtl ? start - w.x() - w.w() : start + w.x();
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*text(g, font, style, w.drawString(), wx, midY, scale, color);
 			*///?} else {
 			text(g, font, style, w.text(), wx, midY, scale, color);
@@ -582,7 +582,7 @@ public final class NowPlayingHud {
 			return null;
 		}
 		LyricLine line = lyrics.get(i);
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*if (line.isBreak() || line.drawString().isBlank()) {
 		*///?} else {
 		if (line.isBreak() || line.text().isBlank()) {
@@ -594,7 +594,7 @@ public final class NowPlayingHud {
 			return null; // a long gap with no marker: show the song instead of a stale line
 		}
 		float sung = cfg.karaoke ? Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1) : 1;
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*String text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
 		*///?} else {
 		String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
@@ -620,14 +620,14 @@ public final class NowPlayingHud {
 	/** The text's width on screen, in GUI units. */
 	private static float contentWidth(Font font, Style style, float scale, Content c) {
 		if (c.lyric()) {
-			//? if >=26.2 {
+			//? if >=26.1 {
 			/*Word[] words = words(font, style, scale, c.drawString(), 1);
 			*///?} else {
 			Word[] words = words(font, style, scale, c.text(), 1);
 			//?}
 			return words.length == 0 ? 0 : words[words.length - 1].x() + words[words.length - 1].w();
 		}
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*float w = LyricsFont.width(font, style, c.drawString());
 		*///?} else {
 		float w = LyricsFont.width(font, style, c.text());

@@ -192,7 +192,7 @@ public final class DevTestHook {
 				}
 				case "guiscale" -> {
 					client.options.guiScale().set(Integer.parseInt(arg));
-					//? if >=26.2 {
+					//? if >=26.1 {
 					/*client.resizeGui();
 					*///?} else {
 					client.resizeDisplay();

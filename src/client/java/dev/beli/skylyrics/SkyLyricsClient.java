@@ -7,7 +7,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
 *///?} else {
@@ -16,7 +16,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRe
 //?}
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 *///?} else {
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
@@ -124,7 +124,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 		registerKeys();
 		sky = new SkyEffects(renderer, lyrics, art, tracker);
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*LevelRenderEvents.COLLECT_SUBMITS.register(sky::render);
 		LevelRenderEvents.COLLECT_SUBMITS.register(renderer::renderEarly);
 		LevelRenderEvents.END_MAIN.register(renderer::renderLate);
@@ -144,7 +144,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
-				//? if >=26.2 {
+				//? if >=26.1 {
 				/*ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
 				*///?} else {
 				ScreenEvents.afterRender(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
@@ -164,7 +164,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void renderTitle(Screen screen, GuiGraphics g) {
 		int bottom = screen.height - TITLE_FOOTER;
 		int top = 0;
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*for (AbstractWidget widget : Screens.getWidgets(screen)) {
 		*///?} else {
 		for (AbstractWidget widget : Screens.getButtons(screen)) {
@@ -228,7 +228,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
-		//? if >=26.2 {
+		//? if >=26.1 {
 		/*return KeyMappingHelper.registerKeyMapping(
 		*///?} else {
 		return KeyBindingHelper.registerKeyBinding(

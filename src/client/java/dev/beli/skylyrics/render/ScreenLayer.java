@@ -8,7 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
-//? if >=26.2 {
+//? if >=26.1 {
 /*import org.joml.Matrix4fc;
 *///?}
 import org.joml.Vector3f;
@@ -33,7 +33,7 @@ public final class ScreenLayer {
 	private ScreenLayer() {}
 
 	/** Called at the start of every world frame (see LevelRendererMixin). */
-	//? if >=26.2 {
+	//? if >=26.1 {
 	/*public static void capture(Matrix4fc view, Matrix4fc projection) {
 	*///?} else {
 	public static void capture(Matrix4f view, Matrix4f projection) {
