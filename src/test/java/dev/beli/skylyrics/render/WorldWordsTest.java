@@ -407,6 +407,26 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void theNextLineOfAVerseStartsUnderTheLastOne() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
+		line.rest = 200;
+		// Two pieces fill the first row, two more start the second
+		float lowest = 0, end = 0;
+		for (int i = 0; i < 4; i++) {
+			float[] at = line.place(5, 1, 0, i == 1 ? 1.2f : 0);
+			lowest = Math.max(lowest, at[1] + 1);
+			end = at[0] + 5;
+		}
+		WorldWords.Sentence next = line.under();
+		next.rest = 10;
+		float[] first = next.place(5, 1, 0, -1.2f);
+		// A clear gap under the last line, even when the new word bobs up
+		assertTrue(first[1] - 1 - lowest >= WorldWords.Sentence.ROW_GAP + WorldWords.Sentence.VERSE_GAP - 1e-4f);
+		// A short next line sits in the middle under the last row
+		assertEquals(end / 2, first[0], 1e-3);
+	}
+
+	@Test
 	void aShortLastRowSitsCentredUnderTheRowAbove() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		// Two pieces fill the first row, then about one more piece is left

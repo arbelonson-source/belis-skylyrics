@@ -224,6 +224,8 @@ final class WorldWords {
 	/** Elytra mode is carrying the words this frame. */
 	private boolean gliding;
 	private @Nullable Sentence sentence;
+	/** The line written before it, which the next line of a verse goes under. */
+	private @Nullable Sentence last;
 	private int maxCards = MAX_CARDS;
 	/** The glow's own colour, or -1 to glow in the words' colour. */
 	private int glowRgb = -1;
@@ -268,6 +270,7 @@ final class WorldWords {
 		lineRaw = null;
 		lineText = null;
 		sentence = null;
+		last = null;
 		recent[0] = recent[1] = -1;
 	}
 
@@ -425,6 +428,7 @@ final class WorldWords {
 		this.fade = Math.max(0.1f, fade);
 		if (flow != this.flow) {
 			sentence = null;
+			last = null;
 		}
 		this.flow = flow;
 	}
@@ -488,6 +492,7 @@ final class WorldWords {
 			lineWidth = whole == null || whole.length == 0 ? 0 : whole[whole.length - 1];
 			lineRtl = lineText != null && rightToLeft(lineText);
 			spawned = 0;
+			last = sentence;
 			sentence = null;
 			if (hold) {
 				letGo(now);
@@ -546,6 +551,9 @@ final class WorldWords {
 		}
 		if (sentence != null) {
 			sentence.swing(turn, tilt);
+		}
+		if (last != null) {
+			last.swing(turn, tilt);
 		}
 	}
 
@@ -776,16 +784,24 @@ final class WorldWords {
 	 * (a little above and left of the middle, where it overlaps the fading words least); the rest follow it.
 	 */
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken) {
-		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT, clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0)) {
+		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
+		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT, aside)) {
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
 			sentence = null;
+			last = null;
 		}
 		if (sentence == null) {
-			float distance = Mth.lerp(next(), SENTENCE_NEAR, SENTENCE_FAR), bestCost = Float.MAX_VALUE;
+			boolean verse = last != null && last.rtl == lineRtl && !last.lost(centre[0], centre[1] - LIFT, aside);
+			float distance = verse ? last.distance : Mth.lerp(next(), SENTENCE_NEAR, SENTENCE_FAR), bestCost = Float.MAX_VALUE;
 			// The whole line's box: as wide as it reads, or a full row, and as many rows deep as it will need
 			float wide = (float) Math.toDegrees(lineWidth * SIZE * wordScale * LINE_SPREAD / distance);
 			int rows = Math.max(1, Mth.ceil(wide / (Sentence.WIDTH * ROW_FILL)));
 			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
+			if (verse && last.low + rows * row <= centre[1] - LIFT + VERSE_REACH) {
+				// The next line of a verse goes just under the last one, while that still keeps it above the middle
+				bestCost = 0;
+				sentence = last.under();
+			}
 			float halfW = Math.min(wide, Sentence.WIDTH) / 2, halfH = rows * row / 2 + PAD_Y, below = (rows - 2) * row / 2;
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
 				// With the middle kept clear, a line goes off to the left or the right of where you look
@@ -818,6 +834,8 @@ final class WorldWords {
 		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
+	/** How far below where a line would start, in degrees, the next lines of a verse may still go under it. */
+	private static final float VERSE_REACH = 9f;
 	/** With the middle kept clear: how far to the side a line's middle goes, in degrees. */
 	private static final float SIDE_YAW = 30f;
 	/** The part of your view kept clear, as half width and half height in degrees round a spot a little below the crosshair. */
@@ -875,6 +893,8 @@ final class WorldWords {
 		static final float WIDTH = 26f;
 		/** Space between pieces, in their own half heights (about a letter, like a written word space), and between rows, in degrees. */
 		static final float GAP = 0.7f, ROW_GAP = 0.4f;
+		/** Extra room, in degrees, between the lines of a verse than between the rows of one line; never less than {@link #CLEAR_PAD}. */
+		static final float VERSE_GAP = 0.6f;
 		/** The most a word leans to follow its row's curve, in degrees, so the ends of a deep bow don't tip over. */
 		static final float CURVE_LEAN = 12f;
 		final float distance, turn;
@@ -896,6 +916,8 @@ final class WorldWords {
 		 * it sits centred under the row above instead of hugging the left edge.
 		 */
 		float rest = Float.POSITIVE_INFINITY;
+		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
+		boolean newRow;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this(left, top, distance, turn, 0, false);
@@ -927,8 +949,9 @@ final class WorldWords {
 		 */
 		float[] place(float halfW, float halfH, float indent, float bob) {
 			float yaw = cursor + GAP * halfH + halfW;
-			if (cursor > left && yaw + halfW > left + WIDTH) {
+			if (newRow || cursor > left && yaw + halfW > left + WIDTH) {
 				// The new row starts below the lowest word of the last one, however its words bobbed
+				newRow = false;
 				above = low;
 				top = low + ROW_GAP + 2 * halfH;
 				// A short last row is centred under the full one above it
@@ -949,6 +972,19 @@ final class WorldWords {
 			float rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
 			float climb = steep + bend * 4 * (1 - 2 * along) / WIDTH;
 			return new float[] {yaw, middle - rise, Mth.clamp((float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN)};
+		}
+
+		/**
+		 * The next line of a verse: written on from a new row under this one, with the same slant and bow so the two
+		 * never cross, and centred under this one's last row when it's shorter.
+		 */
+		Sentence under() {
+			Sentence next = new Sentence(left, top, distance, turn, slope, rtl, bend);
+			next.cursor = cursor;
+			next.above = above;
+			next.low = low + VERSE_GAP;
+			next.newRow = true;
+			return next;
 		}
 
 		/**
