@@ -296,6 +296,26 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aRightToLeftLineIsWrittenFromTheRight() {
+		assertTrue(WorldWords.rightToLeft("\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd"));
+		assertTrue(WorldWords.rightToLeft("\u05e9\u05dc\u05d5\u05dd OK"));
+		assertFalse(WorldWords.rightToLeft("Neon skyline"));
+		assertFalse(WorldWords.rightToLeft("OK \u05e9\u05dc\u05d5\u05dd"));
+		WorldWords.Sentence ltr = new WorldWords.Sentence(-10, 5, 10, 0, 0, false), rtl = new WorldWords.Sentence(-10, 5, 10, 0, 0, true);
+		float[] a = ltr.place(3, 1, 0, 0), b = rtl.place(3, 1, 0, 0);
+		// Mirrored across the row: the first word at its right end, the next one left of it
+		assertEquals(-10 + WorldWords.Sentence.WIDTH / 2 - a[0], b[0] - (-10 + WorldWords.Sentence.WIDTH / 2), 1e-4);
+		assertEquals(a[1], b[1], 1e-4);
+		assertTrue(rtl.place(2, 1, 0, 0)[0] < b[0]);
+		// A full row carries on below, again from the right
+		float[] last = b;
+		while (last[1] == b[1]) {
+			last = rtl.place(5, 1, 0, 0);
+		}
+		assertEquals(-10 + WorldWords.Sentence.WIDTH - 5, last[0], 1e-4);
+	}
+
+	@Test
 	void aFullRowCarriesOnBelowFromTheLeft() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		float[] last = line.place(5, 1, 0, 0);

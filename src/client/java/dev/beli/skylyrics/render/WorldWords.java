@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import java.text.Bidi;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -161,6 +162,8 @@ final class WorldWords {
 		boolean title;
 		/** When it started dropping away because you died, or -1. */
 		long fellAt = -1;
+		/** Part of a right-to-left line (Hebrew, Arabic), so it slides in from the right. */
+		boolean rtl;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -204,6 +207,8 @@ final class WorldWords {
 	/** Whether new lines are written in capitals; a change shows from the next line on. */
 	private boolean capitals;
 	private List<int[]> lineChunks = List.of();
+	/** Whether the line reads right to left, so a flowing line is written from the right. */
+	private boolean lineRtl;
 	private long rng = System.nanoTime();
 
 	/** You died: every word up drops out of the sky, spinning as it fades. */
@@ -323,6 +328,12 @@ final class WorldWords {
 		this.flow = flow;
 	}
 
+	/** Whether a line reads right to left (Hebrew, Arabic), by its first strong letter. */
+	static boolean rightToLeft(String text) {
+		return Bidi.requiresBidi(text.toCharArray(), 0, text.length())
+				&& !new Bidi(text, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
+	}
+
 	/** How far towards white a word still is, {@code seconds} after it appeared: bright as it lands, then its own colour. */
 	static float flash(float seconds) {
 		float t = Mth.clamp(seconds / FLASH_TIME, 0, 1);
@@ -372,6 +383,7 @@ final class WorldWords {
 			lineRaw = text;
 			lineText = text == null || !capitals ? text : text.toUpperCase(Locale.ROOT);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
+			lineRtl = lineText != null && rightToLeft(lineText);
 			spawned = 0;
 			sentence = null;
 			if (hold) {
@@ -558,7 +570,9 @@ final class WorldWords {
 			// Every word leans with the line's slope, so the line reads as one tilted piece
 			lean += sentence.slope;
 		}
-		cards.add(new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now));
+		Card card = new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now);
+		card.rtl = flow && lineRtl;
+		cards.add(card);
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
 			Card c = cards.get(k);
@@ -637,7 +651,7 @@ final class WorldWords {
 				if (cost < bestCost) {
 					bestCost = cost;
 					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1),
-							tilt * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1));
+							tilt * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1), lineRtl);
 				}
 			}
 		}
@@ -659,14 +673,24 @@ final class WorldWords {
 		final float distance, turn;
 		/** How far the line rises to the right, in degrees (negative falls). */
 		final float slope;
-		/** Where rows start, the pitch of the line the row being written sits on (bigger is lower) and its right end so far. */
+		/** Written from the right, for Hebrew and Arabic: each row starts at its right end. */
+		final boolean rtl;
+		/**
+		 * The row's left edge, the pitch of the line the row being written sits on (bigger is lower) and how far along
+		 * from where rows start it's written so far.
+		 */
 		float left, top, cursor;
 
 		Sentence(float left, float top, float distance, float turn) {
-			this(left, top, distance, turn, 0);
+			this(left, top, distance, turn, 0, false);
 		}
 
 		Sentence(float left, float top, float distance, float turn, float slope) {
+			this(left, top, distance, turn, slope, false);
+		}
+
+		Sentence(float left, float top, float distance, float turn, float slope, boolean rtl) {
+			this.rtl = rtl;
 			this.slope = slope;
 			this.left = left;
 			this.top = top;
@@ -686,6 +710,10 @@ final class WorldWords {
 				yaw = left + indent + halfW;
 			}
 			cursor = yaw + halfW;
+			if (rtl) {
+				// The same handwriting mirrored: from the row's right end leftwards
+				yaw = 2 * left + WIDTH - yaw;
+			}
 			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets
 			return new float[] {yaw, top - halfH + bob - (yaw - left) * (float) Math.tan(slope * DEG)};
 		}
@@ -791,7 +819,7 @@ final class WorldWords {
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
 					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell) * DEG));
 			pose.scale(grow, -grow, grow);
-			float x0 = -c.at[n] / 2f - (flow ? slideIn(age) : 0), y0 = -CAP_MIDDLE;
+			float x0 = -c.at[n] / 2f - (flow ? (c.rtl ? -1 : 1) * slideIn(age) : 0), y0 = -CAP_MIDDLE;
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
