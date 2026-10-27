@@ -806,6 +806,7 @@ final class WorldWords {
 							tilt * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1));
 				}
 			}
+			sentence.rest = wide;
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
@@ -890,6 +891,11 @@ final class WorldWords {
 		float left, top, cursor;
 		/** Pitch of the bottom of the rows above and of the lowest word on this row so far (before the slope). */
 		float above = Float.NEGATIVE_INFINITY, low = Float.NEGATIVE_INFINITY;
+		/**
+		 * About how much of the line is still to be written, in degrees along the row. When the last row won't be full,
+		 * it sits centred under the row above instead of hugging the left edge.
+		 */
+		float rest = Float.POSITIVE_INFINITY;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this(left, top, distance, turn, 0, false);
@@ -925,8 +931,11 @@ final class WorldWords {
 				// The new row starts below the lowest word of the last one, however its words bobbed
 				above = low;
 				top = low + ROW_GAP + 2 * halfH;
-				yaw = left + indent + halfW;
+				// A short last row is centred under the full one above it
+				float centre = (cursor - left - Math.max(rest, 2 * halfW)) / 2;
+				yaw = left + Math.max(indent, centre) + halfW;
 			}
+			rest -= yaw + halfW - cursor;
 			cursor = yaw + halfW;
 			// A word never reaches up into the row above, however big it is or however it bobs
 			float middle = Math.max(top - halfH + bob, above + ROW_GAP + halfH);

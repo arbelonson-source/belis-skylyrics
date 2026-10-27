@@ -354,9 +354,9 @@ class WorldWordsTest {
 		assertTrue(WorldWords.middleFade(ahead, 1, 0.5f, 20, 0) < 0.2f);
 		assertEquals(1, WorldWords.middleFade(aside, 1, 0.5f, 20, 0), 1e-4f);
 		// A long word reaching over the crosshair counts, even with its middle off to one side
-		Vector3f long_ = WorldWords.direction(32, 0).scale(10).toVector3f();
-		assertTrue(WorldWords.middleFade(long_, 3, 0.5f, 20, 0) < 0.2f);
-		assertTrue(WorldWords.middleFade(long_, 0.2f, 0.5f, 20, 0) > 0.5f);
+		Vector3f longer = WorldWords.direction(32, 0).scale(10).toVector3f();
+		assertTrue(WorldWords.middleFade(longer, 3, 0.5f, 20, 0) < 0.2f);
+		assertTrue(WorldWords.middleFade(longer, 0.2f, 0.5f, 20, 0) > 0.5f);
 	}
 
 	@Test
@@ -404,6 +404,29 @@ class WorldWordsTest {
 		assertEquals(row + 2 + WorldWords.Sentence.ROW_GAP, last[1], 1e-4);
 		assertEquals(1 + 5, last[0], 1e-4);
 		assertTrue(line.place(5, 1, 0, 0)[0] > last[0]);
+	}
+
+	@Test
+	void aShortLastRowSitsCentredUnderTheRowAbove() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
+		// Two pieces fill the first row, then about one more piece is left
+		line.rest = 2 * (10 + WorldWords.Sentence.GAP) + 10;
+		float[] last = line.place(5, 1, 0, 0);
+		float row = last[1], edge = 0;
+		while (last[1] == row) {
+			edge = last[0] + 5;
+			last = line.place(5, 1, 0, 0);
+		}
+		// What's left is about one piece wide, so it goes under the middle of the full row
+		assertEquals(edge / 2, last[0], 1e-3);
+		// A line with plenty still to come starts its next row at the left as usual
+		WorldWords.Sentence longer = new WorldWords.Sentence(0, 0, 10, 0);
+		longer.rest = 200;
+		float[] l = longer.place(5, 1, 0, 0);
+		while (l[1] == row) {
+			l = longer.place(5, 1, 0, 0);
+		}
+		assertEquals(5, l[0], 1e-4);
 	}
 
 	@Test
