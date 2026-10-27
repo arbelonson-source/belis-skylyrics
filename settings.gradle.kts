@@ -18,7 +18,7 @@ plugins {
 stonecutter {
 	create(rootProject) {
 		// Each one becomes its own jar. The code in git is written for vcsVersion.
-		versions("1.21.10", "1.21.11", "26.1.2", "26.2", "26.3")
+		versions("1.21.8", "1.21.10", "1.21.11", "26.1.2", "26.2", "26.3")
 		vcsVersion = "1.21.11"
 	}
 }

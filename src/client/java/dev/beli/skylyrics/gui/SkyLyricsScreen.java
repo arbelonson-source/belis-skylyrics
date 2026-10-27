@@ -859,7 +859,9 @@ public final class SkyLyricsScreen extends Screen {
 
 	// ---- Input ------------------------------------------------------------------------------------
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		double mx = event.x();
 		double my = event.y();
@@ -931,7 +933,9 @@ public final class SkyLyricsScreen extends Screen {
 		return Ui.inside(mx, my, px, py, pw, ph) || super.mouseClicked(event, doubleClick);
 	}
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
 		if (active != null) {
 			active.drag(event.x(), event.y());
@@ -950,7 +954,9 @@ public final class SkyLyricsScreen extends Screen {
 		return super.mouseDragged(event, dx, dy);
 	}
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean mouseReleased(MouseButtonEvent event) {
 		if (active != null) {
 			active.release();
@@ -964,6 +970,28 @@ public final class SkyLyricsScreen extends Screen {
 		return super.mouseReleased(event);
 	}
 
+	//? if <1.21.9 {
+	/*@Override
+	public boolean mouseClicked(double x, double y, int button) {
+		return mouseClicked(new MouseButtonEvent(x, y, button), false);
+	}
+
+	@Override
+	public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
+		return mouseDragged(new MouseButtonEvent(x, y, button), dx, dy);
+	}
+
+	@Override
+	public boolean mouseReleased(double x, double y, int button) {
+		return mouseReleased(new MouseButtonEvent(x, y, button));
+	}
+
+	@Override
+	public boolean keyPressed(int key, int scancode, int modifiers) {
+		return keyPressed(new KeyEvent(key, scancode, modifiers));
+	}
+
+	*///?}
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
 		if (preview || active != null) {
@@ -976,7 +1004,9 @@ public final class SkyLyricsScreen extends Screen {
 		return super.mouseScrolled(mx, my, scrollX, scrollY);
 	}
 
+	//? if >=1.21.9 {
 	@Override
+	//?}
 	public boolean keyPressed(KeyEvent event) {
 		if (preview) {
 			preview = false;

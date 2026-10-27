@@ -8,6 +8,9 @@ import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.player.PlayerModel;
+//? if <1.21.9 {
+/*import net.minecraft.client.renderer.MultiBufferSource;
+*///?}
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
@@ -66,8 +69,14 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		//?}
 	}
 
+	//? if >=1.21.9 {
 	@Override
 	public void submit(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, float yaw, float pitch) {
+	//?} else {
+	/*@Override
+	public void render(PoseStack pose, MultiBufferSource buffers, int light, AvatarRenderState state, float yaw, float pitch) {
+		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
+	*///?}
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		Minecraft mc = Minecraft.getInstance();
 		if (cfg.hat == Hat.NONE || state.isInvisible || mc.player == null || state.id != mc.player.getId()) {
@@ -77,8 +86,12 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		int rgb = lyrics.color();
 		int glow = 0xFF000000 | LyricsRenderer.mix(rgb, 0xFFFFFF, 0.55f * bright);
 		pose.pushPose();
+		//? if >=1.21.9 {
 		getParentModel().root().translateAndRotate(pose);
 		getParentModel().translateToHead(pose);
+		//?} else {
+		/*getParentModel().getHead().translateAndRotate(pose);
+		*///?}
 		switch (cfg.hat) {
 			case HALO -> {
 				pose.translate(0, HEAD_TOP - HALO_LIFT, 0);

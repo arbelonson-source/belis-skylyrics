@@ -44,11 +44,15 @@ abstract class LevelRendererMixin {
 			/*DeltaTracker delta, boolean outline, CameraRenderState camera, Matrix4fc view, GpuBufferSlice fog,
 			Vector4f fogColor, boolean sky, ChunkSectionsToRender sections, CallbackInfo ci) {
 		ScreenLayer.capture(view, camera.projectionMatrix);
-			*///?} else {
+			*///?} else if >=1.21.9 {
 			DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection, Matrix4f culling,
 			GpuBufferSlice fog, Vector4f fogColor, boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
-			//?}
+			//?} else {
+			/*DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection,
+			GpuBufferSlice fog, Vector4f fogColor, boolean sky, CallbackInfo ci) {
+		ScreenLayer.capture(view, projection);
+			*///?}
 		SkyTint.fog(fogColor);
 	}
 }

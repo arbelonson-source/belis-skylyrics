@@ -190,6 +190,7 @@ public final class DevTestHook {
 					*///?} else {
 					if (client.screen != null) {
 					//?}
+						//? if >=1.21.9 {
 						var e = new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]),
 								new net.minecraft.client.input.MouseButtonInfo(0, 0));
 						//? if >=26.2 {
@@ -199,6 +200,10 @@ public final class DevTestHook {
 						client.screen.mouseClicked(e, false);
 						client.screen.mouseReleased(e);
 						//?}
+						//?} else {
+						/*client.screen.mouseClicked(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]), 0);
+						client.screen.mouseReleased(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]), 0);
+						*///?}
 					}
 				}
 				case "press" -> {
@@ -213,8 +218,12 @@ public final class DevTestHook {
 									&& b.getMessage().getString().contains(arg))
 							.map(c -> (net.minecraft.client.gui.components.AbstractButton) c)
 							.findFirst().orElseThrow(() -> new IllegalArgumentException("no button " + arg));
+					//? if >=1.21.9 {
 					button.onPress(new net.minecraft.client.input.MouseButtonEvent(button.getX() + 1, button.getY() + 1,
 							new net.minecraft.client.input.MouseButtonInfo(0, 0)));
+					//?} else {
+					/*button.onPress();
+					*///?}
 				}
 				//? if >=26.2 {
 				/*case "hud" -> { if (client.gui.hud.isHidden() != arg.equals("off")) client.gui.hud.toggle(); }
