@@ -32,6 +32,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final float CUP_IN = 0.27f, CUP_OUT = 0.33f, CUP_Y = -0.23f, CUP_HALF = 0.11f, BAND_TOP = -0.6f;
 	static final float CONE_BRIM = 0.5f, CONE_BASE = HEAD_TOP + 0.05f, CONE_APEX = HEAD_TOP - 0.32f;
 	private static final int CROWN_POINTS = 8;
+	private static final int EAR_DARK = 0xFF24202E;
 
 	private final LyricsRenderer lyrics;
 
@@ -72,6 +73,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			}
 			case CONICAL -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> conical(p, vc, light, glow));
 			case CROWN -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> crown(p, vc, light, glow));
+			case CAT_EARS -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> catEars(p, vc, light, glow));
 			case NONE -> { }
 		}
 		pose.popPose();
@@ -203,6 +205,25 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			face(p, vc, FULL_BRIGHT, glow, glow, Mth.cos(a) * gr, gemY - gemH, Mth.sin(a) * gr,
 					Mth.cos(a + gemA) * gr, gemY, Mth.sin(a + gemA) * gr, Mth.cos(a) * gr, gemY + gemH, Mth.sin(a) * gr,
 					Mth.cos(a - gemA) * gr, gemY, Mth.sin(a - gemA) * gr);
+		}
+	}
+
+	/** One cat ear, side -1 or 1: base from x0 to x1 on top of the head, tip at (tipX, tipY), leaning out a little. */
+	static float[] ear(float side) {
+		float c = side * 0.15f;
+		return new float[] {c - 0.09f, c + 0.09f, c + side * 0.035f, HEAD_TOP - 0.2f};
+	}
+
+	/** Two dark cat ears with glowing insides. */
+	private static void catEars(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		float base = HEAD_TOP + 0.01f, z = 0.02f;
+		for (float side : new float[] {-1, 1}) {
+			float[] e = ear(side);
+			face(p, vc, light, EAR_DARK, EAR_DARK, e[0], base, z, e[1], base, z, e[2], e[3], z, e[2], e[3], z);
+			// The inside, a smaller triangle just in front
+			float in = 0.045f, mid = (e[0] + e[1]) / 2;
+			face(p, vc, FULL_BRIGHT, glow, glow, e[0] + in, base - 0.015f, z - 0.004f, e[1] - in, base - 0.015f, z - 0.004f,
+					Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f, Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f);
 		}
 	}
 }

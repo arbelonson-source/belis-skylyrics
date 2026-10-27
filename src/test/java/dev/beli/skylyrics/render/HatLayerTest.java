@@ -40,4 +40,13 @@ class HatLayerTest {
 		assertEquals(-1, top[3], 1e-3, "the band faces up at the top");
 		assertEquals(1, left[2], 1e-3, "and outwards at the ears");
 	}
+
+	@Test
+	void catEarsAreMirroredAndPointUpAndOut() {
+		float[] left = HatLayer.ear(-1), right = HatLayer.ear(1);
+		assertEquals(-left[2], right[2], 1e-6);
+		assertTrue(right[2] > (right[0] + right[1]) / 2);
+		assertTrue(right[3] < -0.5f);
+		assertTrue(left[1] < right[0]);
+	}
 }
