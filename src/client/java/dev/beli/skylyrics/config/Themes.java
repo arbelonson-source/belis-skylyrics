@@ -134,6 +134,24 @@ public final class Themes {
 				c.sky = SkyEffect.AURORA;
 				c.skyStrength = 0.8f;
 			}),
+			// The line written out word by word across a plain night sky, lilac with a soft pink glow
+			new Theme("lilac", () -> Tr.t("Lilac"), c -> {
+				c.layout = Layout.WORLD;
+				c.worldFlow = true;
+				c.colorMode = ColorMode.FIXED;
+				c.color = 0xD9B6F2;
+				c.smoothFont = true;
+				c.scriptFont = false;
+				c.boldFont = false;
+				c.depth = false;
+				c.glow = 0.7f;
+				c.pulse = false;
+				c.size = 1.1f;
+				c.animation = Animation.FADE;
+				c.sky = SkyEffect.OFF;
+				c.skyStrength = 0.7f;
+				c.uppercase = false;
+			}),
 			// Big golden lines under the black sun, like light round its rim
 			new Theme("corona", () -> Tr.t("Corona"), c -> {
 				c.layout = Layout.ARC;

@@ -109,6 +109,11 @@ class ThemesTest {
 		assertTrue(drift.worldFlow);
 		assertEquals(ColorMode.ALBUM, drift.colorMode);
 
+		SkyLyricsConfig lilac = theme("lilac").preview();
+		assertTrue(lilac.worldFlow);
+		assertFalse(lilac.uppercase);
+		assertEquals(SkyEffect.OFF, lilac.sky);
+
 		SkyLyricsConfig corona = theme("corona").preview();
 		assertEquals(SkyEffect.ECLIPSE, corona.sky);
 		assertTrue(corona.size > 1 && corona.glow > 0);

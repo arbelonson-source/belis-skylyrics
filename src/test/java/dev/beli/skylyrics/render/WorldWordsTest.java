@@ -256,21 +256,23 @@ class WorldWordsTest {
 	@Test
 	void aFlowingLineReadsLeftToRight() {
 		WorldWords.Sentence line = new WorldWords.Sentence(-10, 5, 10, 0);
-		float[] first = line.place(3, 1, 0, 0), second = line.place(2, 1, 0, 0);
+		float[] first = line.place(3, 1, 0, 0), second = line.place(2, 0.5f, 0, 0);
 		assertEquals(-10 + WorldWords.Sentence.GAP + 3, first[0], 1e-4);
-		assertEquals(first[0] + 3 + WorldWords.Sentence.GAP + 2, second[0], 1e-4);
-		assertEquals(5, first[1], 1e-4);
-		assertEquals(5, second[1], 1e-4);
+		assertEquals(first[0] + 3 + WorldWords.Sentence.GAP * 0.5f + 2, second[0], 1e-4);
+		// A big word and a small one sit on the same line
+		assertEquals(5, first[1] + 1, 1e-4);
+		assertEquals(5, second[1] + 0.5f, 1e-4);
 	}
 
 	@Test
 	void aFullRowCarriesOnBelowFromTheLeft() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		float[] last = line.place(5, 1, 0, 0);
-		while (last[1] == 0) {
+		float row = last[1];
+		while (last[1] == row) {
 			last = line.place(5, 1, 1, 0);
 		}
-		assertEquals(2 + WorldWords.Sentence.ROW_GAP, last[1], 1e-4);
+		assertEquals(row + 2 + WorldWords.Sentence.ROW_GAP, last[1], 1e-4);
 		assertEquals(1 + 5, last[0], 1e-4);
 		assertTrue(line.place(5, 1, 0, 0)[0] > last[0]);
 	}
@@ -279,8 +281,8 @@ class WorldWordsTest {
 	void aPieceWiderThanARowStillGetsOneToItself() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		float[] wide = line.place(WorldWords.Sentence.WIDTH, 1, 0, 0);
-		assertEquals(0, wide[1], 1e-4);
-		assertTrue(line.place(1, 1, 0, 0)[1] > 0);
+		assertEquals(-1, wide[1], 1e-4);
+		assertTrue(line.place(1, 1, 0, 0)[1] > wide[1]);
 	}
 
 	@Test

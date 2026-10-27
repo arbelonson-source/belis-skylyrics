@@ -192,7 +192,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.size, v -> cfg.size = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v));
 		Row worldWords = new Slider(Tr.t("Words at once"), Tr.t("How many words float around you"), 1, 10, 1,
 				() -> cfg.worldWords, v -> cfg.worldWords = (int) Math.round(v), v -> String.valueOf(Math.round(v)))
-				.when(() -> cfg.layout == Layout.WORLD);
+				.when(() -> cfg.layout == Layout.WORLD && !(cfg.worldFlow && cfg.worldHold));
 		Row linger = new Slider(Tr.t("Linger"), Tr.t("How slowly sung words fade"), 0.8, 6, 0.1,
 				() -> cfg.worldLinger, v -> cfg.worldLinger = (float) v, v -> String.format(Locale.ROOT, "%.1f s", v))
 				.when(() -> cfg.layout == Layout.WORLD);

@@ -126,11 +126,11 @@ final class WorldWords {
 	/** How far a flowing line floats, and how far it may start off the middle of the view (degrees). */
 	private static final float SENTENCE_NEAR = 8f, SENTENCE_FAR = 12f, SENTENCE_SHIFT_X = 6f, SENTENCE_SHIFT_Y = 5f;
 	/** How far a flowing line turns towards you (degrees) and how much its pieces vary in distance (a fraction). */
-	private static final float SENTENCE_TURN = 15f, SENTENCE_DEPTH = 0.08f;
+	private static final float SENTENCE_TURN = 15f, SENTENCE_DEPTH = 0.03f;
 	/** A flowing line's new rows start up to this far in, its pieces sit up to this far off the row (degrees). */
-	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 1.2f;
-	/** How much each piece of a flowing line turns differently from the rest (degrees). */
-	private static final float SENTENCE_WOBBLE = 4f;
+	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 0.7f;
+	/** How much each piece of a flowing line turns differently from the rest (degrees), and how much of the usual nod and lean it keeps, so the line reads as one. */
+	private static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 0.5f;
 	/** A new song's title: how much bigger than a word, how many seconds it stays, degrees above the words and blocks out. */
 	static final float TITLE_SIZE = 1.7f, TITLE_HOLD = 4f, TITLE_LIFT = 9f, TITLE_DISTANCE = 13f;
 	/** The artist under a title: how much smaller, and how many degrees lower. */
@@ -528,12 +528,13 @@ final class WorldWords {
 		// The Tilt setting scales every angle, so at 0 a card faces you square on
 		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
-		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? 0.5f : 1), lean = tilt * (next() * 2 - 1) * LEAN;
+		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? SENTENCE_NOD : 1), lean = tilt * (next() * 2 - 1) * LEAN * (flow ? SENTENCE_LEAN : 1);
 		cards.add(new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now));
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
 			Card c = cards.get(k);
-			if (c.cutAt < 0 && !c.title && ++kept > maxCards) {
+			// A flowing line kept whole stays whole, however long, and goes all together when the next one starts
+			if (c.cutAt < 0 && !c.title && !(flow && hold) && ++kept > maxCards) {
 				// A lit card over the limit fades like a sung one; one already fading goes quickly
 				if (c.goneAt < 0) {
 					c.goneAt = now;
@@ -599,7 +600,7 @@ final class WorldWords {
 				float top = Mth.clamp(centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y, -70, 40);
 				float cost = 0;
 				for (float[] o : taken) {
-					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + halfH / 2 - o[1]);
+					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top - o[1]);
 					if (w > 0 && h > 0) {
 						cost += w * h;
 					}
@@ -623,10 +624,10 @@ final class WorldWords {
 	static final class Sentence {
 		/** How wide a row may get before the next piece starts a new one, in degrees. */
 		static final float WIDTH = 26f;
-		/** Space between pieces, in their own half heights (room for the pop-in), and between rows, in degrees. */
-		static final float GAP = 1.6f, ROW_GAP = 0.4f;
+		/** Space between pieces, in their own half heights (about a letter, like a written word space), and between rows, in degrees. */
+		static final float GAP = 0.7f, ROW_GAP = 0.4f;
 		final float distance, turn;
-		/** Where rows start, the pitch of the row being written (bigger is lower) and its right end so far. */
+		/** Where rows start, the pitch of the line the row being written sits on (bigger is lower) and its right end so far. */
 		float left, top, cursor;
 
 		Sentence(float left, float top, float distance, float turn) {
@@ -637,7 +638,10 @@ final class WorldWords {
 			this.turn = turn;
 		}
 
-		/** Yaw and pitch of the next piece's middle, given its half size; {@code indent} and {@code bob} add a little chance. */
+		/**
+		 * Yaw and pitch of the next piece's middle, given its half size. Pieces sit on the row's line, so a small word
+		 * lines up with the big one before it; {@code indent} and {@code bob} add a little chance.
+		 */
 		float[] place(float halfW, float halfH, float indent, float bob) {
 			float yaw = cursor + GAP * halfH + halfW;
 			if (cursor > left && yaw + halfW > left + WIDTH) {
@@ -645,7 +649,7 @@ final class WorldWords {
 				yaw = left + indent + halfW;
 			}
 			cursor = yaw + halfW;
-			return new float[] {yaw, top + bob};
+			return new float[] {yaw, top - halfH + bob};
 		}
 
 		/** Turns the rest of the line along with you (see {@link WorldWords#glide}). */
