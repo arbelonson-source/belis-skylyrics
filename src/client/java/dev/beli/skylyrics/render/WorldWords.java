@@ -77,6 +77,8 @@ final class WorldWords {
 	static final float POP = 0.22f, POP_TIME = 0.24f;
 	/** Cards drift up this many blocks a second, up to this high. */
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
+	/** While up, a card rocks this many degrees either way and bobs this many blocks, once every {@code SWAY_TIME} seconds. */
+	private static final float SWAY_LEAN = 1.6f, SWAY_BOB = 0.05f, SWAY_TIME = 5.5f;
 	/** Before the first frame's view is known, cards further from where you look than this (cosine of the angle) aren't drawn. */
 	private static final float CULL = 0.3f;
 	/** A card's half height, and how far its glow and shadow reach past the letters, in text units (for the on-screen check). */
@@ -694,7 +696,8 @@ final class WorldWords {
 				continue;
 			}
 			float x = (float) (c.pos.x - eye.x), z = (float) (c.pos.z - eye.z);
-			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise);
+			float sway = swayAngle(age, c.born);
+			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway);
 			int n = c.display.cps().length;
 			float grow = c.size * scale * pop(age);
 			Vector3f centre = new Vector3f(x, y, z);
@@ -710,7 +713,8 @@ final class WorldWords {
 			int colour = c.goneAt < 0 ? rgb : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			pose.pushPose();
 			pose.translate(x, y, z);
-			pose.mulPose(new Quaternionf().rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG).rotateZ(c.lean * DEG));
+			pose.mulPose(new Quaternionf().rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
+					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway)) * DEG));
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
@@ -776,6 +780,14 @@ final class WorldWords {
 	}
 
 	/** How many blocks a card has drifted up {@code age} seconds after it came, with the Float up setting {@code rise}. */
+	/**
+	 * How far through its slow sway a card is, as an angle: each card starts at its own point (from when it came) so
+	 * neighbours don't rock in step.
+	 */
+	static float swayAngle(float age, long born) {
+		return age * (Mth.TWO_PI / SWAY_TIME) + (born >>> 16 & 1023) * (Mth.TWO_PI / 1024);
+	}
+
 	static float riseAfter(float age, float rise) {
 		return Math.min(age * RISE, RISE_MAX) * rise;
 	}
