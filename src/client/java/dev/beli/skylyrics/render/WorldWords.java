@@ -157,6 +157,8 @@ final class WorldWords {
 	private static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 0.25f;
 	/** A flowing line rises or falls by between these many degrees, words and all, like a line written across a page. */
 	private static final float SENTENCE_SLOPE_MIN = 1.5f, SENTENCE_SLOPE_MAX = 5f;
+	/** A flowing line's rows also bow by between these many degrees in the middle, mostly up like an arch, sometimes down. */
+	private static final float SENTENCE_BEND_MIN = 0.8f, SENTENCE_BEND_MAX = 2.2f, SENTENCE_ARCH = 0.7f;
 	/** A new song's title: how much bigger than a word, how many seconds it stays, degrees above the words and blocks out. */
 	static final float TITLE_SIZE = 1.7f, TITLE_HOLD = 4f, TITLE_LIFT = 9f, TITLE_DISTANCE = 13f;
 	/** The artist under a title: how much smaller, and how many degrees lower. */
@@ -704,8 +706,8 @@ final class WorldWords {
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
 		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? SENTENCE_NOD : 1), lean = tilt * (next() * 2 - 1) * LEAN * (flow ? SENTENCE_LEAN : 1);
 		if (flow && sentence != null) {
-			// Every word leans with the line's slope, so the line reads as one tilted piece
-			lean += sentence.slope;
+			// Every word leans along the line where it sits, so the line reads as one curved piece
+			lean += spot[3];
 		}
 		Card card = new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now);
 		card.rtl = flow && lineRtl;
@@ -800,7 +802,8 @@ final class WorldWords {
 				if (cost < bestCost) {
 					bestCost = cost;
 					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1),
-							tilt * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1), lineRtl);
+							tilt * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1), lineRtl,
+							tilt * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1));
 				}
 			}
 		}
@@ -811,7 +814,7 @@ final class WorldWords {
 		for (int t = 0; t < CLEAR_TRIES && (at2 == null || !clear(at2[0], at2[1], halfW, halfH, taken)); t++) {
 			at2 = sentence.place(halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB);
 		}
-		return new float[] {at2[0], at2[1], distance};
+		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
 	/** With the middle kept clear: how far to the side a line's middle goes, in degrees. */
@@ -874,6 +877,8 @@ final class WorldWords {
 		final float distance, turn;
 		/** How far the line rises to the right, in degrees (negative falls). */
 		final float slope;
+		/** How far each row bows up in its middle, in degrees (negative sags), so the words follow a gentle curve. */
+		final float bend;
 		/** Written from the right, for Hebrew and Arabic: each row starts at its right end. */
 		final boolean rtl;
 		/**
@@ -893,6 +898,11 @@ final class WorldWords {
 		}
 
 		Sentence(float left, float top, float distance, float turn, float slope, boolean rtl) {
+			this(left, top, distance, turn, slope, rtl, 0);
+		}
+
+		Sentence(float left, float top, float distance, float turn, float slope, boolean rtl, float bend) {
+			this.bend = bend;
 			this.rtl = rtl;
 			this.slope = slope;
 			this.left = left;
@@ -903,8 +913,9 @@ final class WorldWords {
 		}
 
 		/**
-		 * Yaw and pitch of the next piece's middle, given its half size. Pieces sit on the row's line, so a small word
-		 * lines up with the big one before it; {@code indent} and {@code bob} add a little chance.
+		 * Yaw and pitch of the next piece's middle, given its half size, and how far it leans (degrees) to follow the line
+		 * there. Pieces sit on the row's line, so a small word lines up with the big one before it; {@code indent} and
+		 * {@code bob} add a little chance.
 		 */
 		float[] place(float halfW, float halfH, float indent, float bob) {
 			float yaw = cursor + GAP * halfH + halfW;
@@ -922,8 +933,11 @@ final class WorldWords {
 				// The same handwriting mirrored: from the row's right end leftwards
 				yaw = 2 * left + WIDTH - yaw;
 			}
-			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets
-			return new float[] {yaw, middle - (yaw - left) * (float) Math.tan(slope * DEG)};
+			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets; the bow is highest mid-row
+			float along = Mth.clamp((yaw - left) / WIDTH, 0, 1), steep = (float) Math.tan(slope * DEG);
+			float rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
+			float climb = steep + bend * 4 * (1 - 2 * along) / WIDTH;
+			return new float[] {yaw, middle - rise, (float) Math.toDegrees(Math.atan(climb))};
 		}
 
 		/**

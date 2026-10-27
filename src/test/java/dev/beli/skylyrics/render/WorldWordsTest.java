@@ -360,6 +360,24 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aBentRowArchesAndItsWordsLeanAlongIt() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 0, false, 2);
+		float[] first = line.place(2, 1, 0, 0), middle = null, last = first;
+		while (last[0] < WorldWords.Sentence.WIDTH - 3) {
+			last = line.place(2, 1, 0, 0);
+			if (middle == null && last[0] >= WorldWords.Sentence.WIDTH / 2 - 2) {
+				middle = last;
+			}
+		}
+		// Bigger pitch is lower: the middle sits above both ends, the start leans up, the end leans down
+		assertTrue(middle[1] < first[1] && middle[1] < last[1]);
+		assertTrue(first[2] > 0 && last[2] < 0);
+		assertTrue(Math.abs(middle[2]) < first[2]);
+		// A straight line leans by just its slope
+		assertEquals(3, new WorldWords.Sentence(0, 0, 10, 0, 3).place(2, 1, 0, 0)[2], 1e-3f);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
