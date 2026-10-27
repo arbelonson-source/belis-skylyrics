@@ -345,5 +345,8 @@
   "skylyrics.ui.dot": "נקודה",
   "skylyrics.ui.cross": "צלב",
   "skylyrics.ui.circle": "עיגול",
-  "skylyrics.ui.corners": "פינות"
+  "skylyrics.ui.corners": "פינות",
+  "skylyrics.ui.grid": "רשת",
+  "skylyrics.ui.shelf": "מדף",
+  "skylyrics.ui.carousel": "קרוסלה"
 }

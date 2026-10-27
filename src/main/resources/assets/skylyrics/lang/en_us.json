@@ -345,5 +345,8 @@
   "skylyrics.ui.dot": "Dot",
   "skylyrics.ui.cross": "Cross",
   "skylyrics.ui.circle": "Circle",
-  "skylyrics.ui.corners": "Corners"
+  "skylyrics.ui.corners": "Corners",
+  "skylyrics.ui.grid": "Grid",
+  "skylyrics.ui.shelf": "Shelf",
+  "skylyrics.ui.carousel": "Carousel"
 }

@@ -163,6 +163,15 @@ public final class SkyLyricsConfig {
 		SCREEN
 	}
 
+	public enum LibraryView {
+		/** Rows and columns of small covers. */
+		GRID,
+		/** Big covers standing in sideways-scrolling rows. */
+		SHELF,
+		/** One big centred cover with its neighbours turned away. */
+		CAROUSEL
+	}
+
 	// Main
 	public boolean enabled = true;
 	public Placement placement = Placement.SKY;
@@ -291,6 +300,8 @@ public final class SkyLyricsConfig {
 	/** From the player's own app on the Spotify dashboard; only used when preferredPlayer is "spotify-web". */
 	public String spotifyClientId = "";
 	public boolean demoMode = false;
+	/** How the song library shows its covers. */
+	public LibraryView libraryView = LibraryView.GRID;
 
 	private static SkyLyricsConfig instance;
 
@@ -336,6 +347,7 @@ public final class SkyLyricsConfig {
 		if (effects == null) effects = d.effects;
 		if (hat == null) hat = d.hat;
 		if (crosshair == null) crosshair = d.crosshair;
+		if (libraryView == null) libraryView = d.libraryView;
 		if (preferredPlayer == null) preferredPlayer = "";
 		if (spotifyClientId == null) spotifyClientId = "";
 		glow = clamp(glow, 0, 1);
