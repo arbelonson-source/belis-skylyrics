@@ -77,6 +77,8 @@ final class WorldWords {
 	static final float POP = 0.22f, POP_TIME = 0.24f;
 	/** Cards drift up this many blocks a second, up to this high. */
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
+	/** How much smaller a let-go card has got by the time it has faded out. */
+	private static final float LEAVE = 0.15f;
 	/** While up, a card rocks this many degrees either way and bobs this many blocks, once every {@code SWAY_TIME} seconds. */
 	private static final float SWAY_LEAN = 1.6f, SWAY_BOB = 0.05f, SWAY_TIME = 5.5f;
 	/** Before the first frame's view is known, cards further from where you look than this (cosine of the angle) aren't drawn. */
@@ -248,6 +250,11 @@ final class WorldWords {
 	static float goneAlpha(float seconds, float fade) {
 		float t = Mth.clamp(seconds / fade, 0, 1);
 		return 1 - t * t;
+	}
+
+	/** How big a let-go card still is, {@code seconds} after it was let go: it shrinks a little as it fades, as if drifting off. */
+	static float leaveSize(float seconds, float fade) {
+		return 1 - LEAVE * Mth.clamp(seconds / fade, 0, 1);
 	}
 
 	/** How visible a card cut short {@code seconds} ago still is. */
@@ -699,7 +706,7 @@ final class WorldWords {
 			float sway = swayAngle(age, c.born);
 			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway);
 			int n = c.display.cps().length;
-			float grow = c.size * scale * pop(age);
+			float grow = c.size * scale * pop(age) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade));
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
