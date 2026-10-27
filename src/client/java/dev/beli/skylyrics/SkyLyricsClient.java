@@ -58,6 +58,7 @@ import dev.beli.skylyrics.render.HatLayer;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
 import dev.beli.skylyrics.render.SkyEffects;
+import dev.beli.skylyrics.update.Updater;
 
 public final class SkyLyricsClient implements ClientModInitializer {
 	public static final String MOD_ID = "skylyrics";
@@ -157,6 +158,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
 		}
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
+		Updater.start(cfg.updates, version);
 		LOG.info("Beli's SkyLyrics {} ready (placement {}, demo {})", version, cfg.placement, cfg.demoMode);
 	}
 
@@ -238,6 +240,22 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private void tick(Minecraft client) {
 		art.upload();
+		// The update check runs in the background; its answer is told in chat once a world is open
+		if (client.player != null) {
+			Updater.Notice update = Updater.takeNotice();
+			if (update != null) {
+				Component line = Component.literal(update.downloaded()
+						? Tr.t("SkyLyrics %s is downloaded — restart Minecraft to use it", update.version())
+						: Tr.t("SkyLyrics %s is out", update.version()));
+				//? if >=26.2 {
+				/*client.gui.hud.getChat().addClientSystemMessage(line);
+				*///?} else if >=26.1 {
+				/*client.gui.getChat().addClientSystemMessage(line);
+				*///?} else {
+				client.gui.getChat().addMessage(line);
+				//?}
+			}
+		}
 		if (!keysChecked) {
 			keysChecked = true;
 			moveOffShaderToggle(client, openLibrary);

@@ -345,5 +345,14 @@
   "skylyrics.ui.dot": "נקודה",
   "skylyrics.ui.cross": "צלב",
   "skylyrics.ui.circle": "עיגול",
-  "skylyrics.ui.corners": "פינות"
+  "skylyrics.ui.corners": "פינות",
+  "skylyrics.ui.updates": "עדכונים",
+  "skylyrics.ui.install": "התקנה",
+  "skylyrics.ui.tell_me": "רק להודיע",
+  "skylyrics.ui.checked_once_when_the_game_starts": "נבדק פעם אחת כשהמשחק עולה",
+  "skylyrics.ui.download_new_versions_by_itself": "להוריד גרסאות חדשות מעצמו",
+  "skylyrics.ui.only_say_when_a_new_version_is_out": "רק להגיד כשיוצאת גרסה חדשה",
+  "skylyrics.ui.never_look_for_updates": "לא לחפש עדכונים",
+  "skylyrics.ui.skylyrics_s_is_downloaded_restart_minecraft_to_u": "SkyLyrics %s הורדה — הפעילו מחדש את Minecraft כדי להשתמש בה",
+  "skylyrics.ui.skylyrics_s_is_out": "SkyLyrics %s יצאה"
 }
