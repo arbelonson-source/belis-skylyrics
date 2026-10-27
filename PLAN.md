@@ -7,7 +7,12 @@ Owner's request: free recreation of the paid "Neon Lyrics" mod, tasteful config 
 photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS).
 
 ## Rules for whoever picks this up (incl. the cron loop)
-- Build: `JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./gradlew build` (Loom needs Java 25 to run; the mod targets Java 21).
+- Build: `JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./gradlew build` builds and tests every Minecraft version
+  (Loom needs Java 25 to run; the 1.21.11 jar targets Java 21, the 26.x jars Java 25). `:26.2:build` builds one.
+- Run the game with ONE version: `./gradlew :1.21.11:runProductionClient` (or `:26.1.2:`, `:26.2:`, `:26.3:`).
+  A bare `runProductionClient` starts every version. 1.21.11 uses `run-prod/`, the others `run-prod-<version>/`.
+- There is one source tree for all versions (Stonecutter); the old `mc-26.2` branch is retired, don't merge into it.
+  Before a release, start each version once on the test screen to check it boots.
 - Test in game WITHOUT stealing the owner's screen: run the game on a Hyprland headless
   output (`hyprctl output create headless SKYLYRICS`). Create it only while a test is running
   and `hyprctl output remove SKYLYRICS` at the end of EVERY test session (first move any
@@ -108,3 +113,4 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - 2026-10-26 02:25: new night sky, **Moonlight** (our own design): a big pale full moon with soft grey seas and a soft glow, low clouds that drift slowly round the whole horizon (about 15 minutes a lap, joining up seamlessly) and light up near the moon, and a few faint twinkling stars kept clear of the glow. Painted opaque like Synthwave so it shows with shaders. The sky's shared drawing code now lives in SkyMesh. Checked with an outside-the-game preview picture only; still needs an in-game look (headless screen, owner not playing).
 - 2026-10-26 14:16: three more ready-made looks (Themes): **Moonlit** (World layout under the Moonlight sky, capital words, pop-in, soft glow), **Drift** (flowing World line in the album colour, fading in under the aurora) and **Corona** (gold Arc of lyrics, fading in, round the Eclipse sun at full strength). Every theme now also sets Flowing line, so picking one never keeps an old flowing setting by accident. Checked all three on the hidden test screen: the theme grid still fits nine tiles, and Corona's black sun sits in the west (where the real sun went down) when the lyrics follow the view.
 - 2026-10-26 15:09: World layout keeps the whole line up (new **Keep the whole line** switch in Lyrics > Position, on at first): a line's earlier words stay lit until the line is over, then all fade together, so you can read it whole like in the Neon Lyrics videos. Words over the Words-at-once limit now fade gently instead of vanishing, and when the sky gets crowded the scatter reaches a little further out (up to 60%) instead of piling words on top of each other.
+- 2026-10-27 07:10: one source tree for every Minecraft version from 1.21.11 up (Stonecutter): jars for 1.21.11, 26.1 (26.1–26.1.2), 26.2 and 26.3, each passing all 253 tests. Lines that differ sit in `//? if >=26.x {` comments; renamed classes are swapped at build time (stonecutter.gradle.kts). Not yet started in game on 26.1 or 26.3; 26.3 draws hats and sky shapes with a different render type that may ignore light.
