@@ -86,6 +86,8 @@ public final class SkyEffects {
 	private float radius;
 	private float far;
 	private float fade;
+	/** With the sky pulse on: how bright the sky sits between lines, as a share of its full strength. */
+	static final float BEAT_REST = 0.75f;
 	/** 0..1: how much of the synthwave sky, the eclipse and the constellations shows. */
 	private float amount;
 	private float baseYaw;
@@ -117,6 +119,16 @@ public final class SkyEffects {
 		this.service = service;
 		this.art = art;
 		this.tracker = tracker;
+	}
+
+	/**
+	 * How bright the sky is for the pulse: steady at full strength with the pulse off, otherwise a little dimmer
+	 * between lines and full for a moment as each one starts.
+	 *
+	 * @param since seconds since the lyrics moved to a new line, or NaN with the pulse off
+	 */
+	static float beat(float since) {
+		return Float.isNaN(since) ? 1 : BEAT_REST + (1 - BEAT_REST) * LyricsRenderer.pulse(since);
 	}
 
 	/**
@@ -247,7 +259,8 @@ public final class SkyEffects {
 		}
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		float stars = camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial);
-		fade = visibility(stars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence);
+		fade = visibility(stars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
+				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 		if (fade < 0.01f) {
 			return;
 		}

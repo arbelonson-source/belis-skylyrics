@@ -23,6 +23,14 @@ class SkyEffectsTest {
 	}
 
 	@Test
+	void skyPulseBrightensOnNewLines() {
+		assertEquals(1, SkyEffects.beat(Float.NaN), 1e-6f, "pulse off: full strength");
+		assertEquals(SkyEffects.BEAT_REST, SkyEffects.beat(5), 1e-6f, "dimmer between lines");
+		assertTrue(SkyEffects.beat(0.1f) > SkyEffects.beat(0.6f), "brightest just after a new line");
+		assertTrue(SkyEffects.beat(0.1f) <= 1, "never brighter than the strength setting");
+	}
+
+	@Test
 	void visibilityClampsOddInputs() {
 		assertEquals(1, SkyEffects.visibility(5, -2, 9), 1e-6f);
 		assertEquals(0, SkyEffects.visibility(-1, 0, 1));
