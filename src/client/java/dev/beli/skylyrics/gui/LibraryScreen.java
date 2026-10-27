@@ -898,7 +898,7 @@ public final class LibraryScreen extends Screen {
 
 	private void openMusicTab() {
 		if (parent instanceof SkyLyricsScreen settings) {
-			settings.selectTab(2);
+			settings.showSpotify();
 			//? if >=26.2 {
 			/*minecraft.gui.setScreen(settings);
 			*///?} else {
@@ -907,7 +907,7 @@ public final class LibraryScreen extends Screen {
 			return;
 		}
 		SkyLyricsScreen settings = new SkyLyricsScreen(this);
-		settings.selectTab(2);
+		settings.showSpotify();
 		//? if >=26.2 {
 		/*minecraft.gui.setScreen(settings);
 		*///?} else {

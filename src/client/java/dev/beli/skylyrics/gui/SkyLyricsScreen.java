@@ -1057,6 +1057,13 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
+	/** Opens the Music tab scrolled down to the Spotify card, where you sign in. */
+	public void showSpotify() {
+		selectTab(MUSIC_TAB);
+		// Clamped to the real bottom on the next frame; the Spotify card is the last one
+		scrollTarget[MUSIC_TAB] = Float.MAX_VALUE;
+	}
+
 	@Override
 	public void onClose() {
 		//? if >=26.2 {
