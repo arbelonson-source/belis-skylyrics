@@ -2,6 +2,7 @@
   "providers": [
     {"type": "ttf", "file": "skylyrics:kaushan_script.ttf", "size": 12.0, "oversample": 10.0, "shift": [0.0, 0.0]},
     {"type": "ttf", "file": "skylyrics:noto_sans_hebrew_medium.ttf", "size": 10.5, "oversample": 10.0, "shift": [0.0, 0.5]},
+    {"type": "ttf", "file": "skylyrics:noto_sans_arabic_medium.ttf", "size": 10.5, "oversample": 10.0, "shift": [0.0, 0.5]},
     {"type": "reference", "id": "minecraft:default"}
   ]
 }

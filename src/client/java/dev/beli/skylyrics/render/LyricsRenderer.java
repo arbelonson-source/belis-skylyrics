@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.ibm.icu.text.ArabicShaping;
+import com.ibm.icu.text.ArabicShapingException;
 import com.mojang.blaze3d.vertex.PoseStack;
 //? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
@@ -1261,6 +1263,7 @@ public final class LyricsRenderer {
 				off += len;
 			}
 			charToCp[row.length()] = n;
+			int[] shaped = joinArabic(row).codePoints().toArray();
 			Bidi bidi = new Bidi(row, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
 			int runs = bidi.getRunCount();
 			byte[] levels = new byte[runs];
@@ -1278,11 +1281,36 @@ public final class LyricsRenderer {
 				boolean rtl = (bidi.getRunLevel(run) & 1) == 1;
 				for (int k = 0; k < to - from; k++) {
 					int i = rtl ? to - 1 - k : from + k;
-					outCps[v] = rtl ? mirror(cps[i]) : cps[i];
+					if (shaped[i] == ' ' && cps[i] != ' ') {
+						// The alef of a lam-alef, which is now part of the lam's letter
+						continue;
+					}
+					if (arabicMark(cps[i])) {
+						// Vowel marks would need stacking on the letter, which the font can't do; they'd leave a gap
+						continue;
+					}
+					outCps[v] = rtl ? mirror(shaped[i]) : shaped[i];
 					outLogical[v++] = i;
 				}
 			}
-			return new Display(outCps, outLogical);
+			return new Display(Arrays.copyOf(outCps, v), Arrays.copyOf(outLogical, v));
+		}
+
+		/**
+		 * Arabic letters take a different form at the start, middle and end of a word so they join up; the font only
+		 * has the separate forms, so this picks them. Keeps the length: a lam-alef pair becomes one letter and a space.
+		 */
+		static String joinArabic(String row) {
+			try {
+				return new ArabicShaping(ArabicShaping.LETTERS_SHAPE | ArabicShaping.LENGTH_FIXED_SPACES_NEAR).shape(row);
+			} catch (ArabicShapingException e) {
+				return row;
+			}
+		}
+
+		static boolean arabicMark(int cp) {
+			return Character.getType(cp) == Character.NON_SPACING_MARK
+				&& Character.UnicodeBlock.of(cp) == Character.UnicodeBlock.ARABIC;
 		}
 
 		private static int mirror(int cp) {

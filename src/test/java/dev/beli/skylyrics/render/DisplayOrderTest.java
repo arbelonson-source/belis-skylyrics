@@ -40,4 +40,25 @@ class DisplayOrderTest {
 	void bracketsAreMirroredInHebrew() {
 		assertEquals("(רוא)", visual("(אור)"));
 	}
+
+	@Test
+	void arabicLettersJoinUp() {
+		// "مرحبا" (hello): each letter in its joined form, drawn right to left
+		assertEquals("\uFE8E\uFE92\uFEA3\uFEAE\uFEE3", visual("مرحبا"));
+	}
+
+	@Test
+	void lamAlefBecomesOneLetter() {
+		// "سلام" (peace): lam and alef share one letter, which keeps the lam's place for the highlight
+		LyricsRenderer.Display d = LyricsRenderer.Display.of("سلام");
+		assertEquals("\uFEE1\uFEFC\uFEB3", visual("سلام"));
+		assertArrayEquals(new int[] {3, 1, 0}, d.logical());
+	}
+
+	@Test
+	void vowelMarksAreLeftOutButLettersStillJoin() {
+		// The fatha on the meem would only leave a gap, and the meem still joins the ra after it
+		assertEquals(visual("مرحبا"), visual("مَرحبا"));
+		assertArrayEquals(new int[] {5, 4, 3, 2, 0}, LyricsRenderer.Display.of("مَرحبا").logical());
+	}
 }

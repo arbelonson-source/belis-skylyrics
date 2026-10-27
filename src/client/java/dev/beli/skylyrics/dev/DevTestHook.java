@@ -17,13 +17,16 @@ import net.minecraft.server.MinecraftServer;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
+import dev.beli.skylyrics.lyrics.LrcParser;
+import dev.beli.skylyrics.lyrics.LyricsService;
+import dev.beli.skylyrics.media.DemoSource;
 
 /**
  * Development-only remote control, so the mod can be checked on a hidden screen without a keyboard.
  * Write commands, one per line, to {@code skylyrics-test.txt} in the game folder; the file is read
  * once and deleted. Commands: {@code look <yaw> <pitch>}, {@code gui [tab]}, {@code preview},
  * {@code close}, {@code press <button text>}, {@code hud on|off}, {@code view <0-2>} (first person, behind, in front),
- * {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
+ * {@code lines <a | b | c>} (test lines in place of the demo song's), {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
  * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
  * the desktop draws on top), {@code uncap} (no frame limit, vsync or idle slowdown), {@code fps [seconds]} (logs the frame
  * rate over that long).
@@ -71,6 +74,25 @@ public final class DevTestHook {
 			if (!trimmed.isEmpty()) {
 				run(client, trimmed);
 			}
+		}
+	}
+
+	/**
+	 * "lines a | b | c": swaps the demo song's lyrics for these test lines, one every four seconds, looping over the
+	 * song, so other scripts (Arabic, Hebrew) can be checked. Only for short test phrases, never real lyrics.
+	 */
+	private static void lines(Minecraft client, String arg) {
+		String[] parts = arg.split("\\s*\\|\\s*");
+		StringBuilder lrc = new StringBuilder();
+		for (int i = 0, ms = 0; ms < DemoSource.TRACK.lengthMs(); i++, ms += 4000) {
+			lrc.append(String.format("[%02d:%02d.00]%s%n", ms / 60000, ms / 1000 % 60, parts[i % parts.length]));
+		}
+		try {
+			java.lang.reflect.Field field = LyricsService.class.getDeclaredField("lyrics");
+			field.setAccessible(true);
+			field.set(SkyLyricsClient.get().lyrics(), LrcParser.parseSynced(lrc.toString()));
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalArgumentException("could not swap the lyrics", e);
 		}
 	}
 
@@ -221,6 +243,7 @@ public final class DevTestHook {
 					}
 				}
 				case "set" -> set(arg);
+				case "lines" -> lines(client, arg);
 				case "uncap" -> {
 					client.options.enableVsync().set(false);
 					client.options.framerateLimit().set(260);
