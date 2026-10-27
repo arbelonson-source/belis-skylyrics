@@ -14,6 +14,8 @@ public final class LrcParser {
 	private static final Pattern WORD_TIME = Pattern.compile("<\\d{1,3}:\\d{1,2}(?:[.:]\\d{1,3})?>");
 	// Also old Mac files that end lines with a bare \r
 	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
+	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
+	private static final Pattern SECTION = Pattern.compile("\\[[^\\[\\]]*]");
 	private static final char BOM = 0xFEFF;
 
 	private LrcParser() {
@@ -71,7 +73,14 @@ public final class LrcParser {
 		}
 		List<String> rows = new ArrayList<>();
 		for (String raw : lines(text)) {
-			rows.add(raw.strip());
+			String row = raw.strip();
+			if (!SECTION.matcher(row).matches()) {
+				rows.add(row);
+			}
+		}
+		// Blank lines before the first words or after the last would only be an empty pause
+		while (!rows.isEmpty() && rows.getFirst().isEmpty()) {
+			rows.removeFirst();
 		}
 		while (!rows.isEmpty() && rows.getLast().isEmpty()) {
 			rows.removeLast();

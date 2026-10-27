@@ -79,6 +79,15 @@ class LrcParserTest {
 	}
 
 	@Test
+	void plainSongPartNamesAndLeadingBlanksAreSkipped() {
+		Lyrics l = LrcParser.parsePlain("\n\n[Verse 1]\none\ntwo\n\n[Chorus: Someone]\nthree [softly]\n[ar:Nobody]", 60_000);
+		assertEquals(4, l.lines().size());
+		assertEquals("one", l.get(0).text());
+		assertTrue(l.get(2).isBreak());
+		assertEquals("three [softly]", l.get(3).text());
+	}
+
+	@Test
 	void indexAtFindsTheCurrentLine() {
 		Lyrics l = LrcParser.parseSynced("[00:01.00]a\n[00:02.00]b\n[00:03.00]c");
 		assertEquals(-1, l.indexAt(500));
