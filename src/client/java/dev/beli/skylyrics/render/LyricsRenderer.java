@@ -155,6 +155,8 @@ public final class LyricsRenderer {
 	private float wrapCacheProbe;
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
+	/** Whether the player was dead last frame, so the words start fresh once you respawn. */
+	private boolean wasDead;
 	/** The song whose title World words last showed, to show the next one's when it changes. */
 	private @Nullable String announced;
 	/** Arc layouts of the lines on show, keyed by line number and text. */
@@ -442,16 +444,26 @@ public final class LyricsRenderer {
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
+		// While you're dead the words drop away and nothing new comes; after respawning they start over
+		boolean dead = cfg.worldDeath && mc.player != null && mc.player.isDeadOrDying();
+		if (dead) {
+			worldWords.fall(now);
+		} else if (wasDead) {
+			worldWords.clear();
+		}
+		wasDead = dead;
 		// A new song's name floats up first, once the words know which way they gather
 		Track track = tracker.track();
 		String key = track.title() + "\n" + track.artist();
-		if (!track.isNone() && !key.equals(announced)) {
+		if (!dead && !track.isNone() && !key.equals(announced)) {
 			announced = key;
 			if (cfg.worldTitle) {
 				worldWords.announce(shownTitle(track.title()), TitleCleaner.mainArtist(track.artist()), cfg.direction.yaw, camera, mc.font, style, now);
 			}
 		}
-		worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);
+		if (!dead) {
+			worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);
+		}
 		float alpha = visibility * cfg.opacity;
 		if (alpha <= 0.01f) {
 			return;

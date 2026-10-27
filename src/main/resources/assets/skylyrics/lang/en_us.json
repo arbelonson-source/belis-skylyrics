@@ -280,6 +280,8 @@
   "skylyrics.ui.earlier_words_stay_lit_until_the_line_ends": "Earlier words stay lit until the line ends",
   "skylyrics.ui.sky_tint": "Sky tint",
   "skylyrics.ui.words_take_on_a_little_of_the_sky_colour": "Words take on a little of the sky colour",
+  "skylyrics.ui.death_animation": "Death animation",
+  "skylyrics.ui.words_drop_out_of_the_sky_when_you_die": "Words drop out of the sky when you die",
   "skylyrics.ui.elytra_mode": "Elytra mode",
   "skylyrics.ui.words_travel_with_you_when_you_glide_ride_or_fly": "Words travel with you when you glide, ride or fly",
   "skylyrics.ui.moonlit": "Moonlit",

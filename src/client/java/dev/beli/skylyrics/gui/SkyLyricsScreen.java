@@ -214,6 +214,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row glide = new Toggle(Tr.t("Elytra mode"), Tr.t("Words travel with you when you glide, ride or fly"),
 				() -> cfg.worldGlide, v -> cfg.worldGlide = v)
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row death = new Toggle(Tr.t("Death animation"), Tr.t("Words drop out of the sky when you die"),
+				() -> cfg.worldDeath, v -> cfg.worldDeath = v)
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row songTitle = new Toggle(Tr.t("Song title"), Tr.t("A new song's name floats up in the sky"),
 				() -> cfg.worldTitle, v -> cfg.worldTitle = v)
 				.when(() -> cfg.layout == Layout.WORLD);
@@ -238,7 +241,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, hold, tint, glide, songTitle),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, hold, tint, glide, death, songTitle),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 

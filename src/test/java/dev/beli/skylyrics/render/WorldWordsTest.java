@@ -323,4 +323,12 @@ class WorldWordsTest {
 		assertTrue(WorldWords.edgeOpacity(1) > WorldWords.edgeOpacity(0.6f));
 		assertTrue(WorldWords.edgeOpacity(1) <= 1);
 	}
+
+	@Test
+	void wordsDropFasterAndFasterWhenYouDie() {
+		assertEquals(0, WorldWords.fallDrop(0), 1e-6);
+		float first = WorldWords.fallDrop(0.5f), second = WorldWords.fallDrop(1f) - first;
+		assertTrue(first > 0 && second > first, "falling speeds up");
+		assertTrue(WorldWords.fallDrop(1.6f) > 3, "gone well below where it was by the time it fades");
+	}
 }

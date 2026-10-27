@@ -83,6 +83,8 @@ final class WorldWords {
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
 	/** How much smaller a let-go card has got by the time it has faded out. */
 	private static final float LEAVE = 0.15f;
+	/** When you die the words drop away: how long they take to fade, how hard they fall (blocks per second, squared) and spin (degrees a second). */
+	private static final float FALL_TIME = 1.6f, FALL_PULL = 3f, FALL_SPIN = 40f;
 	/** While up, a card rocks this many degrees either way and bobs this many blocks, once every {@code SWAY_TIME} seconds. */
 	private static final float SWAY_LEAN = 1.6f, SWAY_BOB = 0.05f, SWAY_TIME = 5.5f;
 	/** Before the first frame's view is known, cards further from where you look than this (cosine of the angle) aren't drawn. */
@@ -151,6 +153,8 @@ final class WorldWords {
 		long cutAt = -1;
 		/** A new song's title: it keeps its own time, and stays while the lyrics change over. */
 		boolean title;
+		/** When it started dropping away because you died, or -1. */
+		long fellAt = -1;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -193,6 +197,15 @@ final class WorldWords {
 	private boolean capitals;
 	private List<int[]> lineChunks = List.of();
 	private long rng = System.nanoTime();
+
+	/** You died: every word up drops out of the sky, spinning as it fades. */
+	void fall(long now) {
+		for (Card c : cards) {
+			if (c.fellAt < 0) {
+				c.fellAt = now;
+			}
+		}
+	}
 
 	void clear() {
 		cards.clear();
@@ -707,12 +720,16 @@ final class WorldWords {
 			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
 			float a = alpha * Mth.clamp(age / FADE_IN, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade))
 					* (c.cutAt < 0 ? 1 : cutAlpha((now - c.cutAt) / 1e9f));
+			float fell = c.fellAt < 0 ? 0 : (now - c.fellAt) / 1e9f;
+			if (c.fellAt >= 0) {
+				a *= goneAlpha(fell, FALL_TIME);
+			}
 			if (a < 0.03f) {
 				continue;
 			}
 			float x = (float) (c.pos.x - eye.x), z = (float) (c.pos.z - eye.z);
 			float sway = swayAngle(age, c.born);
-			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway);
+			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
 			int n = c.display.cps().length;
 			float grow = c.size * scale * pop(age) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade));
 			Vector3f centre = new Vector3f(x, y, z);
@@ -729,7 +746,7 @@ final class WorldWords {
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
-					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway)) * DEG));
+					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell) * DEG));
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
@@ -805,6 +822,11 @@ final class WorldWords {
 	 */
 	static float swayAngle(float age, long born) {
 		return age * (Mth.TWO_PI / SWAY_TIME) + (born >>> 16 & 1023) * (Mth.TWO_PI / 1024);
+	}
+
+	/** How many blocks a word has dropped {@code seconds} after you died. */
+	static float fallDrop(float seconds) {
+		return FALL_PULL * seconds * seconds / 2;
 	}
 
 	/** How many blocks a card has drifted up {@code age} seconds after it came, with the Float up setting {@code rise}. */
