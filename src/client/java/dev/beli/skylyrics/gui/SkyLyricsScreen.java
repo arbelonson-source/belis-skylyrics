@@ -31,6 +31,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Effects;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Crosshair;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
@@ -312,13 +313,17 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.hat.ordinal(), i -> cfg.hat = Hat.values()[i]);
 		Row hatPulse = new Toggle(Tr.t("Glow with the lyrics"), Tr.t("Flares up with each new line"),
 				() -> cfg.hatPulse, v -> cfg.hatPulse = v).when(() -> cfg.hat != Hat.NONE);
+		Row crosshair = new Cycle(Tr.t("Crosshair"), Tr.t("Drawn in your lyrics colour"),
+				List.of(Tr.t("Normal"), Tr.t("Dot"), Tr.t("Cross"), Tr.t("Circle"), Tr.t("Corners")),
+				() -> cfg.crosshair.ordinal(), i -> cfg.crosshair = Crosshair.values()[i]);
 
 		return List.of(
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
 				new Card(Tr.t("Colour"), mode, swatches, albumColor),
 				new Card(Tr.t("Style"), font, depth, glow, shadow, opacity, seeThrough, layer),
 				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength, skyPulse),
-				new Card(Tr.t("Hat"), hat, hatPulse));
+				new Card(Tr.t("Hat"), hat, hatPulse),
+				new Card(Tr.t("Crosshair"), crosshair));
 	}
 
 	private List<Card> musicTab() {

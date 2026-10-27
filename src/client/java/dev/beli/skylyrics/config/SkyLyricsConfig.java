@@ -135,6 +135,19 @@ public final class SkyLyricsConfig {
 		CAT_EARS
 	}
 
+	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */
+	public enum Crosshair {
+		/** Minecraft's own. */
+		NORMAL,
+		DOT,
+		/** A plus with a gap round a dot in the middle. */
+		CROSS,
+		/** A small ring round a dot. */
+		CIRCLE,
+		/** Four corners like a camera frame, round a dot. */
+		CORNERS
+	}
+
 	public enum Layer {
 		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
 		AUTO,
@@ -217,6 +230,8 @@ public final class SkyLyricsConfig {
 	public Hat hat = Hat.NONE;
 	/** The hat flares up with each new line. */
 	public boolean hatPulse = true;
+	/** The crosshair's shape. The attack meter under it stays as it is. */
+	public Crosshair crosshair = Crosshair.NORMAL;
 
 	// Display
 	public float size = 1f;
@@ -305,6 +320,7 @@ public final class SkyLyricsConfig {
 		if (skySpeed == null) skySpeed = d.skySpeed;
 		if (effects == null) effects = d.effects;
 		if (hat == null) hat = d.hat;
+		if (crosshair == null) crosshair = d.crosshair;
 		if (preferredPlayer == null) preferredPlayer = "";
 		if (spotifyClientId == null) spotifyClientId = "";
 		glow = clamp(glow, 0, 1);
