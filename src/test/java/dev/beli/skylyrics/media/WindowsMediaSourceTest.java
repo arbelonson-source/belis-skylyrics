@@ -22,8 +22,11 @@ import org.junit.jupiter.api.io.TempDir;
 
 class WindowsMediaSourceTest {
 	private static final boolean WINDOWS = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("windows");
-	/** Test machines can be slow to start PowerShell (antivirus scans, cold caches); the game uses 20 s and 4 s. */
-	private static final long START_MS = 60_000, REPLY_MS = 15_000;
+	/**
+	 * Test machines can be slow to start PowerShell (antivirus scans, cold caches), and the build tests every
+	 * Minecraft version at once, so four start together; the game uses 20 s and 4 s.
+	 */
+	private static final long START_MS = 150_000, REPLY_MS = 15_000;
 
 	@TempDir
 	Path dir;
@@ -89,7 +92,7 @@ class WindowsMediaSourceTest {
 
 	/** Runs the real helper script against a made-up media manager (windows-media-fake.ps1). */
 	@Test
-	@Timeout(180)
+	@Timeout(300)
 	void talksToTheHelper() throws Exception {
 		String shell = powershell();
 		assumeTrue(shell != null, "PowerShell isn't installed");
@@ -135,7 +138,7 @@ class WindowsMediaSourceTest {
 
 	/** Away from Windows the helper can't load the Windows media API; the error says so, and we don't retry at once. */
 	@Test
-	@Timeout(180)
+	@Timeout(300)
 	void explainsWhenWindowsMediaIsMissing() {
 		String shell = powershell();
 		assumeTrue(shell != null && !WINDOWS, "needs PowerShell on a system without the Windows media API");
@@ -153,7 +156,7 @@ class WindowsMediaSourceTest {
 
 	/** On Windows itself (CI), the real thing: starts the helper and asks what's playing. */
 	@Test
-	@Timeout(180)
+	@Timeout(300)
 	void readsTheRealWindowsMediaControls() throws Exception {
 		assumeTrue(WINDOWS, "Windows only");
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS);
