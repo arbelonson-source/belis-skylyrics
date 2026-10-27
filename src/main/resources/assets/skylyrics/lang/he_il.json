@@ -378,5 +378,8 @@
   "skylyrics.ui.no_music_right_now_try_the_demo_song": "אין מוזיקה כרגע? נסו את שיר ההדגמה.",
   "skylyrics.ui.you_re_all_set": "הכול מוכן",
   "skylyrics.ui.settings": "הגדרות",
-  "skylyrics.ui.you_can_change_the_keys_in_minecraft_s_controls": "אפשר לשנות את המקשים בהגדרות השליטה של מיינקראפט."
+  "skylyrics.ui.you_can_change_the_keys_in_minecraft_s_controls": "אפשר לשנות את המקשים בהגדרות השליטה של מיינקראפט.",
+  "skylyrics.ui.searching": "מחפש",
+  "skylyrics.ui.recent_searches": "חיפושים אחרונים",
+  "skylyrics.ui.spotify_keeps_this_playlist_s_songs_hidden_so_it": "ספוטיפיי מסתיר את השירים ברשימה הזאת, אז היא מתנגנת מההתחלה"
 }

@@ -314,6 +314,9 @@ public final class SkyLyricsConfig {
 	/** How the song library shows its covers. */
 	public LibraryView libraryView = LibraryView.GRID;
 
+	/** Searches in the song library that led to a song, newest first. */
+	public java.util.List<String> recentSearches = new java.util.ArrayList<>();
+
 	// Updates
 	public Updates updates = Updates.INSTALL;
 
@@ -364,6 +367,7 @@ public final class SkyLyricsConfig {
 		if (hat == null) hat = d.hat;
 		if (crosshair == null) crosshair = d.crosshair;
 		if (libraryView == null) libraryView = d.libraryView;
+		if (recentSearches == null) recentSearches = d.recentSearches;
 		if (preferredPlayer == null) preferredPlayer = "";
 		if (spotifyClientId == null) spotifyClientId = "";
 		glow = clamp(glow, 0, 1);

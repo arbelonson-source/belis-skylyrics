@@ -101,7 +101,17 @@ public final class SpotifyLibrary implements Library {
 	 */
 	@Override
 	public CompletableFuture<String> play(LibraryItem item, List<LibraryItem> after) {
-		String body = playBody(item, after);
+		return send(playBody(item, after), item.uri());
+	}
+
+	@Override
+	public CompletableFuture<String> playPlaylist(LibraryPlaylist playlist) {
+		JsonObject body = new JsonObject();
+		body.addProperty("context_uri", playlist.uri());
+		return send(body.toString(), playlist.uri());
+	}
+
+	private CompletableFuture<String> send(String body, String uri) {
 		return run(() -> {
 			HttpResponse<String> response = spotify.call("PUT", "/me/player/play", body);
 			if (response.statusCode() == 404) {
@@ -110,7 +120,7 @@ public final class SpotifyLibrary implements Library {
 					response = spotify.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 				}
 			}
-			return outcome(response.statusCode(), item.uri(), openHere);
+			return outcome(response.statusCode(), uri, openHere);
 		}).exceptionally(e -> Tr.t("Spotify didn't start the song, try again"));
 	}
 

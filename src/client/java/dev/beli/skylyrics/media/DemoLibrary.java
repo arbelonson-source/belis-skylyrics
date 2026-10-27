@@ -93,6 +93,11 @@ public final class DemoLibrary implements Library {
 		return done(Tr.t("These songs are made up, so nothing plays"));
 	}
 
+	@Override
+	public CompletableFuture<String> playPlaylist(LibraryPlaylist playlist) {
+		return done(Tr.t("These songs are made up, so nothing plays"));
+	}
+
 	/** Playlist {@code index} takes every few songs from its own starting point, so each holds a different mix. */
 	private static List<Integer> songsIn(int index) {
 		List<Integer> songs = new ArrayList<>();

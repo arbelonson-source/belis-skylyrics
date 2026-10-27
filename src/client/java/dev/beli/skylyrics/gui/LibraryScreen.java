@@ -433,15 +433,22 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private void renderShelf(GuiGraphics g, Frame f, Shelf shelf) {
+		boolean searchView = opened == null && section == Section.SEARCH;
+		if (searchView && searchDirty && !query.isBlank()) {
+			// Still typing: the old results would be for a different search, so show it looking instead
+			searching(g, Tr.t("Searching"));
+			return;
+		}
 		if (shelf.items.isEmpty()) {
-			String text;
-			if (!shelf.error.isEmpty()) {
-				text = shelf.error;
-			} else if (!shelf.loaded) {
-				text = Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3);
-			} else {
-				text = emptyText();
+			if (shelf.error.isEmpty() && !shelf.loaded) {
+				searching(g, searchView ? Tr.t("Searching") : Tr.t("Loading"));
+				return;
 			}
+			if (searchView && query.isBlank() && !recentSearches().isEmpty()) {
+				renderRecent(g, f);
+				return;
+			}
+			String text = shelf.error.isEmpty() ? emptyText() : shelf.error;
 			g.drawCenteredString(font, Ui.visual(text), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
 			if (!shelf.error.isEmpty()) {
 				int bx = px + pw / 2 - 40, by = viewY + viewH / 2 + 4;
@@ -612,6 +619,68 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
+	/** A small equaliser of bouncing bars with a word under it, while songs are on their way. */
+	private void searching(GuiGraphics g, String word) {
+		int cx = px + pw / 2, base = viewY + viewH / 2 + 2;
+		for (int i = 0; i < 5; i++) {
+			float wave = (Mth.sin((float) (clock * 7 - i * 0.9)) + 1) / 2;
+			int h = 4 + Math.round(wave * 14);
+			int color = Ui.lerp(wave, Ui.ACCENT_SOFT | 0xFF000000 & 0xFF6D58A8, Ui.ACCENT);
+			Ui.rect(g, cx - 22 + i * 9, base - h, 6, h, 2, color);
+		}
+		String dots = ".".repeat(1 + (int) (clock * 3) % 3);
+		g.drawCenteredString(font, Ui.visual(word + dots), cx, base + 8, Ui.MUTED);
+	}
+
+	private static List<String> recentSearches() {
+		return SkyLyricsConfig.get().recentSearches;
+	}
+
+	/** Remembers a search that led to a song being picked, newest first. */
+	static List<String> remember(List<String> recent, String search) {
+		List<String> out = new ArrayList<>();
+		out.add(search);
+		for (String old : recent) {
+			if (out.size() >= RECENT && !old.equalsIgnoreCase(search)) {
+				break;
+			}
+			if (!old.equalsIgnoreCase(search)) {
+				out.add(old);
+			}
+		}
+		return out;
+	}
+
+	static final int RECENT = 6;
+
+	/** Where each recent search chip sits: x, y, width. */
+	private List<int[]> recentChips() {
+		List<int[]> out = new ArrayList<>();
+		int x = viewX + 20, y = viewY + 34, right = viewX + viewW - 20;
+		for (String q : recentSearches()) {
+			int w = Math.min(font.width(Ui.clip(font, q, 160)) + 16, right - viewX - 20);
+			if (x + w > right && x > viewX + 20) {
+				x = viewX + 20;
+				y += 22;
+			}
+			out.add(new int[] {x, y, w});
+			x += w + 6;
+		}
+		return out;
+	}
+
+	private void renderRecent(GuiGraphics g, Frame f) {
+		g.drawString(font, Ui.visual(Tr.t("Recent searches")), viewX + 20, viewY + 16, Ui.MUTED, false);
+		List<String> recent = recentSearches();
+		List<int[]> chips = recentChips();
+		for (int i = 0; i < chips.size(); i++) {
+			int[] c = chips.get(i);
+			boolean hover = Ui.inside(f.mx(), f.my(), c[0], c[1], c[2], 16);
+			Ui.rect(g, c[0], c[1], c[2], 16, 8, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
+			g.drawCenteredString(font, Ui.visual(Ui.clip(font, recent.get(i), c[2] - 12)), c[0] + c[2] / 2, c[1] + 4, Ui.TEXT);
+		}
+	}
+
 	private String emptyText() {
 		if (opened != null) {
 			return Tr.t("This playlist is empty");
@@ -763,7 +832,12 @@ public final class LibraryScreen extends Screen {
 		Object entry = shelf.items.get(index);
 		if (entry instanceof LibraryPlaylist list) {
 			if (!list.openable()) {
-				say(Tr.t("Spotify doesn't let apps open this playlist"));
+				// Spotify won't list the songs of someone else's playlist, but it will still play it
+				if (playing == null) {
+					playingTitle = list.name();
+					say(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"));
+					playing = library.playPlaylist(list);
+				}
 				return;
 			}
 			Library lib = library;
@@ -783,6 +857,11 @@ public final class LibraryScreen extends Screen {
 			if (shelf.items.get(i) instanceof LibraryItem next) {
 				after.add(next);
 			}
+		}
+		if (opened == null && section == Section.SEARCH && !query.isBlank()) {
+			SkyLyricsConfig cfg = SkyLyricsConfig.get();
+			cfg.recentSearches = remember(cfg.recentSearches, query.strip());
+			cfg.save();
 		}
 		playingTitle = item.title();
 		say(Tr.t("Starting %s…", item.title()));
@@ -863,6 +942,17 @@ public final class LibraryScreen extends Screen {
 					return true;
 				}
 				x += w + 4;
+			}
+		}
+		if (opened == null && section == Section.SEARCH && query.isBlank()) {
+			List<int[]> chips = recentChips();
+			for (int i = 0; i < chips.size(); i++) {
+				int[] c = chips.get(i);
+				if (Ui.inside(mx, my, c[0], c[1], c[2], 16)) {
+					edit(recentSearches().get(i));
+					typedAt = 0;
+					return true;
+				}
 			}
 		}
 		Shelf shelf = shelf();

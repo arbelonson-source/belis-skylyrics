@@ -15,4 +15,7 @@ public interface Library {
 
 	/** Completes with an empty string when the song started, otherwise with a short message for the user. */
 	CompletableFuture<String> play(LibraryItem item, List<LibraryItem> after);
+
+	/** Plays a whole playlist from its first song, for playlists whose songs can't be listed. Same answer as {@link #play}. */
+	CompletableFuture<String> playPlaylist(LibraryPlaylist playlist);
 }
