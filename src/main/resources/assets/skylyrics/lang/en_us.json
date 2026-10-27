@@ -320,5 +320,8 @@
   "skylyrics.ui.none": "None",
   "skylyrics.ui.halo": "Halo",
   "skylyrics.ui.glow_with_the_lyrics": "Glow with the lyrics",
-  "skylyrics.ui.flares_up_with_each_new_line": "Flares up with each new line"
+  "skylyrics.ui.flares_up_with_each_new_line": "Flares up with each new line",
+  "skylyrics.ui.neon_headphones": "Neon headphones",
+  "skylyrics.ui.conical_hat": "Conical hat",
+  "skylyrics.ui.crown": "Crown"
 }
