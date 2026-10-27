@@ -288,4 +288,14 @@ class WorldWordsTest {
 		assertEquals(Math.toDegrees(Math.atan2(1, Math.sqrt(50))), high, 1e-3);
 		assertTrue(high > level * 1.3f);
 	}
+
+	@Test
+	void aSongTitleIsTidiedAndCutShortWhenLong() {
+		assertEquals("Neon Skyline", WorldWords.titleText("  Neon   Skyline ", false));
+		assertEquals("NEON SKYLINE", WorldWords.titleText("Neon Skyline", true));
+		String cut = WorldWords.titleText("A very long song title that goes on and on and on", false);
+		assertEquals(WorldWords.TITLE_MAX, cut.codePointCount(0, cut.length()));
+		assertTrue(cut.endsWith("\u2026"));
+		assertEquals("", WorldWords.titleText("   ", false));
+	}
 }

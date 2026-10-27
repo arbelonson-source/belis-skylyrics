@@ -166,6 +166,8 @@ public final class SkyLyricsConfig {
 	public boolean worldTint = true;
 	/** World layout: while you glide with an elytra, ride something or fly, the words travel with you instead of being left behind. */
 	public boolean worldGlide = true;
+	/** World layout: a new song's name floats up in the sky for a few seconds. */
+	public boolean worldTitle = true;
 
 	// Lyrics
 	public boolean showPrevious = true;

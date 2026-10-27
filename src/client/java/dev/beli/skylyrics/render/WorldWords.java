@@ -119,6 +119,10 @@ final class WorldWords {
 	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 1.2f;
 	/** How much each piece of a flowing line turns differently from the rest (degrees). */
 	private static final float SENTENCE_WOBBLE = 4f;
+	/** A new song's title: how much bigger than a word, how many seconds it stays, degrees above the words and blocks out. */
+	static final float TITLE_SIZE = 1.7f, TITLE_HOLD = 4f, TITLE_LIFT = 9f, TITLE_DISTANCE = 13f;
+	/** Longest title shown, in characters; longer ones are cut with an ellipsis. */
+	static final int TITLE_MAX = 32;
 
 	/** One card: where it stands, what it shows, and how it's turned. */
 	private static final class Card {
@@ -133,6 +137,8 @@ final class WorldWords {
 		long goneAt = -1;
 		/** When it was cut short to make room for newer cards, or -1. */
 		long cutAt = -1;
+		/** A new song's title: it keeps its own time, and stays while the lyrics change over. */
+		boolean title;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -176,6 +182,12 @@ final class WorldWords {
 
 	void clear() {
 		cards.clear();
+		newLyrics();
+	}
+
+	/** Starts over for new lyrics, keeping a song title that's up. */
+	void newLyrics() {
+		cards.removeIf(c -> !c.title);
 		line = Integer.MIN_VALUE;
 		spawned = 0;
 		lineRaw = null;
@@ -325,6 +337,11 @@ final class WorldWords {
 		if (lineText == null || over) {
 			letGo(now);
 		}
+		for (Card c : cards) {
+			if (c.title && c.goneAt < 0 && now - c.born > TITLE_HOLD * 1e9f) {
+				c.goneAt = now;
+			}
+		}
 		Vec3 eye = camera.position();
 		for (Iterator<Card> it = cards.iterator(); it.hasNext(); ) {
 			Card c = it.next();
@@ -385,10 +402,47 @@ final class WorldWords {
 	/** Every card shown so far starts fading. */
 	private void letGo(long now) {
 		for (Card c : cards) {
-			if (c.goneAt < 0) {
+			if (c.goneAt < 0 && !c.title) {
 				c.goneAt = now;
 			}
 		}
+	}
+
+	/**
+	 * Shows a new song's title as a big card above where the words gather, facing you, for a few seconds. It stays
+	 * while the lyrics change over, and new words keep clear of it.
+	 */
+	void announce(String title, float fixedYaw, Camera camera, Font font, Style style, long now) {
+		cards.removeIf(c -> c.title);
+		String text = titleText(title, capitals);
+		if (text.isEmpty()) {
+			return;
+		}
+		float[] centre = centre(fixedYaw, camera.yRot(), camera.xRot(), gliding);
+		Display d = Display.of(text);
+		Vec3 dir = direction(centre[0], Mth.clamp(centre[1] - LIFT - TITLE_LIFT, -75, 60));
+		Card c = new Card(d, widths(d, font, style), camera.position().add(dir.scale(TITLE_DISTANCE * away)), centre[0], 0, 0,
+				SIZE * TITLE_SIZE * away, now);
+		c.title = true;
+		cards.add(c);
+	}
+
+	/** A title as shown: trimmed, in capitals if the words are, and cut short with an ellipsis if it's long. */
+	static String titleText(String title, boolean capitals) {
+		String text = title.strip().replaceAll("\\s+", " ");
+		if (text.codePointCount(0, text.length()) > TITLE_MAX) {
+			text = text.substring(0, text.offsetByCodePoints(0, TITLE_MAX - 1)).stripTrailing() + "\u2026";
+		}
+		return capitals ? text.toUpperCase(Locale.ROOT) : text;
+	}
+
+	/** How far along each letter of a card starts, in text units, and its whole width last. */
+	private static float[] widths(Display d, Font font, Style style) {
+		float[] at = new float[d.cps().length + 1];
+		for (int v = 1; v <= d.cps().length; v++) {
+			at[v] = LyricsFont.width(font, style, new String(d.cps(), 0, v));
+		}
+		return at;
 	}
 
 	/**
@@ -404,10 +458,7 @@ final class WorldWords {
 			long now) {
 		String piece = new String(lineText.codePoints().toArray(), chunk[0], chunk[1] - chunk[0]);
 		Display d = Display.of(piece);
-		float[] at = new float[d.cps().length + 1];
-		for (int v = 1; v <= d.cps().length; v++) {
-			at[v] = LyricsFont.width(font, style, new String(d.cps(), 0, v));
-		}
+		float[] at = widths(d, font, style);
 		int letters = 0;
 		for (int cp : d.cps()) {
 			if (Character.isLetterOrDigit(cp)) {
@@ -440,7 +491,7 @@ final class WorldWords {
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
 			Card c = cards.get(k);
-			if (c.cutAt < 0 && ++kept > maxCards) {
+			if (c.cutAt < 0 && !c.title && ++kept > maxCards) {
 				// A lit card over the limit fades like a sung one; one already fading goes quickly
 				if (c.goneAt < 0) {
 					c.goneAt = now;
@@ -617,7 +668,7 @@ final class WorldWords {
 		Vec3 look = direction(camera.yRot(), camera.xRot());
 		Card sung = null;
 		for (Card c : cards) {
-			if (c.goneAt < 0 && c.cutAt < 0) {
+			if (c.goneAt < 0 && c.cutAt < 0 && !c.title) {
 				sung = c;
 			}
 		}
@@ -653,7 +704,7 @@ final class WorldWords {
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
-			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
+			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(colour, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
