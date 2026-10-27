@@ -555,18 +555,31 @@ public final class LibraryScreen extends Screen {
 		int size = carSize();
 		int y = carTop(size);
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
+		boolean first = true;
 		for (int i : carouselOrder(shelf)) {
 			float o = i - carPos;
 			float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
 			if (t <= 0) {
 				continue;
 			}
+			// Each card gets its own layer, or the letters of cards further back end up on top of nearer ones
+			if (!first) {
+				g.nextStratum();
+			}
+			first = false;
 			int x = Math.round(px + pw / 2f + LibraryViews.spread(o, size) - size / 2f);
+			float squash = LibraryViews.squash(o), scale = LibraryViews.scale(o) * LibraryGrid.popIn(t);
+			// A solid panel-coloured backing so a dimmed card fades into the panel, not into the cards behind it
+			g.pose().pushMatrix();
+			g.pose().translate(x + size / 2f, y + size / 2f);
+			g.pose().scale(scale * squash, scale);
+			g.pose().translate(-(x + size / 2f), -(y + size / 2f));
+			Ui.rect(g, x, y, size, size, 5, Ui.alpha(Ui.PANEL, t));
+			g.pose().popMatrix();
 			boolean middle = i == selected;
 			Object entry = shelf.items.get(i);
 			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-			renderCard(g, entry, x, y, size, LibraryViews.squash(o), false, LibraryViews.scale(o) * LibraryGrid.popIn(t),
-					LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
+			renderCard(g, entry, x, y, size, squash, false, scale, LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
 		}
 		if (shelf.pending != null) {
 			g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2,
