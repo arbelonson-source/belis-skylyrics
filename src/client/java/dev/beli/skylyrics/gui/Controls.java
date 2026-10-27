@@ -39,6 +39,7 @@ final class Controls {
 		int x, y, w;
 		boolean descClipped;
 		private BooleanSupplier shownIf = () -> true;
+		private boolean searchWhenHidden = true;
 
 		Row(String label, @Nullable String desc) {
 			this.label = label;
@@ -54,6 +55,17 @@ final class Controls {
 		/** The words the settings search looks through: the name, the description and, for pickers, every choice. */
 		String searchText() {
 			return label + " " + (desc == null ? "" : desc.get());
+		}
+
+		/** Leave this row out of search results while it's hidden, for rows that need something live, like a playing song. */
+		Row searchOnlyWhenShown() {
+			this.searchWhenHidden = false;
+			return this;
+		}
+
+		/** Whether the settings search may list this row even while its condition hides it. */
+		boolean searchWhenHidden() {
+			return searchWhenHidden && !(this instanceof Paragraph || this instanceof Info || this instanceof Buttons);
 		}
 
 		/** Only show this row while {@code condition} is true. */

@@ -400,5 +400,6 @@
   "skylyrics.ui.find_any_setting_by_its_name": "Find any setting by its name",
   "skylyrics.ui.type_what_you_re_looking_for": "Type what you're looking for",
   "skylyrics.ui.nothing_matches_try_another_word": "Nothing matches, try another word",
-  "skylyrics.ui.time_of_day": "Time of day"
+  "skylyrics.ui.time_of_day": "Time of day",
+  "skylyrics.ui.not_in_use_now": "not in use now"
 }

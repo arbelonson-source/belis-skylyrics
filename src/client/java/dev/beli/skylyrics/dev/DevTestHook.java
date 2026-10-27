@@ -172,6 +172,16 @@ public final class DevTestHook {
 						throw new IllegalStateException(e);
 					}
 				}
+				case "search" -> {
+					// Types into the settings screen's search box
+					//? if >=26.2 {
+					/*if (client.gui.screen() instanceof SkyLyricsScreen screen) {
+					*///?} else {
+					if (client.screen instanceof SkyLyricsScreen screen) {
+					//?}
+						screen.search(arg);
+					}
+				}
 				case "scroll" -> {
 					//? if >=26.2 {
 					/*if (client.gui.screen() != null) {

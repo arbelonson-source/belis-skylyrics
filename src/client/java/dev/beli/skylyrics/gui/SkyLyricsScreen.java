@@ -421,7 +421,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds);
 		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -3000, 3000, 50,
 				() -> cfg.songOffset(tracker.track()), v -> cfg.setSongOffset(tracker.track(), (int) Math.round(v)),
-				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE);
+				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE).searchOnlyWhenShown();
 		Row demo = new Toggle(Tr.t("Demo song"), Tr.t("A built-in song for trying things out"),
 				() -> cfg.demoMode, v -> {
 					cfg.demoMode = v;
@@ -690,7 +690,11 @@ public final class SkyLyricsScreen extends Screen {
 		return Math.max(0, contentH - viewH + 4);
 	}
 
-	private static List<Row> shownRows(Card card) {
+	private List<Row> shownRows(Card card) {
+		if (tab == SEARCH_TAB) {
+			// Search results stay put while you change them, even if a change would hide one elsewhere
+			return card.rows();
+		}
 		List<Row> rows = new ArrayList<>(card.rows().size());
 		for (Row row : card.rows()) {
 			if (row.shown()) {
@@ -843,22 +847,39 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	/** Every row whose name, description or card matches the search, in cards named after their tab. */
+	/**
+	 * Every setting whose name, description or choices match the search. Settings that are hidden right now
+	 * because of another setting (like Glow colour while Glow is at zero) come last, under their own heading,
+	 * so you still find them and can see they wait on something else.
+	 */
 	private List<Card> searchResults() {
 		List<Card> found = new ArrayList<>();
+		List<Card> waiting = new ArrayList<>();
 		for (int i = 0; i < TAB_COUNT; i++) {
 			for (Card card : tabs.get(i)) {
 				List<Row> rows = new ArrayList<>();
+				List<Row> hidden = new ArrayList<>();
 				for (Row row : card.rows()) {
 					String text = card.title() + " " + row.searchText();
-					if (!(row instanceof Paragraph) && SettingsSearch.matches(text, query)) {
+					if (row instanceof Paragraph || !SettingsSearch.matches(text, query)) {
+						continue;
+					}
+					if (row.shown()) {
 						rows.add(row);
+					} else if (row.searchWhenHidden()) {
+						hidden.add(row);
 					}
 				}
+				String title = tabName(i) + " · " + card.title();
 				if (!rows.isEmpty()) {
-					found.add(new Card(tabName(i) + " · " + card.title(), rows));
+					found.add(new Card(title, rows));
+				}
+				if (!hidden.isEmpty()) {
+					waiting.add(new Card(title + " · " + Tr.t("not in use now"), hidden));
 				}
 			}
 		}
+		found.addAll(waiting);
 		return found;
 	}
 
@@ -872,6 +893,12 @@ public final class SkyLyricsScreen extends Screen {
 		tabs.set(SEARCH_TAB, query.isBlank() ? List.of() : searchResults());
 		scrollTarget[SEARCH_TAB] = 0;
 		scroll[SEARCH_TAB] = 0;
+	}
+
+	/** Puts {@code text} in the search box and shows what it finds, as if it had been typed. */
+	public void search(String text) {
+		typing = true;
+		editSearch(text);
 	}
 
 	/** Empties the search box and goes back to the tab you were on. */

@@ -400,5 +400,6 @@
   "skylyrics.ui.find_any_setting_by_its_name": "חיפוש כל הגדרה לפי השם שלה",
   "skylyrics.ui.type_what_you_re_looking_for": "הקלידו את מה שאתם מחפשים",
   "skylyrics.ui.nothing_matches_try_another_word": "לא נמצא כלום, נסו מילה אחרת",
-  "skylyrics.ui.time_of_day": "שעת היום"
+  "skylyrics.ui.time_of_day": "שעת היום",
+  "skylyrics.ui.not_in_use_now": "לא בשימוש כרגע"
 }
