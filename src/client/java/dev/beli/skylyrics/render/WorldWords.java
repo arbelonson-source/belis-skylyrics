@@ -99,6 +99,8 @@ final class WorldWords {
 	/** Drop shadow: offset down-right in text units, colour, and opacity by night and by day (a bright sky needs it darker). */
 	private static final float SHADOW_X = 0.7f, SHADOW_Y = 0.9f, SHADOW_NIGHT = 0.55f, SHADOW_DAY = 0.85f;
 	private static final int SHADOW_RGB = 0x05040C;
+	/** By day a thin dark edge goes all round the letters, this far out (text units) and this strong at full day, so they read against white clouds. */
+	private static final float OUTLINE = 0.5f, OUTLINE_DAY = 0.7f;
 	/** Soft glow: copies of the word around it, how far out (text units) and how strong at full glow. */
 	private static final int GLOW_COPIES = 3, GLOW_LIGHT = 2;
 	private static final float GLOW_RADIUS = 1.1f, GLOW_ALPHA = 0.4f;
@@ -727,6 +729,11 @@ final class WorldWords {
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+			float edge = a * edgeOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
+			for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
+				draw(pose, out, c, shown, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE), y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE),
+						SHADOW_Z, mode);
+			}
 			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(colour, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
@@ -797,6 +804,11 @@ final class WorldWords {
 
 	static float riseAfter(float age, float rise) {
 		return Math.min(age * RISE, RISE_MAX) * rise;
+	}
+
+	/** How dark the edge round the letters is: none at night, where the shadow and glow are enough, darkest at noon. */
+	static float edgeOpacity(float day) {
+		return OUTLINE_DAY * Mth.clamp((day - 0.2f) / 0.8f, 0, 1);
 	}
 
 	/** How dark the drop shadow is: stronger by day, when the sky behind the words is bright. */

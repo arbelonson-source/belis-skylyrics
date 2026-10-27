@@ -314,4 +314,13 @@ class WorldWordsTest {
 		assertTrue(cut.endsWith("\u2026"));
 		assertEquals("", WorldWords.titleText("   ", false));
 	}
+
+	@Test
+	void lettersGetADarkEdgeOnlyByDay() {
+		assertEquals(0, WorldWords.edgeOpacity(0), 1e-6);
+		assertEquals(0, WorldWords.edgeOpacity(0.2f), 1e-6);
+		assertTrue(WorldWords.edgeOpacity(0.6f) > 0);
+		assertTrue(WorldWords.edgeOpacity(1) > WorldWords.edgeOpacity(0.6f));
+		assertTrue(WorldWords.edgeOpacity(1) <= 1);
+	}
 }
