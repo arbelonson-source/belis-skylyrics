@@ -345,5 +345,14 @@
   "skylyrics.ui.dot": "Dot",
   "skylyrics.ui.cross": "Cross",
   "skylyrics.ui.circle": "Circle",
-  "skylyrics.ui.corners": "Corners"
+  "skylyrics.ui.corners": "Corners",
+  "skylyrics.ui.updates": "Updates",
+  "skylyrics.ui.install": "Install",
+  "skylyrics.ui.tell_me": "Tell me",
+  "skylyrics.ui.checked_once_when_the_game_starts": "Checked once when the game starts",
+  "skylyrics.ui.download_new_versions_by_itself": "Download new versions by itself",
+  "skylyrics.ui.only_say_when_a_new_version_is_out": "Only say when a new version is out",
+  "skylyrics.ui.never_look_for_updates": "Never look for updates",
+  "skylyrics.ui.skylyrics_s_is_downloaded_restart_minecraft_to_u": "SkyLyrics %s is downloaded — restart Minecraft to use it",
+  "skylyrics.ui.skylyrics_s_is_out": "SkyLyrics %s is out"
 }

@@ -125,6 +125,14 @@ public final class SkyLyricsConfig {
 		LIGHT
 	}
 
+	public enum Updates {
+		/** Download a new version and swap it in; it starts on the next launch. */
+		INSTALL,
+		/** Only say that a new version is out. */
+		NOTIFY,
+		OFF
+	}
+
 	public enum Hat {
 		NONE,
 		/** A glowing ring floating above your head. */
@@ -292,6 +300,9 @@ public final class SkyLyricsConfig {
 	public String spotifyClientId = "";
 	public boolean demoMode = false;
 
+	// Updates
+	public Updates updates = Updates.INSTALL;
+
 	private static SkyLyricsConfig instance;
 
 	public static SkyLyricsConfig get() {
@@ -334,6 +345,7 @@ public final class SkyLyricsConfig {
 		if (skyColors == null) skyColors = d.skyColors;
 		if (skySpeed == null) skySpeed = d.skySpeed;
 		if (effects == null) effects = d.effects;
+		if (updates == null) updates = d.updates;
 		if (hat == null) hat = d.hat;
 		if (crosshair == null) crosshair = d.crosshair;
 		if (preferredPlayer == null) preferredPlayer = "";

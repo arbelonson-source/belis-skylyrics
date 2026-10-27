@@ -32,6 +32,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Effects;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Updates;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Crosshair;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layer;
@@ -559,9 +560,18 @@ public final class SkyLyricsScreen extends Screen {
 		Row links = new Buttons(Tr.t("Links"), null,
 				new Button("GitHub", () -> ConfirmLinkScreen.confirmLinkNow(this, URI.create(GITHUB))),
 				new Button("LRCLIB", () -> ConfirmLinkScreen.confirmLinkNow(this, URI.create(LRCLIB))));
+		Row updates = new Segmented(Tr.t("Updates"), Tr.t("Checked once when the game starts"),
+				new String[] {Tr.t("Install"), Tr.t("Tell me"), Tr.t("Off")}, () -> cfg.updates.ordinal(),
+				i -> cfg.updates = Updates.values()[i])
+				.describe(() -> switch (cfg.updates) {
+					case INSTALL -> Tr.t("Download new versions by itself");
+					case NOTIFY -> Tr.t("Only say when a new version is out");
+					case OFF -> Tr.t("Never look for updates");
+				});
 		return List.of(
 				new Card("Beli's SkyLyrics", intro, versionRow),
-				new Card(Tr.t("How it works"), how, compat, links));
+				new Card(Tr.t("How it works"), how, compat, links),
+				new Card(Tr.t("Updates"), updates));
 	}
 
 	private String lyricsStatus() {
