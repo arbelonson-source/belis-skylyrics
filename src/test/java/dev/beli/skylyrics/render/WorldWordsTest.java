@@ -265,6 +265,14 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aNewWordLandsBrightThenSettlesIntoItsColour() {
+		assertEquals(WorldWords.FLASH, WorldWords.flash(0), 1e-6);
+		assertTrue(WorldWords.flash(WorldWords.FLASH_TIME / 2) < WorldWords.FLASH / 2);
+		assertEquals(0, WorldWords.flash(WorldWords.FLASH_TIME), 1e-6);
+		assertEquals(0, WorldWords.flash(10), 1e-6);
+	}
+
+	@Test
 	void aFlowingWordGlidesIntoItsPlaceAndStops() {
 		assertEquals(WorldWords.SLIDE, WorldWords.slideIn(0), 1e-5);
 		assertTrue(WorldWords.slideIn(WorldWords.SLIDE_TIME / 2) < WorldWords.SLIDE / 2, "most of the way there by half time");

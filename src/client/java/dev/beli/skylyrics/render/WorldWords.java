@@ -81,6 +81,8 @@ final class WorldWords {
 	static final float POP = 0.22f, POP_TIME = 0.24f;
 	/** In a flowing line a new word instead slides this many text units in from the left as it fades up, over this many seconds. */
 	static final float SLIDE = 4f, SLIDE_TIME = 0.22f;
+	/** A new word lands this much of the way to white and settles into the lyrics colour over this many seconds. */
+	static final float FLASH = 0.55f, FLASH_TIME = 0.7f;
 	/** Cards drift up this many blocks a second, up to this high. */
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
 	/** How much smaller a let-go card has got by the time it has faded out. */
@@ -319,6 +321,12 @@ final class WorldWords {
 			sentence = null;
 		}
 		this.flow = flow;
+	}
+
+	/** How far towards white a word still is, {@code seconds} after it appeared: bright as it lands, then its own colour. */
+	static float flash(float seconds) {
+		float t = Mth.clamp(seconds / FLASH_TIME, 0, 1);
+		return FLASH * (1 - t) * (1 - t);
 	}
 
 	/** How far short of its place a flowing word still is, {@code seconds} after it appeared: it glides in and settles. */
@@ -777,7 +785,7 @@ final class WorldWords {
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = flow ? n : Mth.ceil(n * Math.min(1, age / TYPE));
-			int colour = c.goneAt < 0 ? rgb : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
+			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age)) : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
