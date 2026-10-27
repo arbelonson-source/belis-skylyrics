@@ -373,13 +373,13 @@ public final class LyricsRenderer {
 		}
 	}
 
-	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
 	/** A title without "- Remastered 2011", "(feat. …)" and the like, unless that would leave nothing. */
 	static String shownTitle(String title) {
 		String clean = TitleCleaner.forSearch(title);
 		return clean.isEmpty() ? title : clean;
 	}
 
+	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
 	private void renderWorldWords(WorldRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
 			long now) {
 		int index = shown.indexAt(time);
