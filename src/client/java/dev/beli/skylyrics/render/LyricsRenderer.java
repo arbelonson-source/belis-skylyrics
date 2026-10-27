@@ -38,6 +38,7 @@ import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
+import dev.beli.skylyrics.media.Track;
 
 /**
  * Draws the lyrics in the world. Text goes through Minecraft's own text pipeline (the same one
@@ -145,6 +146,8 @@ public final class LyricsRenderer {
 	private float wrapCacheProbe;
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
+	/** The song whose title World words last showed, to show the next one's when it changes. */
+	private @Nullable String announced;
 	/** Arc layouts of the lines on show, keyed by line number and text. */
 	private final Map<String, ArcText> arcCache = new HashMap<>();
 	/** Where in the sky each arc line was put, by line number. */
@@ -305,7 +308,7 @@ public final class LyricsRenderer {
 				offsetCache.clear();
 				arcCache.clear();
 				arcAnchors.clear();
-				worldWords.clear();
+				worldWords.newLyrics();
 			}
 			frozenTime = time;
 		} else {
@@ -387,6 +390,15 @@ public final class LyricsRenderer {
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
+		// A new song's name floats up first, once the words know which way they gather
+		Track track = tracker.track();
+		String key = track.title() + "\n" + track.artist();
+		if (!track.isNone() && !key.equals(announced)) {
+			announced = key;
+			if (cfg.worldTitle) {
+				worldWords.announce(track.title(), cfg.direction.yaw, camera, mc.font, style, now);
+			}
+		}
 		worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);
 		float alpha = visibility * cfg.opacity;
 		if (alpha <= 0.01f) {

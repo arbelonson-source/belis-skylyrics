@@ -323,5 +323,7 @@
   "skylyrics.ui.flares_up_with_each_new_line": "מתלקח עם כל שורה חדשה",
   "skylyrics.ui.neon_headphones": "אוזניות ניאון",
   "skylyrics.ui.conical_hat": "כובע חרוט",
-  "skylyrics.ui.crown": "כתר"
+  "skylyrics.ui.crown": "כתר",
+  "skylyrics.ui.song_title": "שם השיר",
+  "skylyrics.ui.a_new_song_s_name_floats_up_in_the_sky": "שם של שיר חדש מרחף בשמיים"
 }
