@@ -237,6 +237,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row flow = new Toggle(Tr.t("Flowing line"), Tr.t("Words read left to right instead of scattering"),
 				() -> cfg.worldFlow, v -> cfg.worldFlow = v)
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row curve = new Slider(Tr.t("Line curve"), Tr.t("How much a flowing line slopes and bends, 0 keeps it straight"), 0, 2, 0.05,
+				() -> cfg.worldCurve, v -> cfg.worldCurve = (float) v, v -> Math.round(v * 100) + "%")
+				.when(() -> cfg.layout == Layout.WORLD && cfg.worldFlow);
 		Row hold = new Toggle(Tr.t("Keep the whole line"), Tr.t("Earlier words stay lit until the line ends"),
 				() -> cfg.worldHold, v -> cfg.worldHold = v)
 				.when(() -> cfg.layout == Layout.WORLD);
@@ -285,7 +288,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
+				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, curve, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
 	}
 

@@ -507,6 +507,17 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aStraightLineKeepsEveryWordLevelAndUpright() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 0, false, 0);
+		float[] first = line.place(1.5f, 1, 0, 0);
+		for (int i = 0; i < 4; i++) {
+			float[] word = line.place(1.5f, 1, 0, 0);
+			assertEquals(first[1], word[1], 1e-4f);
+			assertEquals(0, word[2], 1e-4f);
+		}
+	}
+
+	@Test
 	void wordsAtTheEndsOfADeepBowStillStandMostlyUpright() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 5, false, 2.2f);
 		float[] first = line.place(1, 1, 0, 0);

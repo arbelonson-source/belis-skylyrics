@@ -280,6 +280,8 @@
   "skylyrics.ui.float_up": "ריחוף למעלה",
   "skylyrics.ui.how_far_the_words_drift_up_0_keeps_them_still": "כמה רחוק המילים צפות למעלה, 0 משאיר אותן במקום",
   "skylyrics.ui.flowing_line": "שורה זורמת",
+  "skylyrics.ui.line_curve": "עיקול השורה",
+  "skylyrics.ui.how_much_a_flowing_line_slopes_and_bends_0_keeps": "כמה שורה זורמת נוטה ומתעקלת, 0 משאיר אותה ישרה",
   "skylyrics.ui.words_read_left_to_right_instead_of_scattering": "המילים נקראות משמאל לימין במקום להתפזר",
   "skylyrics.ui.keep_the_whole_line": "שמירת כל השורה",
   "skylyrics.ui.earlier_words_stay_lit_until_the_line_ends": "מילים קודמות נשארות מוארות עד סוף השורה",

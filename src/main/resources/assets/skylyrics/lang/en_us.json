@@ -280,6 +280,8 @@
   "skylyrics.ui.float_up": "Float up",
   "skylyrics.ui.how_far_the_words_drift_up_0_keeps_them_still": "How far the words drift up, 0 keeps them still",
   "skylyrics.ui.flowing_line": "Flowing line",
+  "skylyrics.ui.line_curve": "Line curve",
+  "skylyrics.ui.how_much_a_flowing_line_slopes_and_bends_0_keeps": "How much a flowing line slopes and bends, 0 keeps it straight",
   "skylyrics.ui.words_read_left_to_right_instead_of_scattering": "Words read left to right instead of scattering",
   "skylyrics.ui.keep_the_whole_line": "Keep the whole line",
   "skylyrics.ui.earlier_words_stay_lit_until_the_line_ends": "Earlier words stay lit until the line ends",

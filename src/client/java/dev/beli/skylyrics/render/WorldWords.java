@@ -233,6 +233,8 @@ final class WorldWords {
 	/** How much further out than usual new cards float, and as much bigger, so they look the same size (the Distance setting). */
 	private float away = 1;
 	private float tilt = 1;
+	/** How much a flowing line slopes and bends, times the usual (the Line curve setting). */
+	private float curve = 1;
 	/** How far cards drift up, times the usual (the Float up setting). */
 	private float rise = 1;
 	/** The line as given, to notice when it changes, and in capitals as shown. */
@@ -355,6 +357,11 @@ final class WorldWords {
 	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
 	void nudge(boolean on) {
 		this.nudge = on;
+	}
+
+	/** How much a flowing line slopes and bends (the Line curve setting); 0 keeps it straight. */
+	void curve(float amount) {
+		this.curve = Mth.clamp(amount, 0, 2);
 	}
 
 	/** Whether new words keep out of the middle of your view (the Keep the middle clear setting). */
@@ -828,8 +835,8 @@ final class WorldWords {
 				if (cost < bestCost) {
 					bestCost = cost;
 					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1),
-							tilt * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1), lineRtl,
-							tilt * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1));
+							tilt * curve * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1), lineRtl,
+							tilt * curve * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1));
 				}
 			}
 			sentence.rest = wide;

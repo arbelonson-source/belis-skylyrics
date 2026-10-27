@@ -204,6 +204,8 @@ public final class SkyLyricsConfig {
 	public float worldRise = 1f;
 	/** World layout: a line's words read left to right in rows, like handwriting, instead of scattering. */
 	public boolean worldFlow = false;
+	/** World layout: how much a flowing line slopes and bends, times the usual; 0 keeps it straight. */
+	public float worldCurve = 1f;
 	/** World layout: a line's earlier words stay lit until the line is over, so you can read it whole. */
 	public boolean worldHold = true;
 	/** World layout: words that end up on top of each other glide apart. */
@@ -395,6 +397,7 @@ public final class SkyLyricsConfig {
 		worldDistance = clamp(worldDistance, 0.5f, 2);
 		worldTilt = clamp(worldTilt, 0, 2);
 		worldRise = clamp(worldRise, 0, 2);
+		worldCurve = clamp(worldCurve, 0, 2);
 		barSize = clamp(barSize, 0.75f, 1.5f);
 		barBackground = clamp(barBackground, 0, 1);
 		height = clamp(height, -10, 80);
