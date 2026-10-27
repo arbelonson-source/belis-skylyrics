@@ -49,4 +49,21 @@ class HatLayerTest {
 		assertTrue(right[3] < -0.5f);
 		assertTrue(left[1] < right[0]);
 	}
+
+	@Test
+	void thePumpkinGrinIsMirroredCurvesUpAndHasTeeth() {
+		float[] left = HatLayer.grinColumn(0), middle = HatLayer.grinColumn(2), right = HatLayer.grinColumn(4);
+		assertEquals(-left[0], right[1], 1e-5f);
+		assertEquals(left[2], right[3], 1e-5f);
+		assertTrue(left[2] < middle[2], "the corners sit higher than the middle");
+		for (int k = 0; k < 5; k++) {
+			float[] g = HatLayer.grinColumn(k);
+			assertTrue(g[4] - g[2] > 0.02f && g[5] - g[3] > 0.02f, "every slice stays open, teeth and all");
+			if (k > 0) {
+				assertEquals(HatLayer.grinColumn(k - 1)[1], g[0], 1e-5f);
+			}
+		}
+		assertTrue(HatLayer.grinColumn(1)[2] > HatLayer.grinColumn(0)[3], "a tooth hangs down from the top");
+		assertTrue(middle[4] < HatLayer.grinColumn(1)[5], "a tooth stands up in the middle");
+	}
 }

@@ -33,6 +33,9 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	static final float CONE_BRIM = 0.5f, CONE_BASE = HEAD_TOP + 0.05f, CONE_APEX = HEAD_TOP - 0.32f;
 	private static final int CROWN_POINTS = 8;
 	private static final int EAR_DARK = 0xFF24202E;
+	private static final float PUMPKIN_HALF = 0.32f, PUMPKIN_TOP = HEAD_TOP - 0.07f, PUMPKIN_BOTTOM = 0.07f;
+	private static final int RIBS = 4, GRIN_COLUMNS = 5;
+	private static final int ORANGE = 0xFFE3801F, ORANGE_DARK = 0xFFC9661A, STEM = 0xFF4F6A2B;
 
 	private final LyricsRenderer lyrics;
 
@@ -74,6 +77,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			case CONICAL -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> conical(p, vc, light, glow));
 			case CROWN -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> crown(p, vc, light, glow));
 			case CAT_EARS -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> catEars(p, vc, light, glow));
+			case PUMPKIN -> out.submitCustomGeometry(pose, RenderTypes.textBackground(), (p, vc) -> pumpkin(p, vc, light, glow));
 			case NONE -> { }
 		}
 		pose.popPose();
@@ -225,5 +229,49 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			face(p, vc, FULL_BRIGHT, glow, glow, e[0] + in, base - 0.015f, z - 0.004f, e[1] - in, base - 0.015f, z - 0.004f,
 					Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f, Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f);
 		}
+	}
+
+	/** A carved pumpkin over the whole head, ribbed in two oranges, with a stem and a face that glows. */
+	private static void pumpkin(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		float h = PUMPKIN_HALF, top = PUMPKIN_TOP, bottom = PUMPKIN_BOTTOM;
+		for (int i = 0; i < RIBS; i++) {
+			float a = -h + 2 * h * i / RIBS, b = -h + 2 * h * (i + 1) / RIBS;
+			int c = i % 2 == 0 ? ORANGE : ORANGE_DARK;
+			face(p, vc, light, c, c, a, top, -h, b, top, -h, b, bottom, -h, a, bottom, -h);
+			face(p, vc, light, c, c, a, top, h, b, top, h, b, bottom, h, a, bottom, h);
+			face(p, vc, light, c, c, -h, top, a, -h, top, b, -h, bottom, b, -h, bottom, a);
+			face(p, vc, light, c, c, h, top, a, h, top, b, h, bottom, b, h, bottom, a);
+			face(p, vc, light, c, c, a, top, -h, b, top, -h, b, top, h, a, top, h);
+		}
+		face(p, vc, light, ORANGE_DARK, ORANGE_DARK, -h, bottom, -h, h, bottom, -h, h, bottom, h, -h, bottom, h);
+		box(p, vc, light, STEM, -0.035f, top - 0.09f, -0.035f, 0.035f, top, 0.035f);
+		// The face, carved into the front (the side facing -z)
+		float z = -h - 0.004f;
+		for (float side : new float[] {-1, 1}) {
+			float x0 = side * 0.05f, x1 = side * 0.18f;
+			face(p, vc, FULL_BRIGHT, glow, glow, x0, -0.22f, z, x1, -0.22f, z, (x0 + x1) / 2, -0.35f, z, (x0 + x1) / 2, -0.35f, z);
+		}
+		face(p, vc, FULL_BRIGHT, glow, glow, -0.03f, -0.15f, z, 0.03f, -0.15f, z, 0, -0.2f, z, 0, -0.2f, z);
+		for (int k = 0; k < GRIN_COLUMNS; k++) {
+			float[] g = grinColumn(k);
+			face(p, vc, FULL_BRIGHT, glow, glow, g[0], g[2], z, g[1], g[3], z, g[1], g[5], z, g[0], g[4], z);
+		}
+	}
+
+	/**
+	 * One slice of the pumpkin's grin, left to right: {x0, x1, top at x0, top at x1, bottom at x0, bottom at x1}. The grin
+	 * curves up at the corners; a tooth hangs down into the second and fourth slices and one stands up in the middle.
+	 */
+	static float[] grinColumn(int k) {
+		float width = 0.42f, step = width / GRIN_COLUMNS, x0 = -width / 2 + k * step, x1 = x0 + step;
+		float lowerTop = k == 1 || k == 3 ? 0.035f : 0, raiseBottom = k == 2 ? 0.035f : 0;
+		return new float[] {x0, x1, grin(x0, -0.11f) + lowerTop, grin(x1, -0.11f) + lowerTop,
+				grin(x0, -0.03f) - raiseBottom, grin(x1, -0.03f) - raiseBottom};
+	}
+
+	/** The grin's edge at {@code x}: {@code y} in the middle, rising towards the corners. */
+	private static float grin(float x, float y) {
+		float t = x / 0.21f;
+		return y - 0.07f * t * t;
 	}
 }

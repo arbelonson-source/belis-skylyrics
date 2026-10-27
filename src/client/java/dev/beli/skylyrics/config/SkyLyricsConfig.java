@@ -134,7 +134,9 @@ public final class SkyLyricsConfig {
 		CONICAL,
 		CROWN,
 		/** Two cat ears with glowing insides. */
-		CAT_EARS
+		CAT_EARS,
+		/** A carved pumpkin with a glowing face. */
+		PUMPKIN
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */
