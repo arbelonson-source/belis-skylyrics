@@ -62,7 +62,7 @@ public final class IntroScreen extends Screen {
 				int x = px + (PANEL_W - 3 * bw - 16) / 2;
 				for (Layout layout : layouts) {
 					String name = layoutName(layout);
-					add(cfg.layout == layout ? "> " + name + " <" : name, x, mid - 14, bw, () -> {
+					add(cfg.layout == layout ? "> " + name + " <" : name, x, mid - 24, bw, () -> {
 						cfg.layout = layout;
 						rebuildWidgets();
 					});
@@ -182,7 +182,7 @@ public final class IntroScreen extends Screen {
 			}
 			case 2 -> {
 				heading(g, Tr.t("Where should the lyrics go?"), py + 22);
-				lines(g, py + 128, layoutText(cfg.layout));
+				lines(g, py + 106, layoutText(cfg.layout));
 			}
 			case 3 -> {
 				heading(g, Tr.t("Where the songs come from"), py + 22);
