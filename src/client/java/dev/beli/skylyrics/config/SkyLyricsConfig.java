@@ -312,6 +312,8 @@ public final class SkyLyricsConfig {
 	public BarAccent barAccent = BarAccent.FIXED;
 	public int barAccentColor = 0x926CDE;
 	public boolean barArt = true;
+	/** The round cover turns slowly, like a record, while the song plays. */
+	public boolean barSpin = false;
 	public boolean barEqualiser = true;
 
 	// Music

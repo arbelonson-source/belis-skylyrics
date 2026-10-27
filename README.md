@@ -17,7 +17,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - In the **World** layout, words can flow into a line that glides in and lands with a flash. Each row bows gently, like handwriting across the sky. They keep clear of the middle of your view, slide out of each other's way, never sink into blocks, and move off other players (handy in PvP). Hit a word to knock it back. When you die, the words drop out of the sky, spinning as they fade. Most of these can be turned off under **Position**.
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
 - Words fade in one by one and light up as they are sung. Four other animations are included, plus an optional glow pulse on each new line.
-- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own.
+- A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own, and the cover can spin slowly like a record.
 - The word being sung can grow a little in the sky (optional).
 - Four letter styles for the sky lyrics: Bold, Smooth, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
 - A soft periwinkle colour at first, with more soft colours to pick from. It can also take its colour from the album cover, or use rainbow. The glow around the letters can have its own colour.

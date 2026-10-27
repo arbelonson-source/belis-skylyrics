@@ -10,6 +10,8 @@ import static dev.beli.skylyrics.render.TopBarLayout.CLOCK_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_INSET;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_W;
 import static dev.beli.skylyrics.render.TopBarLayout.PILL_H;
+import static dev.beli.skylyrics.render.TopBarLayout.SPIN_HOLE;
+import static dev.beli.skylyrics.render.TopBarLayout.SPIN_TURNS;
 import static dev.beli.skylyrics.render.TopBarLayout.STATS_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.TEXT_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
@@ -131,6 +133,8 @@ public final class NowPlayingHud {
 	/** How far a long line is scrolled, and the old line's while it fades. */
 	private float scroll, oldScroll;
 	private final float[] eq = new float[BARS];
+	/** The spinning cover's angle (radians) and speed (0 to 1, see {@link TopBarLayout#spinSpeed}). */
+	private float spin, spinSpeed;
 	private int clockMinute = -1;
 	private String clockText = "";
 
@@ -303,10 +307,25 @@ public final class NowPlayingHud {
 
 		int artPx = Math.round(ART * s);
 		int artX = Math.round(px + ART_INSET * s), artY = Math.round(py + (ph - artPx) / 2);
+		spinSpeed = cfg.barSpin ? TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt) : 0;
+		spin = cfg.barSpin ? (spin + spinSpeed * SPIN_TURNS * Mth.TWO_PI * dt) % Mth.TWO_PI : 0;
 		if (cfg.barArt && art.hasTexture()) {
+			float cx = artX + artPx / 2f, cy = artY + artPx / 2f;
+			g.pose().pushMatrix();
+			g.pose().translate(cx, cy);
+			g.pose().rotate(spin);
+			g.pose().translate(-cx, -cy);
 			// The texture is already cut round (AlbumArt)
 			g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, artX, artY, 0, 0, artPx, artPx,
 					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a * dim));
+			g.pose().popMatrix();
+			if (cfg.barSpin) {
+				// A record's middle: a dark hole with a thin bright rim
+				float hole = Math.max(3, Math.round(artPx * SPIN_HOLE)), rim = Math.max(1, Math.round(s / 2));
+				roundRect(g, cx - hole / 2 - rim, cy - hole / 2 - rim, hole + 2 * rim, hole + 2 * rim, hole / 2 + rim,
+						ARGB.color(Math.round(a * dim * 150), 0xFFFFFF));
+				roundRect(g, cx - hole / 2, cy - hole / 2, hole, hole, hole / 2, ARGB.color(Math.round(a * 255), FILL));
+			}
 		} else if (cfg.barArt) {
 			roundRect(g, artX, artY, artPx, artPx, artPx / 2f, ARGB.color(Math.round(a * dim * 255), NO_ART));
 		}

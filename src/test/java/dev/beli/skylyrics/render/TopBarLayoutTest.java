@@ -79,4 +79,19 @@ class TopBarLayoutTest {
 		assertEquals(2, TopBarLayout.signalBars(450));
 		assertEquals(1, TopBarLayout.signalBars(2000));
 	}
+
+	@Test
+	void theCoverSpinsUpWhilePlayingAndWindsDownWhenPaused() {
+		float speed = 0;
+		for (int i = 0; i < 60; i++) {
+			speed = TopBarLayout.spinSpeed(speed, true, 1 / 60f);
+		}
+		// About a second in it's well on its way, but not yet at full speed
+		assertTrue(speed > 0.8f && speed < 1, "speed " + speed);
+		float paused = TopBarLayout.spinSpeed(speed, false, 1 / 60f);
+		assertTrue(paused < speed && paused > 0);
+		// A long hitch never overshoots
+		assertEquals(1, TopBarLayout.spinSpeed(0, true, 5), 1e-6);
+		assertEquals(0, TopBarLayout.spinSpeed(1, false, 5), 1e-6);
+	}
 }

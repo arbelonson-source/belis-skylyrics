@@ -24,6 +24,11 @@ final class TopBarLayout {
 	/** Text is cut off this far right of the cover, so a scrolled line never runs under it. */
 	static final float CLIP_GAP = 3;
 
+	/** A spinning cover's top speed (turns a second) and how quickly it gets there or winds down (per second). */
+	static final float SPIN_TURNS = 0.15f, SPIN_EASE = 2.5f;
+	/** The hole in the middle of a spinning cover, as a share of its width. */
+	static final float SPIN_HOLE = 0.16f;
+
 	static final float BAR_W = 2;
 	static final float BAR_GAP = 1;
 	static final int BARS = 4;
@@ -121,5 +126,14 @@ final class TopBarLayout {
 			return 3;
 		}
 		return latencyMs < 600 ? 2 : 1;
+	}
+
+	/**
+	 * A spinning cover's speed after {@code dt} seconds, from 0 (still) to 1 (full speed): it speeds up while the song
+	 * plays and winds down like a record when it stops.
+	 */
+	static float spinSpeed(float speed, boolean turning, float dt) {
+		float target = turning ? 1 : 0;
+		return speed + (target - speed) * Math.min(1, dt * SPIN_EASE);
 	}
 }
