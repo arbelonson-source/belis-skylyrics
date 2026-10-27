@@ -133,6 +133,8 @@ public final class LyricsRenderer {
 	private boolean light;
 	private float visibility;
 	private float daylight;
+	/** 0 at night, 1 in the day, from the stars alone (rain and painted skies ignored); for the Time of day colour. */
+	private float sunlight;
 	/** How strongly a bright painted sky (synthwave, moonlight) shows behind the lyrics, 0 to 1. */
 	private float backdrop;
 	private boolean hasLyrics;
@@ -1441,6 +1443,12 @@ public final class LyricsRenderer {
 			target = daylight(SkyEffects.starBrightness(level, camera, partial),
 					level.getRainLevel(partial));
 		}
+		float sun = 0;
+		if (level != null && SkyEffects.overworldSky(level)) {
+			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+			sun = 1 - Mth.clamp(SkyEffects.starBrightness(level, camera, partial) / SkyEffects.NIGHT_STARS, 0, 1);
+		}
+		sunlight = approach(sunlight, sun, dt * 2f);
 		daylight = approach(daylight, Math.max(target, BACKDROP * backdrop), dt * 2f);
 	}
 
@@ -1465,6 +1473,7 @@ public final class LyricsRenderer {
 			case ALBUM -> art.color();
 			case FIXED -> cfg.color;
 			case RAINBOW -> java.awt.Color.HSBtoRGB((now / 1e9f / 16f) % 1f, 0.55f, 1f) & 0xFFFFFF;
+			case TIME -> timeOfDay(sunlight);
 		};
 		float tr = (target >> 16 & 0xFF) / 255f, tg = (target >> 8 & 0xFF) / 255f, tb = (target & 0xFF) / 255f;
 		if (cr < 0 || cfg.colorMode == SkyLyricsConfig.ColorMode.RAINBOW) {
@@ -1477,6 +1486,14 @@ public final class LyricsRenderer {
 		cr += (tr - cr) * k;
 		cg += (tg - cg) * k;
 		cb += (tb - cb) * k;
+	}
+
+	static final int NIGHT = 0xB3A1FF, TWILIGHT = 0xFFAD85, DAY = 0xF2F7FF;
+
+	/** The Time of day colour for {@code day} from 0 (night) through twilight (0.5) to 1 (full day). */
+	static int timeOfDay(float day) {
+		day = Mth.clamp(day, 0, 1);
+		return day < 0.5f ? mix(NIGHT, TWILIGHT, day * 2) : mix(TWILIGHT, DAY, day * 2 - 1);
 	}
 
 	private int rgb() {

@@ -49,7 +49,9 @@ public final class SkyLyricsConfig {
 		/** One of the swatches, or a custom hex colour. */
 		FIXED,
 		/** Slowly cycles through the rainbow. */
-		RAINBOW
+		RAINBOW,
+		/** Follows the sky: warm at sunrise and sunset, pale by day, lilac at night. */
+		TIME
 	}
 
 	/** How the words of a line are laid out. */
