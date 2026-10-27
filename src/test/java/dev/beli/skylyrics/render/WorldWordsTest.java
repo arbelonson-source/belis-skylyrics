@@ -462,4 +462,16 @@ class WorldWordsTest {
 		assertTrue(first > 0 && second > first, "falling speeds up");
 		assertTrue(WorldWords.fallDrop(1.6f) > 3, "gone well below where it was by the time it fades");
 	}
+
+	@Test
+	void wordsAtTheEndsOfADeepBowStillStandMostlyUpright() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 5, false, 2.2f);
+		float[] first = line.place(1, 1, 0, 0);
+		assertTrue(first[2] > 0 && first[2] <= WorldWords.Sentence.CURVE_LEAN);
+		float lowest = first[2];
+		for (int i = 0; i < 12; i++) {
+			lowest = Math.min(lowest, line.place(1, 1, 0, 0)[2]);
+		}
+		assertTrue(lowest >= -WorldWords.Sentence.CURVE_LEAN && lowest < first[2]);
+	}
 }

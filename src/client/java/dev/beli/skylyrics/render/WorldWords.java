@@ -874,6 +874,8 @@ final class WorldWords {
 		static final float WIDTH = 26f;
 		/** Space between pieces, in their own half heights (about a letter, like a written word space), and between rows, in degrees. */
 		static final float GAP = 0.7f, ROW_GAP = 0.4f;
+		/** The most a word leans to follow its row's curve, in degrees, so the ends of a deep bow don't tip over. */
+		static final float CURVE_LEAN = 12f;
 		final float distance, turn;
 		/** How far the line rises to the right, in degrees (negative falls). */
 		final float slope;
@@ -937,7 +939,7 @@ final class WorldWords {
 			float along = Mth.clamp((yaw - left) / WIDTH, 0, 1), steep = (float) Math.tan(slope * DEG);
 			float rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
 			float climb = steep + bend * 4 * (1 - 2 * along) / WIDTH;
-			return new float[] {yaw, middle - rise, (float) Math.toDegrees(Math.atan(climb))};
+			return new float[] {yaw, middle - rise, Mth.clamp((float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN)};
 		}
 
 		/**
