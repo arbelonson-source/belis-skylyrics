@@ -368,19 +368,43 @@ final class WorldWords {
 		swung = knock;
 	}
 
+	private static final List<Player> inSight = new ArrayList<>();
+	private static long sightTick = Long.MIN_VALUE;
+	private static @Nullable ClientLevel sightLevel;
+
 	/**
 	 * Where the other players near you are, as boxes of yaw, pitch and half sizes in degrees seen from {@code eye}. A
 	 * player's box reaches up a little, since words float upwards and would otherwise rise into them.
 	 */
 	private static List<float[]> players(@Nullable ClientLevel level, Vec3 eye) {
 		List<float[]> spots = new ArrayList<>();
-		if (level == null) {
+		Player me = Minecraft.getInstance().player;
+		if (level == null || me == null) {
+			// Let go of the old world's players once you've left it
+			inSight.clear();
+			sightLevel = null;
 			return spots;
 		}
-		for (Player p : level.players()) {
+		// Only players you can see: a word dodging someone invisible or behind a wall would give them away in PvP.
+		// Looking is checked once a tick, as it means a ray through the blocks for each player.
+		if (level.getGameTime() != sightTick || level != sightLevel) {
+			sightTick = level.getGameTime();
+			sightLevel = level;
+			inSight.clear();
+			for (Player p : level.players()) {
+				if (p != me && !p.isSpectator() && !p.isInvisibleTo(me) && p.distanceToSqr(me) < PLAYER_RANGE * PLAYER_RANGE
+						&& me.hasLineOfSight(p)) {
+					inSight.add(p);
+				}
+			}
+		}
+		for (Player p : inSight) {
+			if (p.isRemoved()) {
+				continue;
+			}
 			Vec3 to = p.position().add(0, p.getBbHeight() / 2, 0).subtract(eye);
 			double far = to.length();
-			if (far > 1 && far < PLAYER_RANGE && !p.isSpectator() && p != Minecraft.getInstance().player) {
+			if (far > 1 && far < PLAYER_RANGE) {
 				spots.add(new float[] {yawOf(to), pitchOf(to), halfAngle(p.getBbWidth() / 2 + PLAYER_MARGIN, far),
 						halfAngle(p.getBbHeight() / 2 + PLAYER_MARGIN, far)});
 			}
