@@ -78,13 +78,13 @@ Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds y
 
 ## Building it yourself
 
-Gradle needs Java 25 to run. The `main` branch builds the 1.21.11 jar (Java 21) and the `mc-26.2` branch builds the 26.2 jar (Java 25). Changes go to `main` first, then `main` is merged into `mc-26.2`.
+Gradle needs Java 25 to run. One source tree builds a jar for every supported Minecraft version with [Stonecutter](https://github.com/stonecutter-versioning/stonecutter): the code in `src/` is written for 1.21.11, and comments like `//? if >=26.2 {` hold the lines that differ in newer versions. The versions and their dependencies are listed in `stonecutter.properties.toml`.
 
 ```
 JAVA_HOME=/path/to/java-25 ./gradlew build
 ```
 
-The jar ends up in `build/libs/`.
+The jars end up in `build/libs/`, one per Minecraft version. `./gradlew :26.2:build` builds just one.
 
 What's being worked on is tracked in [PLAN.md](PLAN.md).
 

@@ -7,16 +7,29 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Crosshair;
 import dev.beli.skylyrics.render.CrosshairShape;
+//? if <26.2 {
 import net.minecraft.client.gui.Gui;
+//?}
 import net.minecraft.client.gui.GuiGraphics;
+//? if >=26.2 {
+/*import net.minecraft.client.gui.Hud;
+*///?}
 import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /** Swaps the crosshair picture for one of our shapes. Minecraft still decides when it shows, and the attack meter stays. */
+//? if >=26.2 {
+/*@Mixin(Hud.class)
+*///?} else {
 @Mixin(Gui.class)
+//?}
 abstract class GuiMixin {
+	//? if >=26.2 {
+	/*@WrapOperation(method = "extractCrosshair", at = @At(value = "INVOKE", ordinal = 0,
+	*///?} else {
 	@WrapOperation(method = "renderCrosshair", at = @At(value = "INVOKE", ordinal = 0,
+	//?}
 			target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	private void skylyrics$crosshair(GuiGraphics g, RenderPipeline pipeline, Identifier sprite, int x, int y, int width,
 			int height, Operation<Void> original) {

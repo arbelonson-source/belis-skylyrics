@@ -7,11 +7,20 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+//? if >=26.2 {
+/*import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
+*///?} else {
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
+//?}
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+//? if >=26.2 {
+/*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+*///?} else {
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+//?}
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.fabricmc.loader.api.FabricLoader;
@@ -116,10 +125,17 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 		registerKeys();
 		sky = new SkyEffects(renderer, lyrics, art, tracker);
+		//? if >=26.2 {
+		/*LevelRenderEvents.COLLECT_SUBMITS.register(sky::render);
+		LevelRenderEvents.COLLECT_SUBMITS.register(renderer::renderEarly);
+		LevelRenderEvents.END_MAIN.register(renderer::renderLate);
+		LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, entityRenderer, layers, context) -> {
+		*///?} else {
 		WorldRenderEvents.BEFORE_ENTITIES.register(sky::render);
 		WorldRenderEvents.BEFORE_ENTITIES.register(renderer::renderEarly);
 		WorldRenderEvents.END_MAIN.register(renderer::renderLate);
 		LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, entityRenderer, layers, context) -> {
+		//?}
 			if (entityRenderer instanceof AvatarRenderer<?> avatar) {
 				layers.register(new HatLayer(avatar, renderer));
 			}
@@ -129,7 +145,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
+				//? if >=26.2 {
+				/*ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
+				*///?} else {
 				ScreenEvents.afterRender(screen).register((s, g, mouseX, mouseY, delta) -> renderTitle(s, g));
+				//?}
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
@@ -145,7 +165,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void renderTitle(Screen screen, GuiGraphics g) {
 		int bottom = screen.height - TITLE_FOOTER;
 		int top = 0;
+		//? if >=26.2 {
+		/*for (AbstractWidget widget : Screens.getWidgets(screen)) {
+		*///?} else {
 		for (AbstractWidget widget : Screens.getButtons(screen)) {
+		//?}
 			if (widget.visible && widget.getBottom() < bottom) {
 				top = Math.max(top, widget.getBottom());
 			}
@@ -205,7 +229,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
+		//? if >=26.2 {
+		/*return KeyMappingHelper.registerKeyMapping(
+		*///?} else {
 		return KeyBindingHelper.registerKeyBinding(
+		//?}
 				new KeyMapping("key.skylyrics." + name, InputConstants.Type.KEYSYM, code, category));
 	}
 
@@ -216,13 +244,23 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			moveOffShaderToggle(client, openLibrary);
 		}
 		while (openSettings.consumeClick()) {
+			//? if >=26.2 {
+			/*if (client.gui.screen() == null) {
+				client.gui.setScreen(new SkyLyricsScreen(null));
+			*///?} else {
 			if (client.screen == null) {
 				client.setScreen(new SkyLyricsScreen(null));
+			//?}
 			}
 		}
 		while (openLibrary.consumeClick()) {
+			//? if >=26.2 {
+			/*if (client.gui.screen() == null) {
+				client.gui.setScreen(new LibraryScreen(null));
+			*///?} else {
 			if (client.screen == null) {
 				client.setScreen(new LibraryScreen(null));
+			//?}
 			}
 		}
 		while (toggleLyrics.consumeClick()) {
@@ -256,13 +294,21 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void nudgeTiming(Minecraft client, int ms) {
 		Track track = tracker.track();
 		if (track == Track.NONE) {
+			//? if >=26.2 {
+			/*client.gui.hud.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
+			*///?} else {
 			client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
+			//?}
 			return;
 		}
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		cfg.setSongOffset(track, cfg.songOffset(track) + ms);
 		cfg.save();
+		//? if >=26.2 {
+		/*client.gui.hud.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
+		*///?} else {
 		client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
+		//?}
 	}
 
 	private void shutdown() {

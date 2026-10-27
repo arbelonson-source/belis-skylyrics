@@ -195,14 +195,26 @@ public final class LibraryScreen extends Screen {
 	}
 
 	@Override
+	//? if >=26.2 {
+	/*public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	*///?} else {
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	//?}
 		if (minecraft.level == null) {
+			//? if >=26.2 {
+			/*super.extractBackground(g, mouseX, mouseY, partialTick);
+			*///?} else {
 			super.renderBackground(g, mouseX, mouseY, partialTick);
+			//?}
 		}
 	}
 
 	@Override
+	//? if >=26.2 {
+	/*public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	//?}
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -606,12 +618,20 @@ public final class LibraryScreen extends Screen {
 	private void openMusicTab() {
 		if (parent instanceof SkyLyricsScreen settings) {
 			settings.selectTab(2);
+			//? if >=26.2 {
+			/*minecraft.gui.setScreen(settings);
+			*///?} else {
 			minecraft.setScreen(settings);
+			//?}
 			return;
 		}
 		SkyLyricsScreen settings = new SkyLyricsScreen(this);
 		settings.selectTab(2);
+		//? if >=26.2 {
+		/*minecraft.gui.setScreen(settings);
+		*///?} else {
 		minecraft.setScreen(settings);
+		//?}
 	}
 
 	@Override
@@ -719,7 +739,11 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	public void onClose() {
+		//? if >=26.2 {
+		/*minecraft.gui.setScreen(parent);
+		*///?} else {
 		minecraft.setScreen(parent);
+		//?}
 	}
 
 	@Override

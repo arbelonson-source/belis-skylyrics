@@ -29,7 +29,11 @@ public final class Visibility {
 				|| cfg.hideInEnd && Level.END.equals(level.dimension())) {
 			return true;
 		}
+		//? if >=26.2 {
+		/*Camera camera = mc.gameRenderer.mainCamera();
+		*///?} else {
 		Camera camera = mc.gameRenderer.getMainCamera();
+		//?}
 		if (cfg.hideUnderwater && camera.getFluidInCamera() == FogType.WATER) {
 			return true;
 		}

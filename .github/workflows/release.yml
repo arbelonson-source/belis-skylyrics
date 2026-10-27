@@ -1,7 +1,7 @@
-# Publishes a GitHub release with two jars: 1.21.11 (built from main) and 26.2 (built from the
-# mc-26.2 branch, which must already have everything main has). Two ways to start it:
+# Publishes a GitHub release with one jar per Minecraft version (stonecutter.properties.toml), all built
+# from main. Two ways to start it:
 # - push a tag like v0.2.0, or
-# - Actions tab → release → Run workflow (on main): it takes the version from gradle.properties,
+# - Actions tab → release → Run workflow (on main): it takes the version from stonecutter.properties.toml,
 #   creates the tag on the commit it built, and publishes the release.
 
 name: release
@@ -30,20 +30,13 @@ jobs:
           distribution: 'microsoft'
       - name: build
         run: chmod +x ./gradlew && ./gradlew build
-      - name: build the 26.2 jar
-        run: |
-          git fetch origin mc-26.2
-          git merge-base --is-ancestor HEAD FETCH_HEAD || { echo "::error::mc-26.2 is missing changes from this commit; merge main into mc-26.2 and push it first"; exit 1; }
-          git worktree add "$RUNNER_TEMP/port" FETCH_HEAD
-          (cd "$RUNNER_TEMP/port" && chmod +x ./gradlew && ./gradlew build)
-          cp "$RUNNER_TEMP"/port/build/libs/*.jar build/libs/
       - name: work out the tag
         run: |
-          version=$(grep '^version=' gradle.properties | cut -d= -f2 | tr -d ' ')
+          version=$(sed -n 's/^mod.version = "\(.*\)"$/\1/p' stonecutter.properties.toml)
           if [ "$GITHUB_EVENT_NAME" = "push" ]; then
-            test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but gradle.properties says $version"; exit 1; }
+            test "v$version" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME but stonecutter.properties.toml says $version"; exit 1; }
           elif gh release view "v$version" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            echo "v$version is already released; raise the version in gradle.properties first"; exit 1
+            echo "v$version is already released; raise mod.version in stonecutter.properties.toml first"; exit 1
           fi
           echo "TAG=v$version" >> "$GITHUB_ENV"
         env:
@@ -53,7 +46,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           jars=$(ls build/libs/*.jar | grep -v -- '-sources.jar$')
-          test "$(echo "$jars" | wc -l)" = 2 || { echo "expected two jars, got: $jars"; exit 1; }
+          want=$(grep -c '^\["' stonecutter.properties.toml)
+          test "$(echo "$jars" | wc -l)" = "$want" || { echo "expected $want jars, got: $jars"; exit 1; }
           notes=".github/release-notes/$TAG.md"
           # --target makes the tag on this commit when it doesn't exist yet (Run workflow)
           if [ -f "$notes" ]; then

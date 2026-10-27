@@ -115,41 +115,75 @@ public final class DevTestHook {
 				}
 				case "gui" -> {
 					SkyLyricsScreen screen = new SkyLyricsScreen(null);
+					//? if >=26.2 {
+					/*client.gui.setScreen(screen);
+					*///?} else {
 					client.setScreen(screen);
+					//?}
 					if (!arg.isEmpty()) {
 						screen.selectTab(Integer.parseInt(arg));
 					}
 				}
 				case "preview" -> {
+					//? if >=26.2 {
+					/*if (client.gui.screen() instanceof SkyLyricsScreen screen) {
+					*///?} else {
 					if (client.screen instanceof SkyLyricsScreen screen) {
+					//?}
 						screen.setPreview(true);
 					}
 				}
+				//? if >=26.2 {
+				/*case "close" -> client.gui.setScreen(null);
+				*///?} else {
 				case "close" -> client.setScreen(null);
+				//?}
 				case "screen" -> {
 					// Opens another mod's screen by class name, e.g. Mod Menu's list
 					try {
+						//? if >=26.2 {
+						/*client.gui.setScreen((Screen) Class.forName(arg).getConstructor(Screen.class).newInstance(client.gui.screen()));
+						*///?} else {
 						client.setScreen((Screen) Class.forName(arg).getConstructor(Screen.class).newInstance(client.screen));
+						//?}
 					} catch (ReflectiveOperationException e) {
 						throw new IllegalStateException(e);
 					}
 				}
 				case "scroll" -> {
+					//? if >=26.2 {
+					/*if (client.gui.screen() != null) {
+						client.gui.screen().mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
+					*///?} else {
 					if (client.screen != null) {
 						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
+					//?}
 					}
 				}
 				case "click" -> {
 					// x y in scaled GUI pixels, a left click and release
 					String[] xy = arg.split("\\s+");
+					//? if >=26.2 {
+					/*if (client.gui.screen() != null) {
+					*///?} else {
 					if (client.screen != null) {
+					//?}
 						var e = new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]),
 								new net.minecraft.client.input.MouseButtonInfo(0, 0));
+						//? if >=26.2 {
+						/*client.gui.screen().mouseClicked(e, false);
+						client.gui.screen().mouseReleased(e);
+						*///?} else {
 						client.screen.mouseClicked(e, false);
 						client.screen.mouseReleased(e);
+						//?}
 					}
 				}
+				//? if >=26.2 {
+				/*case "hud" -> { if (client.gui.hud.isHidden() != arg.equals("off")) client.gui.hud.toggle(); }
+				*///?} else {
 				case "hud" -> client.options.hideGui = arg.equals("off");
+				//?}
 				case "view" -> client.options.setCameraType(CameraType.values()[Integer.parseInt(arg)]);
 				case "lang" -> {
 					client.getLanguageManager().setSelected(arg);
@@ -158,7 +192,11 @@ public final class DevTestHook {
 				}
 				case "guiscale" -> {
 					client.options.guiScale().set(Integer.parseInt(arg));
+					//? if >=26.2 {
+					/*client.resizeGui();
+					*///?} else {
 					client.resizeDisplay();
+					//?}
 				}
 				case "cmd" -> {
 					MinecraftServer server = client.getSingleplayerServer();
@@ -178,7 +216,11 @@ public final class DevTestHook {
 					fpsSeen.clear();
 					fpsLeft = ((arg.isEmpty() ? 5 : Integer.parseInt(arg)) + 1) * 20;
 				}
+				//? if >=26.2 {
+				/*case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.gameRenderer.mainRenderTarget(), 1,
+				*///?} else {
 				case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.getMainRenderTarget(), 1,
+				//?}
 						message -> SkyLyricsClient.LOG.info("Test hook: {}", message.getString()));
 				default -> SkyLyricsClient.LOG.warn("Test hook: unknown command {}", parts[0]);
 			}

@@ -36,15 +36,16 @@ jobs:
         # Each system skips exactly one: Linux the real Windows test, Windows the "no Windows media" test.
         # More skips would mean PowerShell wasn't found and the helper went untested.
         run: |
-          report=build/test-results/test/TEST-dev.beli.skylyrics.media.WindowsMediaSourceTest.xml
-          grep -o '<testsuite [^>]*>' "$report"
-          grep -q 'skipped="1"' "$report" && grep -q 'failures="0"' "$report" && grep -q 'errors="0"' "$report"
+          for report in versions/*/build/test-results/test/TEST-dev.beli.skylyrics.media.WindowsMediaSourceTest.xml; do
+            grep -o '<testsuite [^>]*>' "$report"
+            grep -q 'skipped="1"' "$report" && grep -q 'failures="0"' "$report" && grep -q 'errors="0"' "$report" || exit 1
+          done
       - name: show failed tests as annotations
         # The annotations can be read through GitHub's API, which is easier to reach than the full log
         if: failure()
         run: |
           py=$(command -v python3 || command -v python)
-          for f in build/test-results/test/*.xml; do
+          for f in versions/*/build/test-results/test/*.xml; do
             [ -f "$f" ] || continue
             "$py" - "$f" <<'PY'
           import sys, xml.etree.ElementTree as ET

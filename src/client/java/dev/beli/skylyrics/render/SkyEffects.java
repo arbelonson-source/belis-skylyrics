@@ -14,11 +14,19 @@ import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import java.util.Objects;
 import java.util.Random;
+//? if >=26.2 {
+/*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+*///?} else {
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+//?}
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+//? if >=26.2 {
+/*import net.minecraft.util.LightCoordsUtil;
+*///?} else {
 import net.minecraft.client.renderer.LightTexture;
+//?}
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -231,7 +239,11 @@ public final class SkyEffects {
 		return Math.round(clamp01(alpha) * 255) << 24 | rgb;
 	}
 
+	//? if >=26.2 {
+	/*public void render(LevelRenderContext context) {
+	*///?} else {
 	public void render(WorldRenderContext context) {
+	//?}
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -253,7 +265,11 @@ public final class SkyEffects {
 		if (presence <= 0 || !wanted || level == null || level.dimensionType().skybox() != Skybox.OVERWORLD) {
 			return;
 		}
+		//? if >=26.2 {
+		/*Camera camera = mc.gameRenderer.mainCamera();
+		*///?} else {
 		Camera camera = mc.gameRenderer.getMainCamera();
+		//?}
 		if (camera.getFluidInCamera() != FogType.NONE) {
 			return;
 		}
@@ -303,8 +319,13 @@ public final class SkyEffects {
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
 		// The added light leaves no depth behind either: it sits inside the world (at most 110 blocks out), and
 		// glass, water and ice are drawn after it, so marking its depth would cut holes in any of them further away.
+		//? if >=26.2 {
+		/*OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
+		PoseStack pose = context.poseStack();
+		*///?} else {
 		OrderedSubmitNodeCollector sky = context.commandQueue().order(SKY_ORDER);
 		PoseStack pose = context.matrices();
+		//?}
 		pose.pushPose();
 		if (painted()) {
 			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
@@ -498,7 +519,11 @@ public final class SkyEffects {
 		@Override
 		protected void put(float x, float y, float z, int argb) {
 			if (lit) {
+				//? if >=26.2 {
+				/*vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightCoordsUtil.FULL_BRIGHT);
+				*///?} else {
 				vc.addVertex(pose, x, y, z).setColor(argb).setLight(LightTexture.FULL_BRIGHT);
+				//?}
 				return;
 			}
 			tx[corner] = x;

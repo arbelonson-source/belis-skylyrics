@@ -42,3 +42,6 @@ replay_*.log
 
 # test runs
 logs/
+
+# test games for the other Minecraft versions
+run-prod-*/

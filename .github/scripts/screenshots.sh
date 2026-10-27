@@ -53,7 +53,7 @@ EOF
 LOG="$RUN/logs/latest.log"
 rm -f "$LOG"
 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1920x1080x24" \
-	./gradlew --no-configuration-cache runProductionClient -PquickPlay=World -PwindowSize=1600x900 > game.log 2>&1 &
+	./gradlew --no-configuration-cache :1.21.11:runProductionClient -PquickPlay=World -PwindowSize=1600x900 > game.log 2>&1 &
 GAME=$!
 
 wait_for() { # pattern, seconds

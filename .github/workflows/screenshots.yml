@@ -25,7 +25,7 @@ jobs:
       - name: install a virtual screen
         run: sudo apt-get update -q && sudo apt-get install -y -q xvfb libgl1-mesa-dri mesa-utils jq
       - name: build the mod
-        run: chmod +x ./gradlew && ./gradlew remapJar
+        run: chmod +x ./gradlew && ./gradlew :1.21.11:assemble
       - name: play the demo song and take pictures
         run: OUT=shots bash .github/scripts/screenshots.sh
       - name: keep the pictures

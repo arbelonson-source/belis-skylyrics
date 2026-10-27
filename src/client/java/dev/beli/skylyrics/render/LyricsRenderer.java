@@ -10,14 +10,22 @@ import java.util.Locale;
 import java.util.Map;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+//? if >=26.2 {
+/*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+*///?} else {
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+//?}
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
+//? if >=26.2 {
+/*import net.minecraft.util.LightCoordsUtil;
+*///?} else {
 import net.minecraft.client.renderer.LightTexture;
+//?}
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
@@ -204,30 +212,51 @@ public final class LyricsRenderer {
 	 * when see-through, or cut holes in them when not. Drawn after them instead, both look right.
 	 * Shader packs run their own passes, so with one on the lyrics stay at the earlier, tested spot.
 	 */
+	//? if >=26.2 {
+	/*public void renderEarly(LevelRenderContext context) {
+	*///?} else {
 	public void renderEarly(WorldRenderContext context) {
+	//?}
 		if (ScreenLayer.shadersOn()) {
 			render(context);
 		}
 	}
 
+	//? if >=26.2 {
+	/*public void renderLate(LevelRenderContext context) {
+	*///?} else {
 	public void renderLate(WorldRenderContext context) {
+	//?}
 		if (!ScreenLayer.shadersOn()) {
 			render(context);
 		}
 	}
 
+	//? if >=26.2 {
+	/*private void render(LevelRenderContext context) {
+	*///?} else {
 	private void render(WorldRenderContext context) {
+	//?}
 		pending = null;
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		//? if >=26.2 {
+		/*Camera camera = mc.gameRenderer.mainCamera();
+		*///?} else {
 		Camera camera = mc.gameRenderer.getMainCamera();
+		//?}
 		long now = System.nanoTime();
 		float dt = step(mc, cfg, now);
 		long time = takeLyrics(cfg);
 
 		boolean want = cfg.enabled && hasLyrics
+				//? if >=26.2 {
+				/*&& !(cfg.hideWithF1 && mc.gui.hud.isHidden())
+				&& !(cfg.hideInMenus && mc.gui.screen() != null && !(mc.gui.screen() instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
+				*///?} else {
 				&& !(cfg.hideWithF1 && mc.options.hideGui)
 				&& !(cfg.hideInMenus && mc.screen != null && !(mc.screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen))
+				//?}
 				&& !(cfg.hideWhenPaused && !tracker.playing()) && !Visibility.hidden(mc, cfg);
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
 		updateColor(cfg, dt, now);
@@ -271,9 +300,17 @@ public final class LyricsRenderer {
 			return;
 		}
 
+		//? if >=26.2 {
+		/*PoseStack pose = context.poseStack();
+		*///?} else {
 		PoseStack pose = context.matrices();
+		//?}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
+		//? if >=26.2 {
+		/*Draw draw = new Draw(new WorldCanvas(context.submitNodeCollector(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
+		*///?} else {
 		Draw draw = new Draw(new WorldCanvas(context.commandQueue(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
+		//?}
 		for (Spot spot : spots) {
 			pose.pushPose();
 			pose.translate(spot.offset().x, spot.offset().y, spot.offset().z);
@@ -380,7 +417,11 @@ public final class LyricsRenderer {
 	}
 
 	/** The WORLD layout: cards in the world pass, even when the rest goes on screen, so each keeps its own perspective. */
+	//? if >=26.2 {
+	/*private void renderWorldWords(LevelRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
+	*///?} else {
 	private void renderWorldWords(WorldRenderContext context, Minecraft mc, SkyLyricsConfig cfg, Camera camera, long time,
+	//?}
 			long now) {
 		int index = shown.indexAt(time);
 		String text = null;
@@ -388,7 +429,11 @@ public final class LyricsRenderer {
 		boolean over = false;
 		if (sungLine(index)) {
 			LyricLine line = shown.get(index);
+			//? if >=26.2 {
+			/*text = line.drawString();
+			*///?} else {
 			text = line.text();
+			//?}
 			int total = text.codePointCount(0, text.length());
 			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), lineEnd(index)) * total : total;
 			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
@@ -413,7 +458,11 @@ public final class LyricsRenderer {
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
 		int wordsRgb = cfg.worldTint ? SkyTint.tint(rgb(), SkyTint.sky(), SkyTint.AMOUNT) : rgb();
+		//? if >=26.2 {
+		/*worldWords.render(context.poseStack(), context.submitNodeCollector(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
+		*///?} else {
 		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
+		//?}
 	}
 
 	/** When the singing of a line counts as over, for spreading its words over its time. */
@@ -472,7 +521,11 @@ public final class LyricsRenderer {
 			}
 		}
 		if (anchor == null) {
+			//? if >=26.2 {
+			/*long seed = ArcLayout.seed(index, shown.get(index).drawString());
+			*///?} else {
 			long seed = ArcLayout.seed(index, shown.get(index).text());
+			//?}
 			float side = (ArcLayout.unit(seed, 0, SALT_SIDE) * 2 - 1) * ARC_SIDE;
 			float up = ARC_ABOVE_MIN + ArcLayout.unit(seed, 0, SALT_UP) * (ARC_ABOVE_MAX - ARC_ABOVE_MIN);
 			anchor = new ArcAnchor();
@@ -615,7 +668,11 @@ public final class LyricsRenderer {
 					long end = shown.endOf(i, line.timeMs() + 4000);
 					sung = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
 				} else {
+					//? if >=26.2 {
+					/*text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
+					*///?} else {
 					text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
+					//?}
 					if (i < center || i == center && (!cfg.karaoke || !shown.synced())) {
 						sung = i == center || i < center ? 1 : 0;
 					} else if (i == center) {
@@ -695,7 +752,7 @@ public final class LyricsRenderer {
 		 * Copies with a higher {@code behind} sit a hair further back than the real text (0), so glow and depth
 		 * layers never flicker through it in the world.
 		 */
-		void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind);
+		void letters(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind);
 	}
 
 	private record WorldCanvas(SubmitNodeCollector out, PoseStack pose, Font.DisplayMode mode) implements Canvas {
@@ -716,12 +773,16 @@ public final class LyricsRenderer {
 		}
 
 		@Override
-		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
+		public void letters(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
 			if (behind > 0) {
 				pose.pushPose();
 				pose.translate(0, 0, -LAYER_STEP * behind);
 			}
+			//? if >=26.2 {
+			/*out.submitText(pose, x, y, seq, shadow, mode, LightCoordsUtil.FULL_BRIGHT, argb, 0, 0);
+			*///?} else {
 			out.submitText(pose, x, y, seq, shadow, mode, LightTexture.FULL_BRIGHT, argb, 0, 0);
+			//?}
 			if (behind > 0) {
 				pose.popPose();
 			}
@@ -745,7 +806,7 @@ public final class LyricsRenderer {
 		}
 
 		@Override
-		public void text(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
+		public void letters(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
 			g.pose().pushMatrix();
 			g.pose().translate(x, y);
 			g.drawString(font, seq, 0, 0, argb, shadow);
@@ -852,7 +913,11 @@ public final class LyricsRenderer {
 		void arcLine(ArcShot shot, long time, long now) {
 			int index = shot.index();
 			LyricLine line = shown.get(index);
+			//? if >=26.2 {
+			/*String text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
+			*///?} else {
 			String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
+			//?}
 			ArcText arc = arcCache.computeIfAbsent(index + "\n" + text, k -> arcText(index, text));
 			boolean leaving = shot.leave() >= 0;
 			float leave = leaving ? shot.leave() : 0;
@@ -930,16 +995,16 @@ public final class LyricsRenderer {
 					int halo = mix(face, 0x000000, 0.75f * daylight);
 					for (int k = 0; k < copies; k++) {
 						float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
-						canvas.text(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
+						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
 					}
 				}
 			}
 			if (cfg.depth && withDepth) {
 				float sin = Mth.sin(angle * DEG), cos = Mth.cos(angle * DEG);
-				canvas.text(x + sin * DEPTH_DOWN, y + cos * DEPTH_DOWN, colored(d, dark), false, argb, 2);
-				canvas.text(x - sin * DEPTH_UP, y - cos * DEPTH_UP, colored(d, light), false, argb, 1);
+				canvas.letters(x + sin * DEPTH_DOWN, y + cos * DEPTH_DOWN, colored(d, dark), false, argb, 2);
+				canvas.letters(x - sin * DEPTH_UP, y - cos * DEPTH_UP, colored(d, light), false, argb, 1);
 			}
-			canvas.text(x, y, colored(d, face), cfg.shadow && !cfg.depth, argb, 0);
+			canvas.letters(x, y, colored(d, face), cfg.shadow && !cfg.depth, argb, 0);
 		}
 
 		/** When a word of the line starts being sung, spreading the line's time over its letters. */
@@ -1086,12 +1151,12 @@ public final class LyricsRenderer {
 								float offset = ring == 1 ? Mth.PI / copies : Mth.PI / 4;
 								for (int k = 0; k < copies; k++) {
 									float ang = k * Mth.TWO_PI / copies + offset;
-									canvas.text(sx + Mth.cos(ang) * radius, sy + Mth.sin(ang) * radius,
+									canvas.letters(sx + Mth.cos(ang) * radius, sy + Mth.sin(ang) * radius,
 											glowSeq, false, glowColor, 1);
 								}
 							}
 						}
-						canvas.text(sx, sy, seq, cfg.shadow, Math.max(4, Math.round(alpha * f * 255)) << 24 | 0xFFFFFF, 0);
+						canvas.letters(sx, sy, seq, cfg.shadow, Math.max(4, Math.round(alpha * f * 255)) << 24 | 0xFFFFFF, 0);
 						if (size != 1) {
 							canvas.pop();
 						}

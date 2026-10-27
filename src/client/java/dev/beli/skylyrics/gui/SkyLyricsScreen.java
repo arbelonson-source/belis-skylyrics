@@ -375,7 +375,11 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.showPlainLyrics, v -> cfg.showPlainLyrics = v);
 
 		Row library = new Buttons(Tr.t("Song library"), Tr.t("Pick a song to play (key: %s)", keyName(mod.libraryKey())),
+				//? if >=26.2 {
+				/*new Button(Tr.t("Open"), () -> minecraft.gui.setScreen(new LibraryScreen(this))));
+				*///?} else {
 				new Button(Tr.t("Open"), () -> minecraft.setScreen(new LibraryScreen(this))));
+				//?}
 
 		return List.of(
 				new Card(Tr.t("Now playing"), new NowPlayingRow(), status, library),
@@ -515,7 +519,11 @@ public final class SkyLyricsScreen extends Screen {
 
 		Row openKey = new Info(Tr.t("Open settings"), null, () -> keyName(mod.openSettingsKey()));
 		Row controls = new Buttons(Tr.t("More keys"), Tr.t("Toggle lyrics, play/pause, skip songs"),
+				//? if >=26.2 {
+				/*new Button(Tr.t("Controls"), () -> minecraft.gui.setScreen(new KeyBindsScreen(this, minecraft.options))));
+				*///?} else {
 				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
+				//?}
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
@@ -650,15 +658,27 @@ public final class SkyLyricsScreen extends Screen {
 	// ---- Drawing ----------------------------------------------------------------------------------
 
 	@Override
+	//? if >=26.2 {
+	/*public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	*///?} else {
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	//?}
 		// In a world, leave it fully visible so changes can be seen on the real lyrics.
 		if (minecraft.level == null) {
+			//? if >=26.2 {
+			/*super.extractBackground(g, mouseX, mouseY, partialTick);
+			*///?} else {
 			super.renderBackground(g, mouseX, mouseY, partialTick);
+			//?}
 		}
 	}
 
 	@Override
+	//? if >=26.2 {
+	/*public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+	//?}
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -988,7 +1008,11 @@ public final class SkyLyricsScreen extends Screen {
 
 	@Override
 	public void onClose() {
+		//? if >=26.2 {
+		/*minecraft.gui.setScreen(parent);
+		*///?} else {
 		minecraft.setScreen(parent);
+		//?}
 	}
 
 	@Override
