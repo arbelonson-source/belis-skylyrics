@@ -265,6 +265,15 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aFlowingWordGlidesIntoItsPlaceAndStops() {
+		assertEquals(WorldWords.SLIDE, WorldWords.slideIn(0), 1e-5);
+		assertTrue(WorldWords.slideIn(WorldWords.SLIDE_TIME / 2) < WorldWords.SLIDE / 2, "most of the way there by half time");
+		assertTrue(WorldWords.slideIn(WorldWords.SLIDE_TIME / 2) > 0);
+		assertEquals(0, WorldWords.slideIn(WorldWords.SLIDE_TIME), 1e-6);
+		assertEquals(0, WorldWords.slideIn(5), 1e-6);
+	}
+
+	@Test
 	void aSlopedLineRisesToTheRightRowAfterRow() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0, 5);
 		float[] first = line.place(2, 1, 0, 0), second = line.place(2, 1, 0, 0);

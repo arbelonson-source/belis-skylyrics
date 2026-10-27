@@ -79,6 +79,8 @@ final class WorldWords {
 	private static final float FADE_IN = 0.14f, TYPE = 0.23f;
 	/** A new card starts this much bigger and settles back over this many seconds. */
 	static final float POP = 0.22f, POP_TIME = 0.24f;
+	/** In a flowing line a new word instead slides this many text units in from the left as it fades up, over this many seconds. */
+	static final float SLIDE = 4f, SLIDE_TIME = 0.22f;
 	/** Cards drift up this many blocks a second, up to this high. */
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
 	/** How much smaller a let-go card has got by the time it has faded out. */
@@ -317,6 +319,12 @@ final class WorldWords {
 			sentence = null;
 		}
 		this.flow = flow;
+	}
+
+	/** How far short of its place a flowing word still is, {@code seconds} after it appeared: it glides in and settles. */
+	static float slideIn(float seconds) {
+		float t = Mth.clamp(seconds / SLIDE_TIME, 0, 1);
+		return SLIDE * (1 - t) * (1 - t) * (1 - t);
 	}
 
 	/** How much bigger than normal a card is {@code seconds} after it appeared: a quick pop that settles. */
@@ -757,7 +765,8 @@ final class WorldWords {
 			float sway = swayAngle(age, c.born);
 			float y = (float) (c.pos.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
 			int n = c.display.cps().length;
-			float grow = c.size * scale * pop(age) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade));
+			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
+			float grow = c.size * scale * (flow ? 1 : pop(age)) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade));
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
@@ -767,14 +776,14 @@ final class WorldWords {
 			}
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
-			int shown = Mth.ceil(n * Math.min(1, age / TYPE));
+			int shown = flow ? n : Mth.ceil(n * Math.min(1, age / TYPE));
 			int colour = c.goneAt < 0 ? rgb : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
 					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell) * DEG));
 			pose.scale(grow, -grow, grow);
-			float x0 = -c.at[n] / 2f, y0 = -CAP_MIDDLE;
+			float x0 = -c.at[n] / 2f - (flow ? slideIn(age) : 0), y0 = -CAP_MIDDLE;
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
@@ -783,7 +792,8 @@ final class WorldWords {
 				draw(pose, out, c, shown, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE), y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE),
 						SHADOW_Z, mode);
 			}
-			float ring = a * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
+			// The glow comes up just behind the letters, so a new word lights up as it lands
+			float ring = a * Mth.clamp(age / FADE_IN, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
