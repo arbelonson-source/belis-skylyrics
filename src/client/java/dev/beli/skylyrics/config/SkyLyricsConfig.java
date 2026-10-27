@@ -12,6 +12,8 @@ import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -260,8 +262,10 @@ public final class SkyLyricsConfig {
 	public boolean barLyrics = true;
 	/** The time, left of the top bar. */
 	public boolean barClock = true;
-	/** Frames per second and ping, right of the top bar. */
+	/** Frames per second, right of the top bar. */
 	public boolean barStats = true;
+	/** Signal bars for your connection, right of the top bar; a file from before this had its own switch follows the frame rate one. */
+	public boolean barPing = true;
 	public BarShow barShow = BarShow.ALWAYS;
 	public BarPosition barPosition = BarPosition.TOP;
 	public float barSize = 1f;
@@ -291,8 +295,10 @@ public final class SkyLyricsConfig {
 	private static SkyLyricsConfig load() {
 		try {
 			if (Files.isRegularFile(file())) {
-				SkyLyricsConfig loaded = GSON.fromJson(Files.readString(file(), StandardCharsets.UTF_8), SkyLyricsConfig.class);
+				JsonObject json = JsonParser.parseString(Files.readString(file(), StandardCharsets.UTF_8)).getAsJsonObject();
+				SkyLyricsConfig loaded = GSON.fromJson(json, SkyLyricsConfig.class);
 				if (loaded != null) {
+					if (!json.has("barPing")) loaded.barPing = loaded.barStats;
 					loaded.fix();
 					return loaded;
 				}

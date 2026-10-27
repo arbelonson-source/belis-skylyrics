@@ -99,6 +99,7 @@ public final class NowPlayingHud {
 	private static final float[] SIGNAL_H = {5 / 3f, 11 / 3f, 17 / 3f, 23 / 3f};
 	private static final float SIGNAL_BOTTOM = 3.8f;
 	private static final float SIGNAL_TEXT_GAP = 5;
+	private static final float SIGNAL_W = BARS * BAR_W + (BARS - 1) * BAR_GAP;
 	/** A unit, written the same in every language like the debug screen's. */
 	private static final String FPS = " fps";
 	/** Room kept for the frame rate, so the bar doesn't twitch as the digits change. */
@@ -200,7 +201,7 @@ public final class NowPlayingHud {
 
 		String clock = cfg.barClock ? clock() : "";
 		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, clockStyle, clock) * clockScale;
-		float statsW = cfg.barStats ? statsWidth(font, style, textScale) : 0;
+		float statsW = statsWidth(cfg, font, style, textScale);
 		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), clockW, statsW);
 
 		float target = TopBarLayout.pillFor(contentWidth(font, style, textScale, next), fit.pill());
@@ -333,13 +334,26 @@ public final class NowPlayingHud {
 		return ((z ^ (z >>> 29)) >>> 40) / (float) (1L << 24);
 	}
 
-	private float statsWidth(Font font, Style style, float textScale) {
-		return BARS * BAR_W + (BARS - 1) * BAR_GAP + SIGNAL_TEXT_GAP + LyricsFont.width(font, style, FPS_SAMPLE) * textScale;
+	/** Room for the signal bars and the frame rate, whichever are on; 0 when neither is. */
+	private float statsWidth(SkyLyricsConfig cfg, Font font, Style style, float textScale) {
+		float w = cfg.barPing ? SIGNAL_W : 0;
+		if (cfg.barStats) {
+			w += (cfg.barPing ? SIGNAL_TEXT_GAP : 0) + LyricsFont.width(font, style, FPS_SAMPLE) * textScale;
+		}
+		return w;
 	}
 
-	/** Signal bars (lit by ping on a server, dim in single player), then the frame rate. */
+	/** Signal bars (lit by ping on a server, dim in single player), then the frame rate; each can be off. */
 	private void drawStats(GuiGraphics g, Minecraft mc, Font font, Style style, float textScale, float x, float midY) {
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		float a = alpha;
+		if (cfg.barStats) {
+			float tx = cfg.barPing ? x + SIGNAL_W + SIGNAL_TEXT_GAP : x;
+			text(g, font, style, mc.getFps() + FPS, tx, midY, textScale, fade(a, STAT_TEXT));
+		}
+		if (!cfg.barPing) {
+			return;
+		}
 		int lit = 0;
 		ClientPacketListener connection = mc.getConnection();
 		if (!mc.isLocalServer() && connection != null && mc.player != null) {
@@ -353,12 +367,10 @@ public final class NowPlayingHud {
 		float bottom = Math.round((midY + SIGNAL_BOTTOM) * s);
 		for (int i = 0; i < SIGNAL_H.length; i++) {
 			float h = Math.max(barW, Math.round(SIGNAL_H[i] * s));
-			int color = i < lit ? accent(SkyLyricsConfig.get()) : SIGNAL_OFF;
+			int color = i < lit ? accent(cfg) : SIGNAL_OFF;
 			roundRect(g, Math.round(x * s + i * pitch), bottom - h, barW, h, barW / 2, ARGB.color(Math.round(a * 255), color));
 		}
 		g.pose().popMatrix();
-		float tx = x + BARS * BAR_W + (BARS - 1) * BAR_GAP + SIGNAL_TEXT_GAP;
-		text(g, font, style, mc.getFps() + FPS, tx, midY, textScale, fade(a, STAT_TEXT));
 	}
 
 	/** The line or the song's name; the old one fades out where the new one fades in. */
