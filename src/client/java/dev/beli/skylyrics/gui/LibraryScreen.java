@@ -223,8 +223,11 @@ public final class LibraryScreen extends Screen {
 
 	private int contentHeight(Shelf shelf) {
 		int rows = (shelf.items.size() + cols - 1) / cols;
-		return Math.max(0, rows * (cellH + LibraryGrid.GAP) - LibraryGrid.GAP) + (shelf.pending != null ? 16 : 0);
+		return Math.max(0, rows * (cellH + LibraryGrid.GAP) - LibraryGrid.GAP) + 2 * GRID_PAD + (shelf.pending != null ? 16 : 0);
 	}
+
+	/** Room above and below the grid, so a hovered card's glow isn't cut off at the edge. */
+	private static final int GRID_PAD = 3;
 
 	private float maxScroll(Shelf shelf) {
 		if (view() == SkyLyricsConfig.LibraryView.SHELF) {
@@ -469,7 +472,7 @@ public final class LibraryScreen extends Screen {
 			return;
 		}
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		int top = viewY - Math.round(shelf.scroll);
+		int top = viewY + GRID_PAD - Math.round(shelf.scroll);
 		for (int i = 0; i < shelf.items.size(); i++) {
 			int x = viewX + (i % cols) * (cellW + LibraryGrid.GAP);
 			int y = top + (i / cols) * (cellH + LibraryGrid.GAP);
@@ -485,7 +488,7 @@ public final class LibraryScreen extends Screen {
 			}
 			Object entry = shelf.items.get(i);
 			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-			renderCard(g, entry, x, y - Math.round(lift * 2), LibraryGrid.popIn(t), t, lift, i == selected, current, moving);
+			renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == selected, current, moving);
 		}
 		if (shelf.pending != null) {
 			int y = top + contentHeight(shelf) - 12;
@@ -995,7 +998,7 @@ public final class LibraryScreen extends Screen {
 				}
 				return true;
 			}
-			int top = viewY - Math.round(shelf.scroll);
+			int top = viewY + GRID_PAD - Math.round(shelf.scroll);
 			int col = (int) ((mx - viewX) / (cellW + LibraryGrid.GAP));
 			int row = (int) Math.floor((my - top) / (cellH + LibraryGrid.GAP));
 			int index = row * cols + col;

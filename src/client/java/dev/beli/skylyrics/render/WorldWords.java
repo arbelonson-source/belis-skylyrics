@@ -8,6 +8,7 @@ import java.util.Locale;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.multiplayer.ClientLevel;
 //? if >=26.1 {
@@ -20,6 +21,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -58,6 +60,9 @@ final class WorldWords {
 	 * which it keeps this many degrees from.
 	 */
 	private static final int CLEAR_TRIES = 6;
+	/** Players closer than this are kept clear of words; how much room to leave around them, in blocks. */
+	private static final double PLAYER_RANGE = 64;
+	private static final float PLAYER_MARGIN = 0.6f;
 	private static final float CLEAR_PAD = 0.4f;
 	/** Older words are kept clear of where they'll have drifted up to this many seconds from now, not just where they are. */
 	private static final float LOOK_AHEAD = 1.5f;
@@ -588,7 +593,20 @@ final class WorldWords {
 				under.add(c);
 			}
 		}
-		float[] spot = flow ? follow(centre, at, size, taken) : scatter(centre, at, size, taken);
+		// Other players count as taken too, so in a fight the words don't cover the person you're aiming at
+		List<float[]> avoid = taken;
+		if (level != null) {
+			avoid = new ArrayList<>(taken);
+			for (Player p : level.players()) {
+				Vec3 to = p.position().add(0, p.getBbHeight() / 2, 0).subtract(eye);
+				double far = to.length();
+				if (far > 1 && far < PLAYER_RANGE && !p.isSpectator() && p != Minecraft.getInstance().player) {
+					avoid.add(new float[] {yawOf(to), pitchOf(to), halfAngle(p.getBbWidth() / 2 + PLAYER_MARGIN, far),
+							halfAngle(p.getBbHeight() / 2 + PLAYER_MARGIN, far)});
+				}
+			}
+		}
+		float[] spot = flow ? follow(centre, at, size, avoid) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Step closer while any part of the card is inside a block, so it doesn't hide in a wall or the floor
 		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;

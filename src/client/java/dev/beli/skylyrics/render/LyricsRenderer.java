@@ -157,6 +157,8 @@ public final class LyricsRenderer {
 	private final WorldWords worldWords = new WorldWords();
 	/** Whether the player was dead last frame, so the words start fresh once you respawn. */
 	private boolean wasDead;
+	/** The world the words were placed in; joining another server or world starts them over there. */
+	private @Nullable Object wordsLevel;
 	/** The song whose title World words last showed, to show the next one's when it changes. */
 	private @Nullable String announced;
 	/** Arc layouts of the lines on show, keyed by line number and text. */
@@ -449,6 +451,11 @@ public final class LyricsRenderer {
 		worldWords.tune(cfg.worldWords, cfg.worldLinger, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
+		if (mc.level != wordsLevel) {
+			wordsLevel = mc.level;
+			worldWords.clear();
+			announced = null;
+		}
 		// While you're dead the words drop away and nothing new comes; after respawning they start over
 		boolean dead = cfg.worldDeath && mc.player != null && mc.player.isDeadOrDying();
 		if (dead) {
