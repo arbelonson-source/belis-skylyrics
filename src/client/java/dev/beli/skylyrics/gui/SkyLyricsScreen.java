@@ -565,6 +565,8 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.barSpin, v -> cfg.barSpin = v).when(() -> cfg.nowPlayingHud && cfg.barArt);
 		Row barEq = new Toggle(Tr.t("Equaliser"), Tr.t("Bars that move with the music"),
 				() -> cfg.barEqualiser, v -> cfg.barEqualiser = v).when(() -> cfg.nowPlayingHud);
+		Row barProgress = new Toggle(Tr.t("Song progress"), Tr.t("A line that fills up as the song plays"),
+				() -> cfg.barProgress, v -> cfg.barProgress = v).when(() -> cfg.nowPlayingHud);
 
 		Row effects = new Segmented(Tr.t("Effects"), Tr.t("Less glow, more FPS"),
 				new String[] {Tr.t("Auto"), Tr.t("Full"), Tr.t("Light")}, () -> cfg.effects.ordinal(),
@@ -589,7 +591,7 @@ public final class SkyLyricsScreen extends Screen {
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, ping, frameRate, onlyOnChange, showBar, barPosition, barSize,
-						barBackground, barAccent, barSwatches, barArt, barSpin, barEq),
+						barBackground, barAccent, barSwatches, barArt, barSpin, barEq, barProgress),
 				new Card(Tr.t("Main menu"), title),
 				new Card(Tr.t("Performance"), effects, effectsNow),
 				new Card(Tr.t("Keys"), openKey, controls));

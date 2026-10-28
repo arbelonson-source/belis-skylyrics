@@ -319,6 +319,8 @@ public final class SkyLyricsConfig {
 	/** The round cover turns slowly, like a record, while the song plays. */
 	public boolean barSpin = false;
 	public boolean barEqualiser = true;
+	/** A thin line under the words that fills as the song plays. */
+	public boolean barProgress = false;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */

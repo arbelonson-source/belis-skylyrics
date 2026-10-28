@@ -94,4 +94,12 @@ class TopBarLayoutTest {
 		assertEquals(1, TopBarLayout.spinSpeed(0, true, 5), 1e-6);
 		assertEquals(0, TopBarLayout.spinSpeed(1, false, 5), 1e-6);
 	}
+
+	@Test
+	void progressFillsAsTheSongPlaysAndHidesWithoutALength() {
+		assertEquals(-1, TopBarLayout.progress(5_000, 0));
+		assertEquals(0, TopBarLayout.progress(-200, 10_000));
+		assertEquals(0.25f, TopBarLayout.progress(2_500, 10_000), 1e-6f);
+		assertEquals(1, TopBarLayout.progress(12_000, 10_000));
+	}
 }

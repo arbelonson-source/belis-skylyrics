@@ -136,4 +136,12 @@ final class TopBarLayout {
 		float target = turning ? 1 : 0;
 		return speed + (target - speed) * Math.min(1, dt * SPIN_EASE);
 	}
+
+	/** How much of the song has played, 0 to 1, or -1 when the player doesn't say how long it is. */
+	static float progress(long positionMs, long lengthMs) {
+		if (lengthMs <= 0) {
+			return -1;
+		}
+		return Math.clamp(positionMs / (float) lengthMs, 0f, 1f);
+	}
 }

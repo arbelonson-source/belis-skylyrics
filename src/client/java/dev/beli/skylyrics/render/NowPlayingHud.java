@@ -95,6 +95,10 @@ public final class NowPlayingHud {
 
 	/** Equaliser heights, from resting to the tallest. */
 	private static final float EQ_MIN = 2, EQ_MAX = 20 / 3f;
+	/** The song progress line: how far its top sits from the pill's bottom, and how thick it is. */
+	private static final float PROGRESS_UP = 7 / 3f, PROGRESS_H = 2 / 3f;
+	/** The unplayed part of the progress line, as a share of the accent's brightness. */
+	private static final float PROGRESS_TRACK = 0.25f;
 	/** The equaliser picks new heights a few times a second, like the reference's, not every frame. */
 	private static final float EQ_STEPS_PER_S = 4;
 	/** Signal bars: their heights, bottoms level a bit below the pill's middle, and the gap to the fps text. */
@@ -346,6 +350,18 @@ public final class NowPlayingHud {
 				roundRect(g, Math.round(eqX + i * (barW + barGap)), Math.round(py + (ph - bh) / 2), barW, bh, barW / 2,
 						ARGB.color(Math.round(a * dim * 255), accent(cfg)));
 			}
+		}
+
+		// Song progress: a thin line under the words that fills as the song plays
+		Track track = tracker.track();
+		float done = track == null ? -1 : TopBarLayout.progress(tracker.positionMs(), track.lengthMs());
+		if (cfg.barProgress && done >= 0) {
+			float lx = Math.round((x + ART_INSET + ART + TEXT_GAP) * s);
+			float lw = Math.round(TopBarLayout.textRoom(width) * s);
+			float lh = Math.max(1, Math.round(PROGRESS_H * s)), ly = Math.round(py + ph - PROGRESS_UP * s);
+			roundRect(g, lx, ly, lw, lh, lh / 2, ARGB.color(Math.round(a * PROGRESS_TRACK * 255), accent(cfg)));
+			roundRect(g, lx, ly, Math.max(lh, Math.round(lw * done)), lh, lh / 2,
+					ARGB.color(Math.round(a * 255), accent(cfg)));
 		}
 		g.pose().popMatrix();
 		if (cfg.barArt && !art.hasTexture()) {
