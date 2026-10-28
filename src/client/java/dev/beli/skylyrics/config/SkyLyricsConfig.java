@@ -336,6 +336,8 @@ public final class SkyLyricsConfig {
 	public boolean hatPulse = true;
 	/** The crosshair's shape. The attack meter under it stays as it is. */
 	public Crosshair crosshair = Crosshair.NORMAL;
+	/** Our crosshair shapes flash brighter for a moment as each new line starts. */
+	public boolean crosshairPulse = false;
 
 	// Display
 	public float size = 1f;

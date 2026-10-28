@@ -33,12 +33,17 @@ abstract class GuiMixin {
 			target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	private void skylyrics$crosshair(GuiGraphics g, RenderPipeline pipeline, Identifier sprite, int x, int y, int width,
 			int height, Operation<Void> original) {
-		Crosshair style = SkyLyricsConfig.get().crosshair;
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		Crosshair style = cfg.crosshair;
 		SkyLyricsClient mod = SkyLyricsClient.get();
 		if (style == Crosshair.NORMAL || mod == null || mod.renderer() == null) {
 			original.call(g, pipeline, sprite, x, y, width, height);
 			return;
 		}
-		CrosshairShape.draw(g, x + width / 2, y + height / 2, style, mod.renderer().color());
+		int rgb = mod.renderer().color();
+		if (cfg.crosshairPulse) {
+			rgb = CrosshairShape.flash(rgb, mod.renderer().secondsSinceLineChange());
+		}
+		CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
 	}
 }

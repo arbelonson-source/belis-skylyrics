@@ -18,6 +18,8 @@ public final class CrosshairShape {
 	private static final int SIDE = REACH * 2 + 3, MIDDLE = REACH + 1;
 	/** The dark edge round the shape. */
 	private static final int EDGE = 0xB0000000;
+	/** How far towards white the shape goes at the peak of a flash. */
+	static final float FLASH = 0.65f;
 	/** Ring radius for CIRCLE, in GUI pixels. */
 	private static final float RING = 5f;
 	private static final Map<Crosshair, List<int[]>> FACES = new EnumMap<>(Crosshair.class);
@@ -34,6 +36,23 @@ public final class CrosshairShape {
 		for (int[] run : FACES.computeIfAbsent(style, s -> runs(pixels(s)))) {
 			g.fill(x + run[0], y + run[1], x + run[0] + run[2], y + run[1] + 1, 0xFF000000 | rgb);
 		}
+	}
+
+	/**
+	 * The colour (packed RGB) flashed towards white as a new line starts, then easing back.
+	 *
+	 * @param since seconds since the lyrics moved to a new line
+	 */
+	public static int flash(int rgb, float since) {
+		float k = FLASH * LyricsRenderer.pulse(since);
+		if (k <= 0) {
+			return rgb;
+		}
+		int r = (rgb >> 16) & 0xFF, g = (rgb >> 8) & 0xFF, b = rgb & 0xFF;
+		r += Math.round((255 - r) * k);
+		g += Math.round((255 - g) * k);
+		b += Math.round((255 - b) * k);
+		return r << 16 | g << 8 | b;
 	}
 
 	/** Which pixels the shape covers, as [row][column] with the middle pixel at [MIDDLE][MIDDLE]. */

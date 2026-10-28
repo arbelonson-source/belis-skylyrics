@@ -1255,7 +1255,7 @@ public final class LyricsRenderer {
 
 	private static final float WORD_STAGGER = 0.07f;
 	private static final float WORD_FADE = 0.25f;
-	private static final float PULSE_RISE = 0.07f;
+	static final float PULSE_RISE = 0.07f;
 	private static final float PULSE_FALL = 0.65f;
 	/** How much bigger the word being sung gets, and over how many letters it swells and settles. */
 	static final float GROW = 0.14f;

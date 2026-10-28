@@ -12,6 +12,17 @@ class CrosshairShapeTest {
 	private static final int MIDDLE = CrosshairShape.REACH + 1;
 
 	@Test
+	void aFlashBrightensThenFadesBack() {
+		int rgb = 0x3366CC;
+		assertEquals(rgb, CrosshairShape.flash(rgb, -1));
+		assertEquals(rgb, CrosshairShape.flash(rgb, 60));
+		int peak = CrosshairShape.flash(rgb, LyricsRenderer.PULSE_RISE);
+		assertTrue((peak & 0xFF) > (rgb & 0xFF) && (peak >> 16) > (rgb >> 16), "the flash goes towards white");
+		assertTrue(peak >> 24 == 0, "stays plain RGB");
+		assertEquals(0xFFFFFF, CrosshairShape.flash(0xFFFFFF, LyricsRenderer.PULSE_RISE));
+	}
+
+	@Test
 	void everyShapeHasAMiddleAndIsSymmetric() {
 		for (Crosshair style : Crosshair.values()) {
 			if (style == Crosshair.NORMAL) continue;

@@ -410,6 +410,8 @@ public final class SkyLyricsScreen extends Screen {
 				List.of(Tr.t("Normal"), Tr.t("Dot"), Tr.t("Cross"), Tr.t("Circle"), Tr.t("Corners"),
 						Tr.t("Note")),
 				() -> cfg.crosshair.ordinal(), i -> cfg.crosshair = Crosshair.values()[i]);
+		Row crosshairPulse = new Toggle(Tr.t("Flash with the lyrics"), Tr.t("Brightens as each new line starts"),
+				() -> cfg.crosshairPulse, v -> cfg.crosshairPulse = v).when(() -> cfg.crosshair != Crosshair.NORMAL);
 
 		return List.of(
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
@@ -417,7 +419,7 @@ public final class SkyLyricsScreen extends Screen {
 				new Card(Tr.t("Style"), font, depth, glow, glowMode, glowSwatches, shadow, opacity, seeThrough, layer),
 				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength, skyPulse),
 				new Card(Tr.t("Hat"), hat, hatPulse),
-				new Card(Tr.t("Crosshair"), crosshair));
+				new Card(Tr.t("Crosshair"), crosshair, crosshairPulse));
 	}
 
 	private List<Card> musicTab() {
