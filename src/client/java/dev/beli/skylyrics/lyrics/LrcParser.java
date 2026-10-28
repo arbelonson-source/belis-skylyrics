@@ -43,7 +43,8 @@ public final class LrcParser {
 			Matcher m = TIME.matcher(raw);
 			List<Long> times = new ArrayList<>();
 			int end = 0;
-			while (m.find() && m.start() == end) {
+			// Some files put spaces between the stamps of a repeated line: "[00:05] [00:30] text"
+			while (m.find() && raw.substring(end, m.start()).isBlank()) {
 				times.add(toMillis(m.group(1), m.group(2), m.group(3)));
 				end = m.end();
 			}
