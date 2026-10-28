@@ -1,5 +1,7 @@
 package dev.beli.skylyrics.render;
 
+import java.util.Locale;
+
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -320,6 +322,6 @@ public final class RecordCard {
 	static String clock(long ms) {
 		long sec = Math.max(0, ms) / 1000;
 		long h = sec / 3600, m = sec / 60 % 60, s = sec % 60;
-		return h > 0 ? String.format("%d:%02d:%02d", h, m, s) : String.format("%d:%02d", m, s);
+		return h > 0 ? String.format(Locale.ROOT, "%d:%02d:%02d", h, m, s) : String.format(Locale.ROOT, "%d:%02d", m, s);
 	}
 }

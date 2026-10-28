@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -744,7 +745,7 @@ public final class LibraryScreen extends Screen {
 			// Coloured stand-in until the real cover arrives, then the cover fades in over it
 			Ui.rect(g, x, y, size, size, 5, Ui.alpha(0xFF000000 | rgb, alpha));
 			Ui.rect(g, x, y + size / 2, size, size / 2, 5, Ui.alpha(0x30000000, alpha));
-			String initial = title.isEmpty() ? "♪" : title.substring(0, title.offsetByCodePoints(0, 1)).toUpperCase();
+			String initial = title.isEmpty() ? "♪" : title.substring(0, title.offsetByCodePoints(0, 1)).toUpperCase(Locale.ROOT);
 			g.pose().pushMatrix();
 			g.pose().translate(x + size / 2f, y + size / 2f - 7);
 			g.pose().scale(2, 2);

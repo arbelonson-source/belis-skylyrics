@@ -91,4 +91,15 @@ class RecordCardTest {
 		assertEquals("3:07", RecordCard.clock(187_000));
 		assertEquals("1:02:05", RecordCard.clock(3_725_000));
 	}
+
+	@Test
+	void timesKeepPlainDigitsInEveryLanguage() {
+		java.util.Locale was = java.util.Locale.getDefault();
+		try {
+			java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar-EG-u-nu-arab"));
+			assertEquals("3:07", RecordCard.clock(187_000));
+		} finally {
+			java.util.Locale.setDefault(was);
+		}
+	}
 }
