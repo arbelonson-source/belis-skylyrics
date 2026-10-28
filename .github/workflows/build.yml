@@ -29,6 +29,9 @@ jobs:
         with:
           java-version: '25'
           distribution: 'microsoft'
+      - name: setup gradle
+        # Keeps downloaded libraries between runs, so a slow download server can't fail the build
+        uses: gradle/actions/setup-gradle@v6
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
       - name: build
