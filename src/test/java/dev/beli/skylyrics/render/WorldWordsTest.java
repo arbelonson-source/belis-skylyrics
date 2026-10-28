@@ -578,6 +578,23 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aFlowingLineStepsUpAndDownInTurn() {
+		for (float roll : new float[] {0, 0.3f, 1}) {
+			assertTrue(WorldWords.step(0, roll) < 0);
+			assertTrue(WorldWords.step(1, roll) > 0);
+			assertTrue(WorldWords.step(2, roll) < 0);
+		}
+		assertTrue(Math.abs(WorldWords.step(3, 0)) > 0.2f);
+		// Trying a spot and going back does not count as a piece
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
+		line.place(2, 1, 0, 0);
+		float[] mark = line.mark();
+		line.place(2, 1, 0, 0);
+		line.back(mark);
+		assertEquals(1, line.pieces);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));

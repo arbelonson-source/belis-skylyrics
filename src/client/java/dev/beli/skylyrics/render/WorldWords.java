@@ -182,6 +182,8 @@ final class WorldWords {
 	private static final float SENTENCE_TURN = 15f, SENTENCE_DEPTH = 0.03f;
 	/** A flowing line's new rows start up to this far in, its pieces sit up to this far off the row (degrees). */
 	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 0.7f;
+	/** Each piece of a flowing line steps the other way from the last, by at least this share of {@link #SENTENCE_BOB}. */
+	static final float SENTENCE_STEP = 0.45f;
 	/** How much each piece of a flowing line turns differently from the rest (degrees), and how much of the usual nod and lean it keeps, so the line reads as one. */
 	private static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 0.25f;
 	/** A flowing line rises or falls by between these many degrees, words and all, like a line written across a page. */
@@ -1056,7 +1058,7 @@ final class WorldWords {
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
-		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB, firm);
+		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
 		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
@@ -1144,6 +1146,14 @@ final class WorldWords {
 	 * along its row, or into the next one, past them. It never goes further, so a word can't drop far below its line;
 	 * when there's no room it takes the spot it tried that's least in the way, and the older word there makes way.
 	 */
+	/**
+	 * How far a flowing line's next piece sits off its row: up and down in turn, like a voice stepping between notes,
+	 * by a random amount that never quite flattens out. Bigger is lower.
+	 */
+	static float step(int piece, float roll) {
+		return (piece % 2 == 0 ? -1 : 1) * Mth.lerp(roll, SENTENCE_STEP, 1) * SENTENCE_BOB;
+	}
+
 	static float[] placeClear(Sentence line, float halfW, float halfH, float indent, float bob, List<float[]> taken) {
 		float[] mark = line.mark();
 		int rows = line.rows, best = 0;
@@ -1232,6 +1242,8 @@ final class WorldWords {
 		boolean newRow;
 		/** How many rows have been started after the first. */
 		int rows;
+		/** How many pieces have been written. */
+		int pieces;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this(left, top, distance, turn, 0, false);
@@ -1293,12 +1305,13 @@ final class WorldWords {
 			// A word never reaches up into the row above, however big it is or however it bobs
 			float middle = Math.max(top - halfH + bob, above + ROW_GAP + reach);
 			low = Math.max(low, middle + reach);
+			pieces++;
 			return new float[] {yaw, middle - rise, lean};
 		}
 
 		/** Where writing has got to, for {@link #back}. */
 		float[] mark() {
-			return new float[] {top, cursor, above, low, rest, newRow ? 1 : 0, rows};
+			return new float[] {top, cursor, above, low, rest, newRow ? 1 : 0, rows, pieces};
 		}
 
 		/** Goes back to where writing was at a {@link #mark}, as if the pieces since were never placed. */
@@ -1310,6 +1323,7 @@ final class WorldWords {
 			rest = mark[4];
 			newRow = mark[5] != 0;
 			rows = (int) mark[6];
+			pieces = (int) mark[7];
 		}
 
 		/**
