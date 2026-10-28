@@ -295,8 +295,11 @@ class WorldWordsTest {
 		while (last[0] > first[0]) {
 			last = line.place(2, 1, 0, 0);
 		}
-		// The next row starts from the left again, a row lower, on a line just as steep as the first
-		assertEquals(2 + WorldWords.Sentence.ROW_GAP - 1 - last[0] * Math.tan(Math.toRadians(5)), last[1], 1e-4);
+		// The next row starts from the left again, at least a row lower (mostly upright words on a slope need a
+		// little more room than the row's height), on a line just as steep as the first
+		assertTrue(last[1] >= 2 + WorldWords.Sentence.ROW_GAP - 1 - last[0] * Math.tan(Math.toRadians(5)) - 1e-4);
+		float[] next = line.place(2, 1, 0, 0);
+		assertEquals((next[0] - last[0]) * Math.tan(Math.toRadians(5)), last[1] - next[1], 1e-4);
 	}
 
 	@Test
@@ -376,8 +379,8 @@ class WorldWordsTest {
 		assertTrue(middle[1] < first[1] && middle[1] < last[1]);
 		assertTrue(first[2] > 0 && last[2] < 0);
 		assertTrue(Math.abs(middle[2]) < first[2]);
-		// A straight line leans by just its slope
-		assertEquals(3, new WorldWords.Sentence(0, 0, 10, 0, 3).place(2, 1, 0, 0)[2], 1e-3f);
+		// A straight line leans by just a share of its slope, so its words stay mostly upright
+		assertEquals(3 * WorldWords.Sentence.LINE_LEAN, new WorldWords.Sentence(0, 0, 10, 0, 3).place(2, 1, 0, 0)[2], 1e-3f);
 	}
 
 	@Test

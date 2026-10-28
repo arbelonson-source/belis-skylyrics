@@ -1039,8 +1039,11 @@ final class WorldWords {
 		static final float GAP = 0.7f, ROW_GAP = 0.4f;
 		/** Extra room, in degrees, between the lines of a verse than between the rows of one line; never less than {@link #CLEAR_PAD}. */
 		static final float VERSE_GAP = 0.6f;
-		/** The most a word leans to follow its row's curve, in degrees, so the ends of a deep bow don't tip over. */
-		static final float CURVE_LEAN = 12f;
+		/**
+		 * How much of its row's climb a word leans with, and the most it ever leans (degrees). Mostly upright words
+		 * step up or down along a sloped or bowed row like a staircase, which reads calmer than words tipped along it.
+		 */
+		static final float LINE_LEAN = 0.3f, CURVE_LEAN = 4f;
 		final float distance, turn;
 		/** How far the line rises to the right, in degrees (negative falls). */
 		final float slope;
@@ -1113,7 +1116,7 @@ final class WorldWords {
 			float along = Mth.clamp((yaw - left) / width, 0, 1), steep = (float) Math.tan(slope * DEG);
 			float rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
 			float climb = steep + bend * 4 * (1 - 2 * along) / width;
-			float lean = Mth.clamp((float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN);
+			float lean = Mth.clamp(LINE_LEAN * (float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN);
 			// Where the line climbs steeper than a word may lean, or bows under it, the word's ends stray off the line:
 			// it needs that much more room above and below
 			float reach = halfH + halfW * Math.abs(climb - (float) Math.tan(lean * DEG)) + 4 * Math.abs(bend) * halfW * halfW / (width * width);
