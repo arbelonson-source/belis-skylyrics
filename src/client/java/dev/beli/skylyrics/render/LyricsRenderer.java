@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import com.ibm.icu.text.ArabicShaping;
@@ -731,9 +730,9 @@ public final class LyricsRenderer {
 					sung = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
 				} else {
 					//? if >=26.1 {
-					/*text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
+					/*text = cfg.uppercase ? WorldWords.capitals(line.drawString()) : line.drawString();
 					*///?} else {
-					text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
+					text = cfg.uppercase ? WorldWords.capitals(line.text()) : line.text();
 					//?}
 					if (i < center || i == center && (!cfg.karaoke || !shown.synced())) {
 						sung = i == center || i < center ? 1 : 0;
@@ -976,9 +975,9 @@ public final class LyricsRenderer {
 			int index = shot.index();
 			LyricLine line = shown.get(index);
 			//? if >=26.1 {
-			/*String text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
+			/*String text = cfg.uppercase ? WorldWords.capitals(line.drawString()) : line.drawString();
 			*///?} else {
-			String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
+			String text = cfg.uppercase ? WorldWords.capitals(line.text()) : line.text();
 			//?}
 			ArcText arc = arcCache.computeIfAbsent(index + "\n" + text, k -> arcText(index, text));
 			boolean leaving = shot.leave() >= 0;

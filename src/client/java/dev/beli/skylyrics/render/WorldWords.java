@@ -4,7 +4,6 @@ import java.text.Bidi;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.DoublePredicate;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -722,7 +721,7 @@ final class WorldWords {
 		if (text.codePointCount(0, text.length()) > TITLE_MAX) {
 			text = text.substring(0, text.offsetByCodePoints(0, TITLE_MAX - 1)).stripTrailing() + "\u2026";
 		}
-		return capitals ? text.toUpperCase(Locale.ROOT) : text;
+		return capitals ? capitals(text) : text;
 	}
 
 	/** How far along each letter of a card starts, in text units, and its whole width last. */

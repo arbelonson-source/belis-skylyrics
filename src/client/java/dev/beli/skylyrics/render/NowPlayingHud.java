@@ -19,7 +19,6 @@ import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.Locale;
 
 import org.jspecify.annotations.Nullable;
 
@@ -644,9 +643,9 @@ public final class NowPlayingHud {
 		float through = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
 		float sung = cfg.karaoke ? through : 1;
 		//? if >=26.1 {
-		/*String text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
+		/*String text = cfg.uppercase ? WorldWords.capitals(line.drawString()) : line.drawString();
 		*///?} else {
-		String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
+		String text = cfg.uppercase ? WorldWords.capitals(line.text()) : line.text();
 		//?}
 		return new Content("L" + i + text, true, text.strip(), "", sung, through);
 	}
