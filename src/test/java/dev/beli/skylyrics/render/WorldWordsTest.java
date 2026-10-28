@@ -429,6 +429,17 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aWideRowOffToTheSideStillEndsOnScreen() {
+		// A row that would run past the right edge comes back in
+		float left = WorldWords.onScreen(20, 60, 0);
+		assertEquals(WorldWords.VIEW_HALF - 60, left, 1e-4f);
+		// ... and one past the left edge too, wherever you look
+		assertEquals(170 - WorldWords.VIEW_HALF, WorldWords.onScreen(100, 30, 170), 1e-4f);
+		// A row that already fits stays where it was
+		assertEquals(-10, WorldWords.onScreen(-10, 30, 0), 1e-4f);
+	}
+
+	@Test
 	void aWiderLineFitsMoreWordsOnARow() {
 		WorldWords.Sentence normal = new WorldWords.Sentence(0, 0, 10, 0), wide = new WorldWords.Sentence(0, 0, 10, 0);
 		wide.width = 2 * WorldWords.Sentence.WIDTH;

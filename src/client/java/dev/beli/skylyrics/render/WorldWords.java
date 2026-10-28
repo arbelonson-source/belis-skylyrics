@@ -863,7 +863,7 @@ final class WorldWords {
 			// The whole line's box: as wide as it reads, or a full row, and as many rows deep as it will need
 			float wide = (float) Math.toDegrees(lineWidth * SIZE * wordScale * LINE_SPREAD / distance);
 			// Rows grow with the words, so a big Size still writes a few words across before starting the next row
-			float width = Sentence.WIDTH * Mth.clamp(wordScale, 1, ROW_GROW);
+			float width = Math.min(Sentence.WIDTH * Mth.clamp(wordScale, 1, ROW_GROW), 2 * VIEW_HALF);
 			int rows = Math.max(1, Mth.ceil(wide / (width * ROW_FILL)));
 			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
 			// Under a line that sits over the kept-clear middle, the next one must still end above it
@@ -880,7 +880,7 @@ final class WorldWords {
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
 				// With the middle kept clear, a line goes just over it, or off to the left or the right of where you look
 				float roll = next(), side = !clearMiddle || roll < OVER_MIDDLE ? 0 : roll < (1 + OVER_MIDDLE) / 2 ? -SIDE_YAW : SIDE_YAW;
-				float left = centre[0] + side - width / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
+				float left = onScreen(centre[0] + side - width / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X, width, centre[0]);
 				float top = centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y;
 				if (clearMiddle && side == 0) {
 					// All its rows end above the kept-clear part
@@ -908,6 +908,14 @@ final class WorldWords {
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
 		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB, firm);
 		return new float[] {at2[0], at2[1], distance, at2[2]};
+	}
+
+	/** How far either side of where you look, in degrees, a line's rows may reach and still be on screen. */
+	static final float VIEW_HALF = 40f;
+
+	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
+	static float onScreen(float left, float width, float centre) {
+		return Mth.clamp(left, centre - VIEW_HALF, centre + VIEW_HALF - Math.min(width, 2 * VIEW_HALF));
 	}
 
 	/** How far below where a line would start, in degrees, the next lines of a verse may still go under it. */
