@@ -437,5 +437,7 @@
   "skylyrics.ui.bottom_right": "Bottom right",
   "skylyrics.ui.bottom_left": "Bottom left",
   "skylyrics.ui.top_left": "Top left",
-  "skylyrics.ui.top_right": "Top right"
+  "skylyrics.ui.top_right": "Top right",
+  "skylyrics.ui.soft_edges": "Soft edges",
+  "skylyrics.ui.only_a_glow_round_the_letters_no_dark_shadow_or": "Only a glow round the letters, no dark shadow or outline"
 }

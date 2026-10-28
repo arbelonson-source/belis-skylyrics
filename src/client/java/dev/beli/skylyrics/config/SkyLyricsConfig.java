@@ -259,6 +259,8 @@ public final class SkyLyricsConfig {
 	public WorldArrival worldArrival = WorldArrival.POP;
 	/** World layout: how each word goes once it's been sung. */
 	public WorldLeave worldLeave = WorldLeave.SHRINK;
+	/** World layout: letters with only their glow round them, no dark shadow or edge, like a soft neon sign. */
+	public boolean worldSoft = false;
 	/** World layout: new words go to the side of where you look, keeping the middle of the view free for the game. */
 	public boolean worldClearMiddle = true;
 	/** World layout: words keep out of the way of other players, so they never cover someone in a fight. */

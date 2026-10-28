@@ -246,6 +246,7 @@ final class WorldWords {
 	private boolean hold = true;
 	private WorldArrival arrival = WorldArrival.POP;
 	private WorldLeave leave = WorldLeave.SHRINK;
+	private boolean soft;
 	private boolean nudge = true, avoidPlayers = true, knock = true, swung, clearMiddle = true;
 	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
@@ -439,6 +440,11 @@ final class WorldWords {
 	/** How each sung word goes (the Leaving setting). */
 	void leave(WorldLeave leave) {
 		this.leave = leave == null ? WorldLeave.SHRINK : leave;
+	}
+
+	/** Whether letters get only their glow, with no drop shadow or dark edge (the Soft edges setting). */
+	void soft(boolean soft) {
+		this.soft = soft;
 	}
 
 	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
@@ -1614,13 +1620,15 @@ final class WorldWords {
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blown,
 					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) : 0);
-			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
-			float shade = a * shadowOpacity(day) * wane;
-			draw(pose, out, c, shown, melt, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
-			float edge = a * edgeOpacity(day) * wane;
-			for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
-				draw(pose, out, c, shown, melt, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE), y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE),
-						SHADOW_Z, mode);
+			if (!soft) {
+				// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
+				float shade = a * shadowOpacity(day) * wane;
+				draw(pose, out, c, shown, melt, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+				float edge = a * edgeOpacity(day) * wane;
+				for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
+					draw(pose, out, c, shown, melt, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
+							y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE), SHADOW_Z, mode);
+				}
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
 			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, replaced, light) / 2 * GLOW_COPIES / copies;

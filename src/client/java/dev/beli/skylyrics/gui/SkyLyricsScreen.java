@@ -307,6 +307,9 @@ public final class SkyLyricsScreen extends Screen {
 					case DISSOLVE -> Tr.t("Each sung word comes apart letter by letter");
 				})
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row soft = new Toggle(Tr.t("Soft edges"), Tr.t("Only a glow round the letters, no dark shadow or outline"),
+				() -> cfg.worldSoft, v -> cfg.worldSoft = v)
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),
 				() -> cfg.pulse, v -> cfg.pulse = v);
 		Row capitals = new Toggle(Tr.t("CAPITALS"), Tr.t("Write every lyric in capital letters"),
@@ -314,7 +317,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, curve, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
-				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, arrival, leaving, pulse, capitals));
+				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, arrival, leaving, soft, pulse, capitals));
 	}
 
 	private List<Card> lookTab() {
