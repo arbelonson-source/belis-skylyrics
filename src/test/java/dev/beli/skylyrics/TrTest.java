@@ -83,6 +83,13 @@ class TrTest {
 	}
 
 	@Test
+	void noLeftoverTexts() throws IOException {
+		Map<String, String> found = literals();
+		lang("en_us.json").keySet().stream().filter(k -> k.startsWith("skylyrics.ui."))
+				.forEach(k -> assertTrue(found.containsKey(k), "no longer used: " + k));
+	}
+
+	@Test
 	void hebrewHasSameKeysAndPlaceholders() throws IOException {
 		Map<String, String> en = lang("en_us.json");
 		Map<String, String> he = lang("he_il.json");
