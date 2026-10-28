@@ -113,13 +113,15 @@ public final class RecordCard {
 		float done = TopBarLayout.progress(played, length);
 		float lineW = x + W - PAD - 2 - tx, lineY = y + 31;
 		int accent = SkyLyricsClient.get().art().color();
-		NowPlayingHud.roundRectGui(g, tx, lineY, lineW, 2, 1, ARGB.color(Math.round(alpha * 60), 0xFFFFFF));
+		// Without a song length there is nothing to fill, so no empty line either
 		if (done >= 0) {
+			NowPlayingHud.roundRectGui(g, tx, lineY, lineW, 2, 1, ARGB.color(Math.round(alpha * 60), 0xFFFFFF));
 			NowPlayingHud.roundRectGui(g, tx, lineY, Math.max(2, lineW * done), 2, 1,
 					ARGB.color(Math.round(alpha * 255), accent));
 			float small = scale * 0.85f;
-			text(g, font, style, clock(played), tx, lineY + 7, small, fade(SUB));
-			String left = "-" + clock(length - played);
+			String[] times = times(played, length);
+			text(g, font, style, times[0], tx, lineY + 7, small, fade(SUB));
+			String left = times[1];
 			float leftW = LyricsFont.width(font, style, left) * small;
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
@@ -225,6 +227,17 @@ public final class RecordCard {
 	}
 
 	/** "3:07" for minutes and seconds, "1:02:05" past an hour; never below zero. */
+	/**
+	 * The time played and the time left, like "1:05" and "-2:35". Both count whole seconds of a song
+	 * rounded to the nearest second, so together they always make its length, and the time played
+	 * stops at the end instead of running past it.
+	 */
+	static String[] times(long playedMs, long lengthMs) {
+		long length = Math.round(Math.max(0, lengthMs) / 1000.0);
+		long played = Math.min(Math.max(0, playedMs) / 1000, length);
+		return new String[] {clock(played * 1000), "-" + clock((length - played) * 1000)};
+	}
+
 	static String clock(long ms) {
 		long sec = Math.max(0, ms) / 1000;
 		long h = sec / 3600, m = sec / 60 % 60, s = sec % 60;
