@@ -272,8 +272,28 @@ final class Controls {
 		}
 
 		private int optionWidth(Font font, int i) {
-			return font.width(options[i]) + 12;
+			return font.width(options[i]) + pad(font);
 		}
+
+		/** Room around each option's name, tighter when many options or long (Hebrew) names would crowd out the label. */
+		private int pad(Font font) {
+			int names = 0;
+			for (String o : options) {
+				names += font.width(o);
+			}
+			return pad(w, font.width(label), names, options.length);
+		}
+
+		/**
+		 * Room around each option's name in a row {@code rowW} wide: the usual 12 when everything fits, less when it
+		 * doesn't, so the label keeps at least {@link #LABEL_KEEP} of its width, but never under 4.
+		 */
+		static int pad(int rowW, int labelW, int namesW, int count) {
+			int room = rowW - 20 - 8 - Math.min(labelW, LABEL_KEEP) - 4 - namesW;
+			return Math.max(4, Math.min(12, room / count));
+		}
+
+		static final int LABEL_KEEP = 56;
 
 		@Override
 		int controlWidth(Font font) {
@@ -311,7 +331,7 @@ final class Controls {
 				int ow = optionWidth(font, i);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), ox, by, ow, 16);
 				int color = i == selected ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
-				f.g().drawString(font, Ui.visual(options[i]), ox + 6, by + 4, color, false);
+				f.g().drawString(font, Ui.visual(options[i]), ox + (ow - font.width(options[i])) / 2, by + 4, color, false);
 				ox += ow;
 			}
 		}
