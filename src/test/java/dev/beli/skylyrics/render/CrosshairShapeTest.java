@@ -17,6 +17,7 @@ class CrosshairShapeTest {
 			if (style == Crosshair.NORMAL) continue;
 			boolean[][] on = CrosshairShape.pixels(style);
 			assertTrue(on[MIDDLE][MIDDLE], style + " has no middle");
+			if (style == Crosshair.NOTE) continue;
 			int side = on.length;
 			for (int r = 0; r < side; r++) {
 				for (int c = 0; c < side; c++) {
@@ -26,6 +27,33 @@ class CrosshairShapeTest {
 				}
 			}
 		}
+	}
+
+	@Test
+	void theNoteIsOnePieceWithItsStemAboveTheAim() {
+		boolean[][] on = CrosshairShape.pixels(Crosshair.NOTE);
+		int side = on.length, lit = 0, reached = 0;
+		for (boolean[] row : on) {
+			for (boolean b : row) lit += b ? 1 : 0;
+		}
+		boolean[][] seen = new boolean[side][side];
+		java.util.ArrayDeque<int[]> todo = new java.util.ArrayDeque<>();
+		todo.add(new int[] {MIDDLE, MIDDLE});
+		seen[MIDDLE][MIDDLE] = true;
+		while (!todo.isEmpty()) {
+			int[] p = todo.poll();
+			reached++;
+			for (int k = 0; k < 9; k++) {
+				int r = p[0] + k / 3 - 1, c = p[1] + k % 3 - 1;
+				if (r >= 0 && r < side && c >= 0 && c < side && on[r][c] && !seen[r][c]) {
+					seen[r][c] = true;
+					todo.add(new int[] {r, c});
+				}
+			}
+		}
+		assertEquals(lit, reached, "the note falls apart");
+		assertTrue(on[MIDDLE - 6][MIDDLE + 2], "no stem above the head");
+		assertFalse(on[MIDDLE + 6][MIDDLE + 2], "stem points the wrong way");
 	}
 
 	@Test

@@ -49,10 +49,19 @@ public final class CrosshairShape {
 					case CROSS -> dot || ax == 0 && ay >= 2 && ay <= 5 || ay == 0 && ax >= 2 && ax <= 5;
 					case CIRCLE -> dot || Math.abs((float) Math.sqrt(dx * dx + dy * dy) - RING) < 0.5f;
 					case CORNERS -> dot || ay == 4 && ax >= 2 && ax <= 4 || ax == 4 && ay >= 2 && ay <= 4;
+					case NOTE -> note(dx, dy);
 				};
 			}
 		}
 		return on;
+	}
+
+	/** An eighth note: a slanted round head on the aim, a stem up its right side and a flag curling down off the top. */
+	private static boolean note(int dx, int dy) {
+		boolean head = dy == -1 && dx >= 0 && dx <= 2 || dy == 0 && dx >= -1 && dx <= 2 || dy == 1 && dx >= -1 && dx <= 1;
+		boolean stem = dx == 2 && dy >= -6 && dy <= -1;
+		boolean flag = dy == -6 && dx == 3 || dy == -5 && (dx == 3 || dx == 4) || (dy == -4 || dy == -3) && dx == 5;
+		return head || stem || flag;
 	}
 
 	/** The pixels touching the shape, corners included, that aren't part of it. */

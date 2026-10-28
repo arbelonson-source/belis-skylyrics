@@ -25,7 +25,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - At night, a sky of your choice can fill in behind the lyrics while music plays: an aurora, a nebula, **Synthwave** (a purple sky with a striped retro sun), **Eclipse** (a dark sun with a glowing ring), **Moonlight** (a big full moon over drifting clouds), or **Random** for a different one with each song. **Constellations** join some of the stars with thin lines. **Pulse with the lyrics** makes the sky brighten for a moment with each new line.
 - When a new song starts, its name and artist can float up in the sky.
 - A hat for your character, seen in third person (F5): halo, neon headphones, conical hat, crown, cat ears, pumpkin head, top hat, devil horns, neon shades, antennae or music notes circling your head, with parts that glow in your lyrics colour. Only you can see it.
-- Crosshair styles: Minecraft's normal one, or a dot, cross, circle or corners in your lyrics colour.
+- Crosshair styles: Minecraft's normal one, or a dot, cross, circle, corners or a music note in your lyrics colour.
 - A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first.
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The smooth letters stay smooth with shader packs on. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.

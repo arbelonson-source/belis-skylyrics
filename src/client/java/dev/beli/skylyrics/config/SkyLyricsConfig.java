@@ -202,7 +202,9 @@ public final class SkyLyricsConfig {
 		/** A small ring round a dot. */
 		CIRCLE,
 		/** Four corners like a camera frame, round a dot. */
-		CORNERS
+		CORNERS,
+		/** A music note whose round head sits on the aim. */
+		NOTE
 	}
 
 	public enum Layer {

@@ -397,7 +397,8 @@ public final class SkyLyricsScreen extends Screen {
 		Row hatPulse = new Toggle(Tr.t("Glow with the lyrics"), Tr.t("Flares up with each new line"),
 				() -> cfg.hatPulse, v -> cfg.hatPulse = v).when(() -> cfg.hat != Hat.NONE);
 		Row crosshair = new Cycle(Tr.t("Crosshair"), Tr.t("Drawn in your lyrics colour"),
-				List.of(Tr.t("Normal"), Tr.t("Dot"), Tr.t("Cross"), Tr.t("Circle"), Tr.t("Corners")),
+				List.of(Tr.t("Normal"), Tr.t("Dot"), Tr.t("Cross"), Tr.t("Circle"), Tr.t("Corners"),
+						Tr.t("Note")),
 				() -> cfg.crosshair.ordinal(), i -> cfg.crosshair = Crosshair.values()[i]);
 
 		return List.of(
