@@ -886,7 +886,12 @@ final class WorldWords {
 					// All its rows end above the kept-clear part
 					top = Math.min(top, centre[1] + MIDDLE_DROP - MIDDLE_H - PAD_Y - rows * row);
 				}
-				top = Mth.clamp(top, -70, 40);
+				float turn = Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1);
+				float slope = tilt * curve * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1);
+				float bend = tilt * curve * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1);
+				// Its highest word, however the line climbs or bows, stays well under the top of the screen
+				float drift = (float) Math.toDegrees(Math.atan(RISE_MAX * rise / distance));
+				top = Mth.clamp(Math.max(top, belowTop(centre[1], width, slope, bend, row, drift)), -70, 40);
 				float cost = 0;
 				for (float[] o : taken) {
 					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + below - o[1]);
@@ -896,9 +901,7 @@ final class WorldWords {
 				}
 				if (cost < bestCost) {
 					bestCost = cost;
-					sentence = new Sentence(left, top, distance, Mth.lerp(next(), 0, SENTENCE_TURN) * (next() < 0.5f ? -1 : 1),
-							tilt * curve * Mth.lerp(next(), SENTENCE_SLOPE_MIN, SENTENCE_SLOPE_MAX) * (next() < 0.5f ? -1 : 1), lineRtl,
-							tilt * curve * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1));
+					sentence = new Sentence(left, top, distance, turn, slope, lineRtl, bend);
 				}
 			}
 			sentence.width = width;
@@ -912,6 +915,19 @@ final class WorldWords {
 
 	/** How far either side of where you look, in degrees, a line's rows may reach and still be on screen. */
 	static final float VIEW_HALF = 40f;
+
+	/** How far above where you look, in degrees, a line's highest word may reach: under the top of the screen, with room to float up. */
+	static final float VIEW_UP = 24f;
+
+	/**
+	 * The highest a line may start (smallest pitch) so that its top row, rising {@code slope} across {@code width} and
+	 * bowing up by {@code bend} and floating up {@code drift} degrees as its words fade, keeps them under {@link #VIEW_UP}.
+	 */
+	static float belowTop(float pitch, float width, float slope, float bend, float row, float drift) {
+		float up = Math.max(0, width * (float) Math.tan(slope * Mth.DEG_TO_RAD)) + Math.max(0, bend);
+		// A line's top is the foot of its first row, so its words stand a whole row above it
+		return pitch - VIEW_UP + up + row + drift;
+	}
 
 	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
 	static float onScreen(float left, float width, float centre) {
@@ -1223,10 +1239,22 @@ final class WorldWords {
 		List<float[]> people = avoidPlayers ? players(level, eye) : List.of();
 		List<Card> live = new ArrayList<>(cards.size());
 		List<float[]> seen = new ArrayList<>(cards.size());
+		// Words still being sung go first, so a fading word glides out of a new one's way instead of shoving it up the sky
+		List<Card> order = new ArrayList<>(cards.size());
 		for (Card c : cards) {
-			// Fading words still take part until they're almost gone, so nothing glides onto them and they glide too
-			if (c.fellAt >= 0 || c.goneAt >= 0 && goneAlpha((now - c.goneAt) / 1e9f, fade) < 0.1f
-					|| c.cutAt >= 0 && cutAlpha((now - c.cutAt) / 1e9f) < 0.1f) {
+			if (c.goneAt < 0) {
+				order.add(c);
+			}
+		}
+		for (Card c : cards) {
+			if (c.goneAt >= 0) {
+				order.add(c);
+			}
+		}
+		for (Card c : order) {
+			// Fading words still take part until they're almost gone, so nothing glides onto them and they glide too; but
+			// a word being cut is leaving to make room for a new one, so it mustn't shove that one off up the sky
+			if (c.fellAt >= 0 || c.cutAt >= 0 || c.goneAt >= 0 && goneAlpha((now - c.goneAt) / 1e9f, fade) < 0.1f) {
 				continue;
 			}
 			Vec3 to = c.pos.add(c.slide).subtract(eye);

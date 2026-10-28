@@ -429,6 +429,24 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aClimbingLineStartsLowEnoughToStayOnScreen() {
+		float row = 4;
+		for (float slope : new float[] {-10, 0, 10}) {
+			for (float bend : new float[] {-4, 0, 4}) {
+				float top = WorldWords.belowTop(-15, 34, slope, bend, row, 0);
+				WorldWords.Sentence line = new WorldWords.Sentence(0, top, 10, 0, slope, false, bend);
+				for (int i = 0; i < 4; i++) {
+					float[] at = line.place(2, row / 2 - 0.5f, 0, 0);
+					// Every word on the first row stays below the line VIEW_UP over where you look (smaller pitch is higher)
+					assertTrue(at[1] - (row / 2 - 0.5f) >= -15 - WorldWords.VIEW_UP - 1e-3f, "slope " + slope + " bend " + bend);
+				}
+			}
+		}
+		// Words that float up as they fade start that much lower
+		assertEquals(WorldWords.belowTop(-15, 34, 5, 2, row, 0) + 6, WorldWords.belowTop(-15, 34, 5, 2, row, 6), 1e-4f);
+	}
+
+	@Test
 	void aWideRowOffToTheSideStillEndsOnScreen() {
 		// A row that would run past the right edge comes back in
 		float left = WorldWords.onScreen(20, 60, 0);
