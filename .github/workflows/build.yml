@@ -14,6 +14,8 @@ jobs:
       matrix:
         os: [ubuntu-24.04, windows-2025, macos-15]
     runs-on: ${{ matrix.os }}
+    # A normal build takes under 10 minutes; a stuck runner would otherwise hang for hours
+    timeout-minutes: 30
     defaults:
       run:
         shell: bash
