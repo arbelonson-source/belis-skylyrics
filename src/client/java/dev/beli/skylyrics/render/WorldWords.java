@@ -158,6 +158,8 @@ final class WorldWords {
 	/** How far a flowing line floats, and how far it may start off the middle of the view (degrees). */
 	/** A line's words, with their mixed sizes and the gaps between, take about this much more room than its plain text; rows fill to about this much. */
 	private static final float LINE_SPREAD = 1.25f, ROW_FILL = 0.85f;
+	/** A flowing line's rows get wider with the Size setting, up to this many times {@link Sentence#WIDTH}. */
+	private static final float ROW_GROW = 1.8f;
 	private static final float SENTENCE_NEAR = 8f, SENTENCE_FAR = 12f, SENTENCE_SHIFT_X = 6f, SENTENCE_SHIFT_Y = 5f;
 	/** How far a flowing line turns towards you (degrees) and how much its pieces vary in distance (a fraction). */
 	private static final float SENTENCE_TURN = 15f, SENTENCE_DEPTH = 0.03f;
@@ -705,6 +707,8 @@ final class WorldWords {
 		// Every older word still showing, faint ones too, in case the new one can't help landing on it
 		List<Card> under = new ArrayList<>(cards.size());
 		List<float[]> shown = new ArrayList<>(cards.size());
+		// Words still lit: a flowing line's words step round only these, while fading ones make way for it
+		List<float[]> lit = new ArrayList<>(cards.size());
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
 			// The words of the line being written are spaced by the line itself
@@ -716,20 +720,25 @@ final class WorldWords {
 				if (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f) {
 					taken.add(print);
 				}
+				if (c.goneAt < 0) {
+					lit.add(print);
+				}
 			}
 		}
 		// Other players count as taken too, so in a fight the words don't cover the person you're aiming at
-		List<float[]> avoid = taken;
+		List<float[]> avoid = new ArrayList<>(taken), firm = lit;
 		if (avoidPlayers) {
-			avoid = new ArrayList<>(taken);
-			avoid.addAll(players(level, eye));
+			List<float[]> others = players(level, eye);
+			avoid.addAll(others);
+			firm.addAll(others);
 		}
 		if (clearMiddle) {
 			// The middle of your view is for the game: new words go round it, never across it
-			avoid = new ArrayList<>(avoid);
-			avoid.add(new float[] {centre[0], centre[1] + MIDDLE_DROP, MIDDLE_W, MIDDLE_H});
+			float[] middle = {centre[0], centre[1] + MIDDLE_DROP, MIDDLE_W, MIDDLE_H};
+			avoid.add(middle);
+			firm.add(middle);
 		}
-		float[] spot = flow ? follow(centre, at, size, avoid) : scatter(centre, at, size, avoid);
+		float[] spot = flow ? follow(centre, at, size, avoid, firm) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
 		// nor hidden behind one
@@ -757,8 +766,10 @@ final class WorldWords {
 		for (int k = 0; k < shown.size(); k++) {
 			float[] o = shown.get(k);
 			Card c = under.get(k);
-			if (!c.title && Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * OVERLAP
-					&& Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * OVERLAP) {
+			// A word already fading goes on any touch; a lit one only when mostly covered
+			float most = c.goneAt < 0 ? OVERLAP : 1;
+			if (!c.title && Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * most
+					&& Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * most) {
 				c.cutAt = now;
 			}
 		}
@@ -835,9 +846,11 @@ final class WorldWords {
 
 	/**
 	 * Yaw, pitch and distance for the next piece of a flowing line. A line's first piece picks where the line goes
-	 * (a little above and left of the middle, where it overlaps the fading words least); the rest follow it.
+	 * (a little above and left of the middle, where it overlaps the fading words least); the rest follow it,
+	 * stepping round only what's in {@code firm} (lit words, players, the kept-clear middle) so a fading word never
+	 * pushes one onto a row of its own.
 	 */
-	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken) {
+	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm) {
 		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
 		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT, aside)) {
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
@@ -849,11 +862,13 @@ final class WorldWords {
 			float distance = verse ? last.distance : Mth.lerp(next(), SENTENCE_NEAR, SENTENCE_FAR), bestCost = Float.MAX_VALUE;
 			// The whole line's box: as wide as it reads, or a full row, and as many rows deep as it will need
 			float wide = (float) Math.toDegrees(lineWidth * SIZE * wordScale * LINE_SPREAD / distance);
-			int rows = Math.max(1, Mth.ceil(wide / (Sentence.WIDTH * ROW_FILL)));
+			// Rows grow with the words, so a big Size still writes a few words across before starting the next row
+			float width = Sentence.WIDTH * Mth.clamp(wordScale, 1, ROW_GROW);
+			int rows = Math.max(1, Mth.ceil(wide / (width * ROW_FILL)));
 			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
 			// Under a line that sits over the kept-clear middle, the next one must still end above it
 			float reach = centre[1] - LIFT + VERSE_REACH;
-			if (verse && clearMiddle && Math.abs(Mth.wrapDegrees(last.left + Sentence.WIDTH / 2 - centre[0])) < Sentence.WIDTH / 2 + MIDDLE_W) {
+			if (verse && clearMiddle && Math.abs(Mth.wrapDegrees(last.left + last.width / 2 - centre[0])) < last.width / 2 + MIDDLE_W) {
 				reach = Math.min(reach, centre[1] + MIDDLE_DROP - MIDDLE_H - PAD_Y);
 			}
 			if (verse && last.low + rows * row <= reach) {
@@ -861,11 +876,11 @@ final class WorldWords {
 				bestCost = 0;
 				sentence = last.under();
 			}
-			float halfW = Math.min(wide, Sentence.WIDTH) / 2, halfH = rows * row / 2 + PAD_Y, below = (rows - 2) * row / 2;
+			float halfW = Math.min(wide, width) / 2, halfH = rows * row / 2 + PAD_Y, below = (rows - 2) * row / 2;
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
 				// With the middle kept clear, a line goes just over it, or off to the left or the right of where you look
 				float roll = next(), side = !clearMiddle || roll < OVER_MIDDLE ? 0 : roll < (1 + OVER_MIDDLE) / 2 ? -SIDE_YAW : SIDE_YAW;
-				float left = centre[0] + side - Sentence.WIDTH / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
+				float left = centre[0] + side - width / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X;
 				float top = centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y;
 				if (clearMiddle && side == 0) {
 					// All its rows end above the kept-clear part
@@ -886,11 +901,12 @@ final class WorldWords {
 							tilt * curve * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1));
 				}
 			}
+			sentence.width = width;
 			sentence.rest = wide;
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
-		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB, taken);
+		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB, firm);
 		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
@@ -989,7 +1005,9 @@ final class WorldWords {
 	 */
 	static final class Sentence {
 		/** How wide a row may get before the next piece starts a new one, in degrees. */
-		static final float WIDTH = 26f;
+		static final float WIDTH = 34f;
+		/** This line's row width, in degrees: {@link #WIDTH} at the normal size, wider for bigger words so a row still holds a few. */
+		float width = WIDTH;
 		/** Space between pieces, in their own half heights (about a letter, like a written word space), and between rows, in degrees. */
 		static final float GAP = 0.7f, ROW_GAP = 0.4f;
 		/** Extra room, in degrees, between the lines of a verse than between the rows of one line; never less than {@link #CLEAR_PAD}. */
@@ -1050,7 +1068,7 @@ final class WorldWords {
 		 */
 		float[] place(float halfW, float halfH, float indent, float bob) {
 			float yaw = cursor + GAP * halfH + halfW;
-			boolean wrap = newRow || cursor > left && yaw + halfW > left + WIDTH;
+			boolean wrap = newRow || cursor > left && yaw + halfW > left + width;
 			if (wrap) {
 				newRow = false;
 				rows++;
@@ -1062,16 +1080,16 @@ final class WorldWords {
 			cursor = yaw + halfW;
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
-				yaw = 2 * left + WIDTH - yaw;
+				yaw = 2 * left + width - yaw;
 			}
 			// Bigger pitch is lower, so a rising line's pitch shrinks the further right it gets; the bow is highest mid-row
-			float along = Mth.clamp((yaw - left) / WIDTH, 0, 1), steep = (float) Math.tan(slope * DEG);
+			float along = Mth.clamp((yaw - left) / width, 0, 1), steep = (float) Math.tan(slope * DEG);
 			float rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
-			float climb = steep + bend * 4 * (1 - 2 * along) / WIDTH;
+			float climb = steep + bend * 4 * (1 - 2 * along) / width;
 			float lean = Mth.clamp((float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN);
 			// Where the line climbs steeper than a word may lean, or bows under it, the word's ends stray off the line:
 			// it needs that much more room above and below
-			float reach = halfH + halfW * Math.abs(climb - (float) Math.tan(lean * DEG)) + 4 * Math.abs(bend) * halfW * halfW / (WIDTH * WIDTH);
+			float reach = halfH + halfW * Math.abs(climb - (float) Math.tan(lean * DEG)) + 4 * Math.abs(bend) * halfW * halfW / (width * width);
 			if (wrap) {
 				// The new row starts below the lowest word of the last one, however its words bobbed
 				above = low;
@@ -1105,6 +1123,7 @@ final class WorldWords {
 		 */
 		Sentence under() {
 			Sentence next = new Sentence(left, top, distance, turn, slope, rtl, bend);
+			next.width = width;
 			next.cursor = cursor;
 			next.above = above;
 			next.low = low + VERSE_GAP;
@@ -1122,8 +1141,8 @@ final class WorldWords {
 
 		/** The same, for a line placed up to {@code aside} degrees to the side of where you looked. */
 		boolean lost(float yaw, float pitch, float aside) {
-			float off = Mth.wrapDegrees(yaw - (left + WIDTH / 2));
-			return Math.abs(off) > WIDTH / 2 + LOST_YAW + aside || Math.abs(pitch - top) > LOST_PITCH;
+			float off = Mth.wrapDegrees(yaw - (left + width / 2));
+			return Math.abs(off) > width / 2 + LOST_YAW + aside || Math.abs(pitch - top) > LOST_PITCH;
 		}
 
 		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */

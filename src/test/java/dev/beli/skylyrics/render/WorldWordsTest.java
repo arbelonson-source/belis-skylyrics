@@ -429,6 +429,21 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aWiderLineFitsMoreWordsOnARow() {
+		WorldWords.Sentence normal = new WorldWords.Sentence(0, 0, 10, 0), wide = new WorldWords.Sentence(0, 0, 10, 0);
+		wide.width = 2 * WorldWords.Sentence.WIDTH;
+		float half = WorldWords.Sentence.WIDTH / 4;
+		float[] a = normal.place(half, 1, 0, 0), b = normal.place(half, 1, 0, 0);
+		float[] c = wide.place(half, 1, 0, 0), d = wide.place(half, 1, 0, 0);
+		// Two half-row words don't fit on a normal row with the space between them, but sit side by side on a wide one
+		assertTrue(b[1] > a[1] + 1);
+		assertEquals(c[1], d[1], 1e-4);
+		assertTrue(d[0] > c[0] + 2 * half);
+		// The next line of a verse keeps the width
+		assertEquals(wide.width, wide.under().width, 1e-6);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
