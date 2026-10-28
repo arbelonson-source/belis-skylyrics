@@ -19,6 +19,11 @@ public final class LrcParser {
 	private static final char BOM = 0xFEFF;
 	// A timed line of only music notes, like "♪" or "♫ ♫", marks a break in the singing
 	private static final Pattern NOTES = Pattern.compile("[\\s♩♪♫♬]*");
+	// Lyrics copied from websites often use thin, wide or no-break spaces between words, which the floating words
+	// would not split on; any run of them becomes one plain space
+	private static final Pattern SPACES = Pattern.compile("[\\s\\p{Zs}]+");
+	// Zero-width spaces and stray byte order marks are invisible but would sit inside words
+	private static final Pattern INVISIBLE = Pattern.compile("[\\u200B\\u2060\\uFEFF]");
 
 	private LrcParser() {
 	}
@@ -51,7 +56,7 @@ public final class LrcParser {
 			if (times.isEmpty()) {
 				continue;
 			}
-			String text = WORD_TIME.matcher(raw.substring(end)).replaceAll("").strip();
+			String text = tidy(WORD_TIME.matcher(raw.substring(end)).replaceAll(""));
 			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches()) {
 				text = "";
 			}
@@ -79,7 +84,7 @@ public final class LrcParser {
 		}
 		List<String> rows = new ArrayList<>();
 		for (String raw : lines(text)) {
-			String row = raw.strip();
+			String row = tidy(raw);
 			if (!SECTION.matcher(row).matches()) {
 				rows.add(NOTES.matcher(row).matches() ? "" : row);
 			}
@@ -110,6 +115,10 @@ public final class LrcParser {
 			text = text.substring(1);
 		}
 		return LINE_BREAK.split(text);
+	}
+
+	static String tidy(String text) {
+		return SPACES.matcher(INVISIBLE.matcher(text).replaceAll("")).replaceAll(" ").strip();
 	}
 
 	private static List<LyricLine> collapseBreaks(List<LyricLine> lines) {

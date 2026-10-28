@@ -41,6 +41,14 @@ class LrcParserTest {
 	}
 
 	@Test
+	void oddSpacesBecomePlainOnes() {
+		Lyrics l = LrcParser.parseSynced("[00:05.00] <00:05.00> neon\u2005lights <00:06.00>\u00A0glow\u200B\n[00:09.00]\u3000");
+		assertEquals("neon lights glow", l.get(0).text());
+		assertTrue(l.get(1).isBreak());
+		assertEquals("city sky", LrcParser.parsePlain("city\u202F\tsky", 10_000).get(0).text());
+	}
+
+	@Test
 	void spacesBetweenRepeatedTimestamps() {
 		Lyrics l = LrcParser.parseSynced("[00:05.00] [00:30.00]  chorus\n[00:10.00] verse [00:20.00]");
 		assertEquals(3, l.lines().size());
