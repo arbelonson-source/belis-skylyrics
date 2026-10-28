@@ -51,7 +51,9 @@ public final class SkyLyricsConfig {
 		/** Slowly cycles through the rainbow. */
 		RAINBOW,
 		/** Follows the sky: warm at sunrise and sunset, pale by day, lilac at night. */
-		TIME
+		TIME,
+		/** Each new line fades into the next of a few neon colours. */
+		EACH_LINE
 	}
 
 	/** How the words of a line are laid out. */

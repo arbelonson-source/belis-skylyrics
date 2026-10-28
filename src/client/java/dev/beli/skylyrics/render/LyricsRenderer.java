@@ -274,7 +274,7 @@ public final class LyricsRenderer {
 				//?}
 				&& !(cfg.hideWhenPaused && !tracker.playing()) && !Visibility.hidden(mc, cfg);
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
-		updateColor(cfg, dt, now);
+		updateColor(cfg, dt, now, shown.indexAt(time));
 		updateDaylight(mc, camera, dt);
 		updateAnchor(cfg, camera, dt);
 		if (cfg.layout == Layout.WORLD && !shown.instrumental()) {
@@ -396,7 +396,7 @@ public final class LyricsRenderer {
 		long time = takeLyrics(cfg);
 		boolean want = cfg.enabled && cfg.titleScreenLyrics && hasLyrics && !(cfg.hideWhenPaused && !tracker.playing());
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
-		updateColor(cfg, dt, now);
+		updateColor(cfg, dt, now, shown.indexAt(time));
 		daylight = approach(daylight, 1, dt * 2f); // menus have no time of day, and the dark halo reads on any backdrop
 		float scale = Math.min((bottom - top) / MENU_ROWS, MENU_MAX_SCALE * cfg.size);
 		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental() || scale < MENU_MIN_SCALE) {
@@ -1496,12 +1496,13 @@ public final class LyricsRenderer {
 		return (1 - Mth.clamp(starBrightness / SkyEffects.NIGHT_STARS, 0, 1)) * (1 - 0.5f * Mth.clamp(rainLevel, 0, 1));
 	}
 
-	private void updateColor(SkyLyricsConfig cfg, float dt, long now) {
+	private void updateColor(SkyLyricsConfig cfg, float dt, long now, int line) {
 		int target = switch (cfg.colorMode) {
 			case ALBUM -> art.color();
 			case FIXED -> cfg.color;
 			case RAINBOW -> java.awt.Color.HSBtoRGB((now / 1e9f / 16f) % 1f, 0.55f, 1f) & 0xFFFFFF;
 			case TIME -> timeOfDay(sunlight);
+			case EACH_LINE -> lineColor(line);
 		};
 		float tr = (target >> 16 & 0xFF) / 255f, tg = (target >> 8 & 0xFF) / 255f, tb = (target & 0xFF) / 255f;
 		if (cr < 0 || cfg.colorMode == SkyLyricsConfig.ColorMode.RAINBOW) {
@@ -1517,6 +1518,14 @@ public final class LyricsRenderer {
 	}
 
 	static final int NIGHT = 0xB3A1FF, TWILIGHT = 0xFFAD85, DAY = 0xF2F7FF;
+
+	/** The Each line colours, in order: pink, cyan, lilac, mint, amber, blue. */
+	static final int[] LINE_COLORS = {0xFF7AD9, 0x7AE7FF, 0xB79CFF, 0x8CFFB5, 0xFFC46B, 0x8FB8FF};
+
+	/** The Each line colour for line {@code index}; before the first line it is the first colour. */
+	static int lineColor(int index) {
+		return LINE_COLORS[Math.floorMod(Math.max(index, 0), LINE_COLORS.length)];
+	}
 
 	/** The Time of day colour for {@code day} from 0 (night) through twilight (0.5) to 1 (full day). */
 	static int timeOfDay(float day) {

@@ -318,7 +318,7 @@ public final class SkyLyricsScreen extends Screen {
 
 	private List<Card> lookTab() {
 		Row mode = new Segmented(Tr.t("Colour"), Tr.t("From the cover, or your own"),
-				new String[] {Tr.t("Album"), Tr.t("Pick"), Tr.t("Rainbow"), Tr.t("Time of day")}, () -> cfg.colorMode.ordinal(),
+				new String[] {Tr.t("Album"), Tr.t("Pick"), Tr.t("Rainbow"), Tr.t("Time of day"), Tr.t("Each line")}, () -> cfg.colorMode.ordinal(),
 				i -> cfg.colorMode = ColorMode.values()[i]);
 		Row swatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
 				() -> cfg.colorMode == ColorMode.FIXED ? cfg.color : -1,
