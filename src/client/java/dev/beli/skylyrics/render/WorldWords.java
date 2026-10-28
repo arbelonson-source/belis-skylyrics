@@ -95,9 +95,10 @@ final class WorldWords {
 	private static final int CATCH_UP = 2;
 	/** Once its words are over, a card fades out over this many seconds by default (the setting). */
 	static final float FADE = 2.2f;
-	/** ...and in the first of these seconds it dims towards grey, by this much. */
-	private static final float DIM_TIME = 0.24f, DIM = 0.5f;
-	private static final int DIM_RGB = 0x8E92AA;
+	/** ...and in the first of these seconds it pales towards a soft white, by this much, so it fades into the sky like a ghost
+	 * of itself instead of turning a darker grey than the sky around it. */
+	private static final float PALE_TIME = 0.24f, PALE = 0.55f;
+	private static final int PALE_RGB = 0xF4F2FF;
 	/** A new card fades in over this many seconds, and its letters type in over this many. */
 	private static final float FADE_IN = 0.14f, TYPE = 0.23f;
 	/** A new card starts this much bigger and settles back over this many seconds. */
@@ -677,6 +678,11 @@ final class WorldWords {
 			return Vec3.ZERO;
 		}
 		return eye.subtract(last);
+	}
+
+	/** The colour of a word sung {@code gone} seconds ago that was {@code rgb}: the same hue, paler. */
+	static int paled(int rgb, float gone) {
+		return mix(rgb, PALE_RGB, PALE * Mth.clamp(gone / PALE_TIME, 0, 1));
 	}
 
 	/** The colour a fading card keeps: whatever the words were when it started fading. */
@@ -1543,7 +1549,7 @@ final class WorldWords {
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = flow || !popping ? n : Mth.ceil(n * Math.min(1, age / TYPE));
 			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age))
-					: mix(keptColour(c, rgb), DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
+					: paled(keptColour(c, rgb), gone);
 			if (shove > 0) {
 				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
 			}

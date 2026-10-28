@@ -525,6 +525,18 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void sungWordsPaleInsteadOfGreying() {
+		int pink = 0xFF4FB8;
+		assertEquals(pink, WorldWords.paled(pink, 0));
+		int pale = WorldWords.paled(pink, 5);
+		int r = pale >> 16 & 0xFF, g = pale >> 8 & 0xFF, b = pale & 0xFF;
+		// Lighter than the word was, never darker, and still pink
+		assertTrue(r + g + b > 0xFF + 0x4F + 0xB8);
+		assertTrue(r > b && b > g);
+		assertEquals(pale, WorldWords.paled(pink, 9));
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
