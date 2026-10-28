@@ -228,7 +228,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.worldWords, v -> cfg.worldWords = (int) Math.round(v), v -> String.valueOf(Math.round(v)))
 				.when(() -> cfg.layout == Layout.WORLD && !(cfg.worldFlow && cfg.worldHold));
 		Row linger = new Slider(Tr.t("Linger"), Tr.t("How slowly sung words fade"), 0.8, 6, 0.1,
-				() -> cfg.worldLinger, v -> cfg.worldLinger = (float) v, v -> String.format(Locale.ROOT, "%.1f s", v))
+				() -> cfg.worldFade, v -> cfg.worldFade = (float) v, v -> String.format(Locale.ROOT, "%.1f s", v))
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row tilt = new Slider(Tr.t("Tilt"), Tr.t("How much the words turn and lean, 0 faces you"), 0, 2, 0.05,
 				() -> cfg.worldTilt, v -> cfg.worldTilt = (float) v, v -> Math.round(v * 100) + "%")

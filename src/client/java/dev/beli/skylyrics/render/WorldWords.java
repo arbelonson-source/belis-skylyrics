@@ -94,7 +94,7 @@ final class WorldWords {
 	/** After a jump in the song, at most this many of the skipped pieces are spawned (the latest ones). */
 	private static final int CATCH_UP = 2;
 	/** Once its words are over, a card fades out over this many seconds by default (the setting). */
-	static final float FADE = 2.2f;
+	static final float FADE = 1.2f;
 	/** ...and in the first of these seconds it pales towards a soft white, by this much, so it fades into the sky like a ghost
 	 * of itself instead of turning a darker grey than the sky around it. */
 	private static final float PALE_TIME = 0.24f, PALE = 0.55f;

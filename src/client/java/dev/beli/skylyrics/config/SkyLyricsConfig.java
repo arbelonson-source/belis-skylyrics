@@ -14,6 +14,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -248,7 +249,7 @@ public final class SkyLyricsConfig {
 	public Layout layout = Layout.WORLD;
 	/** World layout: how many word groups float at once, and how many seconds sung ones take to fade away. */
 	public int worldWords = 7;
-	public float worldLinger = 2.2f;
+	public float worldFade = 1.2f;
 	/** World layout: how far out the words float, times the usual 6 to 15 blocks; they grow to match, so they read the same. */
 	public float worldDistance = 1f;
 	/** World layout: how much the words turn sideways, nod and lean, times the usual; 0 has them face you straight on. */
@@ -428,6 +429,7 @@ public final class SkyLyricsConfig {
 				if (loaded != null) {
 					if (!json.has("barPing")) loaded.barPing = loaded.barStats;
 					if (!json.has("introSeen")) loaded.introSeen = true;
+					if (!json.has("worldFade")) loaded.worldFade = fadeFrom(json, loaded.worldFade);
 					loaded.fix();
 					return loaded;
 				}
@@ -436,6 +438,18 @@ public final class SkyLyricsConfig {
 			LOG.warn("Settings file was broken, using defaults: {}", e.toString());
 		}
 		return new SkyLyricsConfig();
+	}
+
+	/**
+	 * The World fade from a file saved before it had its own name ({@code worldLinger}): one picked by hand is kept, but the
+	 * old 2.2 s default, much slower than the original mod's lines, gives way to the new one.
+	 */
+	static float fadeFrom(JsonObject json, float fallback) {
+		if (json.get("worldLinger") instanceof JsonPrimitive old && old.isNumber()) {
+			float seconds = old.getAsFloat();
+			return Math.abs(seconds - 2.2f) < 0.01f ? fallback : seconds;
+		}
+		return fallback;
 	}
 
 	/** Missing or out-of-range values from an old or hand-edited file. */
@@ -469,7 +483,7 @@ public final class SkyLyricsConfig {
 		skyStrength = clamp(skyStrength, 0, 1);
 		size = clamp(size, 0.3f, 3);
 		worldWords = Math.max(1, Math.min(10, worldWords));
-		worldLinger = clamp(worldLinger, 0.8f, 6);
+		worldFade = clamp(worldFade, 0.8f, 6);
 		worldDistance = clamp(worldDistance, 0.5f, 2);
 		worldTilt = clamp(worldTilt, 0, 2);
 		worldRise = clamp(worldRise, 0, 2);
