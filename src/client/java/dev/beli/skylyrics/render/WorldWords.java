@@ -508,6 +508,14 @@ final class WorldWords {
 		this.flow = flow;
 	}
 
+	/**
+	 * The line in capitals, one letter for one letter. {@code toUpperCase} turns "ß" into "SS", which would put every
+	 * later word out of step with how far the line has been sung, since that is counted in the line as written.
+	 */
+	static String capitals(String text) {
+		return new String(text.codePoints().map(Character::toUpperCase).toArray(), 0, text.codePointCount(0, text.length()));
+	}
+
 	/** Whether a line reads right to left (Hebrew, Arabic), by its first strong letter. */
 	static boolean rightToLeft(String text) {
 		return Bidi.requiresBidi(text.toCharArray(), 0, text.length())
@@ -577,7 +585,7 @@ final class WorldWords {
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			line = index;
 			lineRaw = text;
-			lineText = text == null || !capitals ? text : text.toUpperCase(Locale.ROOT);
+			lineText = text == null || !capitals ? text : capitals(text);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
 			float[] whole = lineText == null ? null : widths(Display.of(lineText), font, style);
 			lineWidth = whole == null || whole.length == 0 ? 0 : whole[whole.length - 1];

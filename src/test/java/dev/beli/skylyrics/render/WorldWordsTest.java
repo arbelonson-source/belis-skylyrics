@@ -511,6 +511,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void capitalsKeepEveryLetterInPlace() {
+		String line = "die straße weiß es";
+		String big = WorldWords.capitals(line);
+		assertEquals("DIE STRAßE WEIß ES", big);
+		assertEquals(line.codePointCount(0, line.length()), big.codePointCount(0, big.length()));
+		List<int[]> small = WorldWords.chunks(line);
+		List<int[]> caps = WorldWords.chunks(big);
+		assertEquals(small.size(), caps.size());
+		for (int i = 0; i < small.size(); i++) {
+			assertEquals(small.get(i)[0], caps.get(i)[0]);
+		}
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
