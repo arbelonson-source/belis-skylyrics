@@ -525,6 +525,17 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void typedWordsShowTheirLettersInReadingOrder() {
+		assertEquals(0, WorldWords.typedIn(0, 0), 1e-6f);
+		assertEquals(0, WorldWords.typedIn(3, 0.1f), 1e-6f);
+		assertTrue(WorldWords.typedIn(0, 0.06f) > WorldWords.typedIn(1, 0.06f));
+		assertTrue(WorldWords.typedIn(1, 0.06f) >= WorldWords.typedIn(2, 0.06f));
+		for (int letter = 0; letter < 12; letter++) {
+			assertEquals(1, WorldWords.typedIn(letter, 2), 1e-6f);
+		}
+	}
+
+	@Test
 	void dissolvingWordsLoseTheirLettersOneByOne() {
 		long seed = 123456789L;
 		int left = 0, going = 0;

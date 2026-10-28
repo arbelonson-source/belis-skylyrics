@@ -75,7 +75,9 @@ public final class SkyLyricsConfig {
 		/** Each word grows out of nothing, just past its size, and settles. */
 		ZOOM,
 		/** Each word slowly fades in where it stands. */
-		FADE
+		FADE,
+		/** Each word's letters appear one by one, in reading order, as if typed. */
+		TYPE
 	}
 
 	/** World layout: how each word goes once it's been sung. */

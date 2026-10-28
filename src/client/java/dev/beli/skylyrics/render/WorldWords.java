@@ -118,6 +118,8 @@ final class WorldWords {
 	static final float ZOOM_FROM = 0.15f, ZOOM_TIME = 0.34f;
 	/** The Fade arrival: a word fades in over this many seconds. */
 	static final float SOFT_FADE = 0.5f;
+	/** A typed word's next letter starts this long after the one before, and takes {@code TYPE_FADE} to fade in. */
+	private static final float TYPE_STEP = 0.05f, TYPE_FADE = 0.12f;
 	/** How far an arrival overshoots before it settles: the usual "back" easing. */
 	private static final float BACK = 1.70158f;
 	/** Cards drift up this many blocks a second, up to this high. */
@@ -392,6 +394,12 @@ final class WorldWords {
 		float start = (h >>> 40) / (float) (1 << 24) * MELT_SPREAD;
 		float u = Mth.clamp((t - start) / MELT_TIME, 0, 1);
 		return 1 - u * u * (3 - 2 * u);
+	}
+
+	/** How far letter {@code letter} (reading order) of a word typed in {@code seconds} ago has faded in, 0-1. */
+	static float typedIn(int letter, float seconds) {
+		float t = Mth.clamp((seconds - letter * TYPE_STEP) / TYPE_FADE, 0, 1);
+		return t * t * (3 - 2 * t);
 	}
 
 	/** How far a let-go card has blown aside, in text units: slowly at first, then faster, like a leaf caught by the wind. */
@@ -1606,6 +1614,7 @@ final class WorldWords {
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = flow || !popping ? n : Mth.ceil(n * Math.min(1, age / TYPE));
+			float typed = arrival == WorldArrival.TYPE ? age : -1;
 			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age))
 					: paled(keptColour(c, rgb), gone);
 			if (shove > 0) {
@@ -1623,10 +1632,10 @@ final class WorldWords {
 			if (!soft) {
 				// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 				float shade = a * shadowOpacity(day) * wane;
-				draw(pose, out, c, shown, melt, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+				draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 				float edge = a * edgeOpacity(day) * wane;
 				for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
-					draw(pose, out, c, shown, melt, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
+					draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
 							y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE), SHADOW_Z, mode);
 				}
 			}
@@ -1635,10 +1644,10 @@ final class WorldWords {
 			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
-				draw(pose, out, c, shown, melt, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
+				draw(pose, out, c, shown, melt, typed, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
 						GLOW_Z, mode);
 			}
-			draw(pose, out, c, shown, melt, style, colour, a, x0, y0, FACE_Z, mode);
+			draw(pose, out, c, shown, melt, typed, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
 	}
@@ -1726,9 +1735,11 @@ final class WorldWords {
 		return -x * Mth.sin(face * DEG) + z * Mth.cos(face * DEG) < 0;
 	}
 
-	/** Draws the card's typed-in letters once, in one colour; each unbroken run where it sits in the whole word. */
-	/** Draws the first {@code shown} letters of card {@code c}; {@code melt} is how far it has dissolved (below 0: not dissolving). */
-	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, Style style, int rgb, float alpha,
+	/**
+	 * Draws the first {@code shown} letters of card {@code c}; {@code melt} is how far it has dissolved and {@code typed} how long
+	 * ago it began typing in (below 0: neither).
+	 */
+	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, float typed, Style style, int rgb, float alpha,
 			float x0, float y0, float z, Font.DisplayMode mode) {
 		int alphaByte = Math.round(alpha * 255);
 		if (alphaByte < 4) { // text this faint would be drawn fully opaque
@@ -1740,14 +1751,14 @@ final class WorldWords {
 		pose.pushPose();
 		pose.translate(0, 0, z);
 		for (int from = 0; from < n; ) {
-			int each = letterByte(c, from, melt, alpha, alphaByte);
+			int each = letterByte(c, from, melt, typed, alpha, alphaByte);
 			if (d.logical()[from] >= shown || each < 4) {
 				from++;
 				continue;
 			}
 			// Letters just as faint go in one draw, so a dissolving card only splits up round the letters on their way out
 			int to = from + 1;
-			while (to < n && d.logical()[to] < shown && letterByte(c, to, melt, alpha, alphaByte) == each) {
+			while (to < n && d.logical()[to] < shown && letterByte(c, to, melt, typed, alpha, alphaByte) == each) {
 				to++;
 			}
 			int a0 = from, a1 = to;
@@ -1769,9 +1780,18 @@ final class WorldWords {
 		pose.popPose();
 	}
 
-	/** How opaque glyph {@code v} of card {@code c} is drawn, 0-255: {@code alphaByte}, or on a dissolving card as much as its letter has left. */
-	private static int letterByte(Card c, int v, float melt, float alpha, int alphaByte) {
-		return melt < 0 ? alphaByte : Math.round(alpha * letterLeft(c.born, c.display.logical()[v], melt) * 255);
+	/**
+	 * How opaque glyph {@code v} of card {@code c} is drawn, 0-255: {@code alphaByte}, less on a dissolving card as its letter goes
+	 * and on a typing card until its letter is in.
+	 */
+	private static int letterByte(Card c, int v, float melt, float typed, float alpha, int alphaByte) {
+		if (melt < 0 && typed < 0) {
+			return alphaByte;
+		}
+		int letter = c.display.logical()[v];
+		float left = melt < 0 ? 1 : letterLeft(c.born, letter, melt);
+		float in = typed < 0 ? 1 : typedIn(letter, typed);
+		return Math.round(alpha * left * in * 255);
 	}
 
 	private static int mix(int from, int to, float t) {
