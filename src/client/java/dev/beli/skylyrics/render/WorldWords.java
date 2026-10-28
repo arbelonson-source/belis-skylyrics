@@ -226,6 +226,8 @@ final class WorldWords {
 		long hitAt = -1;
 		Vec3 knock = Vec3.ZERO;
 		float spin;
+		/** How far along its line it comes, from 0 at the first word to 1 at the last (for the Two-tone colour). */
+		float along;
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -265,6 +267,8 @@ final class WorldWords {
 	private int maxCards = MAX_CARDS;
 	/** The glow's own colour, or -1 to glow in the words' colour. */
 	private int glowRgb = -1;
+	/** The colour each line fades into from first word to last, or -1 for one colour (the Two-tone setting). */
+	private int toneRgb = -1;
 	private float fade = FADE;
 	/** How much further out than usual new cards float, and as much bigger, so they look the same size (the Distance setting). */
 	private float away = 1;
@@ -440,6 +444,16 @@ final class WorldWords {
 	/** Glows in {@code rgb}, or in the words' own colour when it's -1. */
 	void glowColour(int rgb) {
 		glowRgb = rgb;
+	}
+
+	/** Each line fades from the words' colour into {@code rgb} from first word to last, or keeps one colour when it's -1. */
+	void tone(int rgb) {
+		toneRgb = rgb;
+	}
+
+	/** The colour of a word {@code along} its line (0 first, 1 last): {@code rgb}, blended toward {@code tone} unless that's -1. */
+	static int toned(int rgb, int tone, float along) {
+		return tone < 0 ? rgb : mix(rgb, tone, Mth.clamp(along, 0, 1));
 	}
 
 	/** How each new word shows up (the Arrival setting). */
@@ -914,6 +928,8 @@ final class WorldWords {
 		card.rtl = flow && lineRtl;
 		card.of = flow ? sentence : null;
 		card.lift = shrink;
+		int nth = lineChunks.indexOf(chunk);
+		card.along = nth < 0 || lineChunks.size() < 2 ? 0 : nth / (float) (lineChunks.size() - 1);
 		cards.add(card);
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
@@ -1617,8 +1633,9 @@ final class WorldWords {
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = flow || !popping ? n : Mth.ceil(n * Math.min(1, age / TYPE));
 			float typed = arrival == WorldArrival.TYPE ? age : -1;
-			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age))
-					: paled(keptColour(c, rgb), gone);
+			int own = c.title ? rgb : toned(rgb, toneRgb, c.along);
+			int colour = c.goneAt < 0 ? mix(own, 0xFFFFFF, flash(age))
+					: paled(keptColour(c, own), gone);
 			if (shove > 0) {
 				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
 			}

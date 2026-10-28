@@ -442,5 +442,8 @@
   "skylyrics.ui.top_left": "למעלה משמאל",
   "skylyrics.ui.top_right": "למעלה מימין",
   "skylyrics.ui.soft_edges": "קצוות רכים",
-  "skylyrics.ui.only_a_glow_round_the_letters_no_dark_shadow_or": "רק זוהר סביב האותיות, בלי צל או קו כהה"
+  "skylyrics.ui.only_a_glow_round_the_letters_no_dark_shadow_or": "רק זוהר סביב האותיות, בלי צל או קו כהה",
+  "skylyrics.ui.two_tone": "שני גוונים",
+  "skylyrics.ui.each_line_fades_into_a_second_colour": "כל שורה עוברת בהדרגה לצבע שני",
+  "skylyrics.ui.second_colour": "צבע שני"
 }

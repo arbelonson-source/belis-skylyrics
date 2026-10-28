@@ -311,6 +311,9 @@ public final class SkyLyricsConfig {
 	/** The glow takes its own colour instead of the words'. */
 	public boolean glowPick = false;
 	public int glowColor = 0xFF8FD8;
+	/** Each line fades from its colour into this second one, from its first word to its last (the Two-tone setting). */
+	public boolean twoTone = false;
+	public int toneColor = 0xFF6EC7;
 	/** The glow flares up for a moment whenever a new line starts. */
 	public boolean pulse = true;
 	public boolean shadow = true;
@@ -478,6 +481,7 @@ public final class SkyLyricsConfig {
 		color &= 0xFFFFFF;
 		barAccentColor &= 0xFFFFFF;
 		glowColor &= 0xFFFFFF;
+		toneColor &= 0xFFFFFF;
 	}
 
 	private static Path file() {

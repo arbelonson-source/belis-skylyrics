@@ -455,6 +455,7 @@ public final class LyricsRenderer {
 		}
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
+		worldWords.tone(cfg.twoTone ? cfg.toneColor : -1);
 		worldWords.nudge(cfg.worldNudge);
 		worldWords.arrival(cfg.worldArrival);
 		worldWords.leave(cfg.worldLeave);
@@ -1032,7 +1033,9 @@ public final class LyricsRenderer {
 					// A waiting word is smaller and flat; it grows to full size and gets its depth as it's sung
 					float size = ahead > 0 ? Mth.lerp(e, NEXT_SCALE, 1) : 1;
 					canvas.push(cx, 0, size, 0);
-					word(arc.words()[w], -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e), mix(color, 0xFFFFFF, CURRENT_WHITE * current),
+					int count = arc.words().length;
+					word(arc.words()[w], -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e),
+							mix(toned(count < 2 ? 0 : w / (float) (count - 1)), 0xFFFFFF, CURRENT_WHITE * current),
 							dark, light, g.angle(), e > 0.004f);
 					canvas.pop();
 				}
@@ -1045,6 +1048,11 @@ public final class LyricsRenderer {
 		 * One word with its depth: a darker copy just below and a lighter one just above, solid, so the letters look
 		 * raised. The offsets point straight down the screen however the word is turned.
 		 */
+		/** The words' colour {@code along} the line (0 first word, 1 last), fading into the second colour when Two-tone is on. */
+		private int toned(float along) {
+			return WorldWords.toned(color, cfg.twoTone ? cfg.toneColor : -1, along);
+		}
+
 		private void word(String word, float x, float y, float alpha, int face, int dark, int light, float angle, boolean withDepth) {
 			Display d = Display.of(word);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
@@ -1111,6 +1119,12 @@ public final class LyricsRenderer {
 			int dim = mix(color, 0x000000, 0.45f - 0.4f * day); // dark words would sink into the dark halo
 			int secondary = mix(color, 0xFFFFFF, 0.25f - 0.25f * day);
 			int halo = mix(glowOf(color), 0x000000, 0.75f * day);
+			// Two-tone: the same shades of the second colour, blended in letter by letter along the line
+			int tone = cfg.twoTone ? cfg.toneColor : -1;
+			int brightTo = tone < 0 ? bright : mix(tone, 0xFFFFFF, 0.55f - 0.08f * day);
+			int dimTo = tone < 0 ? dim : mix(tone, 0x000000, 0.45f - 0.4f * day);
+			int secondaryTo = tone < 0 ? secondary : mix(tone, 0xFFFFFF, 0.25f - 0.25f * day);
+			int letters = total;
 			float haloWeight = 1 + 0.9f * day;
 			boolean byWord = !Float.isNaN(wordsT);
 
@@ -1179,6 +1193,11 @@ public final class LyricsRenderer {
 							for (int v = a0; v < a1; v++) {
 								float fill = Mth.clamp(sungChars - (start + d.logical[v]), 0, 1);
 								int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
+								if (tone >= 0) {
+									float t = letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1);
+									int shade = mix(mix(secondaryTo, mix(dimTo, brightTo, fill), highlight), 0xFFFFFF, 0.35f * fl);
+									c = mix(c, shade, t);
+								}
 								if (!sink.accept(v, base.withColor(c), d.cps[v])) {
 									return false;
 								}

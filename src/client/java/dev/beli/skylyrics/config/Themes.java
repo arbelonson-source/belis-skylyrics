@@ -25,7 +25,7 @@ public final class Themes {
 	}
 
 	public static final List<String> LOOK = List.of("layout", "colorMode", "color", "smoothFont", "scriptFont", "boldFont", "roundFont",
-			"depth", "glow", "glowPick", "glowColor", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase",
+			"twoTone", "toneColor", "depth", "glow", "glowPick", "glowColor", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase",
 			"worldFlow");
 
 	public static final List<Theme> ALL = List.of(
@@ -208,7 +208,8 @@ public final class Themes {
 	static boolean sameLook(SkyLyricsConfig a, SkyLyricsConfig b) {
 		try {
 			for (Field f : FIELDS) {
-				if (f.getName().equals("color") && a.colorMode != ColorMode.FIXED || f.getName().equals("glowColor") && !a.glowPick) {
+				if (f.getName().equals("color") && a.colorMode != ColorMode.FIXED || f.getName().equals("glowColor") && !a.glowPick
+						|| f.getName().equals("toneColor") && !a.twoTone) {
 					continue;
 				}
 				Object x = f.get(a), y = f.get(b);

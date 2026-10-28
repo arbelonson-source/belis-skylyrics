@@ -338,6 +338,10 @@ public final class SkyLyricsScreen extends Screen {
 			}
 			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
+		Row twoTone = new Toggle(Tr.t("Two-tone"), Tr.t("Each line fades into a second colour"),
+				() -> cfg.twoTone, v -> cfg.twoTone = v);
+		Row toneSwatches = new Swatches(Tr.t("Second colour"), null, SWATCHES, () -> cfg.toneColor,
+				c -> cfg.toneColor = c).when(() -> cfg.twoTone);
 
 		// Five choices over four switches: Bold, Smooth and Round are all the smooth font, told apart by boldFont and roundFont
 		Row font = new Segmented(Tr.t("Font"), Tr.t("Letter style"),
@@ -409,7 +413,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Themes"), new ThemePicker(cfg)),
-				new Card(Tr.t("Colour"), mode, swatches, albumColor),
+				new Card(Tr.t("Colour"), mode, swatches, albumColor, twoTone, toneSwatches),
 				new Card(Tr.t("Style"), font, depth, glow, glowMode, glowSwatches, shadow, opacity, seeThrough, layer),
 				new Card(Tr.t("Sky"), night, constellations, shootingStars, twinkle, skyColors, skySpeed, skyStrength, skyPulse),
 				new Card(Tr.t("Hat"), hat, hatPulse),

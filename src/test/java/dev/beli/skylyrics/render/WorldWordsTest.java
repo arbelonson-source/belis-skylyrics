@@ -740,4 +740,14 @@ class WorldWordsTest {
 		}
 		assertTrue(lowest >= -WorldWords.Sentence.CURVE_LEAN && lowest < first[2]);
 	}
+
+	@Test
+	void twoToneRunsFromTheMainColourToTheSecond() {
+		assertEquals(0xFF0000, WorldWords.toned(0xFF0000, -1, 0.7f));
+		assertEquals(0xFF0000, WorldWords.toned(0xFF0000, 0x0000FF, 0));
+		assertEquals(0x0000FF, WorldWords.toned(0xFF0000, 0x0000FF, 1));
+		assertEquals(0x0000FF, WorldWords.toned(0xFF0000, 0x0000FF, 3));
+		int middle = WorldWords.toned(0xFF0000, 0x0000FF, 0.5f);
+		assertTrue((middle >> 16 & 0xFF) > 0x60 && (middle & 0xFF) > 0x60);
+	}
 }
