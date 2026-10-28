@@ -17,6 +17,8 @@ public final class LrcParser {
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
 	private static final Pattern SECTION = Pattern.compile("\\[[^\\[\\]]*]");
 	private static final char BOM = 0xFEFF;
+	// A timed line of only music notes, like "♪" or "♫ ♫", marks a break in the singing
+	private static final Pattern NOTES = Pattern.compile("[\\s♩♪♫♬]*");
 
 	private LrcParser() {
 	}
@@ -49,6 +51,9 @@ public final class LrcParser {
 				continue;
 			}
 			String text = WORD_TIME.matcher(raw.substring(end)).replaceAll("").strip();
+			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches()) {
+				text = "";
+			}
 			for (long t : times) {
 				lines.add(new LyricLine(t, text));
 			}
@@ -75,7 +80,7 @@ public final class LrcParser {
 		for (String raw : lines(text)) {
 			String row = raw.strip();
 			if (!SECTION.matcher(row).matches()) {
-				rows.add(row);
+				rows.add(NOTES.matcher(row).matches() ? "" : row);
 			}
 		}
 		// Blank lines before the first words or after the last would only be an empty pause

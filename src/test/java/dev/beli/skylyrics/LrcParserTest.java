@@ -133,4 +133,14 @@ class LrcParserTest {
 		assertEquals(1, inside.lines().size());
 		assertEquals(2000, inside.lines().getFirst().timeMs());
 	}
+
+	@Test
+	void timedNotesAndPartNamesAreBreaks() {
+		Lyrics l = LrcParser.parseSynced("[00:01.00]one\n[00:05.00] ♪\n[00:09.00][Chorus]\n[00:12.00]♫ ♫\n[00:15.00]two ♪");
+		assertEquals(3, l.lines().size());
+		assertEquals("one", l.lines().get(0).text());
+		assertTrue(l.lines().get(1).isBreak());
+		assertEquals(5000, l.lines().get(1).timeMs());
+		assertEquals("two ♪", l.lines().get(2).text());
+	}
 }
