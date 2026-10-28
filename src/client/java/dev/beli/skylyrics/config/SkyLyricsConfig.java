@@ -202,7 +202,9 @@ public final class SkyLyricsConfig {
 		/** Two thin antennae with glowing balls that wobble. */
 		ANTENNAE,
 		/** A leafy vine round the top of the head, set with small glowing flowers. */
-		FLOWER_CROWN
+		FLOWER_CROWN,
+		/** A panelled cap with a peak at the front and a little propeller on top that whirls with each new line. */
+		PROPELLER_CAP
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */

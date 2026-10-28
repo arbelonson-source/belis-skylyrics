@@ -21,9 +21,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 /**
- * A hat on your own player, seen in third person (F5): a halo, neon headphones, a conical hat, a crown, cat ears, a pumpkin head or a top
- * hat. It's only drawn
- * here, so other players never see it. Its glowing parts take the lyrics colour and flare up whenever a new line starts.
+ * A hat on your own player, seen in third person (F5): a halo, neon headphones, a conical hat, a crown, cat ears, a pumpkin head, a top
+ * hat, devil horns, music notes, neon shades, antennae, a flower crown or a propeller cap. It's only drawn here, so other players never
+ * see it. Its glowing parts take the lyrics colour and flare up whenever a new line starts.
  */
 public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
 	private static final int SEGMENTS = 40;
@@ -77,6 +77,17 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final int FLOWERS = 8, PETALS = 5;
 	private static final float FLOWER_TILT = 35, FLOWER_SPIN = 0.4f, FLOWER_POP = 0.25f, LEAF = 0.075f, LEAF_WIDE = 0.018f;
 	private static final int LEAF_LIGHT = 0xFF7DA34A;
+	/** The propeller cap's dome sits just above a skin's hat layer, wide enough to cover the top of the head. */
+	static final float CAP_Y = HEAD_TOP - 0.035f, CAP_RADIUS = 0.31f, CAP_HEIGHT = 0.15f, PEAK = 0.16f, PEAK_DIP = 0.03f;
+	/** The peak points this way round the cap: towards -z, where the face is. */
+	static final float PEAK_ANGLE = 1.5f * Mth.PI, PEAK_SPREAD = 55 * Mth.DEG_TO_RAD;
+	static final float MAST = 0.07f, MAST_HALF = 0.012f, HUB = 0.024f, BLADE = 0.22f, BLADE_ROOT = 0.016f, BLADE_TIP = 0.04f;
+	private static final float BLADE_PITCH = 0.012f;
+	/** The propeller turns about once a second, and up to three times as fast as a new line starts. */
+	static final float PROP_SPIN = 6, PROP_BOOST = 2;
+	private static final int CAP_PANELS = 6, CAP_RINGS = 6, PEAK_STEPS = 10;
+	private static float propAngle;
+	private static long propLast;
 
 	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
 	private static final Identifier WHITE = SkyLyricsClient.id("textures/misc/white.png");
@@ -183,6 +194,17 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 					out.submitCustomGeometry(pose, paint(), (p, vc) -> note(p, vc, pair, glow));
 					pose.popPose();
 				}
+			}
+			case PROPELLER_CAP -> {
+				long now = System.nanoTime();
+				propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f, bright);
+				propLast = now;
+				out.submitCustomGeometry(pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
+				pose.pushPose();
+				pose.translate(0, CAP_Y - CAP_HEIGHT - MAST, 0);
+				pose.mulPose(Axis.YP.rotation(propAngle));
+				out.submitCustomGeometry(pose, paint(), (p, vc) -> blades(p, vc, light, glow));
+				pose.popPose();
 			}
 			case NONE -> { }
 		}
@@ -430,6 +452,53 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	 * Seconds on a steady clock, for things that move on their own. It starts over at a moment when the notes are back
 	 * where they began, so the restart never shows as a jump, and stays small enough for smooth float maths.
 	 */
+	/**
+	 * Where the propeller has turned to after {@code dt} seconds. It spins faster the brighter the hat is, so it whirls as each
+	 * new line starts; a long pause (a dropped frame, the game in the background) never makes it jump.
+	 */
+	static float propellerTurn(float angle, float dt, float bright) {
+		float speed = PROP_SPIN * (1 + PROP_BOOST * (bright - REST) / FLARE);
+		return (angle + speed * Mth.clamp(dt, 0, 0.1f)) % Mth.TWO_PI;
+	}
+
+	/** A dome of panels in turn dark and the lyrics colour, a glowing band round its foot, a peak over the face and a gold mast. */
+	private static void propellerCap(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		for (int i = 0; i < SEGMENTS; i++) {
+			float a0 = i * Mth.TWO_PI / SEGMENTS, a1 = (i + 1) * Mth.TWO_PI / SEGMENTS;
+			float c0 = Mth.cos(a0), s0 = Mth.sin(a0), c1 = Mth.cos(a1), s1 = Mth.sin(a1);
+			int panel = i * CAP_PANELS / SEGMENTS % 2 == 0 ? DARK : glow;
+			for (int k = 0; k < CAP_RINGS; k++) {
+				float f0 = k * Mth.HALF_PI / CAP_RINGS, f1 = (k + 1) * Mth.HALF_PI / CAP_RINGS;
+				quad(p, vc, light, panel, panel, c0, s0, c1, s1, CAP_RADIUS * Mth.cos(f0), CAP_RADIUS * Mth.cos(f1),
+						CAP_Y - CAP_HEIGHT * Mth.sin(f0), CAP_Y - CAP_HEIGHT * Mth.sin(f1));
+			}
+		}
+		tube(p, vc, CAP_RADIUS, 0.008f, CAP_Y - 0.006f, glow, FULL_BRIGHT);
+		// The peak is longest in the middle and tapers to nothing at its sides, dipping a little towards its edge
+		for (int i = 0; i < PEAK_STEPS; i++) {
+			float t0 = -1 + 2f * i / PEAK_STEPS, t1 = -1 + 2f * (i + 1) / PEAK_STEPS;
+			float a0 = PEAK_ANGLE + t0 * PEAK_SPREAD, a1 = PEAK_ANGLE + t1 * PEAK_SPREAD;
+			float l0 = PEAK * Mth.cos(t0 * Mth.HALF_PI), l1 = PEAK * Mth.cos(t1 * Mth.HALF_PI);
+			float r0 = CAP_RADIUS + l0, r1 = CAP_RADIUS + l1, y0 = CAP_Y + PEAK_DIP * l0 / PEAK, y1 = CAP_Y + PEAK_DIP * l1 / PEAK;
+			float c0 = Mth.cos(a0), s0 = Mth.sin(a0), c1 = Mth.cos(a1), s1 = Mth.sin(a1);
+			face(p, vc, light, DARK, SILK, c0 * CAP_RADIUS, CAP_Y, s0 * CAP_RADIUS, c1 * CAP_RADIUS, CAP_Y, s1 * CAP_RADIUS,
+					c1 * r1, y1, s1 * r1, c0 * r0, y0, s0 * r0);
+		}
+		float apex = CAP_Y - CAP_HEIGHT;
+		box(p, vc, light, GOLD_DARK, -MAST_HALF, apex - MAST, -MAST_HALF, MAST_HALF, apex + 0.01f, MAST_HALF);
+	}
+
+	/** A gold hub with two glowing blades, each tipped up at its leading edge, brightest at the root. */
+	private static void blades(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		box(p, vc, light, GOLD, -HUB, -HUB / 2, -HUB, HUB, HUB / 2, HUB);
+		int tip = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.4f);
+		for (int side = -1; side <= 1; side += 2) {
+			float lead = -side * BLADE_PITCH;
+			face(p, vc, FULL_BRIGHT, glow, tip, side * HUB, -lead, -side * BLADE_ROOT, side * HUB, lead, side * BLADE_ROOT,
+					side * BLADE, lead, side * BLADE_TIP, side * BLADE, -lead, -side * BLADE_TIP);
+		}
+	}
+
 	private static float seconds() {
 		return (float) (System.nanoTime() / 1e9 % NOTE_LOOP);
 	}

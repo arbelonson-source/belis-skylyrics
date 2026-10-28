@@ -104,6 +104,29 @@ class HatLayerTest {
 	}
 
 	@Test
+	void thePropellerTurnsSteadilyAndWhirlsWhenALineStarts() {
+		float calm = HatLayer.propellerTurn(0, 0.05f, HatLayer.REST);
+		float whirl = HatLayer.propellerTurn(0, 0.05f, HatLayer.REST + HatLayer.FLARE);
+		assertTrue(calm > 0, "it always turns a little");
+		assertEquals(calm * (1 + HatLayer.PROP_BOOST), whirl, 1e-4, "a new line spins it up");
+		assertEquals(HatLayer.propellerTurn(0, 0.1f, HatLayer.REST), HatLayer.propellerTurn(0, 30, HatLayer.REST), 1e-6,
+				"a long pause never makes it jump");
+		float a = 0;
+		for (int i = 0; i < 10_000; i++) {
+			a = HatLayer.propellerTurn(a, 0.05f, HatLayer.REST + HatLayer.FLARE);
+		}
+		assertTrue(a >= 0 && a < 2 * Math.PI, "the angle stays within one turn");
+	}
+
+	@Test
+	void thePropellerCapSitsOnTheHeadWithItsPeakOverTheFace() {
+		assertTrue(HatLayer.CAP_Y < -0.5f - 0.5f / 16, "the cap sits above a skin's hat layer");
+		assertTrue(HatLayer.CAP_RADIUS > 0.25f * Math.sqrt(2) * 0.85f, "the cap covers the top of the head");
+		assertTrue(Math.sin(HatLayer.PEAK_ANGLE) < -0.99, "the peak points the way the face does (-z)");
+		assertTrue(HatLayer.BLADE > HatLayer.HUB && HatLayer.BLADE_TIP > HatLayer.BLADE_ROOT, "blades reach out and widen");
+	}
+
+	@Test
 	void antennaeStandOnTopOfTheHead() {
 		assertTrue(HatLayer.ANTENNA_X + HatLayer.ANTENNA_STALK < 0.25f, "the stalks start on the head, not beside it");
 		assertTrue(HatLayer.ANTENNA_LENGTH > 2 * HatLayer.ANTENNA_BALL, "the balls sit well above the head");
