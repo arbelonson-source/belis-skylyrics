@@ -612,10 +612,17 @@ public final class SkyLyricsScreen extends Screen {
 				new Button(Tr.t("Controls"), () -> minecraft.setScreen(new KeyBindsScreen(this, minecraft.options))));
 				//?}
 
+		Row record = new Toggle(Tr.t("Record card"), Tr.t("A small card in a corner with a spinning record, the song and how far it has played"),
+				() -> cfg.recordCard, v -> cfg.recordCard = v);
+		Row recordCorner = new Segmented(Tr.t("Corner"), Tr.t("Which corner of the screen the record card sits in"),
+				new String[] {Tr.t("Bottom right"), Tr.t("Bottom left"), Tr.t("Top left"), Tr.t("Top right")},
+				() -> cfg.cardCorner.ordinal(), i -> cfg.cardCorner = SkyLyricsConfig.CardCorner.values()[i]).when(() -> cfg.recordCard);
+
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, ping, frameRate, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barSpin, barEq, barProgress),
+				new Card(Tr.t("Record card"), record, recordCorner),
 				new Card(Tr.t("Main menu"), title),
 				new Card(Tr.t("Performance"), effects, effectsNow),
 				new Card(Tr.t("Keys"), openKey, controls));

@@ -424,5 +424,13 @@
   "skylyrics.ui.each_sung_word_fades_and_shrinks_a_little": "Each sung word fades and shrinks a little",
   "skylyrics.ui.each_sung_word_floats_up_as_it_fades": "Each sung word floats up as it fades",
   "skylyrics.ui.each_sung_word_blows_away_on_the_wind": "Each sung word blows away on the wind",
-  "skylyrics.ui.each_sung_word_sinks_down_as_it_fades": "Each sung word sinks down as it fades"
+  "skylyrics.ui.each_sung_word_sinks_down_as_it_fades": "Each sung word sinks down as it fades",
+  "skylyrics.ui.record_card": "Record card",
+  "skylyrics.ui.a_small_card_in_a_corner_with_a_spinning_record": "A small card in a corner with a spinning record, the song and how far it has played",
+  "skylyrics.ui.corner": "Corner",
+  "skylyrics.ui.which_corner_of_the_screen_the_record_card_sits": "Which corner of the screen the record card sits in",
+  "skylyrics.ui.bottom_right": "Bottom right",
+  "skylyrics.ui.bottom_left": "Bottom left",
+  "skylyrics.ui.top_left": "Top left",
+  "skylyrics.ui.top_right": "Top right"
 }

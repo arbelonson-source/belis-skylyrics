@@ -424,5 +424,13 @@
   "skylyrics.ui.each_sung_word_fades_and_shrinks_a_little": "כל מילה שהושרה דועכת ומתכווצת קצת",
   "skylyrics.ui.each_sung_word_floats_up_as_it_fades": "כל מילה שהושרה עולה למעלה בזמן שהיא דועכת",
   "skylyrics.ui.each_sung_word_blows_away_on_the_wind": "כל מילה שהושרה עפה ברוח",
-  "skylyrics.ui.each_sung_word_sinks_down_as_it_fades": "כל מילה שהושרה שוקעת למטה בזמן שהיא דועכת"
+  "skylyrics.ui.each_sung_word_sinks_down_as_it_fades": "כל מילה שהושרה שוקעת למטה בזמן שהיא דועכת",
+  "skylyrics.ui.record_card": "כרטיס תקליט",
+  "skylyrics.ui.a_small_card_in_a_corner_with_a_spinning_record": "כרטיס קטן בפינה עם תקליט מסתובב, השיר וכמה ממנו כבר התנגן",
+  "skylyrics.ui.corner": "פינה",
+  "skylyrics.ui.which_corner_of_the_screen_the_record_card_sits": "באיזו פינה של המסך יושב כרטיס התקליט",
+  "skylyrics.ui.bottom_right": "למטה מימין",
+  "skylyrics.ui.bottom_left": "למטה משמאל",
+  "skylyrics.ui.top_left": "למעלה משמאל",
+  "skylyrics.ui.top_right": "למעלה מימין"
 }

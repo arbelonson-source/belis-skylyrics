@@ -115,6 +115,13 @@ public final class SkyLyricsConfig {
 		BOTTOM
 	}
 
+	public enum CardCorner {
+		BOTTOM_RIGHT,
+		BOTTOM_LEFT,
+		TOP_LEFT,
+		TOP_RIGHT
+	}
+
 	public enum BarShow {
 		ALWAYS,
 		LYRICS_OUT_OF_VIEW
@@ -355,6 +362,9 @@ public final class SkyLyricsConfig {
 	public boolean barEqualiser = true;
 	/** A thin line under the words that fills as the song plays. */
 	public boolean barProgress = false;
+	/** A small card in a corner with a spinning record, the song and how far along it is. */
+	public boolean recordCard = false;
+	public CardCorner cardCorner = CardCorner.BOTTOM_RIGHT;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */
@@ -412,6 +422,7 @@ public final class SkyLyricsConfig {
 		if (sky == null) sky = d.sky;
 		if (layout == null) layout = d.layout;
 		if (barPosition == null) barPosition = d.barPosition;
+		if (cardCorner == null) cardCorner = d.cardCorner;
 		if (barAccent == null) barAccent = d.barAccent;
 		if (barShow == null) barShow = d.barShow;
 		if (skyColors == null) skyColors = d.skyColors;

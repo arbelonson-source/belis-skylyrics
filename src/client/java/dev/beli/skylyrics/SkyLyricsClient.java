@@ -59,6 +59,7 @@ import dev.beli.skylyrics.render.CoverCache;
 import dev.beli.skylyrics.render.HatLayer;
 import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.render.NowPlayingHud;
+import dev.beli.skylyrics.render.RecordCard;
 import dev.beli.skylyrics.render.SkyEffects;
 import dev.beli.skylyrics.update.Updater;
 
@@ -78,6 +79,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private boolean attackHeld;
 	private SkyEffects sky;
 	private NowPlayingHud hud;
+	private RecordCard card;
 	private DevTestHook testHook;
 
 	private KeyMapping openSettings;
@@ -118,6 +120,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		covers = new CoverCache(cache.resolve("covers"));
 		renderer = new LyricsRenderer(tracker, lyrics, art);
 		hud = new NowPlayingHud(tracker, lyrics, art);
+		card = new RecordCard(tracker, art);
 
 		tracker.onTrackChange(track -> {
 			lyrics.load(track);
@@ -157,6 +160,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
+		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("record_card"), card::render);
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
 				if (!cfg.introSeen) {

@@ -705,7 +705,7 @@ public final class NowPlayingHud {
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */
-	private static void roundRectGui(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
+	static void roundRectGui(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
 		float s = (float) Minecraft.getInstance().getWindow().getGuiScale();
 		g.pose().pushMatrix();
 		g.pose().scale(1 / s, 1 / s);
