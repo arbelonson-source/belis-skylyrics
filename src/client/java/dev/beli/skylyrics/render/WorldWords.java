@@ -170,6 +170,8 @@ final class WorldWords {
 	private static final float CAP_MIDDLE = 3.8f;
 	/** Words with at most this many letters lean on the next word ("CAN YOU", "THE BEAT"). */
 	static final int SHORT_WORD = 3;
+	/** Chinese and Japanese have no spaces, so a run of their characters is cut into pieces of about this many. */
+	static final int CJK_PIECE = 3;
 	/** The scatter's spots, as degrees right of and above its middle. */
 	private static final float[][] SPOTS = slots();
 	/** How far a flowing line floats, and how far it may start off the middle of the view (degrees). */
@@ -322,10 +324,12 @@ final class WorldWords {
 
 	/**
 	 * Splits a line into the pieces that appear together: one word, or a short word with the next one, never more
-	 * than two words. Returns each piece's first and past-last code point in the line.
+	 * than two words. Chinese and Japanese, written without spaces, come in pieces of a few characters instead of the
+	 * whole line at once. Returns each piece's first and past-last code point in the line.
 	 */
 	static List<int[]> chunks(String text) {
 		int[] cps = text.codePoints().toArray();
+		// Each word, and whether it's a piece of a Chinese or Japanese run, which never leans on the next
 		List<int[]> words = new ArrayList<>();
 		for (int i = 0; i < cps.length; ) {
 			if (cps[i] == ' ') {
@@ -333,21 +337,81 @@ final class WorldWords {
 				continue;
 			}
 			int start = i;
+			boolean cjk = false;
 			while (i < cps.length && cps[i] != ' ') {
+				cjk |= cjk(cps[i]);
 				i++;
 			}
-			words.add(new int[] {start, i});
+			if (cjk) {
+				for (int[] piece : cjkPieces(cps, start, i)) {
+					words.add(new int[] {piece[0], piece[1], 1});
+				}
+			} else {
+				words.add(new int[] {start, i, 0});
+			}
 		}
 		List<int[]> out = new ArrayList<>();
 		for (int w = 0; w < words.size(); w++) {
 			int[] word = words.get(w);
-			if (w + 1 < words.size() && letters(cps, word) <= SHORT_WORD) {
+			if (w + 1 < words.size() && word[2] == 0 && words.get(w + 1)[2] == 0 && letters(cps, word) <= SHORT_WORD) {
 				out.add(new int[] {word[0], words.get(++w)[1]});
 			} else {
-				out.add(word);
+				out.add(new int[] {word[0], word[1]});
 			}
 		}
 		return out;
+	}
+
+	private static boolean cjk(int cp) {
+		Character.UnicodeScript script = Character.UnicodeScript.of(cp);
+		return script == Character.UnicodeScript.HAN || script == Character.UnicodeScript.HIRAGANA
+				|| script == Character.UnicodeScript.KATAKANA;
+	}
+
+	/**
+	 * Cuts a run with Chinese or Japanese in it into even pieces of about {@link #CJK_PIECE} characters. Punctuation
+	 * and the long-vowel and repeat marks stay with the character before them, an opening bracket with the one after,
+	 * and a Latin word inside the run stays whole.
+	 */
+	private static List<int[]> cjkPieces(int[] cps, int start, int end) {
+		List<int[]> units = new ArrayList<>();
+		int open = -1;
+		boolean lastCjk = false;
+		for (int i = start; i < end; i++) {
+			int cp = cps[i];
+			if (Character.getType(cp) == Character.START_PUNCTUATION) {
+				open = open < 0 ? i : open;
+				continue;
+			}
+			boolean mark = !Character.isLetterOrDigit(cp) || cp == 0x30FC || cp == 0x3005 || cp >= 0x309D && cp <= 0x309E
+					|| cp >= 0x30FD && cp <= 0x30FE;
+			if (open < 0 && !units.isEmpty() && (mark || !lastCjk && !cjk(cp))) {
+				units.get(units.size() - 1)[1] = i + 1;
+			} else if (mark && units.isEmpty()) {
+				open = open < 0 ? i : open;
+				continue;
+			} else {
+				units.add(new int[] {open < 0 ? i : open, i + 1});
+				open = -1;
+			}
+			if (!mark) {
+				lastCjk = cjk(cp);
+			}
+		}
+		if (open >= 0) {
+			if (units.isEmpty()) {
+				units.add(new int[] {open, end});
+			} else {
+				units.get(units.size() - 1)[1] = end;
+			}
+		}
+		int count = (units.size() + CJK_PIECE - 1) / CJK_PIECE;
+		List<int[]> pieces = new ArrayList<>(count);
+		for (int k = 0; k < count; k++) {
+			int from = k * units.size() / count, to = (k + 1) * units.size() / count;
+			pieces.add(new int[] {units.get(from)[0], units.get(to - 1)[1]});
+		}
+		return pieces;
 	}
 
 	private static int letters(int[] cps, int[] word) {

@@ -44,6 +44,17 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void chineseAndJapaneseComeInSmallPieces() {
+		assertEquals(List.of("夜空", "に光る", "星たち"), pieces("夜空に光る星たち"));
+		assertEquals(List.of("星が", "光る、", "夜の空"), pieces("星が光る、 夜の空"), "punctuation stays with its word");
+		assertEquals(List.of("「夜空」"), pieces("「夜空」"));
+		assertEquals(List.of("ラーメン"), pieces("ラーメン"), "a long-vowel mark isn't a character of its own");
+		assertEquals(List.of("Tokyoの夜"), pieces("Tokyoの夜"), "a Latin word inside stays whole");
+		assertEquals(List.of("I", "夜空"), pieces("I 夜空"), "a short word doesn't lean on a Japanese piece");
+		assertEquals(List.of("CAN YOU", "HEAR"), pieces("CAN YOU HEAR"), "spaced words are unchanged");
+	}
+
+	@Test
 	void chunksPointAtTheirLetters() {
 		List<int[]> c = WorldWords.chunks("GO HOME NOW");
 		assertEquals(0, c.get(0)[0], "starts with the first letter");
