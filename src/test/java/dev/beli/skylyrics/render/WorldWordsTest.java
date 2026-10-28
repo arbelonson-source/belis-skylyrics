@@ -541,6 +541,16 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void sungWordsSettleSmallerOnceTheNextOneLands() {
+		assertEquals(1, WorldWords.settled(-1), 1e-6, "the word being sung keeps its size");
+		assertEquals(1, WorldWords.settled(0), 1e-6);
+		float half = WorldWords.settled(0.15f), done = WorldWords.settled(5);
+		assertTrue(half < 1 && half > done, "it eases down");
+		assertTrue(done > 0.75f && done < 0.9f, "a little smaller, still easy to read");
+		assertEquals(done, WorldWords.settled(9), 1e-6);
+	}
+
+	@Test
 	void sungWordsPaleInsteadOfGreying() {
 		int pink = 0xFF4FB8;
 		assertEquals(pink, WorldWords.paled(pink, 0));

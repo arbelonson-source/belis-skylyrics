@@ -99,6 +99,9 @@ final class WorldWords {
 	 * of itself instead of turning a darker grey than the sky around it. */
 	private static final float PALE_TIME = 0.24f, PALE = 0.55f;
 	private static final int PALE_RGB = 0xF4F2FF;
+	/** Once the next word lands, a sung word eases down to this much of its size over this many seconds, so the word
+	 * being sung always stands out from the ones just before it. */
+	private static final float SETTLED = 0.82f, SETTLE_TIME = 0.35f;
 	/** A new card fades in over this many seconds, and its letters type in over this many. */
 	private static final float FADE_IN = 0.14f, TYPE = 0.23f;
 	/** A new card starts this much bigger and settles back over this many seconds. */
@@ -694,6 +697,20 @@ final class WorldWords {
 			return Vec3.ZERO;
 		}
 		return eye.subtract(last);
+	}
+
+	/**
+	 * How big a word is next to when it was being sung: full size until the next word comes, then smoothly a little
+	 * smaller.
+	 *
+	 * @param since seconds since the next word came or the word was let go, or a negative number while it's sung
+	 */
+	static float settled(float since) {
+		if (since <= 0) {
+			return 1;
+		}
+		float t = Mth.clamp(since / SETTLE_TIME, 0, 1);
+		return 1 - (1 - SETTLED) * t * t * (3 - 2 * t);
 	}
 
 	/** The colour of a word sung {@code gone} seconds ago that was {@code rgb}: the same hue, paler. */
@@ -1550,7 +1567,10 @@ final class WorldWords {
 			int n = c.display.cps().length;
 			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
 			float enter = arrival == WorldArrival.ZOOM ? zoomIn(age) : popping && !flow ? pop(age) : 1;
-			float grow = c.size * scale * enter * (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
+			float replaced = i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1;
+			float since = c == sung || c.title ? -1 : replaced >= 0 ? replaced : c.goneAt >= 0 ? gone : -1;
+			float grow = c.size * scale * enter * settled(since)
+					* (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
@@ -1591,7 +1611,7 @@ final class WorldWords {
 						SHADOW_Z, mode);
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
-			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
+			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, replaced, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
