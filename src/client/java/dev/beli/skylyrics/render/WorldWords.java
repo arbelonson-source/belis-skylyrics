@@ -78,8 +78,11 @@ final class WorldWords {
 	private static final float TURN_MIN = 10f, TURN_MAX = 30f, NOD = 7f, LEAN = 4f;
 	/** Blocks per text unit: capital letters end up a bit under half a block tall, about two degrees across the scatter. */
 	private static final float SIZE = 0.06f;
-	/** Card size, times the setting, for short pieces and for long ones; sizes in between follow the letter count. */
-	private static final float SIZE_SHORT = 0.72f, SIZE_LONG = 1.3f;
+	/**
+	 * Card size, times the setting, for short pieces and for long ones; sizes in between follow the letter count. Kept
+	 * close together, about 1.4 to 1, so a line reads as one even staircase and little words stay easy to read.
+	 */
+	private static final float SIZE_SHORT = 0.85f, SIZE_LONG = 1.2f;
 	/** Pieces with up to this many letters are the smallest, with this many more the biggest. */
 	private static final int SHORT_LETTERS = 3, LONG_LETTERS = 6;
 	/** Each card is randomly up to this much smaller or bigger than its letters say, so sizes don't look graded. */
@@ -363,10 +366,6 @@ final class WorldWords {
 		return Mth.lerp(t, SIZE_SHORT, SIZE_LONG) * (1 + (roll * 2 - 1) * SIZE_JITTER);
 	}
 
-	/**
-	 * How many cards float at once, how many seconds sung ones take to fade, how far out new ones float, how much they
-	 * turn and lean, how far they drift up and whether a line flows left to right (the World words settings).
-	 */
 	/** Glows in {@code rgb}, or in the words' own colour when it's -1. */
 	void glowColour(int rgb) {
 		glowRgb = rgb;
@@ -446,6 +445,10 @@ final class WorldWords {
 		return spots;
 	}
 
+	/**
+	 * How many cards float at once, how many seconds sung ones take to fade, how far out new ones float, how much they
+	 * turn and lean, how far they drift up and whether a line flows left to right (the World words settings).
+	 */
 	void tune(int maxCards, float fade, float away, float tilt, float rise, boolean flow, boolean hold, boolean capitals, float scale) {
 		this.wordScale = Mth.clamp(scale, 0.25f, 4);
 		this.away = Mth.clamp(away, 0.5f, 2);

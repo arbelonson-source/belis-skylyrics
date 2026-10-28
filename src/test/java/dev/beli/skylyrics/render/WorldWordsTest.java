@@ -145,6 +145,7 @@ class WorldWordsTest {
 	void longWordsAreBiggerThanLittleOnes() {
 		assertTrue(WorldWords.sizeFor(9, 0) > WorldWords.sizeFor(2, 1), "a long word beats a little one even with bad luck");
 		assertEquals(WorldWords.sizeFor(1, 0.5f), WorldWords.sizeFor(3, 0.5f), 1e-6);
+		assertTrue(WorldWords.sizeFor(20, 1) / WorldWords.sizeFor(1, 0) < 1.75f, "sizes stay close, so little words still read");
 		assertEquals(WorldWords.sizeFor(9, 0.5f), WorldWords.sizeFor(20, 0.5f), 1e-6);
 		for (int n = 1; n < 12; n++) {
 			assertTrue(WorldWords.sizeFor(n + 1, 0.5f) >= WorldWords.sizeFor(n, 0.5f), "grows with the letters");
