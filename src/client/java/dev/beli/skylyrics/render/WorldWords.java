@@ -244,6 +244,8 @@ final class WorldWords {
 	private final List<Card> cards = new ArrayList<>();
 	/** Reused for each card's turn while drawing, which only happens on the render thread. */
 	private static final Quaternionf TURN = new Quaternionf();
+	/** Reused for each card's middle while drawing; the checks that get it only read it. */
+	private static final Vector3f CENTRE = new Vector3f();
 	private final int[] recent = {-1, -1};
 	private int line = Integer.MIN_VALUE;
 	private int spawned;
@@ -1615,7 +1617,7 @@ final class WorldWords {
 			float grow = c.size * scale * enter * settled(since)
 					* (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
 			a *= settledAlpha(since);
-			Vector3f centre = new Vector3f(x, y, z);
+			Vector3f centre = CENTRE.set(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
 			}
