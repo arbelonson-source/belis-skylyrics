@@ -73,6 +73,19 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void aTitleCardKeepsBandNamesWhole() {
+		assertEquals("Simon & Garfunkel", TitleCleaner.shownArtist("Simon & Garfunkel"));
+		assertEquals("Tyler, The Creator", TitleCleaner.shownArtist("Tyler, The Creator"));
+		assertEquals("Made Up, Band", TitleCleaner.shownArtist(" Made Up, Band "));
+		assertEquals("Someone Long Named",
+				TitleCleaner.shownArtist("Someone Long Named, Another Long Name, A Third One"));
+		assertEquals("Tyler, The Creator",
+				TitleCleaner.shownArtist("Tyler, The Creator, Someone Else, And Another Name"));
+		assertEquals("Someone With A Long Name",
+				TitleCleaner.shownArtist("Someone With A Long Name feat. Another"));
+	}
+
+	@Test
 	void mainArtistIsTheFirstOne() {
 		assertEquals("A", TitleCleaner.mainArtist("A, B & C"));
 		assertEquals("A", TitleCleaner.mainArtist("A feat. B"));

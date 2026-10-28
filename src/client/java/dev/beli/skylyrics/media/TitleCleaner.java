@@ -54,6 +54,20 @@ public final class TitleCleaner {
 		return t.trim();
 	}
 
+	/** Longest artist credit a title card shows whole. */
+	static final int SHOWN_ARTIST_MAX = 32;
+	private static final Pattern CREDIT_SPLIT = Pattern.compile("(?i)\\s*,(?!\\s*the\\s)\\s*|\\s+(feat\\.?|ft\\.?)\\s+");
+
+	/**
+	 * The artist as a title card shows it. Players list several artists as "A, B, C", but band names
+	 * hold commas and "&" too ("Simon & Garfunkel", "Tyler, The Creator"), so a short credit is shown
+	 * whole and only a long list is cut to its first name.
+	 */
+	public static String shownArtist(String artist) {
+		String a = artist.trim();
+		return a.length() <= SHOWN_ARTIST_MAX ? a : CREDIT_SPLIT.split(a, 2)[0].trim();
+	}
+
 	/** First artist only: "A, B & C" -> "A". */
 	public static String mainArtist(String artist) {
 		String[] parts = artist.split("\\s*(,|&|\\bfeat\\.?|\\bft\\.?|\\bx\\b)\\s*", 2);

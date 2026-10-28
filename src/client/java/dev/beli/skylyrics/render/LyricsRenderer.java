@@ -481,7 +481,7 @@ public final class LyricsRenderer {
 		if (!dead && !track.isNone() && !key.equals(announced)) {
 			announced = key;
 			if (cfg.worldTitle) {
-				worldWords.announce(shownTitle(track.title()), TitleCleaner.mainArtist(track.artist()), cfg.direction.yaw, camera, mc.font, style, now);
+				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), cfg.direction.yaw, camera, mc.font, style, now);
 			}
 		}
 		if (!dead) {
