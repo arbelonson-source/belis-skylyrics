@@ -1700,14 +1700,14 @@ final class WorldWords {
 		pose.pushPose();
 		pose.translate(0, 0, z);
 		for (int from = 0; from < n; ) {
-			// A dissolving card is drawn a letter at a time, each as faint as it has got
-			int each = melt < 0 ? alphaByte : Math.round(alpha * letterLeft(c.born, d.logical()[from], melt) * 255);
+			int each = letterByte(c, from, melt, alpha, alphaByte);
 			if (d.logical()[from] >= shown || each < 4) {
 				from++;
 				continue;
 			}
+			// Letters just as faint go in one draw, so a dissolving card only splits up round the letters on their way out
 			int to = from + 1;
-			while (melt < 0 && to < n && d.logical()[to] < shown) {
+			while (to < n && d.logical()[to] < shown && letterByte(c, to, melt, alpha, alphaByte) == each) {
 				to++;
 			}
 			int a0 = from, a1 = to;
@@ -1727,6 +1727,11 @@ final class WorldWords {
 			from = to;
 		}
 		pose.popPose();
+	}
+
+	/** How opaque glyph {@code v} of card {@code c} is drawn, 0-255: {@code alphaByte}, or on a dissolving card as much as its letter has left. */
+	private static int letterByte(Card c, int v, float melt, float alpha, int alphaByte) {
+		return melt < 0 ? alphaByte : Math.round(alpha * letterLeft(c.born, c.display.logical()[v], melt) * 255);
 	}
 
 	private static int mix(int from, int to, float t) {
