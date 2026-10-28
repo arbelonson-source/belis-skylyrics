@@ -1124,6 +1124,7 @@ public final class LyricsRenderer {
 			int brightTo = tone < 0 ? bright : mix(tone, 0xFFFFFF, 0.55f - 0.08f * day);
 			int dimTo = tone < 0 ? dim : mix(tone, 0x000000, 0.45f - 0.4f * day);
 			int secondaryTo = tone < 0 ? secondary : mix(tone, 0xFFFFFF, 0.25f - 0.25f * day);
+			int haloTo = tone < 0 ? halo : mix(glowOf(tone), 0x000000, 0.75f * day);
 			int letters = total;
 			float haloWeight = 1 + 0.9f * day;
 			boolean byWord = !Float.isNaN(wordsT);
@@ -1209,7 +1210,10 @@ public final class LyricsRenderer {
 						if (ga > 0.02f) {
 							FormattedCharSequence glowSeq = sink -> {
 								for (int v = a0; v < a1; v++) {
-									if (!sink.accept(v, base, d.cps[v])) {
+									// Two-tone: the glow follows the letters into the second colour; only its strength comes from the copy
+									Style glowStyle = tone < 0 ? base
+											: base.withColor(mix(halo, haloTo, letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1)));
+									if (!sink.accept(v, glowStyle, d.cps[v])) {
 										return false;
 									}
 								}
