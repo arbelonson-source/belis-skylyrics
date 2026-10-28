@@ -112,6 +112,8 @@ public final class SkyLyricsConfig {
 		BOTH,
 		/** A big full moon with a soft glow over low clouds drifting round the horizon. */
 		MOONLIGHT,
+		/** A slowly turning spiral galaxy, seen at a slant up and to the left of the lyrics. */
+		GALAXY,
 		/** One of the other skies, a different one for each song. */
 		RANDOM
 	}
