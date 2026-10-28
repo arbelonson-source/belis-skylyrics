@@ -29,6 +29,7 @@ import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.WorldArrival;
+import dev.beli.skylyrics.config.SkyLyricsConfig.WorldLeave;
 import dev.beli.skylyrics.render.LyricsRenderer.Display;
 
 /**
@@ -118,6 +119,10 @@ final class WorldWords {
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
 	/** How much smaller a let-go card has got by the time it has faded out. */
 	private static final float LEAVE = 0.15f;
+	/** The Float and Sink leavings: how many blocks a word has moved up or down by the time it has faded out. */
+	static final float LEAVE_RISE = 1.2f;
+	/** The Blow leaving: how many text units a word has blown aside by the time it has faded out, and how far it tips (degrees). */
+	static final float BLOW = 48f, BLOW_TIP = 14f;
 	/** When you die the words drop away: how long they take to fade, how hard they fall (blocks per second, squared) and spin (degrees a second). */
 	private static final float FALL_TIME = 1.6f, FALL_PULL = 3f, FALL_SPIN = 40f;
 	/** While up, a card rocks this many degrees either way and bobs this many blocks, once every {@code SWAY_TIME} seconds. */
@@ -233,6 +238,7 @@ final class WorldWords {
 	private boolean flow;
 	private boolean hold = true;
 	private WorldArrival arrival = WorldArrival.POP;
+	private WorldLeave leave = WorldLeave.SHRINK;
 	private boolean nudge = true, avoidPlayers = true, knock = true, swung, clearMiddle = true;
 	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
@@ -352,6 +358,29 @@ final class WorldWords {
 		return 1 - LEAVE * Mth.clamp(seconds / fade, 0, 1);
 	}
 
+	/** How many blocks a let-go card has moved up (below 0: down), {@code seconds} after it was let go. */
+	static float leaveUp(WorldLeave leave, float seconds, float fade) {
+		float t = Mth.clamp(seconds / fade, 0, 1);
+		return switch (leave) {
+			case FLOAT -> LEAVE_RISE * t;
+			case SINK -> -LEAVE_RISE * t;
+			// A blown word lifts a little too, the way a gust carries it
+			case BLOW -> LEAVE_RISE / 4 * t * t;
+			case SHRINK -> 0;
+		};
+	}
+
+	/** How far a let-go card has blown aside, in text units: slowly at first, then faster, like a leaf caught by the wind. */
+	static float blowAside(WorldLeave leave, float seconds, float fade) {
+		float t = Mth.clamp(seconds / fade, 0, 1);
+		return leave == WorldLeave.BLOW ? BLOW * t * t : 0;
+	}
+
+	/** How many blocks card {@code c} has moved up or down while leaving, {@code ahead} seconds from now. */
+	private float leftUp(Card c, long now, float ahead) {
+		return c.goneAt < 0 ? 0 : leaveUp(leave, (now - c.goneAt) / 1e9f + ahead, fade);
+	}
+
 	/** How visible a card cut short {@code seconds} ago still is. */
 	static float cutAlpha(float seconds) {
 		return 1 - Mth.clamp(seconds / CUT, 0, 1);
@@ -371,11 +400,17 @@ final class WorldWords {
 		glowRgb = rgb;
 	}
 
-	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
+	/** How each new word shows up (the Arrival setting). */
 	void arrival(WorldArrival arrival) {
 		this.arrival = arrival == null ? WorldArrival.POP : arrival;
 	}
 
+	/** How each sung word goes (the Leaving setting). */
+	void leave(WorldLeave leave) {
+		this.leave = leave == null ? WorldLeave.SHRINK : leave;
+	}
+
+	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
 	void nudge(boolean on) {
 		this.nudge = on;
 	}
@@ -716,7 +751,7 @@ final class WorldWords {
 			Vec3 to = c.pos.subtract(eye);
 			// The words of the line being written are spaced by the line itself
 			if (to.length() > 1e-3 && (c.of == null || c.of != sentence) && c.cutAt < 0) {
-				float[] print = footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise) * c.lift, c.at[c.at.length - 1] * c.size * wordScale / 2,
+				float[] print = footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise) * c.lift + leftUp(c, now, LOOK_AHEAD), c.at[c.at.length - 1] * c.size * wordScale / 2,
 						5 * c.size * wordScale);
 				under.add(c);
 				shown.add(print);
@@ -1289,7 +1324,7 @@ final class WorldWords {
 				continue;
 			}
 			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
-			float[] mine = footprint(to, riseAfter((now - c.born) / 1e9f, rise) * c.lift, halfW, 5 * c.size * wordScale);
+			float[] mine = footprint(to, riseAfter((now - c.born) / 1e9f, rise) * c.lift + leftUp(c, now, 0), halfW, 5 * c.size * wordScale);
 			for (float[] o : join(people, nudge ? seen : List.of())) {
 				float[] move = push(o, mine);
 				if (move[0] != 0 || move[1] != 0) {
@@ -1332,7 +1367,7 @@ final class WorldWords {
 			if (c.fellAt >= 0 || c.cutAt >= 0 || c.goneAt >= 0 && goneAlpha((now - c.goneAt) / 1e9f, fade) < 0.2f) {
 				continue;
 			}
-			Vec3 to = c.pos.add(c.slid).add(0, riseAfter((now - c.born) / 1e9f, rise) * c.lift, 0).subtract(eye);
+			Vec3 to = c.pos.add(c.slid).add(0, riseAfter((now - c.born) / 1e9f, rise) * c.lift + leftUp(c, now, 0), 0).subtract(eye);
 			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
 			float[] box = footprint(to, 0, halfW + KNOCK_MARGIN, 5 * c.size * wordScale + KNOCK_MARGIN);
 			if (Math.abs(Mth.wrapDegrees(yaw - box[0])) < box[2] && Math.abs(pitch - box[1]) < box[3] && to.length() < bestFar) {
@@ -1452,7 +1487,7 @@ final class WorldWords {
 			}
 			float x = (float) (c.pos.x + c.slid.x - eye.x), z = (float) (c.pos.z + c.slid.z - eye.z);
 			float sway = swayAngle(age, c.born);
-			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
+			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + leftUp(c, now, 0) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
 			float hit = c.hitAt < 0 ? -1 : (now - c.hitAt) / 1e9f, spin = 0, squash = 1, shove = knockOut(hit);
 			if (shove > 0) {
 				x += (float) c.knock.x * shove;
@@ -1464,7 +1499,7 @@ final class WorldWords {
 			int n = c.display.cps().length;
 			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
 			float enter = arrival == WorldArrival.ZOOM ? zoomIn(age) : popping && !flow ? pop(age) : 1;
-			float grow = c.size * scale * enter * (c.goneAt < 0 ? 1 : leaveSize(gone, fade)) * squash;
+			float grow = c.size * scale * enter * (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
@@ -1489,9 +1524,10 @@ final class WorldWords {
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
-					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell + spin) * DEG));
+					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell + spin
+					- BLOW_TIP * blowAside(leave, gone, fade) / BLOW) * DEG));
 			pose.scale(grow, -grow, grow);
-			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0),
+			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blowAside(leave, gone, fade),
 					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) : 0);
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));

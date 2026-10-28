@@ -415,5 +415,14 @@
   "skylyrics.ui.each_word_drops_in_from_above_and_bounces": "Each word drops in from above and bounces",
   "skylyrics.ui.each_word_grows_out_of_nothing": "Each word grows out of nothing",
   "skylyrics.ui.each_word_slowly_fades_in": "Each word slowly fades in",
-  "skylyrics.ui.antennae": "Antennae"
+  "skylyrics.ui.antennae": "Antennae",
+  "skylyrics.ui.leaving": "Leaving",
+  "skylyrics.ui.shrink": "Shrink",
+  "skylyrics.ui.float": "Float",
+  "skylyrics.ui.blow": "Blow",
+  "skylyrics.ui.sink": "Sink",
+  "skylyrics.ui.each_sung_word_fades_and_shrinks_a_little": "Each sung word fades and shrinks a little",
+  "skylyrics.ui.each_sung_word_floats_up_as_it_fades": "Each sung word floats up as it fades",
+  "skylyrics.ui.each_sung_word_blows_away_on_the_wind": "Each sung word blows away on the wind",
+  "skylyrics.ui.each_sung_word_sinks_down_as_it_fades": "Each sung word sinks down as it fades"
 }

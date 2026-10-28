@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
+import dev.beli.skylyrics.config.SkyLyricsConfig.WorldLeave;
+
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -109,6 +111,19 @@ class WorldWordsTest {
 		assertEquals(1, WorldWords.leaveSize(0, 2.2f), 1e-6, "full size when let go");
 		assertEquals(0.85f, WorldWords.leaveSize(2.2f, 2.2f), 1e-6, "a bit smaller once faded");
 		assertEquals(0.85f, WorldWords.leaveSize(9f, 2.2f), 1e-6, "and no smaller after that");
+	}
+
+	@Test
+	void leavingStyleSetsWhereAFadingWordGoes() {
+		assertEquals(0, WorldWords.leaveUp(WorldLeave.SHRINK, 2.2f, 2.2f), 1e-6, "shrink stays put");
+		assertEquals(0, WorldWords.blowAside(WorldLeave.SHRINK, 2.2f, 2.2f), 1e-6);
+		assertEquals(0, WorldWords.leaveUp(WorldLeave.FLOAT, 0, 2.2f), 1e-6, "starts where it was sung");
+		assertEquals(WorldWords.LEAVE_RISE, WorldWords.leaveUp(WorldLeave.FLOAT, 9f, 2.2f), 1e-6, "floats up, then stops");
+		assertEquals(-WorldWords.LEAVE_RISE, WorldWords.leaveUp(WorldLeave.SINK, 2.2f, 2.2f), 1e-6, "sinks down");
+		float early = WorldWords.blowAside(WorldLeave.BLOW, 0.55f, 2.2f);
+		float late = WorldWords.blowAside(WorldLeave.BLOW, 2.2f, 2.2f);
+		assertTrue(early < late / 4 + 1e-4f, "the wind picks up speed");
+		assertEquals(WorldWords.BLOW, late, 1e-4);
 	}
 
 	@Test

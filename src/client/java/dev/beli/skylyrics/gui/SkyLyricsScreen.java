@@ -44,6 +44,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkySpeed;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.config.SkyLyricsConfig.WorldArrival;
+import dev.beli.skylyrics.config.SkyLyricsConfig.WorldLeave;
 import dev.beli.skylyrics.gui.Controls.Button;
 import dev.beli.skylyrics.gui.Controls.Buttons;
 import dev.beli.skylyrics.gui.Controls.Card;
@@ -295,6 +296,16 @@ public final class SkyLyricsScreen extends Screen {
 					case FADE -> Tr.t("Each word slowly fades in");
 				})
 				.when(() -> cfg.layout == Layout.WORLD);
+		Row leaving = new Segmented(Tr.t("Leaving"), null,
+				new String[] {Tr.t("Shrink"), Tr.t("Float"), Tr.t("Blow"), Tr.t("Sink")}, () -> cfg.worldLeave.ordinal(),
+				i -> cfg.worldLeave = WorldLeave.values()[i])
+				.describe(() -> switch (cfg.worldLeave) {
+					case SHRINK -> Tr.t("Each sung word fades and shrinks a little");
+					case FLOAT -> Tr.t("Each sung word floats up as it fades");
+					case BLOW -> Tr.t("Each sung word blows away on the wind");
+					case SINK -> Tr.t("Each sung word sinks down as it fades");
+				})
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),
 				() -> cfg.pulse, v -> cfg.pulse = v);
 		Row capitals = new Toggle(Tr.t("CAPITALS"), Tr.t("Write every lyric in capital letters"),
@@ -302,7 +313,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, curve, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
-				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, arrival, pulse, capitals));
+				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, arrival, leaving, pulse, capitals));
 	}
 
 	private List<Card> lookTab() {
