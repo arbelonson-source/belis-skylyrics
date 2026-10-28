@@ -143,7 +143,8 @@ public final class NowPlayingHud {
 	private String clockText = "";
 
 	/** What the bar says: a lyric line, or the song's title and artist. */
-	private record Content(String key, boolean lyric, String text, String sub, float sung) {}
+	/** {@code through} is how far the song is through the line's time, 0 to 1, karaoke or not. */
+	private record Content(String key, boolean lyric, String text, String sub, float sung, float through) {}
 
 	/** A word of the line, placed from the line's start in GUI units. */
 	private record Word(String text, float x, float w, boolean sung) {}
@@ -595,6 +596,12 @@ public final class NowPlayingHud {
 		return line == null ? null : line.text();
 	}
 
+	/** How far the song is through the line being sung, 0 to 1 (0 between lines). */
+	float singingThrough(SkyLyricsConfig cfg) {
+		Content line = currentLine(cfg);
+		return line == null ? 0 : line.through();
+	}
+
 	private long lyricsTime(SkyLyricsConfig cfg) {
 		return tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
 	}
@@ -634,13 +641,14 @@ public final class NowPlayingHud {
 		if (time > end + 1500) {
 			return null; // a long gap with no marker: show the song instead of a stale line
 		}
-		float sung = cfg.karaoke ? Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1) : 1;
+		float through = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
+		float sung = cfg.karaoke ? through : 1;
 		//? if >=26.1 {
 		/*String text = cfg.uppercase ? line.drawString().toUpperCase(Locale.ROOT) : line.drawString();
 		*///?} else {
 		String text = cfg.uppercase ? line.text().toUpperCase(Locale.ROOT) : line.text();
 		//?}
-		return new Content("L" + i + text, true, text.strip(), "", sung);
+		return new Content("L" + i + text, true, text.strip(), "", sung, through);
 	}
 
 	private Content songInfo(Track track) {
@@ -655,7 +663,7 @@ public final class NowPlayingHud {
 			sub = sub.isEmpty() ? status : sub + "  ·  " + status;
 		}
 		String title = track.title().isEmpty() ? Tr.t("Unknown song") : track.title();
-		return new Content("S" + title + "\n" + sub, false, title, sub, 1);
+		return new Content("S" + title + "\n" + sub, false, title, sub, 1, 1);
 	}
 
 	/** The text's width on screen, in GUI units. */
@@ -679,7 +687,7 @@ public final class NowPlayingHud {
 		return w * scale;
 	}
 
-	private static boolean isRtl(String text) {
+	static boolean isRtl(String text) {
 		for (int i = 0; i < text.length(); i++) {
 			byte d = Character.getDirectionality(text.charAt(i));
 			if (d == Character.DIRECTIONALITY_RIGHT_TO_LEFT || d == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC) {

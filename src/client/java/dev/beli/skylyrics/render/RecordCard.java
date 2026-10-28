@@ -160,11 +160,34 @@ public final class RecordCard {
 			text(g, font, style, REST, x + (W - noteW) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 160)), SUB));
 			return;
 		}
-		String shown = NowPlayingHud.clip(font, style, lyric, room / scale);
-		float lineW = LyricsFont.width(font, style, shown) * scale;
-		int color = SkyLyricsClient.get().renderer().color();
-		text(g, font, style, shown, x + (W - lineW) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 255)), color));
+		float lineW = LyricsFont.width(font, style, lyric) * scale;
+		int color = ARGB.color(Math.max(4, Math.round(a * 255)), SkyLyricsClient.get().renderer().color());
+		if (lineW <= room) {
+			text(g, font, style, lyric, x + (W - lineW) / 2, midY, scale, color);
+			return;
+		}
+		// Too long for the strip: the line slides along as it is sung, so its end can be read too
+		float shift = lyricShift(lineW, room, hud.singingThrough(cfg));
+		float start = NowPlayingHud.isRtl(lyric) ? left - (lineW - room) + shift : left - shift;
+		g.enableScissor(Math.round(left), Math.round(top), Math.round(left + room), Math.round(top + LYRIC_H));
+		text(g, font, style, lyric, start, midY, scale, color);
+		g.disableScissor();
 	}
+
+	/**
+	 * How far a line wider than the strip has slid, from 0 (its start showing) to {@code lineW - room} (its end
+	 * showing). It rests at the start for the first part of the line's time, glides across, and rests at the end.
+	 *
+	 * @param through how far the song is through the line's time, 0 to 1
+	 */
+	static float lyricShift(float lineW, float room, float through) {
+		float most = Math.max(0, lineW - room);
+		float t = Mth.clamp((through - SLIDE_FROM) / (SLIDE_TO - SLIDE_FROM), 0, 1);
+		return most * t * t * (3 - 2 * t);
+	}
+
+	/** A long line starts sliding this far through its time and has finished by here. */
+	private static final float SLIDE_FROM = 0.15f, SLIDE_TO = 0.75f;
 
 	/** How fast a new line fades in on the strip: a quarter of a second. */
 	private static final float LYRIC_FADE_IN = 4;

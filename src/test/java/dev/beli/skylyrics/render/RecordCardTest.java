@@ -69,6 +69,21 @@ class RecordCardTest {
 	}
 
 	@Test
+	void aLongLineSlidesFromItsStartToItsEnd() {
+		assertEquals(0, RecordCard.lyricShift(100, 140, 0.5f));
+		assertEquals(0, RecordCard.lyricShift(200, 140, 0));
+		assertEquals(0, RecordCard.lyricShift(200, 140, 0.1f));
+		assertEquals(60, RecordCard.lyricShift(200, 140, 0.8f), 1e-4);
+		assertEquals(60, RecordCard.lyricShift(200, 140, 1), 1e-4);
+		float last = -1;
+		for (float t = 0; t <= 1; t += 0.05f) {
+			float shift = RecordCard.lyricShift(200, 140, t);
+			assertTrue(shift >= last);
+			last = shift;
+		}
+	}
+
+	@Test
 	void timesReadLikeAMusicPlayer() {
 		assertEquals("0:00", RecordCard.clock(0));
 		assertEquals("0:00", RecordCard.clock(-500));
