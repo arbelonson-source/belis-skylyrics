@@ -58,6 +58,8 @@ import dev.beli.skylyrics.media.Track;
 public final class LyricsRenderer {
 	private static final float DEG = Mth.DEG_TO_RAD;
 	private static final long ANIM_NS = 450_000_000L;
+	/** A sliding line comes in from, and leaves to, this share of the line width off to the side. */
+	static final float SLIDE_PART = 0.35f;
 	/** Lines show a little before their timestamp so the animation has finished when the singing starts. */
 	static final long LEAD_MS = 150;
 	/** Copies of a word drawn around it for the glow, in the inner and the outer ring. */
@@ -646,6 +648,14 @@ public final class LyricsRenderer {
 				arrangement(draw, cfg, index, time, 0, visibility * Math.min(1, p * 2f), pop, now);
 			}
 			case TYPEWRITER -> arrangement(draw, cfg, index, time, 0, visibility, 1, now);
+			case SLIDE -> {
+				// The old line slides off one side as the new one glides in from the other, the way the song is going
+				float side = (index >= previousIndex ? 1 : -1) * draw.wrapWidth;
+				if (p < 1 && previousIndex != Integer.MIN_VALUE) {
+					slid(draw, cfg, previousIndex, time, -side * slideOut(p), visibility * (1 - easeInOut(p)), now);
+				}
+				slid(draw, cfg, index, time, side * slideIn(p), visibility * Math.min(1, p * 1.5f), now);
+			}
 			case WORDS -> {
 				// The old line fades away while the new one's words come in one after another
 				if (p < 1 && previousIndex != Integer.MIN_VALUE) {
@@ -654,6 +664,22 @@ public final class LyricsRenderer {
 				arrangement(draw, cfg, index, time, 0, visibility, 1, now);
 			}
 		}
+	}
+
+	private void slid(Draw draw, SkyLyricsConfig cfg, int center, long time, float x, float alpha, long now) {
+		draw.canvas.push(x, 0, 1, 0);
+		arrangement(draw, cfg, center, time, 0, alpha, 1, now);
+		draw.canvas.pop();
+	}
+
+	/** How far off to the side a sliding line still is, as a share of the line width, {@code p} into the change. */
+	static float slideIn(float p) {
+		return SLIDE_PART * (1 - easeOutCubic(Mth.clamp(p, 0, 1)));
+	}
+
+	/** How far the old line has slid away, as a share of the line width. */
+	static float slideOut(float p) {
+		return SLIDE_PART * easeInOut(Mth.clamp(p, 0, 1));
 	}
 
 	private void crossfade(Draw draw, SkyLyricsConfig cfg, int index, long time, float p, long now) {

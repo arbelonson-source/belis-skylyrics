@@ -77,7 +77,9 @@ public final class SkyLyricsConfig {
 	}
 
 	public enum Animation {
-		WORDS, FADE, RISE, POP, TYPEWRITER
+		WORDS, FADE, RISE, POP, TYPEWRITER,
+		/** The old line slides off to one side as the new one slides in from the other. */
+		SLIDE
 	}
 
 	public enum SkyEffect {

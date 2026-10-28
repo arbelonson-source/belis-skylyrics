@@ -281,7 +281,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.growWord, v -> cfg.growWord = v)
 				.when(() -> cfg.karaoke);
 		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
-				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type")}, () -> cfg.animation.ordinal(),
+				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type"), Tr.t("Slide")}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i])
 				.when(() -> cfg.layout != Layout.WORLD);
 		// World words don't come in as lines; this says how each word shows up instead
