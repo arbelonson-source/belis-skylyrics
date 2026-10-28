@@ -193,7 +193,9 @@ public final class SkyLyricsConfig {
 		/** Dark sunglasses with glowing rims. */
 		SHADES,
 		/** Two thin antennae with glowing balls that wobble. */
-		ANTENNAE
+		ANTENNAE,
+		/** A leafy vine round the top of the head, set with small glowing flowers. */
+		FLOWER_CROWN
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */

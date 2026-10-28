@@ -95,6 +95,15 @@ class HatLayerTest {
 	}
 
 	@Test
+	void theFlowerCrownSitsOnTopOfTheHead() {
+		// A skin's hat layer reaches half a pixel past the head; the vine has to sit clear of it
+		assertTrue(HatLayer.FLOWER_Y < -0.5f - 0.5f / 16, "the vine sits above the hat layer");
+		assertTrue(HatLayer.FLOWER_VINE > 0.25f && HatLayer.FLOWER_RADIUS > HatLayer.FLOWER_VINE, "the flowers ring the head");
+		assertTrue(HatLayer.PETAL_OUT > HatLayer.PETAL_IN && HatLayer.PETAL_WIDE > HatLayer.PETAL_NARROW, "petals widen outwards");
+		assertTrue(HatLayer.FLOWER_HEART > HatLayer.PETAL_IN, "the heart covers where the petals meet");
+	}
+
+	@Test
 	void antennaeStandOnTopOfTheHead() {
 		assertTrue(HatLayer.ANTENNA_X + HatLayer.ANTENNA_STALK < 0.25f, "the stalks start on the head, not beside it");
 		assertTrue(HatLayer.ANTENNA_LENGTH > 2 * HatLayer.ANTENNA_BALL, "the balls sit well above the head");

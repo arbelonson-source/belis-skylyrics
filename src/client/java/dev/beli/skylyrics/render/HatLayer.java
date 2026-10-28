@@ -71,6 +71,12 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final float ARM_X = 0.29f, ARM_BACK = 0.12f;
 	private static final int LENS = 0xFF101018;
 	private static final int ORANGE = 0xFFE3801F, ORANGE_DARK = 0xFFC9661A, STEM = 0xFF4F6A2B;
+	/** The flower crown's vine sits just above a skin's hat layer (half a pixel over the head), with the flowers round its outside. */
+	static final float FLOWER_Y = HEAD_TOP - 0.045f, FLOWER_VINE = 0.27f, FLOWER_RADIUS = 0.29f, FLOWER_LIFT = 0.015f;
+	static final float PETAL_IN = 0.01f, PETAL_OUT = 0.05f, PETAL_NARROW = 0.006f, PETAL_WIDE = 0.019f, FLOWER_HEART = 0.013f;
+	private static final int FLOWERS = 8, PETALS = 5;
+	private static final float FLOWER_TILT = 35, FLOWER_SPIN = 0.4f, FLOWER_POP = 0.25f, LEAF = 0.075f, LEAF_WIDE = 0.018f;
+	private static final int LEAF_LIGHT = 0xFF7DA34A;
 
 	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
 	private static final Identifier WHITE = SkyLyricsClient.id("textures/misc/white.png");
@@ -153,6 +159,13 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 					out.submitCustomGeometry(pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
 					pose.popPose();
 				}
+			}
+			case FLOWER_CROWN -> {
+				float spin = seconds() * FLOWER_SPIN;
+				// With Glow with the lyrics on, the flowers open a little wider as each new line starts
+				float pop = 1 + FLOWER_POP * (bright - REST) / FLARE;
+				int pale = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.45f);
+				out.submitCustomGeometry(pose, paint(), (p, vc) -> flowerCrown(p, vc, light, glow, pale, spin, pop));
 			}
 			case MUSIC_NOTES -> {
 				float t = seconds();
@@ -329,6 +342,48 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		float s = ANTENNA_STALK, b = ANTENNA_BALL * pop, top = -ANTENNA_LENGTH;
 		box(p, vc, light, DARK, -s, top, -s, s, 0, s);
 		box(p, vc, FULL_BRIGHT, glow, -b, top - b, -b, b, top + b, b);
+	}
+
+	/**
+	 * A thin vine round the top of the head with a ring of five-petalled flowers tipped up and outwards, a leaf
+	 * between each two. The flowers take turns in the glow colour and a paler one, and slowly turn.
+	 */
+	private static void flowerCrown(PoseStack.Pose p, VertexConsumer vc, int light, int glow, int pale, float spin, float pop) {
+		tube(p, vc, FLOWER_VINE, 0.011f, FLOWER_Y, STEM, light);
+		float tilt = (float) Math.toRadians(FLOWER_TILT), up = Mth.sin(tilt), out = Mth.cos(tilt);
+		for (int i = 0; i < FLOWERS; i++) {
+			// The first flower sits right at the front of the face
+			float a = i * Mth.TWO_PI / FLOWERS - Mth.HALF_PI;
+			float c = Mth.cos(a), s = Mth.sin(a);
+			// Across a flower's face: along the ring, and up it as it leans back
+			float tx = -s, tz = c, vx = -up * c, vy = -out, vz = -up * s;
+			float cx = c * FLOWER_RADIUS, cy = FLOWER_Y - FLOWER_LIFT, cz = s * FLOWER_RADIUS;
+			int petal = i % 2 == 0 ? glow : pale;
+			int heart = 0xFF000000 | LyricsRenderer.mix(petal & 0xFFFFFF, 0xFFFFFF, 0.5f);
+			float turn = (i % 2 == 0 ? spin : -spin) + i;
+			float n = PETAL_IN * pop, f = PETAL_OUT * pop, wn = PETAL_NARROW * pop, wf = PETAL_WIDE * pop;
+			for (int k = 0; k < PETALS; k++) {
+				float phi = turn + k * Mth.TWO_PI / PETALS, dc = Mth.cos(phi), ds = Mth.sin(phi);
+				// Along the petal, and across it
+				float ax = dc * tx + ds * vx, ay = ds * vy, az = dc * tz + ds * vz;
+				float bx = -ds * tx + dc * vx, by = dc * vy, bz = -ds * tz + dc * vz;
+				face(p, vc, FULL_BRIGHT, heart, petal,
+						cx + ax * n - bx * wn, cy + ay * n - by * wn, cz + az * n - bz * wn,
+						cx + ax * n + bx * wn, cy + ay * n + by * wn, cz + az * n + bz * wn,
+						cx + ax * f + bx * wf, cy + ay * f + by * wf, cz + az * f + bz * wf,
+						cx + ax * f - bx * wf, cy + ay * f - by * wf, cz + az * f - bz * wf);
+			}
+			float r = FLOWER_HEART * pop;
+			box(p, vc, FULL_BRIGHT, GOLD_LIGHT, cx - r, cy - r, cz - r, cx + r, cy + r, cz + r);
+			// A leaf lying along the vine halfway to the next flower, its tip curling up
+			float b = a + Mth.PI / FLOWERS, bc = Mth.cos(b), bs = Mth.sin(b);
+			float lx = bc * FLOWER_VINE, lz = bs * FLOWER_VINE, half = LEAF / 2;
+			face(p, vc, light, STEM, LEAF_LIGHT,
+					lx + bs * half, FLOWER_Y, lz - bc * half,
+					lx + bc * LEAF_WIDE, FLOWER_Y - 0.01f, lz + bs * LEAF_WIDE,
+					lx - bs * half, FLOWER_Y - 0.025f, lz + bc * half,
+					lx - bc * LEAF_WIDE, FLOWER_Y - 0.01f, lz - bs * LEAF_WIDE);
+		}
 	}
 
 	/** A tall black top hat with a silky sheen, a wide brim and a glowing band round it. */
