@@ -1,7 +1,7 @@
 # Settings shared by every Minecraft version, then each version's own. The release version is mod.version.
 mod.id = "skylyrics"
 mod.archives = "belis-skylyrics"
-mod.version = "0.7.6"
+mod.version = "0.7.7"
 
 deps.fabric_loader = "0.20.1"
 deps.dbus_java = "5.2.2"
