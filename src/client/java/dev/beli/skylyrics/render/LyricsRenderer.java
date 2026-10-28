@@ -1468,20 +1468,40 @@ public final class LyricsRenderer {
 			if (word.isEmpty()) {
 				continue;
 			}
-			String candidate = row.isEmpty() ? word : row + " " + word;
-			if (!row.isEmpty() && LyricsFont.width(font, style, candidate) > target) {
-				rows.add(row.toString());
-				row.setLength(0);
-				row.append(word);
-			} else {
-				row.setLength(0);
-				row.append(candidate);
+			List<String> pieces = breakPoints(word);
+			for (int p = 0; p < pieces.size(); p++) {
+				String piece = pieces.get(p);
+				String candidate = row.isEmpty() ? piece : row + (p == 0 ? " " : "") + piece;
+				if (!row.isEmpty() && LyricsFont.width(font, style, candidate) > target) {
+					rows.add(row.toString());
+					row.setLength(0);
+					row.append(piece);
+				} else {
+					row.setLength(0);
+					row.append(candidate);
+				}
 			}
 		}
 		if (!row.isEmpty()) {
 			rows.add(row.toString());
 		}
 		return rows;
+	}
+
+	/**
+	 * A word cut where a row may break inside it: Chinese and Japanese are written without spaces, so a row may end
+	 * after any of their characters. Other words come back whole.
+	 */
+	static List<String> breakPoints(String word) {
+		int[] cps = word.codePoints().toArray();
+		if (Arrays.stream(cps).noneMatch(WorldWords::cjk)) {
+			return List.of(word);
+		}
+		List<String> pieces = new ArrayList<>();
+		for (int[] unit : WorldWords.cjkUnits(cps, 0, cps.length)) {
+			pieces.add(new String(cps, unit[0], unit[1] - unit[0]));
+		}
+		return pieces;
 	}
 
 	private void updateDaylight(Minecraft mc, Camera camera, float dt) {

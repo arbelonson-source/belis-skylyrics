@@ -362,7 +362,7 @@ final class WorldWords {
 		return out;
 	}
 
-	private static boolean cjk(int cp) {
+	static boolean cjk(int cp) {
 		Character.UnicodeScript script = Character.UnicodeScript.of(cp);
 		return script == Character.UnicodeScript.HAN || script == Character.UnicodeScript.HIRAGANA
 				|| script == Character.UnicodeScript.KATAKANA;
@@ -374,6 +374,18 @@ final class WorldWords {
 	 * and a Latin word inside the run stays whole.
 	 */
 	private static List<int[]> cjkPieces(int[] cps, int start, int end) {
+		List<int[]> units = cjkUnits(cps, start, end);
+		int count = (units.size() + CJK_PIECE - 1) / CJK_PIECE;
+		List<int[]> pieces = new ArrayList<>(count);
+		for (int k = 0; k < count; k++) {
+			int from = k * units.size() / count, to = (k + 1) * units.size() / count;
+			pieces.add(new int[] {units.get(from)[0], units.get(to - 1)[1]});
+		}
+		return pieces;
+	}
+
+	/** The single characters of a Chinese or Japanese run, each with the marks and brackets that stay with it. */
+	static List<int[]> cjkUnits(int[] cps, int start, int end) {
 		List<int[]> units = new ArrayList<>();
 		int open = -1;
 		boolean lastCjk = false;
@@ -405,13 +417,7 @@ final class WorldWords {
 				units.get(units.size() - 1)[1] = end;
 			}
 		}
-		int count = (units.size() + CJK_PIECE - 1) / CJK_PIECE;
-		List<int[]> pieces = new ArrayList<>(count);
-		for (int k = 0; k < count; k++) {
-			int from = k * units.size() / count, to = (k + 1) * units.size() / count;
-			pieces.add(new int[] {units.get(from)[0], units.get(to - 1)[1]});
-		}
-		return pieces;
+		return units;
 	}
 
 	private static int letters(int[] cps, int[] word) {
