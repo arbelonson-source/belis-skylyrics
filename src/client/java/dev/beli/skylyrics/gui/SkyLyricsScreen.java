@@ -339,13 +339,14 @@ public final class SkyLyricsScreen extends Screen {
 			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 
-		// Four choices over three switches: Bold and Smooth are both the smooth font, with or without boldFont
+		// Five choices over four switches: Bold, Smooth and Round are all the smooth font, told apart by boldFont and roundFont
 		Row font = new Segmented(Tr.t("Font"), Tr.t("Letter style"),
-				new String[] {Tr.t("Bold"), Tr.t("Smooth"), Tr.t("Handwritten"), Tr.t("Minecraft")},
-				() -> !cfg.smoothFont ? 3 : cfg.scriptFont ? 2 : cfg.boldFont ? 0 : 1,
+				new String[] {Tr.t("Bold"), Tr.t("Smooth"), Tr.t("Round"), Tr.t("Handwritten"), Tr.t("Minecraft")},
+				() -> !cfg.smoothFont ? 4 : cfg.scriptFont ? 3 : cfg.roundFont ? 2 : cfg.boldFont ? 0 : 1,
 				i -> {
-					cfg.smoothFont = i != 3;
-					cfg.scriptFont = i == 2;
+					cfg.smoothFont = i != 4;
+					cfg.scriptFont = i == 3;
+					cfg.roundFont = i == 2;
 					if (i < 2) {
 						cfg.boldFont = i == 0;
 					}

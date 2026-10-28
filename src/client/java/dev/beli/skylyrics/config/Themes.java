@@ -24,7 +24,7 @@ public final class Themes {
 		}
 	}
 
-	public static final List<String> LOOK = List.of("layout", "colorMode", "color", "smoothFont", "scriptFont", "boldFont",
+	public static final List<String> LOOK = List.of("layout", "colorMode", "color", "smoothFont", "scriptFont", "boldFont", "roundFont",
 			"depth", "glow", "glowPick", "glowColor", "pulse", "shadow", "opacity", "sky", "skyStrength", "size", "animation", "karaoke", "uppercase",
 			"worldFlow");
 

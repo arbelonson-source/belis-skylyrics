@@ -303,6 +303,8 @@ public final class SkyLyricsConfig {
 	public boolean scriptFont = false;
 	/** With {@link #smoothFont} and not {@link #scriptFont}: the heavier Poppins Bold. */
 	public boolean boldFont = true;
+	/** With {@link #smoothFont} and not {@link #scriptFont}: the soft, rounded Nunito instead of Poppins. */
+	public boolean roundFont = false;
 	/** Solid darker and lighter copies of the letters just behind them, for a raised 3D look. */
 	public boolean depth = true;
 	public float glow = 0f;

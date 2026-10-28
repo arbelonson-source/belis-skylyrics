@@ -20,13 +20,16 @@ public final class LyricsFont {
 	public static final FontDescription BOLD = font("bold");
 	/** Handwritten brush letters for the sky lyrics (assets/skylyrics/font/script.json). */
 	public static final FontDescription SCRIPT = font("script");
+	/** Soft, rounded letters with no sharp corners (assets/skylyrics/font/round.json). */
+	public static final FontDescription ROUND = font("round");
 	/**
-	 * The same three fonts drawn from finer letter images (assets/skylyrics/font/world*.json). World layout words
+	 * The same four fonts drawn from finer letter images (assets/skylyrics/font/world*.json). World layout words
 	 * float a few blocks away and show far bigger than any other text, so the usual images look soft up close.
 	 */
 	static final FontDescription WORLD = font("world");
 	static final FontDescription WORLD_BOLD = font("world_bold");
 	static final FontDescription WORLD_SCRIPT = font("world_script");
+	static final FontDescription WORLD_ROUND = font("world_round");
 
 	private LyricsFont() {
 	}
@@ -44,10 +47,13 @@ public final class LyricsFont {
 		return cfg.smoothFont ? Style.EMPTY.withFont(SMOOTH) : Style.EMPTY;
 	}
 
-	/** Like {@link #base}, but the sky lyrics may use the bold or handwritten font; the top bar stays smooth. */
+	/** Like {@link #base}, but the sky lyrics may use the bold, round or handwritten font; the top bar stays smooth. */
 	public static Style sky(SkyLyricsConfig cfg) {
 		if (cfg.smoothFont && cfg.scriptFont) {
 			return Style.EMPTY.withFont(SCRIPT);
+		}
+		if (cfg.smoothFont && cfg.roundFont) {
+			return Style.EMPTY.withFont(ROUND);
 		}
 		return cfg.smoothFont && cfg.boldFont ? Style.EMPTY.withFont(BOLD) : base(cfg);
 	}
@@ -57,7 +63,7 @@ public final class LyricsFont {
 		if (!cfg.smoothFont) {
 			return Style.EMPTY;
 		}
-		return Style.EMPTY.withFont(cfg.scriptFont ? WORLD_SCRIPT : cfg.boldFont ? WORLD_BOLD : WORLD);
+		return Style.EMPTY.withFont(cfg.scriptFont ? WORLD_SCRIPT : cfg.roundFont ? WORLD_ROUND : cfg.boldFont ? WORLD_BOLD : WORLD);
 	}
 
 	/** Exact width in text units (the plain {@code Font.width(String)} always measures Minecraft's font). */
