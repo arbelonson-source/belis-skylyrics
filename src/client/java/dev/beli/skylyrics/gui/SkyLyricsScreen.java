@@ -283,7 +283,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
 				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type"), Tr.t("Slide")}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i])
-				.when(() -> cfg.layout != Layout.WORLD);
+				.when(() -> cfg.layout == Layout.LINES); // the arc and World words have their own way of coming in
 		// World words don't come in as lines; this says how each word shows up instead
 		Row arrival = new Segmented(Tr.t("Arrival"), null,
 				new String[] {Tr.t("Pop"), Tr.t("Drop"), Tr.t("Zoom"), Tr.t("Fade")}, () -> cfg.worldArrival.ordinal(),
