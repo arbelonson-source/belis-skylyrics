@@ -525,6 +525,22 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void dissolvingWordsLoseTheirLettersOneByOne() {
+		long seed = 123456789L;
+		int left = 0, going = 0;
+		for (int letter = 0; letter < 12; letter++) {
+			assertEquals(1, WorldWords.letterLeft(seed, letter, 0), 1e-6, "whole at first");
+			assertEquals(0, WorldWords.letterLeft(seed, letter, 0.8f), 1e-6, "gone before the card is dropped");
+			assertEquals(WorldWords.letterLeft(seed, letter, 0.4f), WorldWords.letterLeft(seed, letter, 0.4f), "same every frame");
+			float mid = WorldWords.letterLeft(seed, letter, 0.4f);
+			left += mid > 0.99f ? 1 : 0;
+			going += mid < 0.99f ? 1 : 0;
+		}
+		assertTrue(left > 0 && going > 0, "half way, some letters are still whole and some are going");
+		assertEquals(0, WorldWords.leaveUp(WorldLeave.DISSOLVE, 2.2f, 2.2f), 1e-6, "it stays where it is");
+	}
+
+	@Test
 	void sungWordsPaleInsteadOfGreying() {
 		int pink = 0xFF4FB8;
 		assertEquals(pink, WorldWords.paled(pink, 0));

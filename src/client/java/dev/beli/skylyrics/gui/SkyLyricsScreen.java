@@ -297,13 +297,14 @@ public final class SkyLyricsScreen extends Screen {
 				})
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row leaving = new Segmented(Tr.t("Leaving"), null,
-				new String[] {Tr.t("Shrink"), Tr.t("Float"), Tr.t("Blow"), Tr.t("Sink")}, () -> cfg.worldLeave.ordinal(),
+				new String[] {Tr.t("Shrink"), Tr.t("Float"), Tr.t("Blow"), Tr.t("Sink"), Tr.t("Dissolve")}, () -> cfg.worldLeave.ordinal(),
 				i -> cfg.worldLeave = WorldLeave.values()[i])
 				.describe(() -> switch (cfg.worldLeave) {
 					case SHRINK -> Tr.t("Each sung word fades and shrinks a little");
 					case FLOAT -> Tr.t("Each sung word floats up as it fades");
 					case BLOW -> Tr.t("Each sung word blows away on the wind");
 					case SINK -> Tr.t("Each sung word sinks down as it fades");
+					case DISSOLVE -> Tr.t("Each sung word comes apart letter by letter");
 				})
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),

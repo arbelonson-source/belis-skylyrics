@@ -87,7 +87,9 @@ public final class SkyLyricsConfig {
 		/** It blows away to the side, picking up speed like a leaf on the wind. */
 		BLOW,
 		/** It sinks down as it fades. */
-		SINK
+		SINK,
+		/** Its letters wink out one at a time, in no order, until nothing is left. */
+		DISSOLVE
 	}
 
 	public enum Animation {

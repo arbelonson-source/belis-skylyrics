@@ -355,6 +355,9 @@ final class WorldWords {
 		return 1 - t * t * (3 - 2 * t);
 	}
 
+	/** A dissolving card's letters start going within this part of its fade, and each takes this part to go. */
+	private static final float MELT_SPREAD = 0.55f, MELT_TIME = 0.25f;
+
 	/** How big a let-go card still is, {@code seconds} after it was let go: it shrinks a little as it fades, as if drifting off. */
 	static float leaveSize(float seconds, float fade) {
 		return 1 - LEAVE * Mth.clamp(seconds / fade, 0, 1);
@@ -368,8 +371,21 @@ final class WorldWords {
 			case SINK -> -LEAVE_RISE * t;
 			// A blown word lifts a little too, the way a gust carries it
 			case BLOW -> LEAVE_RISE / 4 * t * t;
-			case SHRINK -> 0;
+			case SHRINK, DISSOLVE -> 0;
 		};
+	}
+
+	/**
+	 * How much of letter {@code letter} of a dissolving card is left, {@code t} of the way through its fade (0 to 1): each
+	 * letter starts going at its own moment, picked from {@code seed} so it's the same every frame, and is gone by 0.8.
+	 */
+	static float letterLeft(long seed, int letter, float t) {
+		long h = seed * 0x9E3779B97F4A7C15L + (letter + 1) * 0xBF58476D1CE4E5B9L;
+		h = (h ^ h >>> 31) * 0x94D049BB133111EBL;
+		h ^= h >>> 29;
+		float start = (h >>> 40) / (float) (1 << 24) * MELT_SPREAD;
+		float u = Mth.clamp((t - start) / MELT_TIME, 0, 1);
+		return 1 - u * u * (3 - 2 * u);
 	}
 
 	/** How far a let-go card has blown aside, in text units: slowly at first, then faster, like a leaf caught by the wind. */
@@ -1507,7 +1523,11 @@ final class WorldWords {
 			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
 			boolean popping = arrival == WorldArrival.POP;
 			float fadeIn = arrival == WorldArrival.FADE ? SOFT_FADE : FADE_IN;
-			float a = alpha * Mth.clamp(age / fadeIn, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade))
+			// A dissolving card stays bright: its letters go one by one instead
+			boolean melting = c.goneAt >= 0 && leave == WorldLeave.DISSOLVE;
+			float wane = c.goneAt < 0 || melting ? 1 : goneAlpha(gone, fade);
+			float melt = melting ? Mth.clamp(gone / fade, 0, 1) : -1;
+			float a = alpha * Mth.clamp(age / fadeIn, 0, 1) * wane
 					* (c.cutAt < 0 ? 1 : cutAlpha((now - c.cutAt) / 1e9f));
 			float fell = c.fellAt < 0 ? 0 : (now - c.fellAt) / 1e9f;
 			if (c.fellAt >= 0) {
@@ -1563,11 +1583,11 @@ final class WorldWords {
 			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blown,
 					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) : 0);
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
-			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
-			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
-			float edge = a * edgeOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
+			float shade = a * shadowOpacity(day) * wane;
+			draw(pose, out, c, shown, melt, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+			float edge = a * edgeOpacity(day) * wane;
 			for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
-				draw(pose, out, c, shown, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE), y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE),
+				draw(pose, out, c, shown, melt, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE), y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE),
 						SHADOW_Z, mode);
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
@@ -1575,10 +1595,10 @@ final class WorldWords {
 			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
-				draw(pose, out, c, shown, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
+				draw(pose, out, c, shown, melt, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
 						GLOW_Z, mode);
 			}
-			draw(pose, out, c, shown, style, colour, a, x0, y0, FACE_Z, mode);
+			draw(pose, out, c, shown, melt, style, colour, a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
 	}
@@ -1667,7 +1687,8 @@ final class WorldWords {
 	}
 
 	/** Draws the card's typed-in letters once, in one colour; each unbroken run where it sits in the whole word. */
-	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, Style style, int rgb, float alpha,
+	/** Draws the first {@code shown} letters of card {@code c}; {@code melt} is how far it has dissolved (below 0: not dissolving). */
+	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, Style style, int rgb, float alpha,
 			float x0, float y0, float z, Font.DisplayMode mode) {
 		int alphaByte = Math.round(alpha * 255);
 		if (alphaByte < 4) { // text this faint would be drawn fully opaque
@@ -1679,12 +1700,14 @@ final class WorldWords {
 		pose.pushPose();
 		pose.translate(0, 0, z);
 		for (int from = 0; from < n; ) {
-			if (d.logical()[from] >= shown) {
+			// A dissolving card is drawn a letter at a time, each as faint as it has got
+			int each = melt < 0 ? alphaByte : Math.round(alpha * letterLeft(c.born, d.logical()[from], melt) * 255);
+			if (d.logical()[from] >= shown || each < 4) {
 				from++;
 				continue;
 			}
 			int to = from + 1;
-			while (to < n && d.logical()[to] < shown) {
+			while (melt < 0 && to < n && d.logical()[to] < shown) {
 				to++;
 			}
 			int a0 = from, a1 = to;
@@ -1697,9 +1720,9 @@ final class WorldWords {
 				return true;
 			};
 			//? if >=26.1 {
-			/*out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightCoordsUtil.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);
+			/*out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightCoordsUtil.FULL_BRIGHT, each << 24 | 0xFFFFFF, 0, 0);
 			*///?} else {
-			out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightTexture.FULL_BRIGHT, alphaByte << 24 | 0xFFFFFF, 0, 0);
+			out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightTexture.FULL_BRIGHT, each << 24 | 0xFFFFFF, 0, 0);
 			//?}
 			from = to;
 		}
