@@ -636,10 +636,10 @@ public final class NowPlayingHud {
 		//?}
 			return null;
 		}
-		long end = Math.min(lyrics.endOf(i, line.timeMs() + 5000), line.timeMs() + 12000);
-		if (time > end + 1500) {
+		if (time > lyrics.lineEnd(i) + 1500) {
 			return null; // a long gap with no marker: show the song instead of a stale line
 		}
+		long end = lyrics.sungEnd(i);
 		float through = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
 		float sung = cfg.karaoke ? through : 1;
 		//? if >=26.1 {

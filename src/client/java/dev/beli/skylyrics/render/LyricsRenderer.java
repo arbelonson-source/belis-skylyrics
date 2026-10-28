@@ -450,7 +450,7 @@ public final class LyricsRenderer {
 			text = line.text();
 			//?}
 			int total = text.codePointCount(0, text.length());
-			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), lineEnd(index)) * total : total;
+			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), shown.sungEnd(index)) * total : total;
 			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
 		}
 		Style style = LyricsFont.world(cfg);
@@ -503,10 +503,9 @@ public final class LyricsRenderer {
 		//?}
 	}
 
-	/** When the singing of a line counts as over, for spreading its words over its time. */
+	/** When a line counts as over, so its World words can go. */
 	private long lineEnd(int index) {
-		long start = shown.get(index).timeMs();
-		return Math.min(shown.endOf(index, start + 5000), start + 12000);
+		return shown.lineEnd(index);
 	}
 
 	/**
@@ -738,8 +737,7 @@ public final class LyricsRenderer {
 					if (i < center || i == center && (!cfg.karaoke || !shown.synced())) {
 						sung = i == center || i < center ? 1 : 0;
 					} else if (i == center) {
-						long end = Math.min(shown.endOf(i, line.timeMs() + 5000), line.timeMs() + 12000);
-						sung = progress(time, line.timeMs(), end);
+						sung = progress(time, line.timeMs(), shown.sungEnd(i));
 					} else {
 						sung = 0;
 					}
@@ -989,7 +987,7 @@ public final class LyricsRenderer {
 			}
 			// Without word timing (karaoke off, plain lyrics) the words come in one after another as the line starts
 			boolean timed = cfg.karaoke && shown.synced();
-			long start = line.timeMs(), end = lineEnd(index);
+			long start = line.timeMs(), end = shown.sungEnd(index);
 			long sungAt = time - LEAD_MS - ARC_WORD_DELAY_MS;
 			float since = (now - changedAt) / 1e9f;
 			int dark = depthDark(color, daylight), light = depthLight(color);

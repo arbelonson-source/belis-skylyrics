@@ -57,6 +57,31 @@ public final class Lyrics {
 		return index >= 0 && index < lines.size() ? lines.get(index) : null;
 	}
 
+	// A line lasts till the next one starts, but the last line gets this long, and none longer than LONGEST_MS
+	static final long LAST_MS = 5_000;
+	static final long LONGEST_MS = 12_000;
+	// Even slow singing gets through a line quicker than this, so the words of a line sung just before a long
+	// instrumental part come out as they're sung instead of trickling out across the whole gap
+	static final long SLOWEST_MS_PER_CHAR = 220;
+	static final long SLOWEST_EXTRA_MS = 1_000;
+
+	/** When line {@code index} is over: the next line's start, within a last-line and longest-line limit. */
+	public long lineEnd(int index) {
+		long start = get(index).timeMs();
+		return Math.min(endOf(index, start + LAST_MS), start + LONGEST_MS);
+	}
+
+	/**
+	 * When the singing of line {@code index} is likely done, for spreading its words over its time: its end, or
+	 * sooner when that's more time than even slow singing would take for its length.
+	 */
+	public long sungEnd(int index) {
+		LyricLine line = get(index);
+		long start = line.timeMs();
+		long slowest = SLOWEST_EXTRA_MS + SLOWEST_MS_PER_CHAR * line.text().codePointCount(0, line.text().length());
+		return Math.min(lineEnd(index), start + slowest);
+	}
+
 	/** When the line after {@code index} starts, or {@code fallback} if it's the last line. */
 	public long endOf(int index, long fallback) {
 		LyricLine next = get(index + 1);
