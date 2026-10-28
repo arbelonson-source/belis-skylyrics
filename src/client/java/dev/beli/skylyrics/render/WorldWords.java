@@ -185,6 +185,8 @@ final class WorldWords {
 		long fellAt = -1;
 		/** The flowing line it's part of, or null. */
 		@Nullable Sentence of;
+		/** How far it rises, as a share of a card at its planned distance: one brought in close rises less, to look the same. */
+		float lift = 1;
 		/** Part of a right-to-left line (Hebrew, Arabic), so it slides in from the right. */
 		boolean rtl;
 		/** Where it's been nudged to, out of another word's way, and how far along it has glided there so far. */
@@ -666,14 +668,20 @@ final class WorldWords {
 		Vec3 eye = camera.position();
 		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
 		List<float[]> taken = new ArrayList<>(cards.size());
+		// Every older word still showing, faint ones too, in case the new one can't help landing on it
 		List<Card> under = new ArrayList<>(cards.size());
+		List<float[]> shown = new ArrayList<>(cards.size());
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
 			// The words of the line being written are spaced by the line itself
-			if (to.length() > 1e-3 && (c.of == null || c.of != sentence) && (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f)) {
-				taken.add(footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise), c.at[c.at.length - 1] * c.size * wordScale / 2,
-						5 * c.size * wordScale));
+			if (to.length() > 1e-3 && (c.of == null || c.of != sentence) && c.cutAt < 0) {
+				float[] print = footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise) * c.lift, c.at[c.at.length - 1] * c.size * wordScale / 2,
+						5 * c.size * wordScale);
 				under.add(c);
+				shown.add(print);
+				if (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f) {
+					taken.add(print);
+				}
 			}
 		}
 		// Other players count as taken too, so in a fight the words don't cover the person you're aiming at
@@ -691,29 +699,34 @@ final class WorldWords {
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Step closer while any part of the card is inside a block, so it doesn't hide in a wall or the floor
 		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;
-		float distance = spot[2] * away;
-		while (distance > CLOSEST && buried(level, eye.add(dir.scale(distance)), dir, halfW, halfH)) {
+		float meant = spot[2] * away, distance = meant;
+		// A card brought in is shrunk to match, so it covers just the patch of sky it was given and no more
+		while (distance > CLOSEST && buried(level, eye.add(dir.scale(distance)), dir, halfW * distance / meant, halfH * distance / meant)) {
 			distance -= 1;
 		}
-		Vec3 pos = eye.add(dir.scale(Math.max(CLOSEST, distance)));
-		if (buried(level, pos, dir, halfW, halfH)) {
+		distance = Math.max(CLOSEST, Math.min(distance, meant));
+		float shrink = distance / meant;
+		Vec3 pos = eye.add(dir.scale(distance));
+		if (buried(level, pos, dir, halfW * shrink, halfH * shrink)) {
 			// Nowhere clear on the way in (standing in a cave or by a hill): lift it out where it was meant to be
-			Vec3 meant = eye.add(dir.scale(spot[2] * away));
+			Vec3 there = eye.add(dir.scale(meant));
 			for (int up = 1; up <= LIFT_STEPS; up++) {
-				if (!buried(level, meant.add(0, up, 0), dir, halfW, halfH)) {
-					pos = meant.add(0, up, 0);
+				if (!buried(level, there.add(0, up, 0), dir, halfW, halfH)) {
+					pos = there.add(0, up, 0);
+					shrink = 1;
 					break;
 				}
 			}
 		}
-		// Older words this one still lands on (a crowded sky) make way rather than show through each other
-		float[] mine = footprint(pos.subtract(eye), 0, halfW, halfH);
-		for (int k = 0; k < taken.size(); k++) {
-			float[] o = taken.get(k);
+		// Older words this one still lands on (a crowded sky, or the last line still fading) go at once, rather than
+		// show through it for the whole fade
+		float[] mine = footprint(pos.subtract(eye), 0, halfW * shrink, halfH * shrink);
+		for (int k = 0; k < shown.size(); k++) {
+			float[] o = shown.get(k);
 			Card c = under.get(k);
-			if (c.goneAt < 0 && !c.title && Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * OVERLAP
+			if (!c.title && Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * OVERLAP
 					&& Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * OVERLAP) {
-				c.goneAt = now;
+				c.cutAt = now;
 			}
 		}
 		// The Tilt setting scales every angle, so at 0 a card faces you square on
@@ -724,9 +737,10 @@ final class WorldWords {
 			// Every word leans along the line where it sits, so the line reads as one curved piece
 			lean += spot[3];
 		}
-		Card card = new Card(d, at, pos, spot[0] + turn, nod, lean, size * away, now);
+		Card card = new Card(d, at, pos, spot[0] + turn, nod, lean, size * away * shrink, now);
 		card.rtl = flow && lineRtl;
 		card.of = flow ? sentence : null;
+		card.lift = shrink;
 		cards.add(card);
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
@@ -968,20 +982,15 @@ final class WorldWords {
 		 */
 		float[] place(float halfW, float halfH, float indent, float bob) {
 			float yaw = cursor + GAP * halfH + halfW;
-			if (newRow || cursor > left && yaw + halfW > left + WIDTH) {
-				// The new row starts below the lowest word of the last one, however its words bobbed
+			boolean wrap = newRow || cursor > left && yaw + halfW > left + WIDTH;
+			if (wrap) {
 				newRow = false;
-				above = low;
-				top = low + ROW_GAP + 2 * halfH;
 				// A short last row is centred under the full one above it
 				float centre = (cursor - left - Math.max(rest, 2 * halfW)) / 2;
 				yaw = left + Math.max(indent, centre) + halfW;
 			}
 			rest -= yaw + halfW - cursor;
 			cursor = yaw + halfW;
-			// A word never reaches up into the row above, however big it is or however it bobs
-			float middle = Math.max(top - halfH + bob, above + ROW_GAP + halfH);
-			low = Math.max(low, middle + halfH);
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
 				yaw = 2 * left + WIDTH - yaw;
@@ -990,7 +999,19 @@ final class WorldWords {
 			float along = Mth.clamp((yaw - left) / WIDTH, 0, 1), steep = (float) Math.tan(slope * DEG);
 			float rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
 			float climb = steep + bend * 4 * (1 - 2 * along) / WIDTH;
-			return new float[] {yaw, middle - rise, Mth.clamp((float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN)};
+			float lean = Mth.clamp((float) Math.toDegrees(Math.atan(climb)), -CURVE_LEAN, CURVE_LEAN);
+			// Where the line climbs steeper than a word may lean, or bows under it, the word's ends stray off the line:
+			// it needs that much more room above and below
+			float reach = halfH + halfW * Math.abs(climb - (float) Math.tan(lean * DEG)) + 4 * Math.abs(bend) * halfW * halfW / (WIDTH * WIDTH);
+			if (wrap) {
+				// The new row starts below the lowest word of the last one, however its words bobbed
+				above = low;
+				top = low + ROW_GAP + halfH + reach;
+			}
+			// A word never reaches up into the row above, however big it is or however it bobs
+			float middle = Math.max(top - halfH + bob, above + ROW_GAP + reach);
+			low = Math.max(low, middle + reach);
+			return new float[] {yaw, middle - rise, lean};
 		}
 
 		/**
@@ -1101,7 +1122,7 @@ final class WorldWords {
 				continue;
 			}
 			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
-			float[] mine = footprint(to, riseAfter((now - c.born) / 1e9f, rise), halfW, 5 * c.size * wordScale);
+			float[] mine = footprint(to, riseAfter((now - c.born) / 1e9f, rise) * c.lift, halfW, 5 * c.size * wordScale);
 			for (float[] o : join(people, nudge ? seen : List.of())) {
 				float[] move = push(o, mine);
 				if (move[0] != 0 || move[1] != 0) {
@@ -1144,7 +1165,7 @@ final class WorldWords {
 			if (c.fellAt >= 0 || c.cutAt >= 0 || c.goneAt >= 0 && goneAlpha((now - c.goneAt) / 1e9f, fade) < 0.2f) {
 				continue;
 			}
-			Vec3 to = c.pos.add(c.slid).add(0, riseAfter((now - c.born) / 1e9f, rise), 0).subtract(eye);
+			Vec3 to = c.pos.add(c.slid).add(0, riseAfter((now - c.born) / 1e9f, rise) * c.lift, 0).subtract(eye);
 			float halfW = c.display.cps().length == 0 ? 0 : c.at[c.at.length - 1] * c.size * wordScale / 2;
 			float[] box = footprint(to, 0, halfW + KNOCK_MARGIN, 5 * c.size * wordScale + KNOCK_MARGIN);
 			if (Math.abs(Mth.wrapDegrees(yaw - box[0])) < box[2] && Math.abs(pitch - box[1]) < box[3] && to.length() < bestFar) {
@@ -1262,7 +1283,7 @@ final class WorldWords {
 			}
 			float x = (float) (c.pos.x + c.slid.x - eye.x), z = (float) (c.pos.z + c.slid.z - eye.z);
 			float sway = swayAngle(age, c.born);
-			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
+			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
 			float hit = c.hitAt < 0 ? -1 : (now - c.hitAt) / 1e9f, spin = 0, squash = 1, shove = knockOut(hit);
 			if (shove > 0) {
 				x += (float) c.knock.x * shove;
