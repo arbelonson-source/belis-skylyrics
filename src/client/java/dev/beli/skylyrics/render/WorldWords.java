@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.DoublePredicate;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
@@ -697,14 +698,13 @@ final class WorldWords {
 		}
 		float[] spot = flow ? follow(centre, at, size, avoid) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
-		// Step closer while any part of the card is inside a block, so it doesn't hide in a wall or the floor
+		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
+		// nor hidden behind one
 		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;
-		float meant = spot[2] * away, distance = meant;
+		float meant = spot[2] * away;
 		// A card brought in is shrunk to match, so it covers just the patch of sky it was given and no more
-		while (distance > CLOSEST && buried(level, eye.add(dir.scale(distance)), dir, halfW * distance / meant, halfH * distance / meant)) {
-			distance -= 1;
-		}
-		distance = Math.max(CLOSEST, Math.min(distance, meant));
+		float distance = clearReach(CLOSEST, meant, 1,
+				out -> buried(level, eye.add(dir.scale(out)), dir, halfW * (float) out / meant, halfH * (float) out / meant));
 		float shrink = distance / meant;
 		Vec3 pos = eye.add(dir.scale(distance));
 		if (buried(level, pos, dir, halfW * shrink, halfH * shrink)) {
@@ -877,6 +877,22 @@ final class WorldWords {
 
 	/** How much two cards must cover each other, as a share of their summed half sizes, before the older one goes. */
 	private static final float OVERLAP = 0.6f;
+
+	/**
+	 * How far out a card can go before it meets something: the last clear distance on the way from {@code from} to
+	 * {@code to}, checked every {@code step}, or {@code from} when the way is blocked straight away.
+	 */
+	static float clearReach(float from, float to, float step, DoublePredicate blocked) {
+		float d = from;
+		while (d < to) {
+			float next = Math.min(d + step, to);
+			if (blocked.test(next)) {
+				return d;
+			}
+			d = next;
+		}
+		return Math.max(from, to);
+	}
 
 	/**
 	 * Whether any of a card's face (its middle, corners and edge middles, half sizes in blocks) is inside something

@@ -398,6 +398,18 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aWordComesInFrontOfWhateverIsInTheWay() {
+		// Open sky: it stays where it was meant to be
+		assertEquals(20, WorldWords.clearReach(3, 20, 0.5f, d -> false), 1e-4f);
+		// A tree 10 blocks out, with clear sky behind it: the word comes in front of the tree, not behind it
+		assertEquals(9.5f, WorldWords.clearReach(3, 20, 0.5f, d -> d >= 10 && d <= 12), 1e-4f);
+		// Blocked straight away: it stays at the closest spot and is lifted out from there
+		assertEquals(3, WorldWords.clearReach(3, 20, 0.5f, d -> true), 1e-4f);
+		// Meant to be closer than the closest spot
+		assertEquals(3, WorldWords.clearReach(3, 2, 0.5f, d -> false), 1e-4f);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
