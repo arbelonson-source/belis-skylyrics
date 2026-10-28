@@ -401,6 +401,18 @@ class WorldWordsTest {
 		assertEquals(past[0], moved[0], 1e-4f);
 		assertEquals(past[1], moved[1], 1e-4f);
 		assertTrue(moved[1] > first[1]);
+		// With no clear spot anywhere it could go, it takes the one least in the way, not the first it tried
+		WorldWords.Sentence a = new WorldWords.Sentence(0, 0, 10, 0), b = new WorldWords.Sentence(0, 0, 10, 0);
+		float[] mine = b.place(5, 1, 0, 0), next = b.place(5, 1, 0, 0);
+		List<float[]> busy = List.of(new float[] {mine[0], mine[1], 5, 1}, new float[] {next[0], next[1] + 1.5f, 5, 1});
+		for (int t = 0; t < 4; t++) {
+			float[] more = b.place(5, 1, 0, 0);
+			busy = new ArrayList<>(busy);
+			busy.add(new float[] {more[0], more[1], 5, 1});
+		}
+		float[] least = WorldWords.placeClear(a, 5, 1, 0, 0, busy);
+		assertEquals(next[0], least[0], 1e-4f);
+		assertEquals(next[1], least[1], 1e-4f);
 	}
 
 	@Test

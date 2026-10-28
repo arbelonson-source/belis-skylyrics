@@ -998,32 +998,53 @@ final class WorldWords {
 	/**
 	 * Places a line's next piece where nothing in {@code taken} is: while older words are in the way it carries on
 	 * along its row, or into the next one, past them. It never goes further, so a word can't drop far below its line;
-	 * when there's no room it takes its first spot, and the older word there makes way.
+	 * when there's no room it takes the spot it tried that's least in the way, and the older word there makes way.
 	 */
 	static float[] placeClear(Sentence line, float halfW, float halfH, float indent, float bob, List<float[]> taken) {
 		float[] mark = line.mark();
-		int rows = line.rows;
+		int rows = line.rows, best = 0;
+		float least = Float.MAX_VALUE;
 		for (int t = 0; t < CLEAR_TRIES; t++) {
 			float[] at = line.place(halfW, halfH, indent, bob);
 			if (line.rows - rows > 1) {
 				break;
 			}
-			if (clear(at[0], at[1], halfW, halfH, taken)) {
+			float crowd = crowding(at[0], at[1], halfW, halfH, taken);
+			if (crowd == 0) {
 				return at;
 			}
+			if (crowd < least) {
+				least = crowd;
+				best = t;
+			}
 		}
+		// Writing on from the mark up to the least crowded try lands on it again, since placing is steady
 		line.back(mark);
-		return line.place(halfW, halfH, indent, bob);
+		float[] at = null;
+		for (int t = 0; t <= best; t++) {
+			at = line.place(halfW, halfH, indent, bob);
+		}
+		return at;
 	}
 
 	/** Whether a card of this half size, in degrees, has room here away from the given footprints. */
 	static boolean clear(float yaw, float pitch, float halfW, float halfH, List<float[]> taken) {
+		return crowding(yaw, pitch, halfW, halfH, taken) == 0;
+	}
+
+	/** How much of the given footprints, in square degrees, a card of this half size here would cover (with a margin). */
+	static float crowding(float yaw, float pitch, float halfW, float halfH, List<float[]> taken) {
+		float crowd = 0;
 		for (float[] o : taken) {
-			if (Math.abs(Mth.wrapDegrees(yaw - o[0])) < halfW + o[2] + CLEAR_PAD && Math.abs(pitch - o[1]) < halfH + o[3] + CLEAR_PAD) {
-				return false;
+			float padW = o[2] + CLEAR_PAD, padH = o[3] + CLEAR_PAD;
+			// How far the two overlap across and down: no more than the smaller of them is wide or tall
+			float w = Math.min(halfW + padW - Math.abs(Mth.wrapDegrees(yaw - o[0])), 2 * Math.min(halfW, padW));
+			float h = Math.min(halfH + padH - Math.abs(pitch - o[1]), 2 * Math.min(halfH, padH));
+			if (w > 0 && h > 0) {
+				crowd += w * h;
 			}
 		}
-		return true;
+		return crowd;
 	}
 
 	/**
