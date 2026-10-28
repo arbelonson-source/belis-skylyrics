@@ -376,6 +376,14 @@ final class WorldWords {
 		return leave == WorldLeave.BLOW ? BLOW * t * t : 0;
 	}
 
+	/**
+	 * Which way a blown card drifts, in text units: back toward where its line began (left in English, right in Hebrew),
+	 * so it never sweeps across the words still being sung.
+	 */
+	static float blownBack(WorldLeave leave, float seconds, float fade, boolean rtl) {
+		return (rtl ? 1 : -1) * blowAside(leave, seconds, fade);
+	}
+
 	/** How many blocks card {@code c} has moved up or down while leaving, {@code ahead} seconds from now. */
 	private float leftUp(Card c, long now, float ahead) {
 		return c.goneAt < 0 ? 0 : leaveUp(leave, (now - c.goneAt) / 1e9f + ahead, fade);
@@ -1521,13 +1529,14 @@ final class WorldWords {
 			if (shove > 0) {
 				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
 			}
+			float blown = blownBack(leave, gone, fade, c.rtl);
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
 					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell + spin
-					- BLOW_TIP * blowAside(leave, gone, fade) / BLOW) * DEG));
+					- BLOW_TIP * blown / BLOW) * DEG));
 			pose.scale(grow, -grow, grow);
-			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blowAside(leave, gone, fade),
+			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blown,
 					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) : 0);
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));

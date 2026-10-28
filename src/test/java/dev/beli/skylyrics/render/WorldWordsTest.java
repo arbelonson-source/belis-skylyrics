@@ -127,6 +127,13 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void blownWordsDriftBackAlongTheirLine() {
+		assertTrue(WorldWords.blownBack(WorldLeave.BLOW, 1f, 2.2f, false) < 0, "English line grows rightwards, so blow left");
+		assertTrue(WorldWords.blownBack(WorldLeave.BLOW, 1f, 2.2f, true) > 0, "Hebrew line grows leftwards, so blow right");
+		assertEquals(0, WorldWords.blownBack(WorldLeave.FLOAT, 1f, 2.2f, false), 1e-6, "only Blow drifts sideways");
+	}
+
+	@Test
 	void lingerSettingStretchesTheFade() {
 		assertEquals(0.5f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);
