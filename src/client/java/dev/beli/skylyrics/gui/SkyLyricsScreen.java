@@ -381,7 +381,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row hat = new Cycle(Tr.t("Hat"), Tr.t("See it in third person (F5). Only you can see it"),
 				List.of(Tr.t("None"), Tr.t("Halo"), Tr.t("Neon headphones"), Tr.t("Conical hat"), Tr.t("Crown"),
 						Tr.t("Cat ears"), Tr.t("Pumpkin head"), Tr.t("Top hat"), Tr.t("Devil horns"),
-						Tr.t("Music notes")),
+						Tr.t("Music notes"), Tr.t("Neon shades")),
 				() -> cfg.hat.ordinal(), i -> cfg.hat = Hat.values()[i]);
 		Row hatPulse = new Toggle(Tr.t("Glow with the lyrics"), Tr.t("Flares up with each new line"),
 				() -> cfg.hatPulse, v -> cfg.hatPulse = v).when(() -> cfg.hat != Hat.NONE);

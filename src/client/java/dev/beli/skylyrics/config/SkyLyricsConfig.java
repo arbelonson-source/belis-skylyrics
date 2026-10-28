@@ -164,7 +164,9 @@ public final class SkyLyricsConfig {
 		/** Two curled red horns with glowing tips. */
 		DEVIL_HORNS,
 		/** Glowing music notes circling the head. */
-		MUSIC_NOTES
+		MUSIC_NOTES,
+		/** Dark sunglasses with glowing rims. */
+		SHADES
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */

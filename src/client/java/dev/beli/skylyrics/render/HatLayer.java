@@ -60,6 +60,14 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final float HORN_LEAN = 40, HORN_CURL = 105;
 	static final int HORN_STEPS = 8;
 	private static final int HORN_SIDES = 10, HORN = 0xFF8A1622, HORN_DARK = 0xFF5A0E18;
+	/**
+	 * Shades: each lens's inner and outer edge at the top and bottom (head space, x out from the middle, y down), how
+	 * far in front of the face they sit, the rim round them and where the arms run back along the head.
+	 */
+	static final float LENS_IN = 0.03f, LENS_OUT = 0.225f, LENS_IN_LOW = 0.05f, LENS_OUT_LOW = 0.185f;
+	static final float LENS_TOP = HEAD_TOP + 0.19f, LENS_BOTTOM = HEAD_TOP + 0.325f, LENS_Z = -0.295f, RIM = 0.014f;
+	private static final float ARM_X = 0.29f, ARM_BACK = 0.12f;
+	private static final int LENS = 0xFF101018;
 	private static final int ORANGE = 0xFFE3801F, ORANGE_DARK = 0xFFC9661A, STEM = 0xFF4F6A2B;
 
 	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
@@ -130,6 +138,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
 			case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
 			case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
+			case SHADES -> out.submitCustomGeometry(pose, paint(), (p, vc) -> shades(p, vc, light, glow));
 			case MUSIC_NOTES -> {
 				float t = seconds();
 				// With Glow with the lyrics on, the notes swell a little as each new line starts
@@ -312,6 +321,32 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			quad(p, vc, FULL_BRIGHT, glow, glow, c0, s0, c1, s1, r + 0.004f, r + 0.004f, brim - 0.025f, brim - 0.08f); // band
 		}
 		tube(p, vc, TOP_HAT_BRIM, 0.008f, brim, glow, FULL_BRIGHT);
+	}
+
+	/**
+	 * Dark sunglasses: each lens a little wider at the top, set on a glowing rim just behind it so only the edge shows,
+	 * with a soft streak of light across the glass, a glowing bridge and thin arms back over the ears.
+	 */
+	private static void shades(PoseStack.Pose p, VertexConsumer vc, int light, int glow) {
+		float rimZ = LENS_Z + 0.004f, shineZ = LENS_Z - 0.002f, r = RIM;
+		int shine = 0x60000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.6f);
+		for (int side = -1; side <= 1; side += 2) {
+			float in = side * LENS_IN, out = side * LENS_OUT, inLow = side * LENS_IN_LOW, outLow = side * LENS_OUT_LOW;
+			face(p, vc, FULL_BRIGHT, glow, glow, in - side * r, LENS_TOP - r, rimZ, out + side * r, LENS_TOP - r, rimZ,
+					outLow + side * r, LENS_BOTTOM + r, rimZ, inLow - side * r, LENS_BOTTOM + r, rimZ);
+			face(p, vc, light, LENS, LENS, in, LENS_TOP, LENS_Z, out, LENS_TOP, LENS_Z, outLow, LENS_BOTTOM, LENS_Z, inLow,
+					LENS_BOTTOM, LENS_Z);
+			// The streak, leaning the same way on both lenses like light from one side
+			float a = Mth.lerp(0.35f, in, out), w = 0.03f, drop = 0.045f;
+			face(p, vc, FULL_BRIGHT, shine, shine, a, LENS_TOP + 0.012f, shineZ, a + w, LENS_TOP + 0.012f, shineZ,
+					a + w - drop, LENS_BOTTOM - 0.012f, shineZ, a - drop, LENS_BOTTOM - 0.012f, shineZ);
+			// A hinge out to the side of the head, then the arm back over the ear
+			float x0 = Math.min(out, side * ARM_X), x1 = Math.max(out, side * ARM_X);
+			box(p, vc, FULL_BRIGHT, glow, x0, LENS_TOP - r, rimZ - 0.004f, x1, LENS_TOP + 0.012f, rimZ + 0.006f);
+			float a0 = side * ARM_X, a1 = side * (ARM_X + 0.012f);
+			box(p, vc, light, LENS, Math.min(a0, a1), LENS_TOP - r, rimZ, Math.max(a0, a1), LENS_TOP + 0.01f, ARM_BACK);
+		}
+		box(p, vc, FULL_BRIGHT, glow, -LENS_IN, LENS_TOP - r, rimZ - 0.002f, LENS_IN, LENS_TOP + 0.012f, rimZ + 0.004f);
 	}
 
 	/**
