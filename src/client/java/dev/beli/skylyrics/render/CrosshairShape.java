@@ -22,6 +22,8 @@ public final class CrosshairShape {
 	static final float FLASH = 0.65f;
 	/** Ring radius for CIRCLE, in GUI pixels. */
 	private static final float RING = 5f;
+	/** How far DIAMOND's tips reach from the middle, in GUI pixels. */
+	private static final int TIP = 5;
 	private static final Map<Crosshair, List<int[]>> FACES = new EnumMap<>(Crosshair.class);
 	private static final Map<Crosshair, List<int[]>> EDGES = new EnumMap<>(Crosshair.class);
 
@@ -69,6 +71,8 @@ public final class CrosshairShape {
 					case CIRCLE -> dot || Math.abs((float) Math.sqrt(dx * dx + dy * dy) - RING) < 0.5f;
 					case CORNERS -> dot || ay == 4 && ax >= 2 && ax <= 4 || ax == 4 && ay >= 2 && ay <= 4;
 					case NOTE -> note(dx, dy);
+					case HEART -> heart(dx, dy);
+					case DIAMOND -> dot || ax + ay == TIP;
 				};
 			}
 		}
@@ -81,6 +85,12 @@ public final class CrosshairShape {
 		boolean stem = dx == 2 && dy >= -6 && dy <= -1;
 		boolean flag = dy == -6 && dx == 3 || dy == -5 && (dx == 3 || dx == 4) || (dy == -4 || dy == -3) && dx == 5;
 		return head || stem || flag;
+	}
+
+	/** A solid heart seven pixels across: two round tops, then narrowing to a point under the aim. */
+	private static boolean heart(int dx, int dy) {
+		int w = Math.abs(dx);
+		return dy == -2 && (w == 1 || w == 2) || (dy == -1 || dy == 0) && w <= 3 || dy >= 1 && dy <= 3 && w <= 3 - dy;
 	}
 
 	/** The pixels touching the shape, corners included, that aren't part of it. */

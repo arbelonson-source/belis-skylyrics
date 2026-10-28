@@ -214,7 +214,11 @@ public final class SkyLyricsConfig {
 		/** Four corners like a camera frame, round a dot. */
 		CORNERS,
 		/** A music note whose round head sits on the aim. */
-		NOTE
+		NOTE,
+		/** A small solid heart, the aim near the top of it. */
+		HEART,
+		/** A diamond outline round a dot. */
+		DIAMOND
 	}
 
 	public enum Layer {

@@ -357,6 +357,8 @@
   "skylyrics.ui.cross": "Cross",
   "skylyrics.ui.circle": "Circle",
   "skylyrics.ui.note": "Note",
+  "skylyrics.ui.heart": "Heart",
+  "skylyrics.ui.diamond": "Diamond",
   "skylyrics.ui.corners": "Corners",
   "skylyrics.ui.updates": "Updates",
   "skylyrics.ui.install": "Install",

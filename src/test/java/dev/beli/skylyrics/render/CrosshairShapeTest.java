@@ -29,15 +29,27 @@ class CrosshairShapeTest {
 			boolean[][] on = CrosshairShape.pixels(style);
 			assertTrue(on[MIDDLE][MIDDLE], style + " has no middle");
 			if (style == Crosshair.NOTE) continue;
+			// A heart only mirrors left to right
+			boolean upright = style == Crosshair.HEART;
 			int side = on.length;
 			for (int r = 0; r < side; r++) {
 				for (int c = 0; c < side; c++) {
-					assertEquals(on[r][c], on[side - 1 - r][c], style + " not symmetric top to bottom");
 					assertEquals(on[r][c], on[r][side - 1 - c], style + " not symmetric left to right");
+					if (upright) continue;
+					assertEquals(on[r][c], on[side - 1 - r][c], style + " not symmetric top to bottom");
 					assertEquals(on[r][c], on[c][r], style + " not symmetric across the diagonal");
 				}
 			}
 		}
+	}
+
+	@Test
+	void theHeartHasANotchOnTopAndAPointBelow() {
+		boolean[][] on = CrosshairShape.pixels(Crosshair.HEART);
+		assertFalse(on[MIDDLE - 2][MIDDLE], "no notch between the two tops");
+		assertTrue(on[MIDDLE - 2][MIDDLE - 1] && on[MIDDLE - 2][MIDDLE + 1], "no round tops");
+		assertTrue(on[MIDDLE + 3][MIDDLE], "no point at the bottom");
+		assertFalse(on[MIDDLE + 3][MIDDLE - 1] || on[MIDDLE + 4][MIDDLE], "the point is blunt or too long");
 	}
 
 	@Test
