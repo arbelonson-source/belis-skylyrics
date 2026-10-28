@@ -378,6 +378,26 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aWordInACrowdedSkyStaysNearItsLine() {
+		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
+		float[] first = WorldWords.placeClear(line, 5, 1, 0, 0, List.of());
+		// Everything round the line is taken: the next word keeps the spot it would have had, not rows further down
+		WorldWords.Sentence copy = new WorldWords.Sentence(0, 0, 10, 0);
+		copy.place(5, 1, 0, 0);
+		float[] natural = copy.place(5, 1, 0, 0);
+		float[] crowded = WorldWords.placeClear(line, 5, 1, 0, 0, List.<float[]>of(new float[] {0, 0, 90, 60}));
+		assertEquals(natural[0], crowded[0], 1e-4f);
+		assertEquals(natural[1], crowded[1], 1e-4f);
+		assertEquals(copy.rows, line.rows);
+		// With an old word on its spot, it carries on along the row past it
+		float[] blocked = copy.place(5, 1, 0, 0), past = copy.place(5, 1, 0, 0);
+		float[] moved = WorldWords.placeClear(line, 5, 1, 0, 0, List.<float[]>of(new float[] {blocked[0], blocked[1], 5, 1}));
+		assertEquals(past[0], moved[0], 1e-4f);
+		assertEquals(past[1], moved[1], 1e-4f);
+		assertTrue(moved[1] > first[1]);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));

@@ -857,11 +857,7 @@ final class WorldWords {
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
-		// Look before placing: while older words are in the way, carry on along the line past them
-		float[] at2 = null;
-		for (int t = 0; t < CLEAR_TRIES && (at2 == null || !clear(at2[0], at2[1], halfW, halfH, taken)); t++) {
-			at2 = sentence.place(halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB);
-		}
+		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, (next() * 2 - 1) * SENTENCE_BOB, taken);
 		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
@@ -905,6 +901,27 @@ final class WorldWords {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Places a line's next piece where nothing in {@code taken} is: while older words are in the way it carries on
+	 * along its row, or into the next one, past them. It never goes further, so a word can't drop far below its line;
+	 * when there's no room it takes its first spot, and the older word there makes way.
+	 */
+	static float[] placeClear(Sentence line, float halfW, float halfH, float indent, float bob, List<float[]> taken) {
+		float[] mark = line.mark();
+		int rows = line.rows;
+		for (int t = 0; t < CLEAR_TRIES; t++) {
+			float[] at = line.place(halfW, halfH, indent, bob);
+			if (line.rows - rows > 1) {
+				break;
+			}
+			if (clear(at[0], at[1], halfW, halfH, taken)) {
+				return at;
+			}
+		}
+		line.back(mark);
+		return line.place(halfW, halfH, indent, bob);
 	}
 
 	/** Whether a card of this half size, in degrees, has room here away from the given footprints. */
@@ -951,6 +968,8 @@ final class WorldWords {
 		float rest = Float.POSITIVE_INFINITY;
 		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
 		boolean newRow;
+		/** How many rows have been started after the first. */
+		int rows;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this(left, top, distance, turn, 0, false);
@@ -985,6 +1004,7 @@ final class WorldWords {
 			boolean wrap = newRow || cursor > left && yaw + halfW > left + WIDTH;
 			if (wrap) {
 				newRow = false;
+				rows++;
 				// A short last row is centred under the full one above it
 				float centre = (cursor - left - Math.max(rest, 2 * halfW)) / 2;
 				yaw = left + Math.max(indent, centre) + halfW;
@@ -1012,6 +1032,22 @@ final class WorldWords {
 			float middle = Math.max(top - halfH + bob, above + ROW_GAP + reach);
 			low = Math.max(low, middle + reach);
 			return new float[] {yaw, middle - rise, lean};
+		}
+
+		/** Where writing has got to, for {@link #back}. */
+		float[] mark() {
+			return new float[] {top, cursor, above, low, rest, newRow ? 1 : 0, rows};
+		}
+
+		/** Goes back to where writing was at a {@link #mark}, as if the pieces since were never placed. */
+		void back(float[] mark) {
+			top = mark[0];
+			cursor = mark[1];
+			above = mark[2];
+			low = mark[3];
+			rest = mark[4];
+			newRow = mark[5] != 0;
+			rows = (int) mark[6];
 		}
 
 		/**
