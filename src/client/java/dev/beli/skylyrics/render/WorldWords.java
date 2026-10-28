@@ -196,6 +196,8 @@ final class WorldWords {
 		float face;
 		final long born;
 		long goneAt = -1;
+		/** The colour it had when it started fading, kept so the next line's colour never washes over it, or -1. */
+		int goneRgb = -1;
 		/** When it was cut short to make room for newer cards, or -1. */
 		long cutAt = -1;
 		/** A new song's title: it keeps its own time, and stays while the lyrics change over. */
@@ -675,6 +677,14 @@ final class WorldWords {
 			return Vec3.ZERO;
 		}
 		return eye.subtract(last);
+	}
+
+	/** The colour a fading card keeps: whatever the words were when it started fading. */
+	private static int keptColour(Card c, int rgb) {
+		if (c.goneRgb < 0) {
+			c.goneRgb = rgb;
+		}
+		return c.goneRgb;
 	}
 
 	/** Every card shown so far starts fading. */
@@ -1532,7 +1542,8 @@ final class WorldWords {
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
 			int shown = flow || !popping ? n : Mth.ceil(n * Math.min(1, age / TYPE));
-			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age)) : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
+			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age))
+					: mix(keptColour(c, rgb), DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			if (shove > 0) {
 				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
 			}
