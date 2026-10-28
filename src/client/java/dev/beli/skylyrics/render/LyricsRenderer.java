@@ -1616,10 +1616,10 @@ public final class LyricsRenderer {
 		return 1 + c3 * (float) Math.pow(t - 1, 3) + c1 * (float) Math.pow(t - 1, 2);
 	}
 
-	/** The glow's colour around words of the given colour: theirs, or the one picked for it. */
+	/** The glow's colour around words of the given colour: a deeper shade of theirs, like neon, or the one picked for it. */
 	private static int glowOf(int words) {
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		return cfg.glowPick ? cfg.glowColor : words;
+		return cfg.glowPick ? cfg.glowColor : WorldWords.neon(words);
 	}
 
 	static int mix(int a, int b, float t) {
