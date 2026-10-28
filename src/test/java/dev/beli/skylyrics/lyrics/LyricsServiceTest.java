@@ -265,4 +265,20 @@ class LyricsServiceTest {
 		assertEquals(0, askedAbout("Song Three"), asked.toString());
 		assertTrue(askedAbout("Song Four") > 0, asked.toString());
 	}
+
+	@Test
+	void tidyingKeepsTheNewestSongsAndTheLogin() throws IOException {
+		Path dir = Files.createDirectories(cache.resolve("tidy"));
+		for (int i = 0; i < 5; i++) {
+			Path song = Files.writeString(dir.resolve(String.format("%024x.json", i)), "{}");
+			song.toFile().setLastModified(1_000_000L * (i + 1));
+		}
+		Path login = Files.writeString(dir.resolve("spotify-login.json"), "{}");
+		login.toFile().setLastModified(1L);
+		LyricsService.tidyDisk(dir, 3);
+		for (int i = 0; i < 5; i++) {
+			assertEquals(i >= 2, Files.exists(dir.resolve(String.format("%024x.json", i))), "song " + i);
+		}
+		assertTrue(Files.exists(login));
+	}
 }

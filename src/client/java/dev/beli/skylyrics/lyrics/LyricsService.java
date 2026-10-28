@@ -1,11 +1,14 @@
 package dev.beli.skylyrics.lyrics;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.concurrent.Executors;
@@ -15,6 +18,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntToLongFunction;
+import java.util.regex.Pattern;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -36,6 +40,10 @@ public final class LyricsService {
 	private static final long NOT_FOUND_TTL_MS = 3L * 24 * 60 * 60 * 1000;
 	/** Waits between tries while LRCLIB is having trouble; the last one repeats. */
 	private static final long[] RETRY_DELAYS_MS = {2_000, 5_000, 10_000, 20_000, 30_000, 45_000, 60_000};
+	/** Songs kept on disk (a few KB each); past this the ones not played for longest go. */
+	private static final int DISK_FILES = 3000;
+	/** Only our own lyrics files; the folder also holds the Spotify login. */
+	private static final Pattern CACHE_NAME = Pattern.compile("[0-9a-f]{24}\\.json(\\.tmp)?");
 
 	public enum State {
 		IDLE, LOADING, READY, NOT_FOUND, ERROR
@@ -68,6 +76,7 @@ public final class LyricsService {
 		this.client = client;
 		this.cacheDir = cacheDir;
 		this.retryDelayMs = retryDelayMs;
+		executor.execute(() -> tidyDisk(cacheDir, DISK_FILES));
 	}
 
 	/** How long to wait before trying again after {@code failures} failed tries in a row. */
@@ -149,6 +158,7 @@ public final class LyricsService {
 			LrclibClient.Result result;
 			if (cached != null && (found(cached) || System.currentTimeMillis() - cached.savedAt < NOT_FOUND_TTL_MS)) {
 				result = new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental);
+				file.toFile().setLastModified(System.currentTimeMillis()); // played again, so kept longer
 			} else {
 				result = client.find(t);
 				writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis()));
@@ -241,6 +251,18 @@ public final class LyricsService {
 			Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
 		} catch (IOException e) {
 			LOG.debug("Couldn't write lyrics cache: {}", e.toString());
+		}
+	}
+
+	/** Keeps the folder from growing forever: removes the songs not played for longest. */
+	static void tidyDisk(Path dir, int keep) {
+		File[] files = dir.toFile().listFiles((d, name) -> CACHE_NAME.matcher(name).matches());
+		if (files == null || files.length <= keep) {
+			return;
+		}
+		Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+		for (int i = 0; i < files.length - keep; i++) {
+			files[i].delete();
 		}
 	}
 
