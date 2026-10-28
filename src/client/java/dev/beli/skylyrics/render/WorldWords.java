@@ -162,6 +162,8 @@ final class WorldWords {
 	static final float GLOW_OUT = 0.6f;
 	/** By day the glow goes this far toward black: a dark halo shows against a bright sky, a light one doesn't. */
 	private static final float HALO_DAY = 0.75f;
+	/** How much richer in colour the glow is than the letters it rings, like a neon tube: pale core, deep halo. */
+	static final float NEON = 1.7f;
 	/** Front to back, in text units, so the layers don't flicker against each other. */
 	private static final float SHADOW_Z = -0.5f, GLOW_Z = 0.1f, FACE_Z = 0.3f;
 	/** From the top of a row of text to the middle of its capitals. */
@@ -1641,7 +1643,7 @@ final class WorldWords {
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
 			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, replaced, light) / 2 * GLOW_COPIES / copies;
-			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
+			int halo = mix(glowRgb < 0 ? neon(colour) : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
 				draw(pose, out, c, shown, melt, typed, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
@@ -1792,6 +1794,20 @@ final class WorldWords {
 		float left = melt < 0 ? 1 : letterLeft(c.born, letter, melt);
 		float in = typed < 0 ? 1 : typedIn(letter, typed);
 		return Math.round(alpha * left * in * 255);
+	}
+
+	/**
+	 * The glow's colour for letters of {@code rgb}: the same hue and brightness, but richer, so pale letters sit in a
+	 * deeper haze of their own colour the way a neon sign does. White and greys stay as they are.
+	 */
+	static int neon(int rgb) {
+		int r = rgb >> 16 & 0xFF, g = rgb >> 8 & 0xFF, b = rgb & 0xFF;
+		int top = Math.max(r, Math.max(g, b));
+		return richer(r, top) << 16 | richer(g, top) << 8 | richer(b, top);
+	}
+
+	private static int richer(int channel, int top) {
+		return Math.max(0, Math.round(top - (top - channel) * NEON));
 	}
 
 	private static int mix(int from, int to, float t) {

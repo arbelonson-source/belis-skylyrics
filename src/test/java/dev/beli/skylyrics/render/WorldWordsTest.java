@@ -594,6 +594,18 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void theGlowIsARicherShadeOfTheLetters() {
+		assertEquals(0xFFFFFF, WorldWords.neon(0xFFFFFF), "white stays white");
+		assertEquals(0x808080, WorldWords.neon(0x808080), "greys stay grey");
+		int pale = 0xDCE6FF, deep = WorldWords.neon(pale);
+		assertEquals(0xFF, deep & 0xFF, "as bright as the letters");
+		assertTrue((deep >> 16 & 0xFF) < 0xDC && (deep >> 8 & 0xFF) < 0xE6, "but richer in colour");
+		assertTrue((deep >> 16 & 0xFF) < (deep >> 8 & 0xFF), "and the same hue");
+		assertEquals(0xFF0000, WorldWords.neon(0xFF2020), "a strong colour goes fully its colour");
+		assertEquals(0, WorldWords.neon(0x00FF10) >> 16, "never below black");
+	}
+
+	@Test
 	void aFullRowCarriesOnBelowFromTheLeft() {
 		WorldWords.Sentence line = new WorldWords.Sentence(0, 0, 10, 0);
 		float[] last = line.place(5, 1, 0, 0);
