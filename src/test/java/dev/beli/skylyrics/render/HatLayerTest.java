@@ -93,4 +93,10 @@ class HatLayerTest {
 			assertEquals(0, Math.IEEEremainder(HatLayer.NOTE_LOOP * speed, 2 * Math.PI), 1e-5, "full turns at speed " + speed);
 		}
 	}
+
+	@Test
+	void antennaeStandOnTopOfTheHead() {
+		assertTrue(HatLayer.ANTENNA_X + HatLayer.ANTENNA_STALK < 0.25f, "the stalks start on the head, not beside it");
+		assertTrue(HatLayer.ANTENNA_LENGTH > 2 * HatLayer.ANTENNA_BALL, "the balls sit well above the head");
+	}
 }

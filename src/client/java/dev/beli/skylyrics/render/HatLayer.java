@@ -55,6 +55,8 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/** The top hat sits just above the head's outer layer; its brim is wide enough to clear that layer's corners. */
 	static final float TOP_HAT_BRIM_Y = HEAD_TOP - 0.035f, TOP_HAT_HEIGHT = 0.38f, TOP_HAT_RADIUS = 0.27f, TOP_HAT_BRIM = 0.43f;
 	private static final int SILK = 0xFF3A3A4A;
+	static final float ANTENNA_X = 0.12f, ANTENNA_LENGTH = 0.36f, ANTENNA_STALK = 0.011f, ANTENNA_BALL = 0.045f;
+	private static final float ANTENNA_LEAN = 14, ANTENNA_WOBBLE = 6, ANTENNA_WOBBLE_SPEED = 3.1f, ANTENNA_POP = 0.35f;
 	/** Each horn starts inside the head's outer layer and curls from leaning out to just past straight up. */
 	static final float HORN_X = 0.14f, HORN_BASE = HEAD_TOP - 0.01f, HORN_Z = -0.06f, HORN_LENGTH = 0.3f, HORN_RADIUS = 0.06f;
 	private static final float HORN_LEAN = 40, HORN_CURL = 105;
@@ -139,6 +141,19 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
 			case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
 			case SHADES -> out.submitCustomGeometry(pose, paint(), (p, vc) -> shades(p, vc, light, glow));
+			case ANTENNAE -> {
+				float t = seconds();
+				// With Glow with the lyrics on, the balls swell a little as each new line starts
+				float pop = 1 + ANTENNA_POP * (bright - REST) / FLARE;
+				for (int side = -1; side <= 1; side += 2) {
+					pose.pushPose();
+					pose.translate(side * ANTENNA_X, HEAD_TOP, 0);
+					float wobble = ANTENNA_WOBBLE * Mth.sin(t * ANTENNA_WOBBLE_SPEED + side);
+					pose.mulPose(Axis.ZP.rotationDegrees(side * ANTENNA_LEAN + wobble));
+					out.submitCustomGeometry(pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
+					pose.popPose();
+				}
+			}
 			case MUSIC_NOTES -> {
 				float t = seconds();
 				// With Glow with the lyrics on, the notes swell a little as each new line starts
@@ -307,6 +322,13 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			face(p, vc, FULL_BRIGHT, glow, glow, e[0] + in, base - 0.015f, z - 0.004f, e[1] - in, base - 0.015f, z - 0.004f,
 					Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f, Mth.lerp(0.25f, e[2], mid), e[3] + 0.06f, z - 0.004f);
 		}
+	}
+
+	/** One antenna: a thin dark stalk standing up from the head with a glowing ball on the end. */
+	private static void antenna(PoseStack.Pose p, VertexConsumer vc, int light, int glow, float pop) {
+		float s = ANTENNA_STALK, b = ANTENNA_BALL * pop, top = -ANTENNA_LENGTH;
+		box(p, vc, light, DARK, -s, top, -s, s, 0, s);
+		box(p, vc, FULL_BRIGHT, glow, -b, top - b, -b, b, top + b, b);
 	}
 
 	/** A tall black top hat with a silky sheen, a wide brim and a glowing band round it. */

@@ -166,7 +166,9 @@ public final class SkyLyricsConfig {
 		/** Glowing music notes circling the head. */
 		MUSIC_NOTES,
 		/** Dark sunglasses with glowing rims. */
-		SHADES
+		SHADES,
+		/** Two thin antennae with glowing balls that wobble. */
+		ANTENNAE
 	}
 
 	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */
