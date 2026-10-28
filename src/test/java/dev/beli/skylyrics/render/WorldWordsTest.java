@@ -50,9 +50,11 @@ class WorldWordsTest {
 	}
 
 	@Test
-	void sungCardsFadeOutSlowlyThenQuickly() {
+	void sungCardsEaseOut() {
 		assertEquals(1, WorldWords.goneAlpha(0));
-		assertEquals(0.75f, WorldWords.goneAlpha(WorldWords.FADE / 2), 1e-6);
+		assertTrue(WorldWords.goneAlpha(WorldWords.FADE / 8) > 0.9f, "barely dims at first");
+		assertEquals(0.5f, WorldWords.goneAlpha(WorldWords.FADE / 2), 1e-6);
+		assertTrue(WorldWords.goneAlpha(WorldWords.FADE * 0.95f) < 0.01f, "slips away softly, no blink at the end");
 		assertEquals(0, WorldWords.goneAlpha(WorldWords.FADE), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(10), 1e-6);
 		float last = 2;
@@ -111,7 +113,7 @@ class WorldWordsTest {
 
 	@Test
 	void lingerSettingStretchesTheFade() {
-		assertEquals(0.75f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
+		assertEquals(0.5f, WorldWords.goneAlpha(2.5f, 5f), 1e-6);
 		assertEquals(0, WorldWords.goneAlpha(5f, 5f), 1e-6);
 		assertTrue(WorldWords.goneAlpha(1f, 5f) > WorldWords.goneAlpha(1f, 1f), "a longer linger fades slower");
 	}

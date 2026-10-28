@@ -329,14 +329,17 @@ final class WorldWords {
 		return n;
 	}
 
-	/** How visible a card still is {@code seconds} after its words were over: slow at first, then quickly gone. */
+	/**
+	 * How visible a card still is {@code seconds} after its words were over: it eases out, half gone halfway through,
+	 * then slips away softly, rather than hanging on as a grey ghost and blinking out at the end.
+	 */
 	static float goneAlpha(float seconds) {
 		return goneAlpha(seconds, FADE);
 	}
 
 	static float goneAlpha(float seconds, float fade) {
 		float t = Mth.clamp(seconds / fade, 0, 1);
-		return 1 - t * t;
+		return 1 - t * t * (3 - 2 * t);
 	}
 
 	/** How big a let-go card still is, {@code seconds} after it was let go: it shrinks a little as it fades, as if drifting off. */
