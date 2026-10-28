@@ -63,6 +63,14 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void searchTitleOnlyCutsAtASpacedDash() {
+		assertEquals("Re-Live", TitleCleaner.forSearch("Re-Live"));
+		assertEquals("Made Up Re-Edit", TitleCleaner.forSearch("Made Up Re-Edit"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song \u2014 Remastered 2011"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song \u2013 Live"));
+	}
+
+	@Test
 	void searchTitleDropsGuestArtists() {
 		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (with SOMEONE)"));
 		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song [with Someone & Another]"));

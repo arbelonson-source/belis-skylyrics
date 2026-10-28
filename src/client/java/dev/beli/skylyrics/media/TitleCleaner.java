@@ -49,7 +49,7 @@ public final class TitleCleaner {
 	/** A stricter version used only for looking lyrics up: "Song - Remastered 2011" -> "Song". */
 	public static String forSearch(String title) {
 		String t = NOISE.matcher(title).replaceAll("");
-		t = t.replaceAll("(?i)\\s*[-\u2013]\\s*(\\d{4}\\s*)?(remaster(ed)?|mono|stereo|single|radio edit|live|version|edit|from .*)\\b.*$", "");
+		t = t.replaceAll("(?i)\\s+[-\u2013\u2014]\\s+(\\d{4}\\s*)?(remaster(ed)?|mono|stereo|single|radio edit|live|version|edit|from .*)\\b.*$", "");
 		t = t.replaceAll("(?i)\\s*[(\\[](feat\\.?|ft\\.?|with|prod\\.?)\\s[^)\\]]*[)\\]]", "");
 		return t.trim();
 	}
