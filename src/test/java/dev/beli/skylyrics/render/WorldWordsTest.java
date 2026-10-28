@@ -186,6 +186,19 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void oneLongerWordPerLineIsPickedToBeBig() {
+		String line = "Neon lights over the city";
+		List<int[]> pieces = WorldWords.chunks(line);
+		for (float roll : new float[] {0, 0.3f, 0.6f, 0.999f}) {
+			int big = WorldWords.bigPiece(line, pieces, roll);
+			assertTrue(big >= 1 && big < pieces.size(), "never the first piece");
+		}
+		assertNotEquals(WorldWords.bigPiece(line, pieces, 0), WorldWords.bigPiece(line, pieces, 0.999f), "the roll picks which");
+		assertEquals(-1, WorldWords.bigPiece("Hold on", WorldWords.chunks("Hold on"), 0.5f), "short lines stay even");
+		assertEquals(-1, WorldWords.bigPiece("a b c d e", WorldWords.chunks("a b c d e"), 0.5f), "only words with a few letters");
+	}
+
+	@Test
 	void cardsCutShortVanishQuickly() {
 		assertEquals(1, WorldWords.cutAlpha(0));
 		assertTrue(WorldWords.cutAlpha(0.1f) < 1);

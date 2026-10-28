@@ -460,6 +460,7 @@ public final class LyricsRenderer {
 		worldWords.arrival(cfg.worldArrival);
 		worldWords.leave(cfg.worldLeave);
 		worldWords.soft(cfg.worldSoft);
+		worldWords.big(cfg.worldBig);
 		worldWords.players(cfg.worldAvoidPlayers, cfg.worldKnock);
 		worldWords.clearMiddle(cfg.worldClearMiddle);
 		worldWords.curve(cfg.worldCurve);

@@ -448,6 +448,8 @@
   "skylyrics.ui.top_right": "Top right",
   "skylyrics.ui.soft_edges": "Soft edges",
   "skylyrics.ui.only_a_glow_round_the_letters_no_dark_shadow_or": "Only a glow round the letters, no dark shadow or outline",
+  "skylyrics.ui.one_big_word": "One big word",
+  "skylyrics.ui.one_word_in_each_line_is_drawn_bigger_than_the_r": "One word in each line is drawn bigger than the rest",
   "skylyrics.ui.two_tone": "Two-tone",
   "skylyrics.ui.each_line_fades_into_a_second_colour": "Each line fades into a second colour",
   "skylyrics.ui.second_colour": "Second colour"

@@ -87,6 +87,8 @@ final class WorldWords {
 	private static final int SHORT_LETTERS = 3, LONG_LETTERS = 6;
 	/** Each card is randomly up to this much smaller or bigger than its letters say, so sizes don't look graded. */
 	private static final float SIZE_JITTER = 0.1f;
+	/** The one big word of each line (the One big word setting) is this many times its usual size. */
+	static final float BIG = 1.45f;
 	/** At most this many cards at once by default (the setting); past it the oldest is cut short. */
 	static final int MAX_CARDS = 7;
 	/** A card cut short to make room fades out over this many seconds. */
@@ -263,6 +265,9 @@ final class WorldWords {
 	private WorldArrival arrival = WorldArrival.POP;
 	private WorldLeave leave = WorldLeave.SHRINK;
 	private boolean soft;
+	private boolean big = true;
+	/** Which piece of the line being sung is its big word, or -1 for none. */
+	private int bigPiece = -1;
 	private boolean nudge = true, avoidPlayers = true, knock = true, swung, clearMiddle = true;
 	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
@@ -519,6 +524,30 @@ final class WorldWords {
 		return Mth.lerp(t, SIZE_SHORT, SIZE_LONG) * (1 + (roll * 2 - 1) * SIZE_JITTER);
 	}
 
+	/**
+	 * Which piece of a line is drawn big, so each line has one word that stands out like a sung highlight: any piece
+	 * but the first with a few letters, picked by {@code roll} (0 to 1). Lines of fewer than three pieces have none.
+	 */
+	static int bigPiece(String text, List<int[]> chunks, float roll) {
+		if (chunks.size() < 3) {
+			return -1;
+		}
+		int[] cps = text.codePoints().toArray();
+		List<Integer> fits = new ArrayList<>();
+		for (int i = 1; i < chunks.size(); i++) {
+			int letters = 0;
+			for (int c = chunks.get(i)[0]; c < chunks.get(i)[1]; c++) {
+				if (Character.isLetterOrDigit(cps[c])) {
+					letters++;
+				}
+			}
+			if (letters >= SHORT_LETTERS) {
+				fits.add(i);
+			}
+		}
+		return fits.isEmpty() ? -1 : fits.get(Math.min((int) (roll * fits.size()), fits.size() - 1));
+	}
+
 	/** Glows in {@code rgb}, or in the words' own colour when it's -1. */
 	void glowColour(int rgb) {
 		glowRgb = rgb;
@@ -547,6 +576,11 @@ final class WorldWords {
 	/** Whether letters get only their glow, with no drop shadow or dark edge (the Soft edges setting). */
 	void soft(boolean soft) {
 		this.soft = soft;
+	}
+
+	/** Whether one word in each line is drawn bigger than the rest (the One big word setting). */
+	void big(boolean on) {
+		this.big = on;
 	}
 
 	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
@@ -718,6 +752,7 @@ final class WorldWords {
 			lineRaw = text;
 			lineText = text == null || !capitals ? text : capitals(text);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
+			bigPiece = lineText == null ? -1 : bigPiece(lineText, lineChunks, next());
 			float[] whole = lineText == null ? null : widths(Display.of(lineText), font, style);
 			lineWidth = whole == null || whole.length == 0 ? 0 : whole[whole.length - 1];
 			lineRtl = lineText != null && rightToLeft(lineText);
@@ -921,7 +956,7 @@ final class WorldWords {
 				letters++;
 			}
 		}
-		float size = SIZE * sizeFor(letters, next());
+		float size = SIZE * sizeFor(letters, next()) * (big && bigPiece >= 0 && lineChunks.indexOf(chunk) == bigPiece ? BIG : 1);
 		Vec3 eye = camera.position();
 		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
 		List<float[]> taken = new ArrayList<>(cards.size());
@@ -1088,7 +1123,7 @@ final class WorldWords {
 			// Rows grow with the words, so a big Size still writes a few words across before starting the next row
 			float width = Math.min(Sentence.WIDTH * Mth.clamp(wordScale, 1, ROW_GROW), 2 * VIEW_HALF);
 			int rows = Math.max(1, Mth.ceil(wide / (width * ROW_FILL)));
-			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * wordScale, distance) + Sentence.ROW_GAP;
+			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * (big && bigPiece >= 0 ? BIG : 1) * wordScale, distance) + Sentence.ROW_GAP;
 			// Under a line that sits over the kept-clear middle, the next one must still end above it
 			float reach = centre[1] - LIFT + VERSE_REACH;
 			if (verse && clearMiddle && Math.abs(Mth.wrapDegrees(last.left + last.width / 2 - centre[0])) < last.width / 2 + MIDDLE_W) {
