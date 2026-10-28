@@ -429,6 +429,8 @@
   "skylyrics.ui.a_small_card_in_a_corner_with_a_spinning_record": "כרטיס קטן בפינה עם תקליט מסתובב, השיר וכמה ממנו כבר התנגן",
   "skylyrics.ui.corner": "פינה",
   "skylyrics.ui.which_corner_of_the_screen_the_record_card_sits": "באיזו פינה של המסך יושב כרטיס התקליט",
+  "skylyrics.ui.lyric_line": "שורת המילים",
+  "skylyrics.ui.the_card_also_shows_the_line_being_sung_under_th": "הכרטיס מציג גם את השורה שמושרת עכשיו, מתחת לתקליט",
   "skylyrics.ui.bottom_right": "למטה מימין",
   "skylyrics.ui.bottom_left": "למטה משמאל",
   "skylyrics.ui.top_left": "למעלה משמאל",

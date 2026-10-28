@@ -42,6 +42,23 @@ class RecordCardTest {
 	}
 
 	@Test
+	void theLyricStripMakesTheCardTallerWithoutLeavingTheScreen() {
+		float tall = RecordCard.height(true);
+		assertEquals(RecordCard.H + RecordCard.LYRIC_H, tall);
+		assertEquals(RecordCard.H, RecordCard.height(false));
+		for (int[] screen : new int[][] {{640, 360}, {427, 240}}) {
+			int w = screen[0], h = screen[1];
+			for (CardCorner c : CardCorner.values()) {
+				float[] at = RecordCard.corner(c, w, h, RecordCard.BAD_ROW, tall);
+				assertTrue(at[1] >= 0 && at[1] + tall <= h, c.name() + " at " + w + "x" + h);
+			}
+			// Bottom cards grow upwards, so their bottom edge stays where it was
+			assertEquals(RecordCard.corner(CardCorner.BOTTOM_RIGHT, w, h)[1] + RecordCard.H,
+					RecordCard.corner(CardCorner.BOTTOM_RIGHT, w, h, 0, tall)[1] + tall, 1e-3f);
+		}
+	}
+
+	@Test
 	void playedAndLeftAlwaysMakeTheSongLength() {
 		assertArrayEquals(new String[] {"0:00", "-3:40"}, RecordCard.times(0, 220_400));
 		assertArrayEquals(new String[] {"0:01", "-3:39"}, RecordCard.times(1_500, 220_400));

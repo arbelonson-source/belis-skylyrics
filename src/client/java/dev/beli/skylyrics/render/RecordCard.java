@@ -26,6 +26,8 @@ import dev.beli.skylyrics.media.Track;
 public final class RecordCard {
 	static final float W = 156;
 	static final float H = 46;
+	/** The strip under the card that shows the line being sung. */
+	static final float LYRIC_H = 13;
 	/** Space between the card and the edge of the screen. */
 	static final float MARGIN = 6;
 	/** Half the hotbar's width, which also covers the hearts and food above it. */
@@ -49,14 +51,19 @@ public final class RecordCard {
 
 	private final MediaTracker tracker;
 	private final AlbumArt art;
+	private final NowPlayingHud hud;
 	private float alpha;
+	/** The line on the strip and how far it has faded in, so a new line eases in instead of popping. */
+	private String lyric = "";
+	private float lyricIn;
 	private float spin;
 	private float spinSpeed;
 	private long lastFrame;
 
-	public RecordCard(MediaTracker tracker, AlbumArt art) {
+	public RecordCard(MediaTracker tracker, AlbumArt art, NowPlayingHud hud) {
 		this.tracker = tracker;
 		this.art = art;
+		this.hud = hud;
 	}
 
 	public void render(GuiGraphics g, DeltaTracker delta) {
@@ -79,7 +86,8 @@ public final class RecordCard {
 		}
 		art.upload();
 
-		float[] at = corner(cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc));
+		float h = height(cfg.cardLyrics);
+		float[] at = corner(cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc), h);
 		float x = at[0], y = at[1];
 		float s = (float) mc.getWindow().getGuiScale();
 		spinSpeed = TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt);
@@ -88,7 +96,7 @@ public final class RecordCard {
 		// The panel and the record in real pixels, so the round edges stay smooth
 		g.pose().pushMatrix();
 		g.pose().scale(1 / s, 1 / s);
-		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(W * s), ph = Math.round(H * s);
+		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(W * s), ph = Math.round(h * s);
 		float b = Math.max(1, Math.round(s / 2));
 		float r = Math.round(8 * s);
 		NowPlayingHud.roundRect(g, px, py, pw, ph, r, ARGB.color(Math.round(alpha * 255), BORDER));
@@ -125,6 +133,47 @@ public final class RecordCard {
 			float leftW = LyricsFont.width(font, style, left) * small;
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
+		if (cfg.cardLyrics) {
+			drawLyric(g, font, style, cfg, x, y + H, scale, dt);
+		}
+	}
+
+	/**
+	 * The line being sung, across the strip under the record. Between lines (or with no timed lyrics)
+	 * it shows a quiet note, so the card keeps its size instead of jumping.
+	 */
+	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt) {
+		String now = hud.singingNow(cfg);
+		String want = now == null ? "" : now;
+		if (!want.equals(lyric)) {
+			lyric = want;
+			lyricIn = 0;
+		}
+		lyricIn = Math.min(1, lyricIn + dt * LYRIC_FADE_IN);
+		float midY = top + LYRIC_H / 2 - 2;
+		float left = x + PAD + 2, room = W - 2 * PAD - 4;
+		// A hairline between the song and its words
+		NowPlayingHud.roundRectGui(g, left, top - 2, room, 1, 0, ARGB.color(Math.round(alpha * 40), 0xFFFFFF));
+		float a = alpha * lyricIn;
+		if (lyric.isEmpty()) {
+			float noteW = LyricsFont.width(font, style, REST) * scale;
+			text(g, font, style, REST, x + (W - noteW) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 160)), SUB));
+			return;
+		}
+		String shown = NowPlayingHud.clip(font, style, lyric, room / scale);
+		float lineW = LyricsFont.width(font, style, shown) * scale;
+		int color = SkyLyricsClient.get().renderer().color();
+		text(g, font, style, shown, x + (W - lineW) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 255)), color));
+	}
+
+	/** How fast a new line fades in on the strip: a quarter of a second. */
+	private static final float LYRIC_FADE_IN = 4;
+	/** What the strip shows between lines. */
+	private static final String REST = "♪";
+
+	/** The card's height, with the lyric strip when it is on. */
+	static float height(boolean lyrics) {
+		return lyrics ? H + LYRIC_H : H;
 	}
 
 	/** A dark disc with a few grooves, the cover turning in the middle as its label, and the hole. */
@@ -184,7 +233,6 @@ public final class RecordCard {
 		g.pose().popMatrix();
 	}
 
-	/** The card's top left corner, in GUI units. Bottom corners sit above the hotbar's reach at the sides. */
 	/**
 	 * Where the bottom of the potion effect icons is, which Minecraft draws in the top right corner:
 	 * one row for good effects, a second row under it for bad ones. Zero with no icons.
@@ -206,17 +254,25 @@ public final class RecordCard {
 		return corner(corner, guiW, guiH, 0);
 	}
 
-	/** {@code effects} is how far down the effect icons reach, so a top right card can sit under them. */
 	static float[] corner(CardCorner corner, int guiW, int guiH, int effects) {
+		return corner(corner, guiW, guiH, effects, H);
+	}
+
+	/**
+	 * The card's top left corner, in GUI units. Bottom corners sit above the hotbar's reach at the sides.
+	 * {@code effects} is how far down the effect icons reach, so a top right card can sit under them, and
+	 * {@code h} is the card's height.
+	 */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h) {
 		float left = MARGIN, right = guiW - MARGIN - W;
-		float top = MARGIN, bottom = guiH - MARGIN - H;
+		float top = MARGIN, bottom = guiH - MARGIN - h;
 		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
 			top = effects + 2;
 		}
 		// On a narrow screen a bottom corner would cover the hotbar, so the card moves up above it
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
 		if (onLeft ? left + W > guiW / 2f - HOTBAR_HALF : right < guiW / 2f + HOTBAR_HALF) {
-			bottom = guiH - HOTBAR_UP - H;
+			bottom = guiH - HOTBAR_UP - h;
 		}
 		return switch (corner) {
 			case BOTTOM_LEFT -> new float[] {left, bottom};
@@ -226,7 +282,6 @@ public final class RecordCard {
 		};
 	}
 
-	/** "3:07" for minutes and seconds, "1:02:05" past an hour; never below zero. */
 	/**
 	 * The time played and the time left, like "1:05" and "-2:35". Both count whole seconds of a song
 	 * rounded to the nearest second, so together they always make its length, and the time played
@@ -238,6 +293,7 @@ public final class RecordCard {
 		return new String[] {clock(played * 1000), "-" + clock((length - played) * 1000)};
 	}
 
+	/** "3:07" for minutes and seconds, "1:02:05" past an hour; never below zero. */
 	static String clock(long ms) {
 		long sec = Math.max(0, ms) / 1000;
 		long h = sec / 3600, m = sec / 60 % 60, s = sec % 60;

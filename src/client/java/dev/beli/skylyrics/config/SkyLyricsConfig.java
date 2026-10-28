@@ -365,6 +365,8 @@ public final class SkyLyricsConfig {
 	/** A small card in a corner with a spinning record, the song and how far along it is. */
 	public boolean recordCard = false;
 	public CardCorner cardCorner = CardCorner.BOTTOM_RIGHT;
+	/** The record card also shows the line being sung, on a strip under the record. */
+	public boolean cardLyrics = true;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */

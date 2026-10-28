@@ -589,6 +589,12 @@ public final class NowPlayingHud {
 		};
 	}
 
+	/** The line being sung right now, as the bar would show it, or null between lines. */
+	@Nullable String singingNow(SkyLyricsConfig cfg) {
+		Content line = currentLine(cfg);
+		return line == null ? null : line.text();
+	}
+
 	private long lyricsTime(SkyLyricsConfig cfg) {
 		return tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
 	}

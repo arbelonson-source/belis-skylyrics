@@ -120,7 +120,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		covers = new CoverCache(cache.resolve("covers"));
 		renderer = new LyricsRenderer(tracker, lyrics, art);
 		hud = new NowPlayingHud(tracker, lyrics, art);
-		card = new RecordCard(tracker, art);
+		card = new RecordCard(tracker, art, hud);
 
 		tracker.onTrackChange(track -> {
 			lyrics.load(track);

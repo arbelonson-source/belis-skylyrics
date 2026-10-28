@@ -429,6 +429,8 @@
   "skylyrics.ui.a_small_card_in_a_corner_with_a_spinning_record": "A small card in a corner with a spinning record, the song and how far it has played",
   "skylyrics.ui.corner": "Corner",
   "skylyrics.ui.which_corner_of_the_screen_the_record_card_sits": "Which corner of the screen the record card sits in",
+  "skylyrics.ui.lyric_line": "Lyric line",
+  "skylyrics.ui.the_card_also_shows_the_line_being_sung_under_th": "The card also shows the line being sung, under the record",
   "skylyrics.ui.bottom_right": "Bottom right",
   "skylyrics.ui.bottom_left": "Bottom left",
   "skylyrics.ui.top_left": "Top left",
