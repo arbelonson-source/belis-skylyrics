@@ -186,8 +186,12 @@ final class WorldWords {
 	private static final float SENTENCE_INDENT = 2.5f, SENTENCE_BOB = 0.7f;
 	/** Each piece of a flowing line steps the other way from the last, by at least this share of {@link #SENTENCE_BOB}. */
 	static final float SENTENCE_STEP = 0.45f;
-	/** How much each piece of a flowing line turns differently from the rest (degrees), and how much of the usual nod and lean it keeps, so the line reads as one. */
-	private static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 0.25f;
+	/** How much each piece of a flowing line turns differently from the rest (degrees), and how much of the usual nod and lean it keeps.
+	 * The nod stays small so the line reads as one; each piece keeps a little more than the usual lean, so the words tip a few degrees
+	 * each their own way instead of sitting stiffly level. */
+	static final float SENTENCE_WOBBLE = 1.5f, SENTENCE_NOD = 0.25f, SENTENCE_LEAN = 1.25f;
+	/** How far (in letter pixels) the end of a tipped word in a flowing line may rise or drop, so long words tip less and stay off the next row. */
+	static final float TIP_DROP = 1.2f;
 	/** A flowing line rises or falls by between these many degrees, words and all, like a line written across a page. */
 	private static final float SENTENCE_SLOPE_MIN = 1.5f, SENTENCE_SLOPE_MAX = 5f;
 	/** A flowing line's rows also bow by between these many degrees in the middle, mostly up like an arch, sometimes down. */
@@ -993,7 +997,7 @@ final class WorldWords {
 		// The Tilt setting scales every angle, so at 0 a card faces you square on
 		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
-		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? SENTENCE_NOD : 1), lean = tilt * (next() * 2 - 1) * LEAN * (flow ? SENTENCE_LEAN : 1);
+		float nod = tilt * (next() * 2 - 1) * NOD * (flow ? SENTENCE_NOD : 1), lean = tilt * (next() * 2 - 1) * (flow ? tipFor(at[at.length - 1] / 2) : LEAN);
 		if (flow && sentence != null) {
 			// Every word leans along the line where it sits, so the line reads as one curved piece
 			lean += spot[3];
@@ -1474,6 +1478,12 @@ final class WorldWords {
 	 * would be placed where the older one is right now and the two would cross.
 	 * The width is in yaw, which a card high up in the sky spans more of than one on the horizon.
 	 */
+	/** The most a piece of a flowing line may tip either way (degrees), given half its width in letter pixels. */
+	static float tipFor(float halfWidth) {
+		float most = LEAN * SENTENCE_LEAN;
+		return halfWidth <= TIP_DROP ? most : Math.min(most, (float) Math.toDegrees(Math.asin(TIP_DROP / halfWidth)));
+	}
+
 	static float[] footprint(Vec3 to, float risen, float halfWidth, float halfHeight) {
 		Vec3 now = to.add(0, risen, 0);
 		float from = pitchOf(to), at = pitchOf(now);

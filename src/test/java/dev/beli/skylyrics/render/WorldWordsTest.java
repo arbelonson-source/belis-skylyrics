@@ -606,6 +606,19 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void shortWordsTipMoreThanLongOnes() {
+		float most = WorldWords.tipFor(0);
+		assertTrue(most >= 4 && most <= 6, "a short word tips a few degrees, like the reference");
+		assertEquals(most, WorldWords.tipFor(8), 1e-4f);
+		float longWord = WorldWords.tipFor(30);
+		assertTrue(longWord < most / 2, "a long word stays nearly level");
+		// However long the word, its end never rises or drops more than TIP_DROP
+		for (float half : new float[] {10, 30, 80}) {
+			assertTrue(half * Math.sin(Math.toRadians(WorldWords.tipFor(half))) <= WorldWords.TIP_DROP + 1e-4f);
+		}
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
