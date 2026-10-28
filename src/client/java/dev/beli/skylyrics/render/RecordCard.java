@@ -10,6 +10,7 @@ import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffectInstance;
 
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
@@ -31,6 +32,8 @@ public final class RecordCard {
 	static final float HOTBAR_HALF = 91;
 	/** Height of the hotbar with hearts, armour and the XP bar, for a card that has to sit above it. */
 	static final float HOTBAR_UP = 52;
+	/** Bottom of the good effects row and of the bad effects row under it. */
+	static final int GOOD_ROW = 25, BAD_ROW = 51;
 	private static final float DISC = 38;
 	private static final float PAD = 4;
 	/** One turn every 1.8 seconds, a little faster than a real record so it reads as turning when small. */
@@ -76,7 +79,7 @@ public final class RecordCard {
 		}
 		art.upload();
 
-		float[] at = corner(cfg.cardCorner, g.guiWidth(), g.guiHeight());
+		float[] at = corner(cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc));
 		float x = at[0], y = at[1];
 		float s = (float) mc.getWindow().getGuiScale();
 		spinSpeed = TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt);
@@ -180,9 +183,34 @@ public final class RecordCard {
 	}
 
 	/** The card's top left corner, in GUI units. Bottom corners sit above the hotbar's reach at the sides. */
+	/**
+	 * Where the bottom of the potion effect icons is, which Minecraft draws in the top right corner:
+	 * one row for good effects, a second row under it for bad ones. Zero with no icons.
+	 */
+	static int effectsBottom(Minecraft mc) {
+		if (mc.player == null) {
+			return 0;
+		}
+		int bottom = 0;
+		for (MobEffectInstance effect : mc.player.getActiveEffects()) {
+			if (effect.showIcon()) {
+				bottom = Math.max(bottom, effect.getEffect().value().isBeneficial() ? GOOD_ROW : BAD_ROW);
+			}
+		}
+		return bottom;
+	}
+
 	static float[] corner(CardCorner corner, int guiW, int guiH) {
+		return corner(corner, guiW, guiH, 0);
+	}
+
+	/** {@code effects} is how far down the effect icons reach, so a top right card can sit under them. */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects) {
 		float left = MARGIN, right = guiW - MARGIN - W;
 		float top = MARGIN, bottom = guiH - MARGIN - H;
+		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
+			top = effects + 2;
+		}
 		// On a narrow screen a bottom corner would cover the hotbar, so the card moves up above it
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
 		if (onLeft ? left + W > guiW / 2f - HOTBAR_HALF : right < guiW / 2f + HOTBAR_HALF) {

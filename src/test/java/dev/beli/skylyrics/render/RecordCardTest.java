@@ -30,6 +30,18 @@ class RecordCardTest {
 	}
 
 	@Test
+	void aTopRightCardMovesUnderTheEffectIcons() {
+		int w = 640, h = 360;
+		assertEquals(RecordCard.MARGIN, RecordCard.corner(CardCorner.TOP_RIGHT, w, h, 0)[1]);
+		assertTrue(RecordCard.corner(CardCorner.TOP_RIGHT, w, h, RecordCard.GOOD_ROW)[1] > RecordCard.GOOD_ROW);
+		assertTrue(RecordCard.corner(CardCorner.TOP_RIGHT, w, h, RecordCard.BAD_ROW)[1] > RecordCard.BAD_ROW);
+		// The icons only sit on the right, so the other corners stay put
+		assertEquals(RecordCard.MARGIN, RecordCard.corner(CardCorner.TOP_LEFT, w, h, RecordCard.BAD_ROW)[1]);
+		assertArrayEquals(RecordCard.corner(CardCorner.BOTTOM_RIGHT, w, h),
+				RecordCard.corner(CardCorner.BOTTOM_RIGHT, w, h, RecordCard.BAD_ROW));
+	}
+
+	@Test
 	void timesReadLikeAMusicPlayer() {
 		assertEquals("0:00", RecordCard.clock(0));
 		assertEquals("0:00", RecordCard.clock(-500));
