@@ -115,6 +115,8 @@ public final class SkyLyricsConfig {
 		MOONLIGHT,
 		/** A slowly turning spiral galaxy, seen at a slant up and to the left of the lyrics. */
 		GALAXY,
+		/** A bright comet low on the right of the lyrics, with a warm dust tail and a blue gas tail climbing away. */
+		COMET,
 		/** One of the other skies, a different one for each song. */
 		RANDOM
 	}

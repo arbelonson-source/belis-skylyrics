@@ -110,6 +110,7 @@ public final class SkyEffects {
 	private final MoonlitSky moonlit = new MoonlitSky();
 	private final EclipseSky eclipse = new EclipseSky();
 	private final GalaxySky galaxy = new GalaxySky();
+	private final CometSky comet = new CometSky();
 	private final Constellations constellations = new Constellations();
 	private final Target light = new Target(false), paint = new Target(true);
 
@@ -180,7 +181,7 @@ public final class SkyEffects {
 
 	/** The skies Random picks from. */
 	static final SkyEffect[] RANDOM_SKIES = {SkyEffect.AURORA, SkyEffect.NEBULA, SkyEffect.BOTH, SkyEffect.SYNTHWAVE,
-			SkyEffect.ECLIPSE, SkyEffect.MOONLIGHT, SkyEffect.GALAXY};
+			SkyEffect.ECLIPSE, SkyEffect.MOONLIGHT, SkyEffect.GALAXY, SkyEffect.COMET};
 
 	/** The sky to draw: the chosen one, or for Random one picked by the song, so it holds for the whole song. */
 	static SkyEffect pick(SkyEffect chosen, Track track) {
@@ -470,7 +471,7 @@ public final class SkyEffects {
 		meteorAge[i] = 0;
 	}
 
-	/** Added light, far to near: the eclipse or galaxy, the constellations, the nebula and aurora, sparkles, shooting stars. */
+	/** Added light, far to near: the eclipse, galaxy or comet, the constellations, the nebula and aurora, sparkles, shooting stars. */
 	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
 		light.begin(pose, vc);
 		if (effect == SkyEffect.ECLIPSE) {
@@ -478,6 +479,9 @@ public final class SkyEffects {
 		}
 		if (effect == SkyEffect.GALAXY) {
 			galaxy.draw(light, far, baseYaw, amount, clock);
+		}
+		if (effect == SkyEffect.COMET) {
+			comet.draw(light, far, baseYaw, amount, clock);
 		}
 		if (starPatterns && !painted()) {
 			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
