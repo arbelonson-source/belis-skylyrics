@@ -43,6 +43,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.SkyColors;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkySpeed;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
+import dev.beli.skylyrics.config.SkyLyricsConfig.WorldArrival;
 import dev.beli.skylyrics.gui.Controls.Button;
 import dev.beli.skylyrics.gui.Controls.Buttons;
 import dev.beli.skylyrics.gui.Controls.Card;
@@ -281,7 +282,19 @@ public final class SkyLyricsScreen extends Screen {
 				.when(() -> cfg.karaoke);
 		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
 				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type")}, () -> cfg.animation.ordinal(),
-				i -> cfg.animation = Animation.values()[i]);
+				i -> cfg.animation = Animation.values()[i])
+				.when(() -> cfg.layout != Layout.WORLD);
+		// World words don't come in as lines; this says how each word shows up instead
+		Row arrival = new Segmented(Tr.t("Arrival"), null,
+				new String[] {Tr.t("Pop"), Tr.t("Drop"), Tr.t("Zoom"), Tr.t("Fade")}, () -> cfg.worldArrival.ordinal(),
+				i -> cfg.worldArrival = WorldArrival.values()[i])
+				.describe(() -> switch (cfg.worldArrival) {
+					case POP -> Tr.t("Words pop up, or glide in on a flowing line");
+					case DROP -> Tr.t("Each word drops in from above and bounces");
+					case ZOOM -> Tr.t("Each word grows out of nothing");
+					case FADE -> Tr.t("Each word slowly fades in");
+				})
+				.when(() -> cfg.layout == Layout.WORLD);
 		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),
 				() -> cfg.pulse, v -> cfg.pulse = v);
 		Row capitals = new Toggle(Tr.t("CAPITALS"), Tr.t("Write every lyric in capital letters"),
@@ -289,7 +302,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		return List.of(
 				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, curve, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
-				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, pulse, capitals));
+				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, arrival, pulse, capitals));
 	}
 
 	private List<Card> lookTab() {

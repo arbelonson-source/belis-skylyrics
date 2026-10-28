@@ -28,6 +28,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
+import dev.beli.skylyrics.config.SkyLyricsConfig.WorldArrival;
 import dev.beli.skylyrics.render.LyricsRenderer.Display;
 
 /**
@@ -102,6 +103,14 @@ final class WorldWords {
 	static final float SLIDE = 4f, SLIDE_TIME = 0.22f;
 	/** A new word lands this much of the way to white and settles into the lyrics colour over this many seconds. */
 	static final float FLASH = 0.55f, FLASH_TIME = 0.7f;
+	/** The Drop arrival: a word starts this many text units above its place and falls in over this many seconds. */
+	static final float DROP = 7f, DROP_TIME = 0.42f;
+	/** The Zoom arrival: a word starts at this much of its size and grows in over this many seconds. */
+	static final float ZOOM_FROM = 0.15f, ZOOM_TIME = 0.34f;
+	/** The Fade arrival: a word fades in over this many seconds. */
+	static final float SOFT_FADE = 0.5f;
+	/** How far an arrival overshoots before it settles: the usual "back" easing. */
+	private static final float BACK = 1.70158f;
 	/** Cards drift up this many blocks a second, up to this high. */
 	private static final float RISE = 0.25f, RISE_MAX = 1f;
 	/** How much smaller a let-go card has got by the time it has faded out. */
@@ -218,6 +227,7 @@ final class WorldWords {
 	/** Pieces read left to right in rows (the Flowing line setting) instead of scattering. */
 	private boolean flow;
 	private boolean hold = true;
+	private WorldArrival arrival = WorldArrival.POP;
 	private boolean nudge = true, avoidPlayers = true, knock = true, swung, clearMiddle = true;
 	private long lastNudge;
 	/** Where the camera was last frame, to carry the cards along while you glide. */
@@ -358,6 +368,10 @@ final class WorldWords {
 	}
 
 	/** Whether words that end up overlapping glide apart (the Slide apart setting). */
+	void arrival(WorldArrival arrival) {
+		this.arrival = arrival == null ? WorldArrival.POP : arrival;
+	}
+
 	void nudge(boolean on) {
 		this.nudge = on;
 	}
@@ -459,6 +473,22 @@ final class WorldWords {
 	static float slideIn(float seconds) {
 		float t = Mth.clamp(seconds / SLIDE_TIME, 0, 1);
 		return SLIDE * (1 - t) * (1 - t) * (1 - t);
+	}
+
+	/** Eases from 0 to 1, going a little past 1 near the end and settling back, like something landing. */
+	static float back(float t) {
+		float u = Mth.clamp(t, 0, 1) - 1;
+		return 1 + (BACK + 1) * u * u * u + BACK * u * u;
+	}
+
+	/** How far above its place a dropping word still is, {@code seconds} after it appeared; it dips just below as it lands. */
+	static float dropIn(float seconds) {
+		return DROP * (1 - back(seconds / DROP_TIME));
+	}
+
+	/** How big a zooming word is, {@code seconds} after it appeared, from small to just past full size and back. */
+	static float zoomIn(float seconds) {
+		return ZOOM_FROM + (1 - ZOOM_FROM) * back(seconds / ZOOM_TIME);
 	}
 
 	/** How much bigger than normal a card is {@code seconds} after it appeared: a quick pop that settles. */
@@ -1324,7 +1354,9 @@ final class WorldWords {
 			Card c = cards.get(i);
 			float age = (now - c.born) / 1e9f;
 			float gone = c.goneAt < 0 ? 0 : (now - c.goneAt) / 1e9f;
-			float a = alpha * Mth.clamp(age / FADE_IN, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade))
+			boolean popping = arrival == WorldArrival.POP;
+			float fadeIn = arrival == WorldArrival.FADE ? SOFT_FADE : FADE_IN;
+			float a = alpha * Mth.clamp(age / fadeIn, 0, 1) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade))
 					* (c.cutAt < 0 ? 1 : cutAlpha((now - c.cutAt) / 1e9f));
 			float fell = c.fellAt < 0 ? 0 : (now - c.fellAt) / 1e9f;
 			if (c.fellAt >= 0) {
@@ -1346,7 +1378,8 @@ final class WorldWords {
 			}
 			int n = c.display.cps().length;
 			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
-			float grow = c.size * scale * (flow ? 1 : pop(age)) * (c.goneAt < 0 ? 1 : leaveSize(gone, fade)) * squash;
+			float enter = arrival == WorldArrival.ZOOM ? zoomIn(age) : popping && !flow ? pop(age) : 1;
+			float grow = c.size * scale * enter * (c.goneAt < 0 ? 1 : leaveSize(gone, fade)) * squash;
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
@@ -1363,7 +1396,7 @@ final class WorldWords {
 			}
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
-			int shown = flow ? n : Mth.ceil(n * Math.min(1, age / TYPE));
+			int shown = flow || !popping ? n : Mth.ceil(n * Math.min(1, age / TYPE));
 			int colour = c.goneAt < 0 ? mix(rgb, 0xFFFFFF, flash(age)) : mix(rgb, DIM_RGB, DIM * Mth.clamp(gone / DIM_TIME, 0, 1));
 			if (shove > 0) {
 				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
@@ -1373,7 +1406,8 @@ final class WorldWords {
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
 					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell + spin) * DEG));
 			pose.scale(grow, -grow, grow);
-			float x0 = -c.at[n] / 2f - (flow ? (c.rtl ? -1 : 1) * slideIn(age) : 0), y0 = -CAP_MIDDLE;
+			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0),
+					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) : 0);
 			// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 			float shade = a * shadowOpacity(day) * (c.goneAt < 0 ? 1 : goneAlpha(gone, fade));
 			draw(pose, out, c, shown, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
@@ -1383,7 +1417,7 @@ final class WorldWords {
 						SHADOW_Z, mode);
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
-			float ring = a * Mth.clamp(age / FADE_IN, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
+			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(glowRgb < 0 ? colour : glowRgb, 0x000000, HALO_DAY * day);
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;

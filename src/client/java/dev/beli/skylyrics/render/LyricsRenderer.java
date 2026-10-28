@@ -455,6 +455,7 @@ public final class LyricsRenderer {
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
 		worldWords.nudge(cfg.worldNudge);
+		worldWords.arrival(cfg.worldArrival);
 		worldWords.players(cfg.worldAvoidPlayers, cfg.worldKnock);
 		worldWords.clearMiddle(cfg.worldClearMiddle);
 		worldWords.curve(cfg.worldCurve);

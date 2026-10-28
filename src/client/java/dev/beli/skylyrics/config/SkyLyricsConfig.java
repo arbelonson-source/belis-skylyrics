@@ -64,6 +64,18 @@ public final class SkyLyricsConfig {
 		WORLD
 	}
 
+	/** World layout: how each new word appears. */
+	public enum WorldArrival {
+		/** Scattered words pop up and type in; a flowing line's words glide in from the side. */
+		POP,
+		/** Each word drops in from above and bounces a little as it lands. */
+		DROP,
+		/** Each word grows out of nothing, just past its size, and settles. */
+		ZOOM,
+		/** Each word slowly fades in where it stands. */
+		FADE
+	}
+
 	public enum Animation {
 		WORDS, FADE, RISE, POP, TYPEWRITER
 	}
@@ -210,6 +222,8 @@ public final class SkyLyricsConfig {
 	public boolean worldHold = true;
 	/** World layout: words that end up on top of each other glide apart. */
 	public boolean worldNudge = true;
+	/** World layout: how each new word appears. */
+	public WorldArrival worldArrival = WorldArrival.POP;
 	/** World layout: new words go to the side of where you look, keeping the middle of the view free for the game. */
 	public boolean worldClearMiddle = true;
 	/** World layout: words keep out of the way of other players, so they never cover someone in a fight. */
@@ -385,6 +399,7 @@ public final class SkyLyricsConfig {
 		if (effects == null) effects = d.effects;
 		if (updates == null) updates = d.updates;
 		if (hat == null) hat = d.hat;
+		if (worldArrival == null) worldArrival = d.worldArrival;
 		if (crosshair == null) crosshair = d.crosshair;
 		if (libraryView == null) libraryView = d.libraryView;
 		if (recentSearches == null) recentSearches = d.recentSearches;

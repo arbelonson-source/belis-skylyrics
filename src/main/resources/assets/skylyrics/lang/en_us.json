@@ -405,5 +405,12 @@
   "skylyrics.ui.type_what_you_re_looking_for": "Type what you're looking for",
   "skylyrics.ui.nothing_matches_try_another_word": "Nothing matches, try another word",
   "skylyrics.ui.time_of_day": "Time of day",
-  "skylyrics.ui.not_in_use_now": "not in use now"
+  "skylyrics.ui.not_in_use_now": "not in use now",
+  "skylyrics.ui.arrival": "Arrival",
+  "skylyrics.ui.drop": "Drop",
+  "skylyrics.ui.zoom": "Zoom",
+  "skylyrics.ui.words_pop_up_or_glide_in_on_a_flowing_line": "Words pop up, or glide in on a flowing line",
+  "skylyrics.ui.each_word_drops_in_from_above_and_bounces": "Each word drops in from above and bounces",
+  "skylyrics.ui.each_word_grows_out_of_nothing": "Each word grows out of nothing",
+  "skylyrics.ui.each_word_slowly_fades_in": "Each word slowly fades in"
 }

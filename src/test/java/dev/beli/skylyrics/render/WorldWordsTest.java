@@ -410,6 +410,23 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void droppingAndZoomingWordsOvershootThenSettle() {
+		assertEquals(WorldWords.DROP, WorldWords.dropIn(0), 1e-4f);
+		assertEquals(0, WorldWords.dropIn(WorldWords.DROP_TIME), 1e-4f);
+		assertEquals(0, WorldWords.dropIn(5), 1e-4f);
+		assertEquals(WorldWords.ZOOM_FROM, WorldWords.zoomIn(0), 1e-4f);
+		assertEquals(1, WorldWords.zoomIn(WorldWords.ZOOM_TIME), 1e-4f);
+		float lowest = 1, biggest = 0;
+		for (float t = 0; t < 1; t += 0.01f) {
+			lowest = Math.min(lowest, WorldWords.dropIn(t));
+			biggest = Math.max(biggest, WorldWords.zoomIn(t));
+		}
+		// A dropped word dips just below its place and a zooming one grows just past its size, a little, not a lot
+		assertTrue(lowest < 0 && lowest > -WorldWords.DROP / 4);
+		assertTrue(biggest > 1 && biggest < 1.15f);
+	}
+
+	@Test
 	void aWordOnlyGoesWhereNothingElseIs() {
 		List<float[]> taken = List.of(new float[] {0, 0, 2, 1});
 		assertFalse(WorldWords.clear(1, 0.5f, 1, 1, taken));
