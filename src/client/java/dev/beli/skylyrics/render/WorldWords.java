@@ -318,7 +318,9 @@ final class WorldWords {
 
 	/**
 	 * Splits a line into the pieces that appear together: one word, or a short word with the next one, never more
-	 * than two words. Returns each piece's first and past-last code point in the line.
+	 * than two words. A short word that ends in punctuation stays on its own, and a piece leaves off the comma or full
+	 * stop it ends in, since that looks like a stray speck floating in the sky. Returns each piece's first and
+	 * past-last code point in the line.
 	 */
 	static List<int[]> chunks(String text) {
 		int[] cps = text.codePoints().toArray();
@@ -337,14 +339,34 @@ final class WorldWords {
 		List<int[]> out = new ArrayList<>();
 		for (int w = 0; w < words.size(); w++) {
 			int[] word = words.get(w);
-			if (w + 1 < words.size() && letters(cps, word) <= SHORT_WORD) {
-				out.add(new int[] {word[0], words.get(++w)[1]});
-			} else {
-				out.add(word);
+			int[] piece = w + 1 < words.size() && letters(cps, word) <= SHORT_WORD
+					&& (PAUSES + BREAKS).indexOf(cps[word[1] - 1]) < 0
+					? new int[] {word[0], words.get(++w)[1]}
+					: word.clone();
+			piece[1] = pause(cps, piece);
+			if (piece[1] > piece[0]) {
+				out.add(piece);
 			}
 		}
 		return out;
 	}
+
+	/** Where a word ends once a trailing comma, full stop, semicolon or colon is left off; an ellipsis stays. */
+	static int pause(int[] cps, int[] word) {
+		int end = word[1];
+		while (end > word[0] && PAUSES.indexOf(cps[end - 1]) >= 0) {
+			if (cps[end - 1] == '.' && end - 1 > word[0] && cps[end - 2] == '.') {
+				break;
+			}
+			end--;
+		}
+		return end;
+	}
+
+	/** Commas and stops in Latin, Arabic and CJK writing. */
+	private static final String PAUSES = ",.;:\u060C\u061B\u3001\u3002\uFF0C\uFF0E";
+	/** Marks that end a phrase but stay on the word. */
+	private static final String BREAKS = "!?\u2026\u061F\uFF01\uFF1F";
 
 	private static int letters(int[] cps, int[] word) {
 		int n = 0;

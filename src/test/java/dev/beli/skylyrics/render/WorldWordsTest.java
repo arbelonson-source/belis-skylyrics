@@ -28,11 +28,19 @@ class WorldWordsTest {
 
 	@Test
 	void shortWordsLeanOnTheNextOne() {
-		assertEquals(List.of("NEON", "SKYLINE,", "CAN YOU", "HEAR", "IT"), pieces("NEON SKYLINE, CAN YOU HEAR IT"));
+		assertEquals(List.of("NEON", "SKYLINE", "CAN YOU", "HEAR", "IT"), pieces("NEON SKYLINE, CAN YOU HEAR IT"));
 		assertEquals(List.of("UP WHERE", "THE CLOUDS", "ARE SLOWLY", "DRIFTING"),
 				pieces("UP WHERE THE CLOUDS ARE SLOWLY DRIFTING"));
 		assertEquals(List.of("SING", "IT BACK", "TO ME", "FROM", "WHERE", "YOU ARE"),
 				pieces("SING IT BACK TO ME FROM WHERE YOU ARE"));
+	}
+
+	@Test
+	void piecesLeaveOffTrailingCommasAndStops() {
+		assertEquals(List.of("OH", "BABY", "COME", "HOME"), pieces("OH, BABY, COME HOME."));
+		assertEquals(List.of("WAIT...", "GO!", "WHY?"), pieces("WAIT... GO! WHY?"));
+		assertEquals(List.of("\u0645\u0631\u062D\u0628\u0627"), pieces("\u0645\u0631\u062D\u0628\u0627\u060C"));
+		assertEquals(List.of("STARS"), pieces("STARS ,"), "a lone comma is no piece at all");
 	}
 
 	@Test
