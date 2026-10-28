@@ -548,6 +548,10 @@ class WorldWordsTest {
 		assertTrue(half < 1 && half > done, "it eases down");
 		assertTrue(done > 0.75f && done < 0.9f, "a little smaller, still easy to read");
 		assertEquals(done, WorldWords.settled(9), 1e-6);
+		assertEquals(1, WorldWords.settledAlpha(-1), 1e-6, "the word being sung stays solid");
+		float faded = WorldWords.settledAlpha(5);
+		assertTrue(faded > 0.5f && faded < 0.85f, "sung words go a little see-through");
+		assertTrue(WorldWords.settledAlpha(0.15f) > faded);
 	}
 
 	@Test

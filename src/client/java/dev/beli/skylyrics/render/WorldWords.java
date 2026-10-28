@@ -102,6 +102,8 @@ final class WorldWords {
 	/** Once the next word lands, a sung word eases down to this much of its size over this many seconds, so the word
 	 * being sung always stands out from the ones just before it. */
 	private static final float SETTLED = 0.82f, SETTLE_TIME = 0.35f;
+	/** How opaque it gets as it settles, so the word being sung is the brightest one in the line. */
+	private static final float SETTLED_ALPHA = 0.7f;
 	/** A new card fades in over this many seconds, and its letters type in over this many. */
 	private static final float FADE_IN = 0.14f, TYPE = 0.23f;
 	/** A new card starts this much bigger and settles back over this many seconds. */
@@ -706,11 +708,20 @@ final class WorldWords {
 	 * @param since seconds since the next word came or the word was let go, or a negative number while it's sung
 	 */
 	static float settled(float since) {
+		return settle(since, SETTLED);
+	}
+
+	/** How opaque a sung word is {@code since} seconds after the next word came; see {@link #settled}. */
+	static float settledAlpha(float since) {
+		return settle(since, SETTLED_ALPHA);
+	}
+
+	private static float settle(float since, float to) {
 		if (since <= 0) {
 			return 1;
 		}
 		float t = Mth.clamp(since / SETTLE_TIME, 0, 1);
-		return 1 - (1 - SETTLED) * t * t * (3 - 2 * t);
+		return 1 - (1 - to) * t * t * (3 - 2 * t);
 	}
 
 	/** The colour of a word sung {@code gone} seconds ago that was {@code rgb}: the same hue, paler. */
@@ -1571,6 +1582,7 @@ final class WorldWords {
 			float since = c == sung || c.title ? -1 : replaced >= 0 ? replaced : c.goneAt >= 0 ? gone : -1;
 			float grow = c.size * scale * enter * settled(since)
 					* (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
+			a *= settledAlpha(since);
 			Vector3f centre = new Vector3f(x, y, z);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
 				continue;
