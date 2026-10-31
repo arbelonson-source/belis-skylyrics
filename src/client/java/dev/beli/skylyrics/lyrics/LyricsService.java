@@ -52,7 +52,7 @@ public final class LyricsService {
 	private record CacheEntry(String synced, String plain, boolean instrumental, long savedAt) {
 	}
 
-	private final LrclibClient client;
+	private final LyricsSource client;
 	private final Path cacheDir;
 	private final IntToLongFunction retryDelayMs;
 	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -68,11 +68,11 @@ public final class LyricsService {
 	private volatile State state = State.IDLE;
 	private volatile ScheduledFuture<?> pendingRetry;
 
-	public LyricsService(LrclibClient client, Path cacheDir) {
+	public LyricsService(LyricsSource client, Path cacheDir) {
 		this(client, cacheDir, LyricsService::retryDelayMs);
 	}
 
-	LyricsService(LrclibClient client, Path cacheDir, IntToLongFunction retryDelayMs) {
+	LyricsService(LyricsSource client, Path cacheDir, IntToLongFunction retryDelayMs) {
 		this.client = client;
 		this.cacheDir = cacheDir;
 		this.retryDelayMs = retryDelayMs;
@@ -139,7 +139,7 @@ public final class LyricsService {
 		}
 	}
 
-	/** LRCLIB busy or down, too many requests, a timeout or no network: worth asking again soon. */
+	/** A lyrics site busy or down, too many requests, a timeout or no network: worth asking again soon. */
 	static boolean temporary(Exception e) {
 		if (e instanceof LrclibClient.StatusException s) {
 			return s.status() == 408 || s.status() == 429 || s.status() >= 500;

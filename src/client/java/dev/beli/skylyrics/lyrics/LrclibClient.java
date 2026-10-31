@@ -25,7 +25,7 @@ import dev.beli.skylyrics.media.Track;
  * Looks lyrics up on <a href="https://lrclib.net">LRCLIB</a>, a free, open lyrics database.
  * No account or API key needed. Blocking; call from a background thread.
  */
-public final class LrclibClient {
+public final class LrclibClient implements LyricsSource {
 	private static final String BASE = "https://lrclib.net/api";
 	/** Durations closer than this count as the same recording. */
 	private static final double DURATION_SLACK_S = 4;
@@ -69,6 +69,7 @@ public final class LrclibClient {
 		this.base = base;
 	}
 
+	@Override
 	public Result find(Track track) throws IOException, InterruptedException {
 		String title = TitleCleaner.forSearch(track.title());
 		String artist = track.artist();

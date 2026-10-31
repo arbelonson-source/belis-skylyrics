@@ -86,7 +86,7 @@ Windows 10 and 11: yes, it reads the media controls that pop up when you press a
 On Windows: anything that shows up in the media panel when you press a media key, such as Spotify, Chrome, Edge, Firefox and other browsers, Media Player and Apple Music (VLC and mpv don't show up there). On Linux: anything that shows up in your desktop's media controls: Spotify (including the Flatpak version), Firefox, Chrome and other browsers (so YouTube, YouTube Music and SoundCloud in a tab), VLC, Rhythmbox, Elisa and most other music apps. mpv works with the mpv-mpris plugin. On macOS: the Spotify and Music apps, while they are open. You can tell the mod which player to follow in the Music tab.
 
 **Where do the lyrics come from?**
-From [LRCLIB](https://lrclib.net), a free, volunteer-run lyrics database. No account needed. If LRCLIB doesn't have a song, the mod can't show lyrics for it. Lyrics it finds are saved on your computer, so songs it has seen before work offline.
+From [LRCLIB](https://lrclib.net), a free, volunteer-run lyrics database. When LRCLIB is down or doesn't have a song, the mod asks [NetEase Cloud Music](https://music.163.com) instead. No account needed for either. If neither has a song, the mod can't show lyrics for it. Lyrics it finds are saved on your computer, so songs it has seen before work offline.
 
 **Does it work with shaders?**
 Yes. Shader packs can darken the sky, so the mod can draw the lyrics on top of everything to keep them bright. On **Auto** it does this whenever a shader pack is on. If they still look dim, set **Look → Draw on top** to **Always**.
@@ -107,7 +107,7 @@ More answers: [FAQ](https://github.com/arbelonson-source/belis-skylyrics/blob/ma
 ### Credits
 
 - Made by Beli.
-- Lyrics from [LRCLIB](https://lrclib.net). The lyrics belong to their writers and are not part of this mod.
+- Lyrics from [LRCLIB](https://lrclib.net) and [NetEase Cloud Music](https://music.163.com). The lyrics belong to their writers and are not part of this mod.
 - Fonts: Poppins, Kaushan Script and Noto Sans Hebrew, all under the SIL Open Font License.
 
 ### License

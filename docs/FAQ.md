@@ -48,7 +48,9 @@ Yes. Open the settings with **J**, go to the **Music** tab and change **Player**
 
 From [LRCLIB](https://lrclib.net), a free lyrics database run by volunteers. You don't need an account. The mod sends the song's title, artist, album and length to LRCLIB to find a match. Lyrics it finds are saved on your computer, so the same song doesn't have to be looked up again.
 
-If LRCLIB doesn't have a song, the mod can't show lyrics for it.
+When LRCLIB is down or doesn't have a song, the mod asks [NetEase Cloud Music](https://music.163.com) instead, a big music service that also has timed lyrics. It sends NetEase only the song's title and artist. No account is needed for either.
+
+If neither has a song, the mod can't show lyrics for it.
 
 ## Does it need internet?
 

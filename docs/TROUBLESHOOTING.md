@@ -14,8 +14,8 @@ Go through these in order:
 4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen).
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
    - **Looking for lyrics…**: wait a moment.
-   - **No lyrics found for this song**: LRCLIB, the free lyrics database the mod uses, doesn't have this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
-   - **Couldn't reach LRCLIB. Offline?**: check your internet, then press **Retry**.
+   - **No lyrics found for this song**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
+   - **Couldn't reach the lyrics sites. Offline?**: check your internet, then press **Retry**. If your internet works, LRCLIB may be down and NetEase didn't have the song. The mod keeps trying while the song plays.
    - **Instrumental, no words**: the song has no lyrics.
    - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** is on (it is at first). Then the lines are spread evenly over the song.
 
