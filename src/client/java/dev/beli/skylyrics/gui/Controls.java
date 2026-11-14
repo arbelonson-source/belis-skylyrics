@@ -79,7 +79,37 @@ final class Controls {
 		}
 
 		int height() {
+			if (!stacked()) {
+				return baseHeight();
+			}
+			return baseHeight() + controlHeight();
+		}
+
+		/** Height of the label (and description) part of the row. */
+		final int baseHeight() {
 			return desc == null ? 24 : 32;
+		}
+
+		/** Height of the control's own line when it sits under the label. */
+		int controlHeight() {
+			return 20;
+		}
+
+		/** Least room a row leaves its label before the control drops to a line of its own. */
+		static final int MIN_LABEL = 48;
+
+		/**
+		 * Whether a control {@code controlW} wide in a row {@code rowW} wide leaves too little room for its label
+		 * (at most {@link #MIN_LABEL} wide, or less for a short label), so it goes on a second line.
+		 */
+		static boolean stacks(int rowW, int controlW, int labelW) {
+			return rowW > 0 && controlW > 0 && rowW - 28 - controlW < Math.min(labelW, MIN_LABEL);
+		}
+
+		/** The control sits under the label, not beside it. */
+		final boolean stacked() {
+			Font font = net.minecraft.client.Minecraft.getInstance().font;
+			return font != null && stacks(w, controlWidth(font), font.width(label));
 		}
 
 		boolean hovered(Frame f) {
@@ -92,7 +122,7 @@ final class Controls {
 		abstract void renderControl(Frame f);
 
 		void render(Frame f) {
-			int textW = w - 20 - controlWidth(f.font()) - 8;
+			int textW = stacked() ? w - 20 : w - 20 - controlWidth(f.font()) - 8;
 			if (desc == null) {
 				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 8, Ui.TEXT, false);
 			} else {
@@ -122,6 +152,11 @@ final class Controls {
 		int centerY() {
 			return y + height() / 2;
 		}
+
+		/** Middle of the control's line: beside the label, or on the line under it. */
+		int controlCy() {
+			return stacked() ? y + baseHeight() + controlHeight() / 2 : centerY();
+		}
 	}
 
 	static final class Toggle extends Row {
@@ -145,7 +180,7 @@ final class Controls {
 			boolean on = get.getAsBoolean();
 			anim = anim < 0 ? (on ? 1 : 0) : Ui.approach(anim, on ? 1 : 0, f.dt(), 14);
 			int tx = x + w - 10 - 22;
-			int ty = centerY() - 6;
+			int ty = controlCy() - 6;
 			int track = Ui.lerp(anim, hovered(f) ? Ui.CONTROL_HOVER : Ui.TRACK, Ui.ACCENT);
 			Ui.rect(f.g(), tx, ty, 22, 12, 6, track);
 			int kx = tx + 2 + Math.round(anim * 10);
@@ -201,7 +236,7 @@ final class Controls {
 			double v = get.getAsDouble();
 			float t = (float) Mth.clamp((v - min) / (max - min), 0, 1);
 			int sx = sx();
-			int cy = centerY();
+			int cy = controlCy();
 			boolean hot = dragging || hovered(f) && Ui.inside(f.mx(), f.my(), sx - 4, y, WIDTH + 8, height());
 			knobAnim = Ui.approach(knobAnim, hot ? 1 : 0, f.dt(), 16);
 			Ui.rect(f.g(), sx, cy - 1, WIDTH, 3, 1, Ui.TRACK);
@@ -309,7 +344,7 @@ final class Controls {
 			Font font = f.font();
 			int total = controlWidth(font);
 			int bx = x + w - 10 - total;
-			int by = centerY() - 8;
+			int by = controlCy() - 8;
 			Ui.rect(f.g(), bx, by, total, 16, 4, Ui.CONTROL);
 			int selected = get.getAsInt();
 			int ox = bx + 2;
@@ -343,7 +378,7 @@ final class Controls {
 			int ox = x + w - 10 - total + 2;
 			for (int i = 0; i < options.length; i++) {
 				int ow = optionWidth(font, i);
-				if (Ui.inside(mx, my, ox, centerY() - 9, ow, 18)) {
+				if (Ui.inside(mx, my, ox, controlCy() - 9, ow, 18)) {
 					set.accept(i);
 					return true;
 				}
@@ -397,7 +432,7 @@ final class Controls {
 			Font font = f.font();
 			int bw = controlWidth(font);
 			int bx = x + w - 10 - bw;
-			int by = centerY() - 8;
+			int by = controlCy() - 8;
 			boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, by, bw, 16);
 			Ui.rect(f.g(), bx, by, bw, 16, 4, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			boolean leftHalf = f.mx() < bx + bw / 2;
@@ -425,7 +460,7 @@ final class Controls {
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
 			int bw = controlWidth(font);
 			int bx = x + w - 10 - bw;
-			if (!Ui.inside(mx, my, bx, centerY() - 9, bw, 18)) {
+			if (!Ui.inside(mx, my, bx, controlCy() - 9, bw, 18)) {
 				return false;
 			}
 			step(mx < bx + bw / 2 ? -1 : 1);
@@ -450,6 +485,7 @@ final class Controls {
 	static final class Swatches extends Row {
 		private static final int SIZE = 12;
 		private static final int GAP = 5;
+		private static final int LINE = SIZE + GAP;
 		private final int[] colors;
 		private final IntSupplier selected;
 		private final IntConsumer pick;
@@ -463,16 +499,53 @@ final class Controls {
 
 		@Override
 		int controlWidth(Font font) {
-			return colors.length * (SIZE + GAP) - GAP + 2;
+			return colors.length * LINE - GAP + 2;
+		}
+
+		/** How many swatches go on one line in a row {@code rowW} wide: all of them, unless even a line of their own is too wide. */
+		static int perLine(int rowW, int count, boolean stacked) {
+			if (!stacked || rowW <= 0 || count * LINE - GAP + 2 <= rowW - 20) {
+				return count;
+			}
+			return Math.max(1, Math.min(count, (rowW - 20 - 2 + GAP) / LINE));
+		}
+
+		static int lines(int rowW, int count, boolean stacked) {
+			int per = Math.max(1, perLine(rowW, count, stacked));
+			return (count + per - 1) / per;
+		}
+
+		private int perLine() {
+			return perLine(w, colors.length, stacked());
+		}
+
+		@Override
+		int controlHeight() {
+			return lines(w, colors.length, true) * LINE + 3;
+		}
+
+		private int swatchX(Font font, int i) {
+			int per = perLine();
+			if (per >= colors.length) {
+				return x + w - 10 - controlWidth(font) + 1 + i * LINE;
+			}
+			return x + 11 + i % per * LINE;
+		}
+
+		private int swatchY(int i) {
+			int per = perLine();
+			if (per >= colors.length) {
+				return controlCy() - SIZE / 2;
+			}
+			return y + baseHeight() + 10 + i / per * LINE - SIZE / 2;
 		}
 
 		@Override
 		void renderControl(Frame f) {
-			int sx = x + w - 10 - controlWidth(f.font()) + 1;
-			int sy = centerY() - SIZE / 2;
 			int current = selected.getAsInt();
 			for (int i = 0; i < colors.length; i++) {
-				int cx = sx + i * (SIZE + GAP);
+				int cx = swatchX(f.font(), i);
+				int sy = swatchY(i);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), cx - 2, sy - 2, SIZE + 4, SIZE + 4);
 				if ((colors[i] & 0xFFFFFF) == current) {
 					Ui.outline(f.g(), cx - 2, sy - 2, SIZE + 4, SIZE + 4, 4, 0xFFFFFFFF);
@@ -485,10 +558,9 @@ final class Controls {
 
 		@Override
 		boolean click(double mx, double my) {
-			int sx = x + w - 10 - controlWidth(net.minecraft.client.Minecraft.getInstance().font) + 1;
-			int sy = centerY() - SIZE / 2;
+			Font font = net.minecraft.client.Minecraft.getInstance().font;
 			for (int i = 0; i < colors.length; i++) {
-				if (Ui.inside(mx, my, sx + i * (SIZE + GAP) - 2, sy - 3, SIZE + 4, SIZE + 6)) {
+				if (Ui.inside(mx, my, swatchX(font, i) - 2, swatchY(i) - 3, SIZE + 4, SIZE + 6)) {
 					pick.accept(colors[i] & 0xFFFFFF);
 					return true;
 				}
@@ -534,11 +606,11 @@ final class Controls {
 			int bx = x + w - 10 - controlWidth(f.font());
 			for (Button b : buttons) {
 				int bw = width(f.font(), b);
-				boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, centerY() - 8, bw, 16);
+				boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, controlCy() - 8, bw, 16);
 				//? if >=26.1 {
-				/*drawButton(f, bx, centerY() - 8, bw, 16, b.drawString().get(), hover, b.primary(), b.enabled().getAsBoolean());
+				/*drawButton(f, bx, controlCy() - 8, bw, 16, b.drawString().get(), hover, b.primary(), b.enabled().getAsBoolean());
 				*///?} else {
-				drawButton(f, bx, centerY() - 8, bw, 16, b.text().get(), hover, b.primary(), b.enabled().getAsBoolean());
+				drawButton(f, bx, controlCy() - 8, bw, 16, b.text().get(), hover, b.primary(), b.enabled().getAsBoolean());
 				//?}
 				bx += bw + 4;
 			}
@@ -550,7 +622,7 @@ final class Controls {
 			int bx = x + w - 10 - controlWidth(font);
 			for (Button b : buttons) {
 				int bw = width(font, b);
-				if (Ui.inside(mx, my, bx, centerY() - 9, bw, 18) && b.enabled().getAsBoolean()) {
+				if (Ui.inside(mx, my, bx, controlCy() - 9, bw, 18) && b.enabled().getAsBoolean()) {
 					b.action().run();
 					return true;
 				}
@@ -577,7 +649,7 @@ final class Controls {
 		@Override
 		void renderControl(Frame f) {
 			String text = Ui.clip(f.font(), value.get(), 160);
-			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), centerY() - 4, Ui.MUTED, false);
+			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), controlCy() - 4, Ui.MUTED, false);
 		}
 	}
 
