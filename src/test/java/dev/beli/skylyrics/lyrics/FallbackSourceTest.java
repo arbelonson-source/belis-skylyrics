@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -47,12 +48,16 @@ class FallbackSourceTest {
 
 	@Test
 	void backupFillsInWhenMainHasNothing() throws Exception {
-		assertSame(BACKUP, fallback(t -> LrclibClient.Result.NOT_FOUND, t -> BACKUP).find(TRACK));
+		LrclibClient.Result r = fallback(t -> LrclibClient.Result.NOT_FOUND, t -> BACKUP).find(TRACK);
+		assertSame(BACKUP, r);
+		assertFalse(r.stopgap()); // LRCLIB is up and just lacks the song, so this is kept as usual
 	}
 
 	@Test
 	void backupFillsInWhenMainIsDown() throws Exception {
-		assertSame(BACKUP, fallback(down(502), t -> BACKUP).find(TRACK));
+		LrclibClient.Result r = fallback(down(502), t -> BACKUP).find(TRACK);
+		assertEquals(BACKUP.synced(), r.synced());
+		assertTrue(r.stopgap());
 	}
 
 	@Test
@@ -81,9 +86,9 @@ class FallbackSourceTest {
 
 	@Test
 	void brokenMainAnswerCountsAsDown() throws Exception {
-		assertSame(BACKUP, fallback(track -> {
+		assertEquals(BACKUP.synced(), fallback(track -> {
 			throw new com.google.gson.JsonParseException("not JSON");
-		}, t -> BACKUP).find(TRACK));
+		}, t -> BACKUP).find(TRACK).synced());
 	}
 
 	@Test

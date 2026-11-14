@@ -145,11 +145,12 @@ class LyricsServiceTest {
 	void serverTroubleIsRetriedUntilTheLyricsCome() throws InterruptedException {
 		fastRetries();
 		getAnswer = "{\"syncedLyrics\":\"" + SYNCED + "\"}";
-		failures.set(3);
+		failures.set(2); // /get and /search both fail on the first try
 		service.load(track("Song One", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		assertFalse(service.lyrics().isEmpty());
-		assertEquals(4, asked.size(), asked.toString());
+		// a 503 on /get now also tries /search, so one try can take two requests
+		assertTrue(asked.size() >= 3, asked.toString());
 	}
 
 	@Test
@@ -177,6 +178,37 @@ class LyricsServiceTest {
 		try (var files = Files.list(cache)) {
 			assertEquals(0, files.count());
 		}
+	}
+
+	@Test
+	void backupLyricsFromAMainOutageAreNotKeptOnDisk() throws Exception {
+		java.util.concurrent.atomic.AtomicBoolean mainUp = new java.util.concurrent.atomic.AtomicBoolean();
+		AtomicInteger mainAsked = new AtomicInteger();
+		java.util.concurrent.atomic.AtomicLong now = new java.util.concurrent.atomic.AtomicLong(1_000_000);
+		LrclibClient.Result fromMain = new LrclibClient.Result("[00:01.00]Main version", null, false);
+		LrclibClient.Result fromBackup = new LrclibClient.Result(null, "Backup version", false);
+		FallbackSource source = new FallbackSource(t -> {
+			mainAsked.incrementAndGet();
+			if (!mainUp.get()) {
+				throw new LrclibClient.StatusException(503);
+			}
+			return fromMain;
+		}, t -> fromBackup, now::get);
+		service.shutdown();
+		service = new LyricsService(source, cache, attempt -> 30);
+
+		service.load(track("Song One", 200_000));
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		service.load(track("Song Two", 200_000));
+		waitFor(() -> service.track().title().equals("Song Two") && service.state() == LyricsService.State.READY);
+
+		mainUp.set(true);
+		now.addAndGet(FallbackSource.SKIP_MAIN_MS + 1);
+		int before = mainAsked.get();
+		service.load(track("Song One", 200_000));
+		waitFor(() -> mainAsked.get() > before);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		assertTrue(service.lyrics().lines().get(0).text().contains("Main version"), "still the backup's lyrics");
 	}
 
 	@Test

@@ -57,7 +57,7 @@ public final class FallbackSource implements LyricsSource {
 		try {
 			LrclibClient.Result result = backup.find(track);
 			if (result.found()) {
-				return result;
+				return result.asStopgap();
 			}
 		} catch (IOException | RuntimeException backupDown) {
 			mainDown.addSuppressed(backupDown);
