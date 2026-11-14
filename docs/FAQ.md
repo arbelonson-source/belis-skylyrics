@@ -46,11 +46,17 @@ Yes. Open the settings with **J**, go to the **Music** tab and change **Player**
 
 ## Where do the lyrics come from?
 
-From [LRCLIB](https://lrclib.net), a free lyrics database run by volunteers. You don't need an account. The mod sends the song's title, artist, album and length to LRCLIB to find a match. Lyrics it finds are saved on your computer, so the same song doesn't have to be looked up again.
+From [LRCLIB](https://lrclib.net), a free lyrics database run by volunteers. You don't need an account or any set-up. The mod sends the song's title, artist, album and length to LRCLIB to find a match. Lyrics it finds are saved on your computer, so the same song doesn't have to be looked up again.
 
-When LRCLIB is down or doesn't have a song, the mod asks [NetEase Cloud Music](https://music.163.com) instead, a big music service that also has timed lyrics. It sends NetEase only the song's title and artist. No account is needed for either.
+Since version 0.7.8, when LRCLIB is down or doesn't have a song, the mod asks [NetEase Cloud Music](https://music.163.com) instead, a big music service that also has timed lyrics, including for many songs that aren't in English. It sends NetEase only the song's title and artist. No account is needed for either. To avoid showing the wrong song's words, it only uses a NetEase match when the title matches exactly and the artist or the song length matches too.
 
 If neither has a song, the mod can't show lyrics for it.
+
+## Do I need Spotify, or Spotify Premium?
+
+No. To show lyrics you don't need Spotify at all, and no Premium: the mod follows whatever player you already use (see "Which music players work?" above).
+
+Spotify only matters for the **song library** (press **N**). If you have signed in to Spotify on the **Music** tab, it shows your liked songs and playlists. Starting a song from there needs Spotify Premium (on Linux, a single song can also open in the Spotify app without it). If you haven't signed in, the library shows a **Recently heard** list instead: the songs you have played lately. It is kept on your computer only, and you can switch it off or empty it on the **Music** tab (**Recently heard** and **Forget recent songs**). Clicking a song in that list asks the player that played it to play it again. That works on Linux, when that player is open and can do it; on Windows and macOS the list is there to look at, and the mod says so when a player can't start the song.
 
 ## Does it need internet?
 
@@ -62,7 +68,21 @@ From 0.7.0 on, it updates itself. When a new version is out, it downloads in the
 
 ## Does it work with shaders, Sodium and Iris?
 
-Yes. Shader packs can make the sky darker and paint clouds over things, so the mod can draw the lyrics on top of the finished picture to keep them bright. This is the **Draw on top** setting under **Look**. On **Auto** it does this whenever a shader pack is on, when it rains, or when **See through blocks** is on. If the lyrics still look dim, set it to **Always**.
+Yes. Shader packs can make the sky darker and paint clouds over things, so the mod can draw the lyrics on top of the finished picture to keep them bright. This is the **Draw on top** setting under **Look**. On **Auto** it does this whenever a shader pack is on, when it rains, when **See through blocks** is on, or when you are in a cave or under a roof (see "Why don't I see lyrics in caves?"). If the lyrics still look dim, set it to **Always**.
+
+## Why don't I see lyrics in caves?
+
+With the **Arc** and **Lines** layouts, the lyrics stay visible underground at first: **Show underground too** on the **Display** tab is on, and it works while **Draw on top** (Look tab) is on **Auto**. If you can't see them in a cave, check these:
+
+- **Show underground too** is on. It only shows up when **Draw on top** is **Auto** and **Hide in caves** is off.
+- **Hide in caves** (Display tab) is off. It hides the lyrics on purpose when there is no open sky above you, and it wins over Show underground too.
+- **Draw on top** is not on **Never**, which keeps the lyrics inside the world, where rock can hide them.
+
+The **World** layout puts its words in the world around you, so blocks can still hide them. Turn on **See through blocks** on the Look tab if you want to see them through walls.
+
+## Can I pin the lyrics in one place?
+
+Yes. Turn on **View lock** under **Lyrics → Position**. The lyrics are pinned where you are looking right now and stay there while you look around. You can also give a key to **Lock lyrics here** (Options → Controls → Key Binds → Beli's SkyLyrics) and press it to lock and unlock without opening the settings. Press it again, or turn the switch off, to let the lyrics follow you again. In the World layout, new words gather around the spot you locked. View lock shows when the lyrics are in the sky or the layout is World.
 
 ## How do I open the settings?
 
@@ -70,13 +90,14 @@ Press **J** in game. If you have [Mod Menu](https://modrinth.com/mod/modmenu), y
 
 ## Can I change the keys?
 
-Yes. In Minecraft go to **Options → Controls → Key Binds** and scroll to **Beli's SkyLyrics**. Only **Open settings** (J) has a key at first. These have no key until you pick one:
+Yes. In Minecraft go to **Options → Controls → Key Binds** and scroll to **Beli's SkyLyrics**. Only **Open settings** (J) and **Open song library** (N) have a key at first. These have no key until you pick one:
 
 - Show or hide lyrics
 - Show now-playing card
 - Play / pause music
 - Next song
 - Previous song
+- Lock lyrics here (View lock)
 - Lyrics are late (this song)
 - Lyrics are early (this song)
 
@@ -86,9 +107,9 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 ## What can I change about the look?
 
-- **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (with Lines: Words, Fade, Rise, Pop, Type or Slide), how World words arrive (Pop, Drop, Zoom, Fade or Type, letter by letter) and leave (Shrink, Float, Blow, Sink or Dissolve), the pulse when a new line starts, and capital letters.
+- **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (with Lines: Words, Fade, Rise, Pop, Type or Slide), how World words arrive (Pop, Drop, Zoom, Fade or Type, letter by letter) and leave (Shrink, Float, Blow, Sink or Dissolve), the pulse when a new line starts, capital letters, and **View lock** (under **Position**).
 - **Look tab:** your own colour (a soft periwinkle at first), the album cover's colour, **Time of day**, **Each line** (a new neon colour with every line) or rainbow; **Two-tone**, where each line fades into a second colour you pick; the letter style (Bold, Smooth, Round, Handwritten or Minecraft); **Depth** for a solid 3D edge on the letters; glow (a deeper shade of the letters' colour, or one you pick), shadow and opacity; **Soft edges** for World words with only a glow and no dark outline; the night sky (Off, Aurora, Nebula, Synthwave, Eclipse, Aurora + nebula, Moonlight, Galaxy, Comet or Random) with its strength; and **Constellations**, star patterns joined by thin lines.
-- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, and **Lyric line** shows the line being sung under the record.
+- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, hide them in the Nether, the End, underwater or in caves, keep them visible underground (**Show underground too**), turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, and **Lyric line** shows the line being sung under the record.
 
 ## Is the mod in Hebrew?
 
