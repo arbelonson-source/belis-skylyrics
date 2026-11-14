@@ -9,6 +9,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.google.gson.JsonArray;
@@ -32,8 +34,21 @@ public final class NeteaseClient implements LyricsSource {
 	private static final double DURATION_SLACK_S = 4;
 	/** With a different artist name (another alphabet, say), the length must be this close. */
 	private static final double STRICT_SLACK_S = 1;
-	/** Song credits around the lyrics, like "[00:00.00] 作词 : name". One-letter duet tags like "男：" stay. */
-	private static final Pattern CREDIT = Pattern.compile("^(\\[[^\\]]*])*\\s*\\p{IsHan}{2,8}\\s*[:：].*$");
+	/** A line shaped like "[00:00.00] label : name". Only counts as a credit when the label is a known one. */
+	private static final Pattern LABELLED = Pattern.compile("^(?:\\[[^\\]]*])*\\s*([^:：\\[\\]]{1,20}?)\\s*[:：].*$");
+	/** A line with nothing but time stamps. */
+	private static final Pattern EMPTY = Pattern.compile("^(?:\\[[^\\]]*])*$");
+	/** Credit labels seen in NetEase lyrics, lower case. One-letter duet tags like "男" are not here on purpose. */
+	private static final Set<String> CREDIT_LABELS = Set.of(
+			"作词", "作曲", "编曲", "词", "曲", "编", "制作", "制作人", "监制", "策划", "统筹", "出品", "发行",
+			"演唱", "主唱", "主人声", "和声", "和音", "和声编写", "合声", "配唱", "配唱制作人", "人声编辑",
+			"吉他", "贝斯", "鼓", "键盘", "弦乐", "钢琴", "打击乐", "录音", "录音师", "录音工程", "录音助理",
+			"录音工程师", "混音", "混音师", "混音助理", "混音工程师", "母带", "母带处理", "母带工程师", "音频工程师",
+			"歌词翻译", "翻译", "歌词", "文案", "封面", "企划", "制作公司", "录音室", "混音室", "母带室",
+			"op", "sp", "lyrics", "lyricist", "music", "composer", "arranger", "arrangement", "producer", "producers",
+			"vocals", "chorus", "backing vocals", "guitar", "guitars", "bass", "drums", "keyboards", "piano",
+			"percussion", "strings", "mixing", "mastering", "recording", "engineering", "programming", "translation",
+			"作詞", "作曲家", "編曲");
 	/** Timed lyrics have at least one "[mm:ss" stamp. */
 	private static final Pattern TIMED = Pattern.compile("(?m)^\\[\\d{1,3}:\\d{1,2}");
 	/** NetEase's placeholder text for instrumentals: "pure music, please enjoy". */
@@ -127,17 +142,41 @@ public final class NeteaseClient implements LyricsSource {
 				: new LrclibClient.Result(null, text, false);
 	}
 
-	/** Drops the credit lines and NetEase's JSON metadata lines, keeping the lyrics. */
+	/**
+	 * Drops the credit lines and NetEase's JSON metadata lines, keeping the lyrics. Credits only
+	 * sit in the block before the first lyric and the block after the last one, so a sung
+	 * line like "他说：我爱你" in the middle of a song is never touched.
+	 */
 	static String clean(String lyric) {
+		String[] lines = lyric.split("\\R");
+		boolean[] drop = new boolean[lines.length];
+		for (int i = 0; i < lines.length; i++) {
+			drop[i] = lines[i].strip().startsWith("{");
+		}
+		for (int i = 0; i < lines.length && neutralOrCredit(lines[i]); i++) {
+			drop[i] |= isCredit(lines[i]);
+		}
+		for (int i = lines.length - 1; i >= 0 && neutralOrCredit(lines[i]); i--) {
+			drop[i] |= isCredit(lines[i]);
+		}
 		StringBuilder out = new StringBuilder();
-		for (String line : lyric.split("\\R")) {
-			String trimmed = line.strip();
-			if (trimmed.startsWith("{") || CREDIT.matcher(trimmed).matches()) {
-				continue;
+		for (int i = 0; i < lines.length; i++) {
+			if (!drop[i]) {
+				out.append(lines[i]).append('\n');
 			}
-			out.append(line).append('\n');
 		}
 		return out.toString().strip();
+	}
+
+	/** Lines that do not end the credit block: blank, time stamps only, metadata, credits. */
+	private static boolean neutralOrCredit(String line) {
+		String t = line.strip();
+		return t.isEmpty() || t.startsWith("{") || EMPTY.matcher(t).matches() || isCredit(t);
+	}
+
+	private static boolean isCredit(String line) {
+		Matcher m = LABELLED.matcher(line.strip());
+		return m.matches() && CREDIT_LABELS.contains(m.group(1).strip().toLowerCase(Locale.ROOT));
 	}
 
 	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */
