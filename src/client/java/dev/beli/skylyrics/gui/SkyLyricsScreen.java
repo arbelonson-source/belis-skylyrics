@@ -483,9 +483,13 @@ public final class SkyLyricsScreen extends Screen {
 				*///?} else {
 				new Button(Tr.t("Open"), () -> minecraft.setScreen(new LibraryScreen(this))));
 				//?}
+		Row recent = new Toggle(Tr.t("Recently heard"), Tr.t("Remember the songs you play, to pick from the song library. Kept on this computer only"),
+				() -> cfg.recentSongs, v -> cfg.recentSongs = v);
+		Row forget = new Buttons(Tr.t("Forget recent songs"), Tr.t("Empties the Recently heard list"),
+				new Button(Tr.t("Clear"), () -> mod.heard().clear())).when(() -> cfg.recentSongs);
 
 		return List.of(
-				new Card(Tr.t("Now playing"), new NowPlayingRow(), status, library),
+				new Card(Tr.t("Now playing"), new NowPlayingRow(), status, library, recent, forget),
 				new Card(Tr.t("Player"), player, connection, connectionHelp, timing, songTiming, demo, plain),
 				spotifyCard());
 	}
