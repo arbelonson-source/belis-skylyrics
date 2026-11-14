@@ -40,6 +40,23 @@ public final class Visibility {
 		return cfg.hideInCaves && level.dimensionType().hasSkyLight() && underground(level, camera);
 	}
 
+	/**
+	 * Whether the player is under cover right now (no open sky above), with the cave-mouth hysteresis. The one answer
+	 * for both Hide in caves and Show underground too. Always false where the dimension has no sky light.
+	 */
+	public static boolean underground(Minecraft mc) {
+		ClientLevel level = mc.level;
+		if (level == null || !level.dimensionType().hasSkyLight()) {
+			return false;
+		}
+		//? if >=26.2 {
+		/*Camera camera = mc.gameRenderer.mainCamera();
+		*///?} else {
+		Camera camera = mc.gameRenderer.getMainCamera();
+		//?}
+		return underground(level, camera);
+	}
+
 	private static boolean underground(ClientLevel level, Camera camera) {
 		long now = System.nanoTime();
 		if (now - checkedAt >= CHECK_NS) {
