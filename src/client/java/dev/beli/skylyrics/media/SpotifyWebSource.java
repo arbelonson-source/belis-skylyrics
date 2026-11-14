@@ -16,7 +16,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -408,10 +407,12 @@ public final class SpotifyWebSource implements MediaSource {
 			try {
 				Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
 			} catch (UnsupportedOperationException e) {
-				Files.createFile(tmp); // Windows: the user's own folder is private already
+				Files.createFile(tmp);
+				// Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
+				dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 			}
 			Files.writeString(tmp, json.toString(), StandardCharsets.UTF_8);
-			Files.move(tmp, loginFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			dev.beli.skylyrics.util.SafeFile.replace(tmp, loginFile);
 		} catch (IOException e) {
 			LOG.warn("Couldn't save the Spotify sign-in: {}", e.toString());
 		}

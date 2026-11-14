@@ -10,7 +10,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -234,7 +233,7 @@ public final class CoverCache {
 			Files.createDirectories(dir);
 			Path temp = Files.createTempFile(dir, "cover", ".part");
 			Files.write(temp, bytes);
-			Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			dev.beli.skylyrics.util.SafeFile.replace(temp, file);
 		}
 		return image;
 	}
