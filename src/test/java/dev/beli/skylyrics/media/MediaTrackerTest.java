@@ -18,6 +18,10 @@ class MediaTrackerTest {
 		private volatile Snapshot last = Snapshot.NOTHING;
 		final AtomicInteger polls = new AtomicInteger();
 
+		synchronized void then(Snapshot s) {
+			queue.add(s);
+		}
+
 		synchronized void then(Track t) {
 			queue.add(new Snapshot(t, 1000, true, System.nanoTime()));
 		}
@@ -93,6 +97,32 @@ class MediaTrackerTest {
 	@Test
 	void sameSongDoesNotFireAgain() throws InterruptedException {
 		List<Track> changes = run(song(215_000, "file:///a.png"), song(215_000, "file:///a.png"), song(215_000, "file:///b.png"));
+		assertEquals(1, changes.size(), changes.toString());
+	}
+
+	private static Track song(String artist) {
+		return new Track("Made Up Song", artist, "", 215_000, "", "firefox");
+	}
+
+	@Test
+	void artistThatArrivesAfterTheTitleIsOneSong() throws InterruptedException {
+		List<Track> changes = run(song(""), song("Made Up Band"), song("Made Up Band"));
+		assertEquals(1, changes.size(), changes.toString());
+		assertEquals("Made Up Band", changes.get(0).artist());
+	}
+
+	@Test
+	void aSongThatReallyHasNoArtistIsAnnouncedOnceItStays() throws InterruptedException {
+		List<Track> changes = run(song(""), song(""), song(""));
+		assertEquals(1, changes.size(), changes.toString());
+		assertEquals("", changes.get(0).artist());
+	}
+
+	@Test
+	void albumThatArrivesLateIsNotANewSong() throws InterruptedException {
+		Track bare = new Track("Made Up Song", "Made Up Band", "", 215_000, "", "firefox");
+		Track full = new Track("Made Up Song", "Made Up Band", "Made Up Album", 215_000, "", "firefox");
+		List<Track> changes = run(bare, full, full);
 		assertEquals(1, changes.size(), changes.toString());
 	}
 }
