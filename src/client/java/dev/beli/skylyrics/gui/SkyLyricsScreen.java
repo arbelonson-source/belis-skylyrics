@@ -1085,11 +1085,7 @@ public final class SkyLyricsScreen extends Screen {
 
 	/** The end of {@code text} that fits in {@code maxW}, so the letters being typed stay in sight. */
 	private String tail(String text, int maxW) {
-		int i = 0;
-		while (i < text.length() && font.width(text.substring(i)) > maxW) {
-			i++;
-		}
-		return text.substring(i);
+		return dev.beli.skylyrics.util.TextCut.suffix(text, t -> font.width(t) <= maxW);
 	}
 
 	/** Every row whose name, description or card matches the search, in cards named after their tab. */
@@ -1130,7 +1126,7 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private void editSearch(String text) {
-		query = text.length() > 60 ? text.substring(0, 60) : text;
+		query = dev.beli.skylyrics.util.TextCut.limit(text, 60);
 		if (tab != SEARCH_TAB) {
 			searchFrom = tab;
 			tab = SEARCH_TAB;

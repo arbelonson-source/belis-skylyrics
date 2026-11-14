@@ -736,16 +736,7 @@ public final class NowPlayingHud {
 			return text;
 		}
 		float room = maxW - LyricsFont.width(font, style, "…");
-		int lo = 0, hi = text.length();
-		while (lo < hi) {
-			int mid = (lo + hi + 1) / 2;
-			if (LyricsFont.width(font, style, text.substring(0, mid)) <= room) {
-				lo = mid;
-			} else {
-				hi = mid - 1;
-			}
-		}
-		return text.substring(0, lo).stripTrailing() + "…";
+		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */
