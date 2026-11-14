@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -566,7 +565,7 @@ public final class SkyLyricsConfig {
 			Files.createDirectories(file().getParent());
 			Path tmp = file().resolveSibling("skylyrics.json.tmp");
 			Files.writeString(tmp, GSON.toJson(this), StandardCharsets.UTF_8);
-			Files.move(tmp, file(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			dev.beli.skylyrics.util.SafeFile.replace(tmp, file());
 		} catch (IOException e) {
 			LOG.warn("Couldn't save settings: {}", e.toString());
 		}
