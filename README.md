@@ -15,7 +15,8 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - Gets the synced lyrics from [LRCLIB](https://lrclib.net) and shows them line by line, in time with the song. When LRCLIB is down or doesn't have a song, it asks [NetEase Cloud Music](https://music.163.com) instead.
 - Three layouts. **Arc** shows the line being sung on a gentle curve, each word tilted a little. **Lines** shows the previous, current and next lines, straight and centred. **World** places each word or two in the world around you as it's sung.
 - In the **World** layout, words can flow into a line that glides in and lands with a flash. Each row bows gently, like handwriting across the sky. They keep clear of the middle of your view, slide out of each other's way, never sink into blocks, and move off other players (handy in PvP). Hit a word to knock it back. When you die, the words drop out of the sky, spinning as they fade. You choose how words arrive (pop, drop, zoom, fade in, or typed letter by letter) and how they leave (shrink, float up, blow away, sink or dissolve). Their glow is a deeper shade of the letters' colour, like neon, and **Soft edges** drops the dark outline for the softest look. Most of these can be turned off under **Position**.
-- **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you.
+- **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you. **View lock** (under **Lyrics → Position**, or a key you set) pins the lyrics where you are looking right now, so they stay put while you look around.
+- The lyrics stay visible in caves and under roofs (**Show underground too**, on the **Display** tab, on at first), instead of vanishing behind the rock.
 - Words fade in one by one and light up as they are sung. Five other line animations are included, plus an optional glow pulse on each new line.
 - A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own, and the cover can spin slowly like a record.
 - An optional **Record card** sits in a corner of your choice: a spinning vinyl with the album cover in the middle, the song title and artist, and a progress line with the time played and the song length, with the line being sung on a strip underneath. It keeps clear of your hotbar and your potion effect icons.
@@ -26,7 +27,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - When a new song starts, its name and artist can float up in the sky.
 - A hat for your character, seen in third person (F5): halo, neon headphones, conical hat, crown, cat ears, pumpkin head, top hat, devil horns, neon shades, antennae, a flower crown, a propeller cap or music notes circling your head, with parts that glow in your lyrics colour. Only you can see it.
 - Crosshair styles: Minecraft's normal one, or a dot, cross, circle, corners, music note, heart or diamond in your lyrics colour. They can flash brighter as each new lyric line starts.
-- A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first.
+- A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first. Without Spotify, it shows a **Recently heard** list of the songs you have played lately instead (clicking one to play it again works on Linux).
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The smooth letters stay smooth with shader packs on. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
@@ -80,7 +81,7 @@ Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds y
 ### Using it
 
 - **J** opens the settings and **N** opens the song library. Change the keys under *Options → Controls → Key Binds → Beli's SkyLyrics*.
-- The same place has optional keys for play/pause, next and previous song, and "lyrics are early / late" for the song playing now.
+- The same place has optional keys for play/pause, next and previous song, "lyrics are early / late" for the song playing now, and "Lock lyrics here" for View lock.
 - No lyrics showing? Open the settings and look at the **Music** tab. It tells you which player it's following and whether lyrics were found. Some songs simply have no lyrics on LRCLIB or NetEase. More help in [Troubleshooting](docs/TROUBLESHOOTING.md).
 
 ## Building it yourself
