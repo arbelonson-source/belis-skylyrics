@@ -27,7 +27,7 @@ public final class TitleCleaner {
 			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014]\\s*(feat\\.?|ft\\.?|featuring|with|prod\\.?)[\\s\uFF1A:][^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
 			Pattern.CASE_INSENSITIVE);
 	private static final Pattern GUEST_TAIL = Pattern.compile(
-			"(?<=\\S)\\s+(feat\\.?|ft\\.?|featuring)\\s+\\S.*$", Pattern.CASE_INSENSITIVE);
+			"(?<=\\S)\\s+(feat\\.|ft\\.?|featuring)\\s+\\S.*$", Pattern.CASE_INSENSITIVE);
 
 	private TitleCleaner() {
 	}
@@ -60,7 +60,8 @@ public final class TitleCleaner {
 		String bracketed = GUEST_BRACKETS.matcher(t).replaceAll("");
 		// A title that is only a credit ("(feat. X)") is all there is to search for.
 		t = bracketed.isBlank() ? t : bracketed;
-		// "Song feat. X" at the end; needs a song name before it, so "Feel It" and "Lift Me Up" stay whole.
+		// "Song feat. X" at the end; needs a song name before it, so "Feel It" and "Lift Me Up" stay whole, and the dot
+		// after "feat", so a title like "A Feat Of Strength" does too.
 		t = GUEST_TAIL.matcher(t.trim()).replaceFirst("");
 		return t.trim();
 	}

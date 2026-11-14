@@ -89,7 +89,7 @@ class TitleCleanerTest {
 		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song FT. Someone Else"));
 		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song ft Someone"));
 		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song featuring Someone & Another"));
-		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (feat. Someone) [Remix feat. Other]".replace(" [Remix feat. Other]", "")));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (feat. Someone)"));
 	}
 
 	@Test
@@ -103,6 +103,7 @@ class TitleCleanerTest {
 		assertEquals("Ft. Someone", TitleCleaner.forSearch("Ft. Someone"));
 		assertEquals("Featuring You", TitleCleaner.forSearch("Featuring You"));
 		assertEquals("Song Ft", TitleCleaner.forSearch("Song Ft"));
+		assertEquals("A Feat Of Strength", TitleCleaner.forSearch("A Feat Of Strength"));
 	}
 
 	@Test
