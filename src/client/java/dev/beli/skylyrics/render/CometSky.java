@@ -68,6 +68,18 @@ final class CometSky {
 		}
 	}
 
+	/** Angular radius (radians) round the head that holds the head and both tails. */
+	private static final float REACH = (float) Math.atan(Math.max(furthest(HEAD_A, HEAD_B),
+			Math.max(furthest(DUST_A, DUST_B), furthest(ION_A, ION_B)))) + 0.02f;
+
+	private static float furthest(float[] a, float[] b) {
+		float most = 0;
+		for (int k = 0; k < a.length; k++) {
+			most = Math.max(most, (float) Math.hypot(a[k], b[k]));
+		}
+		return most;
+	}
+
 	private final SkyFrame frame = new SkyFrame();
 	private final int[] ionGrid = new int[ION_A.length];
 
@@ -121,7 +133,15 @@ final class CometSky {
 	 * @param time seconds of sky clock, which moves the streamers
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time) {
+		draw(c, radius, baseYaw, level, time, SkyView.ALL);
+	}
+
+	/** As above, drawing nothing when the camera {@code view} can't see the comet. */
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, SkyView view) {
 		frame.aim(baseYaw + YAW, ELEV);
+		if (!view.capVisible(frame.dx, frame.dy, frame.dz, REACH)) {
+			return;
+		}
 		for (int i = 0; i <= STEPS; i++) {
 			float s = STEP_AT[i];
 			for (int j = 0; j <= ION_ACROSS; j++) {

@@ -80,13 +80,19 @@ final class SynthwaveSky {
 	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
 	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
 	private static final int[] STAR_SKY = new int[STAR_COUNT];
+	/** Each star's direction (lyrics facing south), to tell whether it is in view. */
+	private static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
+	/** Wider than any star (a few pixels across), in radians. */
+	private static final float STAR_REACH = 0.02f;
+	/** The sun's disc holds the stripes: its angular radius with a little to spare, in radians. */
+	private static final float SUN_REACH = SUN_RADIUS * DEG * 1.05f;
 	/** Face rows from top (0) to bottom (1); a row is drawn when FACE_FILL is set, else it is a gap. */
 	static final float[] FACE_T;
 	static final boolean[] FACE_FILL;
 	private static final int[] FACE_ROW_RGB;
 
 	static {
-		DOME_MESH = new SkyMesh(DOME_ROWS.length, DOME_COLUMNS + 1);
+		DOME_MESH = new SkyMesh(DOME_ROWS.length, DOME_COLUMNS + 1).asDome(DOME_ROWS, DOME_COLUMNS);
 		for (int i = 0; i < DOME_ROWS.length; i++) {
 			double e = DOME_ROWS[i] * DEG;
 			// Plain gradient: where the dome meets the swirl and the sun, their own meshes paint over it
@@ -113,6 +119,9 @@ final class SynthwaveSky {
 			float k = SkyColors.hash(i * 3 + 103);
 			STAR_SIZE[i] = 0.9f + 0.7f * k;
 			f.aim(STAR_YAW[i], STAR_ELEV[i]);
+			STAR_X[i] = f.dx;
+			STAR_Y[i] = f.dy;
+			STAR_Z[i] = f.dz;
 			STAR_ALPHA[i] = sunDistance(f.dx, f.dy, f.dz) < STAR_CLEAR ? 0 : 0.18f + 0.4f * k * k;
 			STAR_SKY[i] = background(f.dx, f.dy, f.dz);
 		}
@@ -237,21 +246,29 @@ final class SynthwaveSky {
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+		draw(c, radius, baseYaw, level, time, pixel, SkyView.ALL);
+	}
+
+	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		c.fadeBelowHorizon(HORIZON_FADE);
-		DOME_MESH.draw(c, cos, sin, radius * DOME, level);
-		SWIRL_MESH.draw(c, cos, sin, radius * SWIRL, level);
-		SUN_MESH.draw(c, cos, sin, radius * SUN_SKY, level);
-		stars(c, radius * STARS, baseYaw, level, time, pixel);
+		DOME_MESH.draw(c, cos, sin, radius * DOME, level, view);
+		SWIRL_MESH.draw(c, cos, sin, radius * SWIRL, level, view);
+		SUN_MESH.draw(c, cos, sin, radius * SUN_SKY, level, view);
+		stars(c, radius * STARS, baseYaw, level, time, pixel, view);
 		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
-		face(c, radius * DISC, level);
+		if (view.capVisible(frame.dx, frame.dy, frame.dz, SUN_REACH)) {
+			face(c, radius * DISC, level);
+		}
 		c.fadeBelowHorizon(0);
 	}
 
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
-	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel) {
+	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel, SkyView view) {
+		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		for (int i = 0; i < STAR_COUNT; i++) {
-			if (STAR_ALPHA[i] == 0) {
+			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
 			float twinkle = 0.75f + 0.25f * (float) Math.sin(time * (0.7f + 0.13f * (i % 7)) + i * 2.3f);

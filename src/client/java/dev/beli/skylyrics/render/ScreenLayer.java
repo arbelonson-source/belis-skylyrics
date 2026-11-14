@@ -26,6 +26,7 @@ public final class ScreenLayer {
 	private static final FrustumIntersection frustum = new FrustumIntersection();
 	private static float pixelsPerUnit;
 	private static float unitsAcross;
+	private static float lookX, lookY, lookZ, tanHalfH, tanHalfV;
 	private static boolean captured;
 	private static Method irisInstance, irisShadersOn;
 	private static boolean irisLookedUp;
@@ -42,7 +43,18 @@ public final class ScreenLayer {
 		frustum.set(viewProjection);
 		pixelsPerUnit = projection.m11();
 		unitsAcross = projection.m00();
+		// The view turns the world into camera space, which looks down -z, so the look direction is minus its third row
+		lookX = -view.m02();
+		lookY = -view.m12();
+		lookZ = -view.m22();
+		tanHalfH = 1 / projection.m00();
+		tanHalfV = 1 / projection.m11();
 		captured = true;
+	}
+
+	/** Points {@code view} at where the camera looked this frame; with no frame captured yet it counts everything as visible. */
+	static SkyView lookInto(SkyView view) {
+		return captured ? view.set(lookX, lookY, lookZ, tanHalfH, tanHalfV) : view.clear();
 	}
 
 	public static boolean ready() {

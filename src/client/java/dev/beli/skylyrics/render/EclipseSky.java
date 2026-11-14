@@ -94,7 +94,15 @@ final class EclipseSky {
 		}
 	}
 
+	/** Angular radius (radians) round the sun that holds the corona, flare and rays: the outermost ring, a little wide. */
+	private static final float CORONA_REACH = (float) Math.atan(RINGS[RINGS.length - 1] * Math.tan(SUN_RADIUS * DEG)) + 0.02f;
+	/** The black disc, with a little to spare. */
+	private static final float DISC_REACH = SUN_RADIUS * DEG * 1.05f;
+	/** Angular radius (radians) that holds a piece of the milky way: its half width plus one step along, with a little to spare. */
+	private static final float BAND_REACH = (BAND_HALF + 360f / BAND_SEGMENTS) * DEG * 1.05f;
+
 	private final SkyFrame frame = new SkyFrame();
+	private final boolean[] bandShown = new boolean[BAND_SEGMENTS];
 	private final float[] axisA = new float[3], axisB = new float[3], pole = new float[3];
 
 	/** Light around the sun at {@code (x, y)} disc radii from its middle, x to the right and y up. */
@@ -151,9 +159,14 @@ final class EclipseSky {
 	 * @param level 0..1, how much of the effect shows
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time) {
+		draw(c, radius, baseYaw, level, time, SkyView.ALL);
+	}
+
+	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, SkyView view) {
 		c.fadeBelowHorizon(HORIZON_FADE);
-		band(c, radius * BAND, baseYaw, level);
-		corona(c, radius * CORONA, baseYaw, level, time);
+		band(c, radius * BAND, baseYaw, level, view);
+		corona(c, radius * CORONA, baseYaw, level, time, view);
 		c.fadeBelowHorizon(0);
 	}
 
@@ -163,7 +176,15 @@ final class EclipseSky {
 	 * corona has no light, so the two can be drawn in either order.
 	 */
 	void drawDisc(SkyCanvas c, float radius, float baseYaw, float level) {
+		drawDisc(c, radius, baseYaw, level, SkyView.ALL);
+	}
+
+	/** As above, drawing nothing when the camera {@code view} can't see the disc. */
+	void drawDisc(SkyCanvas c, float radius, float baseYaw, float level, SkyView view) {
 		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
+		if (!view.capVisible(frame.dx, frame.dy, frame.dz, DISC_REACH)) {
+			return;
+		}
 		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
 		int black = SkyColors.argb(DISC_RGB, level);
 		float r = radius * CORONA * DISC_LAYER;
@@ -176,8 +197,11 @@ final class EclipseSky {
 		}
 	}
 
-	private void corona(SkyCanvas c, float r, float baseYaw, float level, float time) {
+	private void corona(SkyCanvas c, float r, float baseYaw, float level, float time, SkyView view) {
 		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
+		if (!view.capVisible(frame.dx, frame.dy, frame.dz, CORONA_REACH)) {
+			return;
+		}
 		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
 		// A slow, slight breathing so the corona feels alive
 		float alpha = level * (0.94f + 0.06f * (float) Math.sin(time * 0.8f));
@@ -193,7 +217,7 @@ final class EclipseSky {
 		}
 	}
 
-	private void band(SkyCanvas c, float r, float baseYaw, float level) {
+	private void band(SkyCanvas c, float r, float baseYaw, float level, SkyView view) {
 		// A = a point on the band, B = the way the band runs there, pole = A x B
 		frame.aim(baseYaw + BAND_YAW, BAND_ELEV);
 		float cs = (float) Math.cos(BAND_SLOPE * DEG), sn = (float) Math.sin(BAND_SLOPE * DEG);
@@ -204,8 +228,25 @@ final class EclipseSky {
 		axisB[1] = cs * frame.uy + sn * frame.vy;
 		axisB[2] = cs * frame.uz + sn * frame.vz;
 		cross(axisA, axisB, pole);
+		// Each piece of the band, judged by a point in its middle (the band runs round a great circle)
+		boolean any = false;
+		for (int j = 0; j < BAND_SEGMENTS; j++) {
+			float ca = ALONG_COS[j] + ALONG_COS[j + 1], sa = ALONG_SIN[j] + ALONG_SIN[j + 1];
+			float l = (float) Math.sqrt(ca * ca + sa * sa);
+			ca /= l;
+			sa /= l;
+			bandShown[j] = view.capVisible(ca * axisA[0] + sa * axisB[0], ca * axisA[1] + sa * axisB[1],
+					ca * axisA[2] + sa * axisB[2], BAND_REACH);
+			any |= bandShown[j];
+		}
+		if (!any) {
+			return;
+		}
 		for (int i = 0; i < BAND_ROWS; i++) {
 			for (int j = 0; j < BAND_SEGMENTS; j++) {
+				if (!bandShown[j]) {
+					continue;
+				}
 				int g0 = i * (BAND_SEGMENTS + 1) + j, g1 = g0 + BAND_SEGMENTS + 1;
 				bandPoint(c, j, i, r, SkyColors.argb(BAND_RGB, BAND_GRID[g0] * level));
 				bandPoint(c, j + 1, i, r, SkyColors.argb(BAND_RGB, BAND_GRID[g0 + 1] * level));

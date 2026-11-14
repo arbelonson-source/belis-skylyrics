@@ -104,6 +104,8 @@ public final class SkyEffects {
 	private float amount;
 	private float baseYaw;
 	private float pixel;
+	/** Where the camera looks this frame, so the painted skies can leave out what is off screen. */
+	private final SkyView view = new SkyView();
 	private int tint;
 
 	private final SynthwaveSky synthwave = new SynthwaveSky();
@@ -353,10 +355,11 @@ public final class SkyEffects {
 	/** Normally blended: the synthwave or moonlit sky and its constellations. */
 	private void drawPainted(PoseStack.Pose pose, VertexConsumer vc) {
 		paint.begin(pose, vc);
+		ScreenLayer.lookInto(view);
 		if (effect == SkyEffect.MOONLIGHT) {
-			moonlit.draw(paint, far, baseYaw, amount, clock, pixel);
+			moonlit.draw(paint, far, baseYaw, amount, clock, pixel, view);
 		} else {
-			synthwave.draw(paint, far, baseYaw, amount, clock, pixel);
+			synthwave.draw(paint, far, baseYaw, amount, clock, pixel, view);
 		}
 		if (starPatterns) {
 			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
@@ -365,7 +368,7 @@ public final class SkyEffects {
 
 	private void drawEclipseDisc(PoseStack.Pose pose, VertexConsumer vc) {
 		paint.begin(pose, vc);
-		eclipse.drawDisc(paint, far, baseYaw, amount);
+		eclipse.drawDisc(paint, far, baseYaw, amount, ScreenLayer.lookInto(view));
 	}
 
 
@@ -479,14 +482,15 @@ public final class SkyEffects {
 	/** Added light, far to near: the eclipse, galaxy or comet, the constellations, the nebula and aurora, sparkles, shooting stars. */
 	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
 		light.begin(pose, vc);
+		ScreenLayer.lookInto(view);
 		if (effect == SkyEffect.ECLIPSE) {
-			eclipse.draw(light, far, baseYaw, amount, clock);
+			eclipse.draw(light, far, baseYaw, amount, clock, view);
 		}
 		if (effect == SkyEffect.GALAXY) {
-			galaxy.draw(light, far, baseYaw, amount, clock);
+			galaxy.draw(light, far, baseYaw, amount, clock, view);
 		}
 		if (effect == SkyEffect.COMET) {
-			comet.draw(light, far, baseYaw, amount, clock);
+			comet.draw(light, far, baseYaw, amount, clock, view);
 		}
 		if (starPatterns && !painted()) {
 			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);

@@ -58,6 +58,10 @@ final class MoonlitSky {
 	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
 	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
 	private static final int[] STAR_SKY = new int[STAR_COUNT];
+	/** Each star's direction (lyrics facing south), to tell whether it is in view. */
+	private static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
+	/** Wider than any star (a few pixels across), in radians. */
+	private static final float STAR_REACH = 0.02f;
 
 	static {
 		// The plain gradient: coarse triangles would smear the glow past the edge of the glow's own rings
@@ -88,6 +92,9 @@ final class MoonlitSky {
 			float k = SkyColors.hash(i * 3 + 403);
 			STAR_SIZE[i] = 0.8f + 0.7f * k;
 			f.aim(STAR_YAW[i], STAR_ELEV[i]);
+			STAR_X[i] = f.dx;
+			STAR_Y[i] = f.dy;
+			STAR_Z[i] = f.dz;
 			float r = moonDistance(f.dx, f.dy, f.dz);
 			STAR_ALPHA[i] = r < STAR_CLEAR ? 0 : (0.15f + 0.4f * k * k) * (1 - glow(r));
 			STAR_SKY[i] = background(f.dx, f.dy, f.dz);
@@ -185,6 +192,11 @@ final class MoonlitSky {
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+		draw(c, radius, baseYaw, level, time, pixel, SkyView.ALL);
+	}
+
+	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
 		float d = (time * CLOUD_DRIFT) % 360;
 		// Repainting the band costs a little, so only when the clouds have visibly moved
 		if (Math.abs(d - drift) > 0.05f) {
@@ -193,18 +205,19 @@ final class MoonlitSky {
 		}
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		c.fadeBelowHorizon(HORIZON_FADE);
-		DOME_MESH.draw(c, cos, sin, radius * DOME, level);
-		GLOW_MESH.draw(c, cos, sin, radius * GLOW_SKY, level);
-		clouds.draw(c, cos, sin, radius * CLOUDS, level);
-		stars(c, radius * STARS, baseYaw, level, time, pixel);
-		DISC_MESH.draw(c, cos, sin, radius * DISC, level);
+		DOME_MESH.draw(c, cos, sin, radius * DOME, level, view);
+		GLOW_MESH.draw(c, cos, sin, radius * GLOW_SKY, level, view);
+		clouds.draw(c, cos, sin, radius * CLOUDS, level, view);
+		stars(c, radius * STARS, baseYaw, level, time, pixel, view);
+		DISC_MESH.draw(c, cos, sin, radius * DISC, level, view);
 		c.fadeBelowHorizon(0);
 	}
 
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
-	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel) {
+	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel, SkyView view) {
+		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		for (int i = 0; i < STAR_COUNT; i++) {
-			if (STAR_ALPHA[i] == 0) {
+			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
 			float twinkle = 0.7f + 0.3f * (float) Math.sin(time * (0.6f + 0.11f * (i % 9)) + i * 1.7f);
