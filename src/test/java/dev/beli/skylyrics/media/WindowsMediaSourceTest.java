@@ -49,6 +49,9 @@ class WindowsMediaSourceTest {
 	@Test
 	void pathsAreQuotedForPowerShell() {
 		assertEquals("'C:\\Users\\O''Brien\\[modpack] 1.21'", WindowsMediaSource.quote(Path.of("C:\\Users\\O'Brien\\[modpack] 1.21")));
+		// PowerShell ends a single-quoted string at curly quotes too, so a folder like "Beli’s Pack" needs them doubled
+		assertEquals("'D:\\Games\\Beli\u2019\u2019s Pack\\\u2018\u2018x\u2018\u2018\u201A\u201A\u201B\u201B'",
+				WindowsMediaSource.quote(Path.of("D:\\Games\\Beli\u2019s Pack\\\u2018x\u2018\u201A\u201B")));
 	}
 
 	@Test

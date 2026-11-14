@@ -407,9 +407,19 @@ public final class WindowsMediaSource implements MediaSource {
 		return List.of(exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", run);
 	}
 
-	/** A PowerShell string literal: single quotes, with any ' inside doubled. */
+	/**
+	 * A PowerShell string literal: single quotes, with any quote inside doubled. PowerShell also ends a single-quoted
+	 * string at the curly quotes ‘ ’ ‚ ‛, so a folder like "Beli’s Pack" would stop the helper from starting.
+	 */
 	static String quote(Path path) {
-		return "'" + path.toString().replace("'", "''") + "'";
+		StringBuilder out = new StringBuilder("'");
+		for (char c : path.toString().toCharArray()) {
+			out.append(c);
+			if (c == '\'' || c == '‘' || c == '’' || c == '‚' || c == '‛') {
+				out.append(c);
+			}
+		}
+		return out.append('\'').toString();
 	}
 
 	private synchronized void control(String command) {
