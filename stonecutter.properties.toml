@@ -9,6 +9,13 @@ loomx.loom_version = "1.19-SNAPSHOT"
 
 # mc_compat goes in fabric.mod.json. modmenu is optional; sodium and iris are only for the test game.
 # Check versions on https://fabricmc.net/develop
+["1.21.4"]
+mod.mc_compat = "1.21.4"
+deps.fabric_api = "0.119.4+1.21.4"
+deps.modmenu = "13.0.4"
+deps.sodium = "mc1.21.4-0.6.13-fabric"
+deps.iris = "1.8.8+1.21.4-fabric"
+
 ["1.21.5"]
 mod.mc_compat = "1.21.5"
 deps.fabric_api = "0.128.2+1.21.5"

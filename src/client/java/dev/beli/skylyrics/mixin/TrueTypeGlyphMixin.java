@@ -7,6 +7,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -51,6 +52,7 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 		}
 	}
 
+	//? if >=1.21.5 {
 	@ModifyArg(method = "upload", at = @At(value = "INVOKE", target = WRITE), index = 1)
 	private NativeImage skylyrics$toPicture(NativeImage mask) {
 		if (!skylyrics$picture) {
@@ -75,4 +77,26 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 			skylyrics$uploading = null;
 		}
 	}
+	//?} else {
+	/*// 1.21.4 uploads the mask by calling upload on the image itself, so the call is swapped instead of its argument
+	@Redirect(method = "upload", at = @At(value = "INVOKE",
+			target = "Lcom/mojang/blaze3d/platform/NativeImage;upload(IIIIIIIZ)V"))
+	private void skylyrics$toPicture(NativeImage mask, int level, int x, int y, int skipX, int skipY, int width,
+			int height, boolean autoClose) {
+		if (!skylyrics$picture) {
+			mask.upload(level, x, y, skipX, skipY, width, height, autoClose);
+			return;
+		}
+		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, mask.getWidth(), mask.getHeight(), false);
+		for (int py = 0; py < mask.getHeight(); py++) {
+			for (int px = 0; px < mask.getWidth(); px++) {
+				picture.setPixel(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
+			}
+		}
+		picture.upload(level, x, y, skipX, skipY, width, height, true);
+		if (autoClose) {
+			mask.close();
+		}
+	}
+	*///?}
 }

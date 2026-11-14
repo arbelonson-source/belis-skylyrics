@@ -37,7 +37,7 @@ abstract class GlyphStitcherMixin {
 	private void skylyrics$picturesForOurFonts(GlyphInfo info, GlyphBitmap bitmap, CallbackInfoReturnable<?> cir) {
 		skylyrics$mark(bitmap, texturePrefix);
 	}
-	//?} else {
+	//?} else if >=1.21.5 {
 	/*@Shadow
 	@Final
 	private Identifier name;
@@ -45,6 +45,17 @@ abstract class GlyphStitcherMixin {
 	@Inject(method = "stitch", at = @At("HEAD"))
 	private void skylyrics$picturesForOurFonts(SheetGlyphInfo bitmap, CallbackInfoReturnable<?> cir) {
 		skylyrics$mark(bitmap, name);
+	}
+	*///?} else {
+	/*@Shadow
+	@Final
+	private Identifier name;
+
+	@Inject(method = "stitch", at = @At("HEAD"))
+	private void skylyrics$picturesForOurFonts(SheetGlyphInfo bitmap, CallbackInfoReturnable<?> cir) {
+		skylyrics$mark(bitmap, name);
+		// 1.21.4's font pages have no name: tell the page about to be made whose letters it is for
+		dev.beli.skylyrics.render.FontPageFlag.ours = "skylyrics".equals(name.getNamespace());
 	}
 	*///?}
 

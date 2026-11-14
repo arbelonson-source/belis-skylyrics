@@ -19,9 +19,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(FontTexture.class)
 abstract class FontTextureMixin extends AbstractTexture {
 	@Inject(method = "<init>", at = @At("TAIL"))
+	//? if >=1.21.5 {
 	private void skylyrics$smoothGlyphs(Supplier<String> name, GlyphRenderTypes renderTypes, boolean colored,
 			CallbackInfo ci) {
 		if (name.get().startsWith("skylyrics:")) {
+	//?} else {
+	/*private void skylyrics$smoothGlyphs(GlyphRenderTypes renderTypes, boolean colored, CallbackInfo ci) {
+		if (dev.beli.skylyrics.render.FontPageFlag.ours) {
+	*///?}
 			// Clamped so glyphs on the page border don't pick up the opposite edge
 			this.sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
 		}
