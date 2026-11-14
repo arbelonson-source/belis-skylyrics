@@ -58,12 +58,34 @@ public final class ScreenLayer {
 		//?}
 			return false;
 		}
-		return switch (cfg.layer) {
+		// Hide in caves wins over Show underground: they'd contradict, and hidden lyrics aren't drawn anyway.
+		boolean showUnderground = cfg.showUnderground && !cfg.hideInCaves;
+		return wanted(cfg.layer, cfg.seeThroughBlocks, shadersOn(), raining(),
+				showUnderground && Visibility.underground(Minecraft.getInstance()), showUnderground);
+	}
+
+	/**
+	 * Whether the lyrics are drawn on the screen layer, from everything that bears on it. One answer per frame, so a
+	 * frame draws the world copy or the screen copy, never both and never neither.
+	 *
+	 * @param underground     under cover, as {@link Visibility#underground(Minecraft)} says (with its hysteresis)
+	 * @param showUnderground the Show underground too setting, already off when Hide in caves is on
+	 */
+	static boolean wanted(SkyLyricsConfig.Layer layer, boolean seeThrough, boolean shaders, boolean rain,
+			boolean underground, boolean showUnderground) {
+		if (layer == SkyLyricsConfig.Layer.SCREEN) {
+			return true;
+		}
+		// Under rock the sky is behind it, so unless the player says otherwise the screen is the only place to see it
+		if (underground && showUnderground) {
+			return true;
+		}
+		return switch (layer) {
 			case SCREEN -> true;
 			case WORLD -> false;
 			// See-through text in the world gets painted over by clouds, so only keep it there
 			// when blocks are meant to hide it and nothing would wash it out.
-			case AUTO -> cfg.seeThroughBlocks || shadersOn() || raining();
+			case AUTO -> seeThrough || shaders || rain;
 		};
 	}
 

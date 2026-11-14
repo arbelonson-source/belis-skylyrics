@@ -563,6 +563,9 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.hideUnderwater, v -> cfg.hideUnderwater = v);
 		Row caves = new Toggle(Tr.t("Hide in caves"), Tr.t("When there's no open sky above you"),
 				() -> cfg.hideInCaves, v -> cfg.hideInCaves = v);
+		Row underground = new Toggle(Tr.t("Show underground too"), Tr.t("Lyrics stay visible in caves and under roofs"),
+				() -> cfg.showUnderground, v -> cfg.showUnderground = v)
+				.when(() -> cfg.layer != Layer.SCREEN && !cfg.hideInCaves && cfg.layout != Layout.WORLD);
 		Row multiplayer = new Toggle(Tr.t("Hide in multiplayer"), Tr.t("Only show them in your own worlds"),
 				() -> cfg.hideInMultiplayer, v -> cfg.hideInMultiplayer = v);
 
@@ -638,7 +641,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.cardLyrics, v -> cfg.cardLyrics = v).when(() -> cfg.recordCard);
 
 		return List.of(
-				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, multiplayer),
+				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, underground, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, ping, frameRate, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barSpin, barEq, barProgress),
 				new Card(Tr.t("Record card"), record, recordCorner, recordLyrics),

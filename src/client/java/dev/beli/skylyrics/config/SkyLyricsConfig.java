@@ -368,6 +368,11 @@ public final class SkyLyricsConfig {
 	public boolean hideUnderwater = false;
 	/** Hide when there's no open sky above the player, like underground. */
 	public boolean hideInCaves = false;
+	/**
+	 * Arc and Lines go on the screen layer while you're under cover, so rock doesn't hide them. On by default: lyrics
+	 * vanishing the moment you walk into a cave looks like a bug. Has no effect with Hide in caves on.
+	 */
+	public boolean showUnderground = true;
 	public boolean hideInMultiplayer = false;
 
 	// Now-playing card
