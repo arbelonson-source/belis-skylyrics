@@ -143,6 +143,15 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void theWholeRequestIsReadSoClosingDoesNotResetTheBrowser() throws Exception {
+		// Unread headers make macOS reset the connection on close, so the browser shows an error instead of our page
+		java.io.ByteArrayInputStream in = new java.io.ByteArrayInputStream(
+				"GET /callback?state=s HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: */*\r\n\r\nNEXT".getBytes(StandardCharsets.US_ASCII));
+		assertEquals("GET /callback?state=s HTTP/1.1", SpotifyWebSource.requestLine(in));
+		assertEquals("NEXT", new String(in.readAllBytes(), StandardCharsets.US_ASCII));
+	}
+
+	@Test
 	void anIdleConnectionDoesNotEndTheSignIn(@TempDir Path dir) throws Exception {
 		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
 		try (ServerSocket server = freeServer(); Socket idle = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), server.getLocalPort())) {

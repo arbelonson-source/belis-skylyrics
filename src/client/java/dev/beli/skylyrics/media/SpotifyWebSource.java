@@ -325,7 +325,24 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
-	private static String requestLine(InputStream in) throws IOException {
+	/**
+	 * The first line of the request. The headers after it are read too and dropped: closing a socket with unread
+	 * data makes macOS reset the connection, so the browser would get an error instead of our page.
+	 */
+	static String requestLine(InputStream in) throws IOException {
+		String first = line(in);
+		for (int total = first.length(); total < 16384; ) {
+			String header = line(in);
+			if (header.isEmpty()) {
+				break;
+			}
+			total += header.length();
+		}
+		return first;
+	}
+
+	/** One line without its line end; empty at the end of the stream. */
+	private static String line(InputStream in) throws IOException {
 		StringBuilder line = new StringBuilder();
 		for (int c; (c = in.read()) != -1 && c != '\n' && line.length() < 8192; ) {
 			if (c != '\r') {
