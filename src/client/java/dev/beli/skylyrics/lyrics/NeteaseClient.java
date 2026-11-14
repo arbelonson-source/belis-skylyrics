@@ -49,6 +49,13 @@ public final class NeteaseClient implements LyricsSource {
 			"vocals", "chorus", "backing vocals", "guitar", "guitars", "bass", "drums", "keyboards", "piano",
 			"percussion", "strings", "mixing", "mastering", "recording", "engineering", "programming", "translation",
 			"作詞", "作曲家", "編曲");
+	/**
+	 * Credit words inside labels that aren't in the list, like "人声录音" or "音乐总监". Only used in the blocks
+	 * before the first lyric and after the last one; spoken lines like "他说" have none of them.
+	 */
+	private static final Pattern CREDIT_WORD = Pattern.compile("作|编|制|录|混|母带|监|策划|统筹|出品|发行|吉他|贝斯|鼓|键盘|弦|和声|和音|人声|版权|翻译|企划|总监|工程");
+	/** A label of Chinese characters only, as NetEase credits are. */
+	private static final Pattern HAN_LABEL = Pattern.compile("\\p{IsHan}{2,8}");
 	/** Timed lyrics have at least one "[mm:ss" stamp. */
 	private static final Pattern TIMED = Pattern.compile("(?m)^\\[\\d{1,3}:\\d{1,2}");
 	/** NetEase's placeholder text for instrumentals: "pure music, please enjoy". */
@@ -176,7 +183,12 @@ public final class NeteaseClient implements LyricsSource {
 
 	private static boolean isCredit(String line) {
 		Matcher m = LABELLED.matcher(line.strip());
-		return m.matches() && CREDIT_LABELS.contains(m.group(1).strip().toLowerCase(Locale.ROOT));
+		if (!m.matches()) {
+			return false;
+		}
+		String label = m.group(1).strip();
+		return CREDIT_LABELS.contains(label.toLowerCase(Locale.ROOT))
+				|| HAN_LABEL.matcher(label).matches() && CREDIT_WORD.matcher(label).find();
 	}
 
 	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */

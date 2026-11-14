@@ -137,6 +137,11 @@ public final class Updater {
 		if (!target.getFileName().toString().equals(asset.name()) || Files.exists(target)) {
 			return false;
 		}
+		if (windows() && !(batchSafe(oldJar.toString()) && batchSafe(target.toString() + ".new"))) {
+			// The swap script could not handle this folder, so don't download a jar that would only be thrown away
+			LOG.info("Update not downloaded: the mods folder path is not plain ASCII");
+			return false;
+		}
 		// The download keeps a name Fabric ignores until it is checked
 		Path part = dir.resolve(asset.name() + ".part");
 		try {

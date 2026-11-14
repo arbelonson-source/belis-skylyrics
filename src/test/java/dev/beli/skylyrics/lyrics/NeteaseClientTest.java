@@ -187,6 +187,12 @@ class NeteaseClientTest {
 	}
 
 	@Test
+	void unlistedChineseCreditLabelsAtTheStartStillGo() {
+		String lyric = "[00:00.00] 人声录音 : X\n[00:01.00] 音乐总监：Y\n[00:02.00] 联合出品 : Z\n[00:10.00]他说：我爱你\n[00:20.00]Last line";
+		assertEquals("[00:10.00]他说：我爱你\n[00:20.00]Last line", NeteaseClient.clean(lyric));
+	}
+
+	@Test
 	void creditCleanerKeepsLyrics() {
 		assertEquals("[00:05.00]Hello there", NeteaseClient.clean("[00:00.00] 作词 : X\n[00:01.00] 制作人 : Y\n[00:05.00]Hello there"));
 		assertEquals("[00:05.00]男：a line", NeteaseClient.clean("[00:05.00]男：a line"));
