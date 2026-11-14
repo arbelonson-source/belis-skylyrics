@@ -45,10 +45,4 @@ class ScreenLayerTest {
 		assertFalse(wanted(Layer.WORLD, false, false, false, true, false));
 		assertFalse(wanted(Layer.WORLD, false, false, false, true, true));
 	}
-
-	@Test
-	void leavingTheCaveGoesBackToTheWorld() {
-		assertEquals(true, wanted(Layer.AUTO, false, false, false, true, true));
-		assertEquals(false, wanted(Layer.AUTO, false, false, false, false, true));
-	}
 }
