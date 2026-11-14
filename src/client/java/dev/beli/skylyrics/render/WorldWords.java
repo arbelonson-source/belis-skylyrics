@@ -211,6 +211,9 @@ final class WorldWords {
 		final float[] at;
 		/** Where it stands; moves along with you while you glide, ride or fly (elytra mode). */
 		Vec3 pos;
+		/** When separation found no free way for it (boxed in on both sides), and where it and the eye were then; -1 if not. */
+		long blockedAt = -1;
+		Vec3 blockedPos = Vec3.ZERO, blockedEye = Vec3.ZERO;
 		final float nod, lean, size;
 		/** The way the card faces, turned along with you while you travel. */
 		float face;
@@ -1578,12 +1581,19 @@ final class WorldWords {
 					Vec3 side = new Vec3(-to.z, 0, to.x).normalize().scale(-flat * Math.tan(move[0] * DEG));
 					Vec3 up = new Vec3(0, far * Math.tan(-move[1] * DEG), 0);
 					Vec3 dir = to.normalize();
+					Vec3 here = c.pos.add(c.slide);
+					if (stillBlocked(c.blockedAt, c.blockedPos, c.blockedEye, now, here, eye)) {
+						continue; // boxed in a moment ago and nothing moved: skip the block lookups
+					}
 					float halfBlocks = c.at[c.at.length - 1] * c.size * wordScale / 2, tall = 5 * c.size * wordScale;
 					if (buried(level, c.pos.add(c.slide).add(side).add(up), dir, halfBlocks, tall)) {
 						// That way is into the ground or a wall: go over the top instead, or stay put
 						up = new Vec3(0, Math.abs(up.y) + Math.abs(far * Math.tan(move[0] * DEG)), 0);
 						side = Vec3.ZERO;
 						if (buried(level, c.pos.add(c.slide).add(up), dir, halfBlocks, tall)) {
+							c.blockedAt = now;
+							c.blockedPos = here;
+							c.blockedEye = eye;
 							continue;
 						}
 						move[0] = 0;
@@ -1602,6 +1612,17 @@ final class WorldWords {
 			c.slid = c.slid.add(c.slide.subtract(c.slid).scale(ease));
 		}
 	}
+
+	/**
+	 * Whether a word that found no free way earlier can still be taken as boxed in: it was recent, and neither the
+	 * word nor the camera has moved more than a block since. Saves the 65 to 175 block lookups each try costs.
+	 */
+	static boolean stillBlocked(long blockedAt, Vec3 blockedPos, Vec3 blockedEye, long now, Vec3 pos, Vec3 eye) {
+		return blockedAt >= 0 && now - blockedAt < BLOCKED_NS
+				&& pos.distanceToSqr(blockedPos) < 1 && eye.distanceToSqr(blockedEye) < 1;
+	}
+
+	private static final long BLOCKED_NS = 500_000_000L;
 
 	/** Knocks the nearest word under the crosshair away from you; it spins, squashes and springs back. */
 	private void knockAt(Vec3 eye, Vec3 look, long now) {
@@ -1791,7 +1812,7 @@ final class WorldWords {
 				float shade = a * shadowOpacity(day) * wane;
 				draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 				float edge = a * edgeOpacity(day) * wane;
-				for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
+				for (int k = 0, n4 = outlineCopies(light, edge); k < n4; k++) {
 					draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
 							y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE), SHADOW_Z, mode);
 				}
@@ -1834,6 +1855,11 @@ final class WorldWords {
 	 *
 	 * @param gone seconds since the card was let go, or a negative number while it's still lit
 	 */
+	/** The dark outline copies round a word: the four shifted ones by day, none in light mode (the shadow stays). */
+	static int outlineCopies(boolean light, float edge) {
+		return !light && edge * 255 >= 4 ? 4 : 0;
+	}
+
 	static float glowFor(boolean sung, float gone) {
 		if (gone < 0) {
 			return sung ? GLOW_SUNG : GLOW_LIT;

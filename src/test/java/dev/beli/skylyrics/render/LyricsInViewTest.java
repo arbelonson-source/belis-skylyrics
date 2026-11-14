@@ -41,4 +41,18 @@ class LyricsInViewTest {
 		// Once seen, the margin keeps it counted a little longer
 		assertTrue(ScreenLayer.inView(new Vector3f(edge + 3, 0, -40), 0.5f, 1, 0.12f));
 	}
+
+	@Test
+	void cullKeepsALineJustOffScreenButDropsOneFarAway() {
+		lookForward();
+		float edge = 40 * (float) Math.tan(Math.toRadians(35)) * 16 / 9f;
+		// Just past the right edge (less than the margin): still drawn so it never pops
+		assertTrue(LyricsInView.worthDrawing(new Vector3f(edge * 1.1f, 0, -40), 1, 1));
+		assertTrue(LyricsInView.worthDrawing(new Vector3f(0, 5, -40), 6, 2));
+		// Far to the side, and behind you: skipped
+		assertFalse(LyricsInView.worthDrawing(new Vector3f(edge * 3, 0, -40), 1, 1));
+		assertFalse(LyricsInView.worthDrawing(new Vector3f(0, 5, 40), 6, 2));
+		// A wide line whose centre is off screen but whose body reaches in still draws
+		assertTrue(LyricsInView.worthDrawing(new Vector3f(edge * 2, 0, -40), edge * 1.5f, 1));
+	}
 }

@@ -2,6 +2,7 @@ package dev.beli.skylyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -66,5 +67,15 @@ class SongOffsetTest {
 		Track a = track("Paper Moon", "Nova Lane", "spotify");
 		cfg.setSongOffset(a, 99_000);
 		assertEquals(5000, cfg.songOffset(a));
+	}
+
+	@Test
+	void theSongKeyIsMadeOncePerTrackNotEveryFrame() {
+		Track a = track("Paper Moon", "Nova Lane", "spotify");
+		assertSame(SkyLyricsConfig.songKey(a), SkyLyricsConfig.songKey(a));
+		assertEquals("nova lane - paper moon", SkyLyricsConfig.songKey(a));
+		Track b = track("Glass River", "Nova Lane", "spotify");
+		assertEquals("nova lane - glass river", SkyLyricsConfig.songKey(b));
+		assertEquals("nova lane - paper moon", SkyLyricsConfig.songKey(a));
 	}
 }

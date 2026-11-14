@@ -527,6 +527,26 @@ public final class SkyLyricsConfig {
 
 	/** The same song from a different player or app still finds its timing. */
 	public static String songKey(Track track) {
+		return keyOf(track);
+	}
+
+	private record Keyed(Track track, String key) {}
+
+	/** The last track a key was made for, so the string work isn't repeated every frame. A stale pair is harmless. */
+	private static volatile Keyed keyed;
+
+	private static String keyOf(Track track) {
+		Keyed k = keyed;
+		if (k != null && k.track == track) {
+			return k.key;
+		}
+		String key = makeKey(track);
+		keyed = new Keyed(track, key);
+		return key;
+	}
+
+	/** Builds the key from scratch. */
+	static String makeKey(Track track) {
 		return (track.artist() + " - " + track.title()).toLowerCase(Locale.ROOT).strip();
 	}
 
