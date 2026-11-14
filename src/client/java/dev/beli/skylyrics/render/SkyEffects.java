@@ -761,7 +761,7 @@ public final class SkyEffects {
 		point(vc, pose, bx + rx * right + ux * up, by + uy * up, bz + rz * right + uz * up, color);
 	}
 
-	/** Collects four corners, then emits the quad once, wound to face the camera, as triangles. */
+	/** Collects four corners, then emits the quad twice (both windings) as triangles, as the pipeline culls back faces. */
 	private void point(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float z, int color) {
 		qx[corner] = x;
 		qy[corner] = y;
@@ -771,15 +771,8 @@ public final class SkyEffects {
 			return;
 		}
 		corner = 0;
-		triangles(vc, pose, qx, qy, qz, qc, windingFor(qx, qy, qz));
-	}
-
-	/**
-	 * The triangle order that makes a quad face the camera (the origin; the pose is camera-relative). Each quad goes
-	 * out once, six vertices, the same way the painted skies pick their winding.
-	 */
-	static int[] windingFor(float[] x, float[] y, float[] z) {
-		return SkyCanvas.facesOrigin(x, y, z) ? FRONT : BACK;
+		triangles(vc, pose, qx, qy, qz, qc, FRONT);
+		triangles(vc, pose, qx, qy, qz, qc, BACK);
 	}
 
 	/** Whether the level has the normal overworld sky, with a sun, moon and stars */
