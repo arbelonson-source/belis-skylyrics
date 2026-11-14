@@ -21,6 +21,11 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
   it mid-test. Move only the test client's window, by its PID, to the test workspace.
   Never test while the owner is playing (`pgrep -fa 'java.*minecraft'` shows their game), and
   check `hyprctl clients -j` again just before each batch of shots.
+- Keep focus on the owner's screen. New windows open on the FOCUSED monitor (2026-11-14 a window opened
+  for the owner landed on the hidden screen because SKYLYRICS had focus). Right after creating the output
+  and after every window move, run `hyprctl eval 'hl.dispatch(hl.dsp.focus({ monitor = "DP-3" }))'`,
+  and before each batch of shots confirm `hyprctl monitors -j` shows SKYLYRICS with "focused": false.
+  Place SKYLYRICS so it shares no edge with DP-3 (e.g. position 10000x3000), or the owner's mouse can slide onto it.
 - Demo screenshots/videos use the built-in DEMO song with original lyrics, never real lyrics.
 - Never hard-code real lyrics. Lyrics come from LRCLIB at runtime.
 - Keep the owner's main Prism instance ("donut") untouched until a release is ready.
