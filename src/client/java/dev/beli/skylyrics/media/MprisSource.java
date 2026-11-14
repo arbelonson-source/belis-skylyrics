@@ -92,14 +92,18 @@ public final class MprisSource implements MediaSource {
 		return connection;
 	}
 
-	record Reading(String busName, Track track, long positionMs, boolean playing, String trackId) {
+	record Reading(String busName, Track track, long positionMs, boolean playing, String trackId, double rate) {
+		Reading(String busName, Track track, long positionMs, boolean playing, String trackId) {
+			this(busName, track, positionMs, playing, trackId, 1.0);
+		}
+
 		/** The same reading {@code ms} later (a playing song has moved on). */
 		Reading advancedBy(long ms) {
-			long pos = playing ? positionMs + ms : positionMs;
+			long pos = playing ? positionMs + (long) (ms * rate) : positionMs;
 			if (track.lengthMs() > 0) {
 				pos = Math.min(pos, track.lengthMs());
 			}
-			return new Reading(busName, track, pos, playing, trackId);
+			return new Reading(busName, track, pos, playing, trackId, rate);
 		}
 	}
 
@@ -195,7 +199,7 @@ public final class MprisSource implements MediaSource {
 		current = chosen.busName;
 		currentTrackId = chosen.trackId;
 		currentDisplayName = prettyName(chosen.track.player());
-		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, System.nanoTime());
+		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, System.nanoTime(), chosen.rate);
 	}
 
 	private static @Nullable Reading read(DBusConnection conn, String busName) throws Exception {
@@ -224,7 +228,8 @@ public final class MprisSource implements MediaSource {
 		}
 
 		Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : url));
-		return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId);
+		double rate = value(all.get("Rate")) instanceof Number n ? n.doubleValue() : 1.0;
+		return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId, rate);
 	}
 
 	private static String prettyName(String player) {

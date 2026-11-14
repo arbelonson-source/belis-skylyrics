@@ -139,4 +139,24 @@ class MediaTrackerTest {
 		assertEquals(2, changes.size(), changes.toString());
 		assertTrue(changes.get(1).isNone());
 	}
+
+	@Test
+	void fasterPlaybackMovesTheClockFaster() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		try {
+			source.then(new Snapshot(song(215_000, ""), 10_000, true, System.nanoTime() - 1_000_000_000L, 2.0));
+			tracker.refresh();
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+			while (source.polls.get() < 1) {
+				assertTrue(System.nanoTime() < until, "timed out");
+				Thread.sleep(5);
+			}
+			Thread.sleep(50);
+			long pos = tracker.positionMs();
+			assertTrue(pos >= 11_950 && pos < 12_500, "position " + pos);
+		} finally {
+			tracker.shutdown();
+		}
+	}
 }

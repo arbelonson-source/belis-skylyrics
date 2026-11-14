@@ -142,10 +142,10 @@ public final class MediaTracker {
 		// Same song: only accept the new position if it really moved (seek), to avoid jitter
 		long predicted = positionAt(old, fresh.readAtNanos());
 		boolean jumped = Math.abs(predicted - fresh.positionMs()) > SEEK_THRESHOLD_MS;
-		if (jumped || fresh.playing() != old.playing()) {
+		if (jumped || fresh.playing() != old.playing() || fresh.rate() != old.rate()) {
 			snapshot = fresh;
 		} else {
-			snapshot = new Snapshot(freshTrack, old.positionMs(), old.playing(), old.readAtNanos());
+			snapshot = new Snapshot(freshTrack, old.positionMs(), old.playing(), old.readAtNanos(), old.rate());
 		}
 		sourceName = source.displayName();
 	}
@@ -154,7 +154,7 @@ public final class MediaTracker {
 		if (!s.playing()) {
 			return s.positionMs();
 		}
-		long pos = s.positionMs() + (nanos - s.readAtNanos()) / 1_000_000;
+		long pos = s.positionMs() + (long) ((nanos - s.readAtNanos()) / 1_000_000.0 * s.rate());
 		long length = s.track().lengthMs();
 		return length > 0 ? Math.min(pos, length) : pos;
 	}
