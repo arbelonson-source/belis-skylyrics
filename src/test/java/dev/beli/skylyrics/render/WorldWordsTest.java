@@ -820,4 +820,16 @@ class WorldWordsTest {
 		assertEquals(0, WorldWords.outlineCopies(true, 0.5f));
 		assertEquals(0, WorldWords.outlineCopies(false, 0.005f), "no outline at night either way");
 	}
+
+	@Test
+	void aBoxedInWordStaysBlockedUntilSomethingMovesOrHalfASecondPasses() {
+		Vec3 pos = new Vec3(10, 70, 10), eye = new Vec3(0, 70, 0);
+		long t = 1_000_000_000L;
+		assertTrue(WorldWords.stillBlocked(t, pos, eye, t + 100_000_000L, pos, eye));
+		assertTrue(WorldWords.stillBlocked(t, pos, eye, t + 100_000_000L, pos.add(0.5, 0, 0), eye.add(0, 0.5, 0)));
+		assertFalse(WorldWords.stillBlocked(t, pos, eye, t + 600_000_000L, pos, eye), "too old");
+		assertFalse(WorldWords.stillBlocked(t, pos, eye, t + 100_000_000L, pos.add(2, 0, 0), eye), "the word moved");
+		assertFalse(WorldWords.stillBlocked(t, pos, eye, t + 100_000_000L, pos, eye.add(0, 0, 2)), "you moved");
+		assertFalse(WorldWords.stillBlocked(-1, pos, eye, t, pos, eye), "never blocked");
+	}
 }

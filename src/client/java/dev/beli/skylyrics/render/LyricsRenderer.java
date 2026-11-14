@@ -168,7 +168,7 @@ public final class LyricsRenderer {
 	/** The world the words were placed in; joining another server or world starts them over there. */
 	private @Nullable Object wordsLevel;
 	/** The song whose title World words last showed, to show the next one's when it changes. */
-	private @Nullable String announced;
+	private @Nullable Track announced;
 	/** Arc layouts of the lines on show, keyed by line number and text. */
 	private final Map<String, ArcText> arcCache = new HashMap<>();
 	/** Where in the sky each arc line was put, by line number. */
@@ -488,9 +488,8 @@ public final class LyricsRenderer {
 		float fixedYaw = lock != null ? lock[0] : cfg.direction.yaw;
 		float fixedPitch = lock != null ? lock[1] : Float.NaN;
 		Track track = tracker.track();
-		String key = track.title() + "\n" + track.artist();
-		if (!dead && !track.isNone() && !key.equals(announced)) {
-			announced = key;
+		if (!dead && !track.isNone() && !sameSong(track, announced)) {
+			announced = track;
 			if (cfg.worldTitle) {
 				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), fixedYaw, fixedPitch, camera, mc.font, style, now);
 			}
@@ -509,6 +508,12 @@ public final class LyricsRenderer {
 		*///?} else {
 		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
 		//?}
+	}
+
+	/** Same title and artist as the track already announced; the same Track object is the common case and costs nothing. */
+	static boolean sameSong(Track track, @Nullable Track announced) {
+		return track == announced
+				|| announced != null && track.title().equals(announced.title()) && track.artist().equals(announced.artist());
 	}
 
 	/** When a line counts as over, so its World words can go. */
