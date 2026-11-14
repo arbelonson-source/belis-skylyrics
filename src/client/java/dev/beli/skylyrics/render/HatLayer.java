@@ -14,7 +14,11 @@ import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
+//? if >=1.21.2 {
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
+//?} else {
+/*import net.minecraft.client.player.AbstractClientPlayer;
+*///?}
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.resources.Identifier;
@@ -25,7 +29,11 @@ import net.minecraft.util.Mth;
  * hat, devil horns, music notes, neon shades, antennae, a flower crown or a propeller cap. It's only drawn here, so other players never
  * see it. Its glowing parts take the lyrics colour and flare up whenever a new line starts.
  */
+//? if >=1.21.2 {
 public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
+//?} else {
+/*public final class HatLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {
+*///?}
 	private static final int SEGMENTS = 40;
 	/** Head space is in blocks with y pointing down; the top of the head is half a block above the neck. */
 	private static final float HEAD_TOP = -0.5f;
@@ -94,7 +102,11 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 
 	private final LyricsRenderer lyrics;
 
+	//? if >=1.21.2 {
 	public HatLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent, LyricsRenderer lyrics) {
+	//?} else {
+	/*public HatLayer(RenderLayerParent<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> parent, LyricsRenderer lyrics) {
+	*///?}
 		super(parent);
 		this.lyrics = lyrics;
 	}
@@ -114,14 +126,23 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	//? if >=1.21.9 {
 	@Override
 	public void submit(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, float yaw, float pitch) {
-	//?} else {
+	//?} else if >=1.21.2 {
 	/*@Override
 	public void render(PoseStack pose, MultiBufferSource buffers, int light, AvatarRenderState state, float yaw, float pitch) {
+		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
+	*///?} else {
+	/*@Override
+	public void render(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player, float limbSwing,
+			float limbSwingAmount, float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
 		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
 	*///?}
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		Minecraft mc = Minecraft.getInstance();
+		//? if >=1.21.2 {
 		if (cfg.hat == Hat.NONE || state.isInvisible || mc.player == null || state.id != mc.player.getId()) {
+		//?} else {
+		/*if (cfg.hat == Hat.NONE || player.isInvisible() || mc.player == null || player.getId() != mc.player.getId()) {
+		*///?}
 			return;
 		}
 		float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);

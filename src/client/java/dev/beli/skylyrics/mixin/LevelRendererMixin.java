@@ -3,7 +3,12 @@ package dev.beli.skylyrics.mixin;
 //? if >=1.21.6 {
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
 //?}
+//? if >=1.21.2 {
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
+//?} else {
+/*import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.renderer.LightTexture;
+*///?}
 import dev.beli.skylyrics.render.ScreenLayer;
 import dev.beli.skylyrics.render.SkyTint;
 //? if <26.1 {
@@ -36,7 +41,10 @@ abstract class LevelRendererMixin {
 	*///?} else {
 	@Inject(method = "renderLevel", at = @At("HEAD"))
 	//?}
-	private void skylyrics$captureMatrices(GraphicsResourceAllocator allocator,
+	private void skylyrics$captureMatrices(
+			//? if >=1.21.2 {
+			GraphicsResourceAllocator allocator,
+			//?}
 			//? if >=26.3 {
 			/*boolean outline, CameraRenderState camera, GpuBufferSlice fog, Vector4f fogColor, boolean sky,
 			boolean sectionOcclusion, CallbackInfo ci) {
@@ -57,16 +65,30 @@ abstract class LevelRendererMixin {
 			/*DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection,
 			GpuBufferSlice fog, Vector4f fogColor, boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
-			*///?} else {
+			*///?} else if >=1.21.2 {
 			/*DeltaTracker delta, boolean outline, Camera camera, GameRenderer renderer, Matrix4f view,
 			Matrix4f projection, CallbackInfo ci) {
+		ScreenLayer.capture(view, projection);
+			*///?} else {
+			/*DeltaTracker delta, boolean outline, Camera camera, GameRenderer renderer, LightTexture light,
+			Matrix4f view, Matrix4f projection, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
 			*///?}
 		//? if >=1.21.6 {
 		SkyTint.fog(fogColor);
 		//?}
 	}
-	//? if <1.21.6 {
+	//? if <1.21.2 {
+	/*
+	// 1.21.1 sets the fog colour in a static helper just before the sky is drawn; read it back once it has been set
+	@Inject(method = "renderLevel", at = @At(value = "INVOKE", shift = At.Shift.AFTER,
+			target = "Lnet/minecraft/client/renderer/FogRenderer;levelFogColor()V"))
+	private void skylyrics$fogColor(DeltaTracker delta, boolean outline, Camera camera, GameRenderer renderer,
+			LightTexture light, Matrix4f view, Matrix4f projection, CallbackInfo ci) {
+		float[] fog = RenderSystem.getShaderFogColor();
+		SkyTint.fog(new Vector4f(fog[0], fog[1], fog[2], 1));
+	}
+	*///?} else if <1.21.6 {
 	/*
 	// 1.21.5 works the fog colour out inside renderLevel instead of passing it in
 	@com.llamalad7.mixinextras.injector.ModifyExpressionValue(method = "renderLevel", at = @At(value = "INVOKE",

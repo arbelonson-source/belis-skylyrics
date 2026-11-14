@@ -28,7 +28,7 @@ abstract class FontTextureMixin extends AbstractTexture {
 		if (dev.beli.skylyrics.render.FontPageFlag.ours) {
 	*///?}
 			// Clamped so glyphs on the page border don't pick up the opposite edge
-			this.sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+			sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
 		}
 	}
 }

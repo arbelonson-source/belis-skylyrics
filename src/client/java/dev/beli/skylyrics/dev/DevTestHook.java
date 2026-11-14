@@ -8,7 +8,9 @@ import java.util.List;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
+//? if >=1.21.2 {
 import net.minecraft.client.InactivityFpsLimit;
+//?}
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.Screen;
@@ -268,7 +270,9 @@ public final class DevTestHook {
 					client.options.enableVsync().set(false);
 					client.options.framerateLimit().set(260);
 					// Otherwise the game drops to 30 fps after a minute without input, which spoils a measurement
+					//? if >=1.21.2 {
 					client.options.inactivityFpsLimit().set(InactivityFpsLimit.MINIMIZED);
+					//?}
 				}
 				case "fps" -> {
 					fpsSeen.clear();

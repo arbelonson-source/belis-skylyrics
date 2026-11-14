@@ -18,9 +18,11 @@ import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRe
 //? if >=1.21.6 {
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-//?} else {
+//?} else if >=1.21.2 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer;
+*///?} else {
+/*import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 *///?}
 //? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
@@ -177,13 +179,18 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("record_card"), card::render);
-		//?} else {
+		//?} else if >=1.21.2 {
 		/*HudLayerRegistrationCallback.EVENT.register(layers -> {
 			layers.attachLayerBefore(IdentifiedLayer.MISC_OVERLAYS, id("lyrics"), renderer::renderHud);
 			// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("record_card"), card::render);
 		});
+		*///?} else {
+		/*// 1.21.1 has no layers: these draw after everything else in the HUD, over the chat and the action bar text
+		HudRenderCallback.EVENT.register(renderer::renderHud);
+		HudRenderCallback.EVENT.register(hud::render);
+		HudRenderCallback.EVENT.register(card::render);
 		*///?}
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
