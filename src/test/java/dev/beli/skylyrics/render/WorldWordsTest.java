@@ -813,4 +813,11 @@ class WorldWordsTest {
 		int middle = WorldWords.toned(0xFF0000, 0x0000FF, 0.5f);
 		assertTrue((middle >> 16 & 0xFF) > 0x60 && (middle & 0xFF) > 0x60);
 	}
+
+	@Test
+	void lightModeDropsTheFourOutlineCopies() {
+		assertEquals(4, WorldWords.outlineCopies(false, 0.5f));
+		assertEquals(0, WorldWords.outlineCopies(true, 0.5f));
+		assertEquals(0, WorldWords.outlineCopies(false, 0.005f), "no outline at night either way");
+	}
 }

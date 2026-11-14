@@ -1791,7 +1791,7 @@ final class WorldWords {
 				float shade = a * shadowOpacity(day) * wane;
 				draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 				float edge = a * edgeOpacity(day) * wane;
-				for (int k = 0; k < 4 && edge * 255 >= 4; k++) {
+				for (int k = 0, n4 = outlineCopies(light, edge); k < n4; k++) {
 					draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
 							y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE), SHADOW_Z, mode);
 				}
@@ -1834,6 +1834,11 @@ final class WorldWords {
 	 *
 	 * @param gone seconds since the card was let go, or a negative number while it's still lit
 	 */
+	/** The dark outline copies round a word: the four shifted ones by day, none in light mode (the shadow stays). */
+	static int outlineCopies(boolean light, float edge) {
+		return !light && edge * 255 >= 4 ? 4 : 0;
+	}
+
 	static float glowFor(boolean sung, float gone) {
 		if (gone < 0) {
 			return sung ? GLOW_SUNG : GLOW_LIT;
