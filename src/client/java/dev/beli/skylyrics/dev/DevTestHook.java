@@ -29,7 +29,12 @@ import dev.beli.skylyrics.media.DemoSource;
  * {@code lines <a | b | c>} (test lines in place of the demo song's), {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
  * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
  * the desktop draws on top), {@code uncap} (no frame limit, vsync or idle slowdown), {@code fps [seconds]} (logs the frame
- * rate over that long).
+ * rate over that long), {@code key <NAME> [ctrl] [shift] [alt]} (a key press and release on the open screen, plus the
+ * typed character for letters, digits and space; names: A-Z, 0-9, F1-F25, TAB, ENTER, SPACE, ESCAPE, UP, DOWN, LEFT,
+ * RIGHT, PAGE_UP, PAGE_DOWN, HOME, END, BACKSPACE, INSERT, DELETE; before 1.21.9 Ctrl/Shift/Alt only reach code that
+ * reads the real keyboard state, so they have no effect there), {@code type <text>} (typed characters on the open screen)
+ * and {@code hover <x> <y>} (moves the mouse over the open screen, in scaled GUI pixels). These three do nothing but log
+ * when no screen is open.
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -120,6 +125,15 @@ public final class DevTestHook {
 		} catch (ReflectiveOperationException e) {
 			throw new IllegalArgumentException("no config field " + kv[0], e);
 		}
+	}
+
+	/** The open screen, or null in the game world (keys must never reach the world). */
+	private static Screen currentScreen(Minecraft client) {
+		//? if >=26.2 {
+		/*return client.gui.screen();
+		*///?} else {
+		return client.screen;
+		//?}
 	}
 
 	private void run(Minecraft client, String line) {
