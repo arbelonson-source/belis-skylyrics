@@ -125,4 +125,18 @@ class MediaTrackerTest {
 		List<Track> changes = run(bare, full, full);
 		assertEquals(1, changes.size(), changes.toString());
 	}
+
+	@Test
+	void oneEmptyReadDoesNotWipeTheSong() throws InterruptedException {
+		List<Track> changes = run(song(215_000, ""), Track.NONE, song(215_000, ""));
+		assertEquals(1, changes.size(), changes.toString());
+		assertEquals("Made Up Song", changes.get(0).title());
+	}
+
+	@Test
+	void aRealStopClearsAfterAFewReads() throws InterruptedException {
+		List<Track> changes = run(song(215_000, ""), Track.NONE, Track.NONE, Track.NONE, Track.NONE);
+		assertEquals(2, changes.size(), changes.toString());
+		assertTrue(changes.get(1).isNone());
+	}
 }

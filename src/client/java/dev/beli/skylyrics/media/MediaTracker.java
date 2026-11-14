@@ -35,8 +35,12 @@ public final class MediaTracker {
 	private Consumer<Track> onTrackChange = t -> {
 	};
 	private boolean loggedError;
+	/** How many empty/failed reads in a row still keep the last song (about 1.5 s at the usual poll rate). */
+	private static final int EMPTY_POLLS_HELD = 3;
 	/** How many polls a new song with no artist yet waits for one (the second poll announces it anyway). */
 	private static final int ARTISTLESS_POLLS_HELD = 1;
+	private int emptyPolls;
+	private @Nullable MediaSource lastSource;
 	private @Nullable Track pending;
 	private int pendingCount;
 
@@ -96,6 +100,19 @@ public final class MediaTracker {
 		}
 
 		Snapshot old = snapshot;
+		boolean sameSource = source == lastSource;
+		lastSource = source;
+
+		// A read that comes back empty or fails is usually a hiccup (busy player, track switching): keep the song
+		// through a few of them, and only say "nothing playing" if it keeps being empty.
+		if (sameSource && fresh.track().isNone() && !old.track().isNone()) {
+			if (++emptyPolls <= EMPTY_POLLS_HELD) {
+				sourceName = source.displayName();
+				return;
+			}
+		} else {
+			emptyPolls = 0;
+		}
 
 		Track freshTrack = fresh.track();
 		boolean newSong = !freshTrack.sameSong(old.track()) && !lateFill(old.track(), freshTrack);
