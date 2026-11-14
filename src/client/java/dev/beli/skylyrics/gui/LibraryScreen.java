@@ -71,6 +71,8 @@ public final class LibraryScreen extends Screen {
 	private boolean searchDirty;
 
 	private int selected = -1;
+	/** Which not-signed-in button the keyboard is on: -1 none, 0 Open Music tab, 1 Try made-up songs. */
+	private int signInFocus = -1;
 	private @Nullable CompletableFuture<String> playing;
 	private String playingTitle = "";
 	private String toast = "";
@@ -495,6 +497,7 @@ public final class LibraryScreen extends Screen {
 			if (!shelf.error.isEmpty()) {
 				int bx = px + pw / 2 - 40, by = viewY + viewH / 2 + 4;
 				Controls.drawButton(f, bx, by, 80, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, 80, 16), true, true);
+				Ui.outline(f.g(), bx - 2, by - 2, 84, 20, 6, Ui.TEXT);
 			}
 			return;
 		}
@@ -832,6 +835,9 @@ public final class LibraryScreen extends Screen {
 		int by = y + 50;
 		Controls.drawButton(f, x + w / 2 - 104, by, 100, 18, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), x + w / 2 - 104, by, 100, 18), true, true);
 		Controls.drawButton(f, x + w / 2 + 4, by, 100, 18, Tr.t("Try made-up songs"), Ui.inside(f.mx(), f.my(), x + w / 2 + 4, by, 100, 18), false, true);
+		if (signInFocus >= 0) {
+			Ui.outline(g, x + w / 2 - 104 + signInFocus * 108 - 2, by - 2, 104, 22, 6, Ui.TEXT);
+		}
 	}
 
 	private void renderToast(GuiGraphics g) {
@@ -942,10 +948,9 @@ public final class LibraryScreen extends Screen {
 		if (library == null) {
 			int w = Math.min(300, pw - 40), x = px + (pw - w) / 2, by = viewY + viewH / 2 - 44 + 50;
 			if (Ui.inside(mx, my, x + w / 2 - 104, by, 100, 18)) {
-				openMusicTab();
+				pressSignIn(0);
 			} else if (Ui.inside(mx, my, x + w / 2 + 4, by, 100, 18)) {
-				demo = true;
-				init();
+				pressSignIn(1);
 			}
 			return true;
 		}
@@ -1051,6 +1056,16 @@ public final class LibraryScreen extends Screen {
 		return super.mouseClicked(event, doubleClick);
 	}
 
+	/** The buttons of the not-signed-in state: 0 opens the Music tab, 1 tries the made-up songs. */
+	private void pressSignIn(int button) {
+		if (button == 0) {
+			openMusicTab();
+		} else {
+			demo = true;
+			init();
+		}
+	}
+
 	private void openMusicTab() {
 		if (parent instanceof SkyLyricsScreen settings) {
 			settings.showSpotify();
@@ -1087,22 +1102,6 @@ public final class LibraryScreen extends Screen {
 	}
 
 	*///?}
-	@Override
-	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
-		Shelf shelf = shelf();
-		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
-			if (!shelf.items.isEmpty() && scrollY != 0) {
-				selected = Mth.clamp(Math.max(0, selected) + (scrollY > 0 ? -1 : 1), 0, shelf.items.size() - 1);
-			}
-			return true;
-		}
-		if (shelf != null) {
-			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) scrollY * 30, 0, maxScroll(shelf));
-			return true;
-		}
-		return super.mouseScrolled(mx, my, scrollX, scrollY);
-	}
-
 	private int shelfHitAt(Shelf shelf, double mx, double my) {
 		return LibraryViews.shelfHit(mx, my, viewX, shelfTop(), Math.round(shelf.scroll), shelfStride,
 				SHELF_COVER + SHELF_FLOOR, SHELF_COVER, shelfRows, shelf.items.size());
@@ -1117,6 +1116,22 @@ public final class LibraryScreen extends Screen {
 			selected = LibraryKeys.afterHover(selected, shelfHitAt(shelf, mx, my));
 		}
 		super.mouseMoved(mx, my);
+	}
+
+	@Override
+	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+		Shelf shelf = shelf();
+		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
+			if (!shelf.items.isEmpty() && scrollY != 0) {
+				selected = Mth.clamp(Math.max(0, selected) + (scrollY > 0 ? -1 : 1), 0, shelf.items.size() - 1);
+			}
+			return true;
+		}
+		if (shelf != null) {
+			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) scrollY * 30, 0, maxScroll(shelf));
+			return true;
+		}
+		return super.mouseScrolled(mx, my, scrollX, scrollY);
 	}
 
 	//? if >=1.21.9 {
@@ -1140,6 +1155,16 @@ public final class LibraryScreen extends Screen {
 			return true;
 		}
 		if (library == null) {
+			int dir = event.isCycleFocus() ? (event.hasShiftDown() ? -1 : 1)
+					: event.isRight() || event.isDown() ? 1 : event.isLeft() || event.isUp() ? -1 : 0;
+			if (dir != 0) {
+				signInFocus = LibraryKeys.nextButton(signInFocus, 2, dir);
+				return true;
+			}
+			if (event.isConfirmation() || event.key() == InputConstants.KEY_SPACE) {
+				pressSignIn(Math.max(0, signInFocus));
+				return true;
+			}
 			return super.keyPressed(event);
 		}
 		if (typing) {
@@ -1177,7 +1202,12 @@ public final class LibraryScreen extends Screen {
 			reveal(shelf);
 			return true;
 		}
-		if (event.isConfirmation() && selected >= 0) {
+		if (shelf.items.isEmpty() && !shelf.error.isEmpty() && (event.isConfirmation() || !typing && event.key() == InputConstants.KEY_SPACE)) {
+			shelf.more();
+			return true;
+		}
+		if ((event.isConfirmation() || event.key() == InputConstants.KEY_SPACE && LibraryKeys.spacePlays(typing, selected, shelf.items.size()))
+				&& selected >= 0) {
 			activate(shelf, selected);
 			return true;
 		}
@@ -1210,6 +1240,11 @@ public final class LibraryScreen extends Screen {
 	public boolean charTyped(CharacterEvent event) {
 		if (library == null || !event.isAllowedChatCharacter()) {
 			return false;
+		}
+		Shelf now = shelf();
+		if (event.codepoint() == ' ' && now != null && LibraryKeys.spacePlays(typing, selected, now.items.size())) {
+			// Space already played the chosen song; don't also start a search with a space in it
+			return true;
 		}
 		if (!typing) {
 			// Typing anywhere starts a search
