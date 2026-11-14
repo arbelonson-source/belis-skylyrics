@@ -1010,13 +1010,8 @@ public final class LibraryScreen extends Screen {
 				return true;
 			}
 			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
-				int rowH = SHELF_COVER + SHELF_FLOOR;
-				int rtop = shelfTop();
-				int left = Math.round(shelf.scroll);
-				int c = (int) Math.floor((mx - viewX + left) / shelfStride);
-				int r = (int) Math.floor((my - rtop) / rowH);
-				int hit = LibraryViews.shelfIndex(c, r, shelfRows, shelf.items.size());
-				if (hit >= 0 && Ui.inside(mx, my, viewX + c * shelfStride - left, rtop + r * rowH, SHELF_COVER, SHELF_COVER)) {
+				int hit = shelfHitAt(shelf, mx, my);
+				if (hit >= 0) {
 					selected = hit;
 					activate(shelf, hit);
 				}
@@ -1105,6 +1100,22 @@ public final class LibraryScreen extends Screen {
 			return true;
 		}
 		return super.mouseScrolled(mx, my, scrollX, scrollY);
+	}
+
+	private int shelfHitAt(Shelf shelf, double mx, double my) {
+		return LibraryViews.shelfHit(mx, my, viewX, shelfTop(), Math.round(shelf.scroll), shelfStride,
+				SHELF_COVER + SHELF_FLOOR, SHELF_COVER, shelfRows, shelf.items.size());
+	}
+
+	/** Hovering a cover on the shelf chooses it, so its name shows before you click. */
+	@Override
+	public void mouseMoved(double mx, double my) {
+		Shelf shelf = shelf();
+		if (library != null && shelf != null && view() == SkyLyricsConfig.LibraryView.SHELF
+				&& Ui.inside(mx, my, viewX, viewY, viewW, viewH)) {
+			selected = LibraryKeys.afterHover(selected, shelfHitAt(shelf, mx, my));
+		}
+		super.mouseMoved(mx, my);
 	}
 
 	//? if >=1.21.9 {
