@@ -276,9 +276,11 @@ public final class DevTestHook {
 				}
 				//? if >=26.2 {
 				/*case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.gameRenderer.mainRenderTarget(), 1,
-				*///?} else {
+				*///?} else if >=1.21.6 {
 				case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.getMainRenderTarget(), 1,
-				//?}
+				//?} else {
+				/*case "shot" -> Screenshot.grab(client.gameDirectory, arg + ".png", client.getMainRenderTarget(),
+				*///?}
 						message -> SkyLyricsClient.LOG.info("Test hook: {}", message.getString()));
 				default -> SkyLyricsClient.LOG.warn("Test hook: unknown command {}", parts[0]);
 			}

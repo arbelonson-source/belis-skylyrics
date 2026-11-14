@@ -1,6 +1,8 @@
 package dev.beli.skylyrics.mixin;
 
+//? if >=1.21.6 {
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+//?}
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
 import dev.beli.skylyrics.render.ScreenLayer;
 import dev.beli.skylyrics.render.SkyTint;
@@ -8,6 +10,9 @@ import dev.beli.skylyrics.render.SkyTint;
 import net.minecraft.client.Camera;
 //?}
 import net.minecraft.client.DeltaTracker;
+//? if <1.21.6 {
+/*import net.minecraft.client.renderer.GameRenderer;
+*///?}
 import net.minecraft.client.renderer.LevelRenderer;
 //? if >=26.1 && <26.2 {
 /*import net.minecraft.client.renderer.chunk.ChunkSectionsToRender;
@@ -48,11 +53,27 @@ abstract class LevelRendererMixin {
 			DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection, Matrix4f culling,
 			GpuBufferSlice fog, Vector4f fogColor, boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
-			//?} else {
+			//?} else if >=1.21.6 {
 			/*DeltaTracker delta, boolean outline, Camera camera, Matrix4f view, Matrix4f projection,
 			GpuBufferSlice fog, Vector4f fogColor, boolean sky, CallbackInfo ci) {
 		ScreenLayer.capture(view, projection);
+			*///?} else {
+			/*DeltaTracker delta, boolean outline, Camera camera, GameRenderer renderer, Matrix4f view,
+			Matrix4f projection, CallbackInfo ci) {
+		ScreenLayer.capture(view, projection);
 			*///?}
+		//? if >=1.21.6 {
 		SkyTint.fog(fogColor);
+		//?}
 	}
+	//? if <1.21.6 {
+	/*
+	// 1.21.5 works the fog colour out inside renderLevel instead of passing it in
+	@com.llamalad7.mixinextras.injector.ModifyExpressionValue(method = "renderLevel", at = @At(value = "INVOKE",
+			target = "Lnet/minecraft/client/renderer/FogRenderer;computeFogColor(Lnet/minecraft/client/Camera;FLnet/minecraft/client/multiplayer/ClientLevel;IF)Lorg/joml/Vector4f;"))
+	private Vector4f skylyrics$fogColor(Vector4f fogColor) {
+		SkyTint.fog(fogColor);
+		return fogColor;
+	}
+	*///?}
 }
