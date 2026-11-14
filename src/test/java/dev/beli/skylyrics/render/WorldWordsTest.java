@@ -267,6 +267,15 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aLockedViewGathersWordsAtItsYawAndPitch() {
+		float[] locked = WorldWords.centre(37, -25, 150, 60, false);
+		assertEquals(37, locked[0], 1e-6f);
+		assertEquals(-25, locked[1], 1e-6f);
+		// Elytra mode still goes where you look
+		assertEquals(150, WorldWords.centre(37, -25, 150, 60, true)[0], 1e-6f);
+	}
+
+	@Test
 	void wordsFlyAlongOnlyWhileYouGlide() {
 		Vec3 last = new Vec3(10, 80, 10), eye = new Vec3(12, 79, 10.5);
 		Vec3 moved = WorldWords.carry(last, eye, true, 0.016f);
