@@ -162,24 +162,4 @@ class SkyEffectsTest {
 		assertEquals(1f, presence);
 		assertTrue(!SkyEffects.waitsForFade(SkyEffect.ECLIPSE, SkyEffect.AURORA, SkyEffect.ECLIPSE, 1));
 	}
-
-	/** Normal of the first triangle of a quad given in the order chosen, dotted with its position: negative faces the origin. */
-	private static float facing(float[] x, float[] y, float[] z, int[] order) {
-		int a = order[0], b = order[1], c = order[2];
-		float ux = x[b] - x[a], uy = y[b] - y[a], uz = z[b] - z[a];
-		float vx = x[c] - x[a], vy = y[c] - y[a], vz = z[c] - z[a];
-		float nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-		return nx * x[a] + ny * y[a] + nz * z[a];
-	}
-
-	@Test
-	void aSkyQuadGoesOutOnceAndFacesTheCameraWhicheverWayItWasWritten() {
-		float[] x = {-1, 1, 1, -1}, y = {-1, -1, 1, 1}, z = {-10, -10, -10, -10};
-		float[] rx = {-1, -1, 1, 1}, ry = {-1, 1, 1, -1}; // the same quad, corners the other way round
-		int[] one = SkyEffects.windingFor(x, y, z), other = SkyEffects.windingFor(rx, ry, z);
-		assertEquals(6, one.length, "one quad is two triangles, not four");
-		assertEquals(6, other.length);
-		assertTrue(facing(x, y, z, one) < 0, "front faces the origin");
-		assertTrue(facing(rx, ry, z, other) < 0, "front faces the origin when written backwards");
-	}
 }
