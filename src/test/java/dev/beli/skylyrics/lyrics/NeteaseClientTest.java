@@ -172,6 +172,21 @@ class NeteaseClientTest {
 	}
 
 	@Test
+	void dialogueLinesWithAColonAreKept() {
+		String lyric = "[00:00.00] 作词 : X\n[00:30.00]他说：我爱你\n[00:31.00]我说:不要走";
+		assertEquals("[00:30.00]他说：我爱你\n[00:31.00]我说:不要走", NeteaseClient.clean(lyric));
+		assertEquals("[00:30.00]他说：我爱你", NeteaseClient.clean("[00:30.00]他说：我爱你"));
+	}
+
+	@Test
+	void creditsAtTheStartAndEndGoButNotInTheMiddle() {
+		String lyric = "[00:00.000] 作词 : A\n[00:01.000] 作曲 : B\n[00:02.000] 制作人 : C\n[00:03.000] 歌词翻译：D\n"
+				+ "[00:10.00]First line\n[01:00.00]作曲：a sung line\n[02:00.00]Last line\n"
+				+ "[03:00.00] 混音 : E\n[03:01.00] 母带 : F\n{\"t\":1,\"c\":[]}";
+		assertEquals("[00:10.00]First line\n[01:00.00]作曲：a sung line\n[02:00.00]Last line", NeteaseClient.clean(lyric));
+	}
+
+	@Test
 	void creditCleanerKeepsLyrics() {
 		assertEquals("[00:05.00]Hello there", NeteaseClient.clean("[00:00.00] 作词 : X\n[00:01.00] 制作人 : Y\n[00:05.00]Hello there"));
 		assertEquals("[00:05.00]男：a line", NeteaseClient.clean("[00:05.00]男：a line"));
