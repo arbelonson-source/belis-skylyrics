@@ -81,6 +81,31 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void searchTitleDropsGuestArtistsInOtherSpellings() {
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song\uFF08feat. Someone\uFF09"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song \uFF08with Someone\uFF09"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song \u3010feat. Someone\u3011"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song feat. Someone"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song FT. Someone Else"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song ft Someone"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song featuring Someone & Another"));
+		assertEquals("Made Up Song", TitleCleaner.forSearch("Made Up Song (feat. Someone) [Remix feat. Other]".replace(" [Remix feat. Other]", "")));
+	}
+
+	@Test
+	void searchTitleKeepsRealTitlesThatLookLikeCredits() {
+		assertEquals("Feel It", TitleCleaner.forSearch("Feel It"));
+		assertEquals("Lift Me Up", TitleCleaner.forSearch("Lift Me Up"));
+		assertEquals("Feathers", TitleCleaner.forSearch("Feathers"));
+		assertEquals("Defeat Of Me", TitleCleaner.forSearch("Defeat Of Me"));
+		assertEquals("Soft Light", TitleCleaner.forSearch("Soft Light"));
+		assertEquals("feat. Someone", TitleCleaner.forSearch("feat. Someone"));
+		assertEquals("Ft. Someone", TitleCleaner.forSearch("Ft. Someone"));
+		assertEquals("Featuring You", TitleCleaner.forSearch("Featuring You"));
+		assertEquals("Song Ft", TitleCleaner.forSearch("Song Ft"));
+	}
+
+	@Test
 	void aTitleCardKeepsBandNamesWhole() {
 		assertEquals("Simon & Garfunkel", TitleCleaner.shownArtist("Simon & Garfunkel"));
 		assertEquals("Tyler, The Creator", TitleCleaner.shownArtist("Tyler, The Creator"));

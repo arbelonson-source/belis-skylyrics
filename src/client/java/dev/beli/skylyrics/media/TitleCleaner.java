@@ -22,6 +22,13 @@ public final class TitleCleaner {
 			"(?i)(\\d{4}\\s+)?(digital\\s+)?remaster(ed)?(\\s+(\\d{4}|version))?|(\\d{4}\\s+)?(mono|stereo)(\\s+(version|mix))?"
 					+ "|live|live (at|from|in) .+|radio edit|(single|album|live|acoustic|demo) version|demo|acoustic|instrumental");
 
+	/** "(feat. X)", "[ft. X]", "(with X)", "(prod. X)", also in fullwidth brackets and 【】. */
+	private static final Pattern GUEST_BRACKETS = Pattern.compile(
+			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014]\\s*(feat\\.?|ft\\.?|featuring|with|prod\\.?)[\\s\uFF1A:][^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
+			Pattern.CASE_INSENSITIVE);
+	private static final Pattern GUEST_TAIL = Pattern.compile(
+			"(?<=\\S)\\s+(feat\\.?|ft\\.?|featuring)\\s+\\S.*$", Pattern.CASE_INSENSITIVE);
+
 	private TitleCleaner() {
 	}
 
@@ -50,7 +57,11 @@ public final class TitleCleaner {
 	public static String forSearch(String title) {
 		String t = NOISE.matcher(title).replaceAll("");
 		t = t.replaceAll("(?i)\\s+[-\u2013\u2014]\\s+(\\d{4}\\s*)?(remaster(ed)?|mono|stereo|single|radio edit|live|version|edit|from .*)\\b.*$", "");
-		t = t.replaceAll("(?i)\\s*[(\\[](feat\\.?|ft\\.?|with|prod\\.?)\\s[^)\\]]*[)\\]]", "");
+		String bracketed = GUEST_BRACKETS.matcher(t).replaceAll("");
+		// A title that is only a credit ("(feat. X)") is all there is to search for.
+		t = bracketed.isBlank() ? t : bracketed;
+		// "Song feat. X" at the end; needs a song name before it, so "Feel It" and "Lift Me Up" stay whole.
+		t = GUEST_TAIL.matcher(t.trim()).replaceFirst("");
 		return t.trim();
 	}
 

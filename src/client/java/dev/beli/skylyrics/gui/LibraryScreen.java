@@ -457,11 +457,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private String tail(String text, int maxW) {
-		int i = 0;
-		while (i < text.length() && font.width(text.substring(i)) > maxW) {
-			i++;
-		}
-		return text.substring(i);
+		return dev.beli.skylyrics.util.TextCut.suffix(text, t -> font.width(t) <= maxW);
 	}
 
 	private int searchX() {
@@ -1257,7 +1253,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private void edit(String text) {
-		query = text.length() > 80 ? text.substring(0, 80) : text;
+		query = dev.beli.skylyrics.util.TextCut.limit(text, 80);
 		typedAt = System.nanoTime();
 		searchDirty = true;
 	}

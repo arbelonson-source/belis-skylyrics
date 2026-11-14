@@ -171,7 +171,7 @@ public final class HeardLibrary implements Library {
 	}
 
 	private static String clip(String s) {
-		return s.length() > MAX_FIELD ? s.substring(0, MAX_FIELD) : s;
+		return dev.beli.skylyrics.util.TextCut.limit(s, MAX_FIELD);
 	}
 
 	private List<Entry> snapshot() {
