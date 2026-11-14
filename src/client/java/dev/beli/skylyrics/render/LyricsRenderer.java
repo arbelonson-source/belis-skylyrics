@@ -146,9 +146,7 @@ public final class LyricsRenderer {
 
 	private Lyrics shown = Lyrics.NONE;
 	private long frozenTime;
-	private int lastIndex = Integer.MIN_VALUE;
-	private int previousIndex = Integer.MIN_VALUE;
-	private long changedAt;
+	private final LineClock clock = new LineClock();
 	private final Map<String, List<String>> wrapCache = new HashMap<>();
 	/** Where each character of a row starts, in display order (one extra entry: the row's width). */
 	private final Map<String, float[]> offsetCache = new HashMap<>();
@@ -288,6 +286,8 @@ public final class LyricsRenderer {
 		updateColor(cfg, dt, now, shown.indexAt(time));
 		updateDaylight(mc, camera, dt);
 		updateAnchor(cfg, camera, dt);
+		// Every layout, so the crosshair, sky and hat flashes follow the lines even where nothing here animates them
+		clock.frame(visibility > 0.01f && !shown.isEmpty(), shown.instrumental(), shown.indexAt(time), now, ANIM_NS);
 		if (cfg.layout == Layout.WORLD && !shown.instrumental()) {
 			renderWorldWords(context, mc, cfg, camera, time, now);
 			return;
@@ -370,7 +370,7 @@ public final class LyricsRenderer {
 		if (hasLyrics) {
 			if (current != shown) {
 				shown = current;
-				lastIndex = Integer.MIN_VALUE;
+				clock.reset();
 				wrapCache.clear();
 				offsetCache.clear();
 				arcCache.clear();
@@ -540,8 +540,8 @@ public final class LyricsRenderer {
 		int index = shown.indexAt(time);
 		noteIndex(index, now);
 		List<ArcShot> shots = new ArrayList<>(2);
-		float leave = (now - changedAt) / (float) ARC_LEAVE_NS;
-		int previous = previousIndex;
+		float leave = (now - clock.changedAt()) / (float) ARC_LEAVE_NS;
+		int previous = clock.previous();
 		if (previous != index && leave < 1 && sungLine(previous)) {
 			shots.add(new ArcShot(previous, leave, arrival(arcAnchor(cfg, camera, previous, now, false), now)));
 		}
@@ -647,18 +647,14 @@ public final class LyricsRenderer {
 
 	/** Remembers when the line being sung changed, for the animations between lines. */
 	private void noteIndex(int index, long now) {
-		if (index != lastIndex) {
-			previousIndex = lastIndex;
-			lastIndex = index;
-			changedAt = previousIndex == Integer.MIN_VALUE ? now - ANIM_NS : now;
-		}
+		clock.note(index, now, ANIM_NS);
 	}
 
 	private void drawLines(Draw draw, SkyLyricsConfig cfg, long time, long now) {
 		int index = shown.indexAt(time);
 		noteIndex(index, now);
-		float p = Mth.clamp((now - changedAt) / (float) ANIM_NS, 0, 1);
-		boolean stepForward = index == previousIndex + 1;
+		float p = Mth.clamp((now - clock.changedAt()) / (float) ANIM_NS, 0, 1);
+		boolean stepForward = index == clock.previous() + 1;
 
 		switch (cfg.animation) {
 			case RISE -> {
@@ -670,8 +666,8 @@ public final class LyricsRenderer {
 			}
 			case FADE -> crossfade(draw, cfg, index, time, p, now);
 			case POP -> {
-				if (p < 1 && previousIndex != Integer.MIN_VALUE) {
-					arrangement(draw, cfg, previousIndex, time, 0, visibility * Math.max(0, 1 - p * 2.5f), 1, now);
+				if (p < 1 && clock.previous() != Integer.MIN_VALUE) {
+					arrangement(draw, cfg, clock.previous(), time, 0, visibility * Math.max(0, 1 - p * 2.5f), 1, now);
 				}
 				float pop = 0.8f + 0.2f * easeOutBack(p);
 				arrangement(draw, cfg, index, time, 0, visibility * Math.min(1, p * 2f), pop, now);
@@ -679,16 +675,16 @@ public final class LyricsRenderer {
 			case TYPEWRITER -> arrangement(draw, cfg, index, time, 0, visibility, 1, now);
 			case SLIDE -> {
 				// The old line slides off one side as the new one glides in from the other, the way the song is going
-				float side = (index >= previousIndex ? 1 : -1) * draw.wrapWidth;
-				if (p < 1 && previousIndex != Integer.MIN_VALUE) {
-					slid(draw, cfg, previousIndex, time, -side * slideOut(p), visibility * (1 - easeInOut(p)), now);
+				float side = (index >= clock.previous() ? 1 : -1) * draw.wrapWidth;
+				if (p < 1 && clock.previous() != Integer.MIN_VALUE) {
+					slid(draw, cfg, clock.previous(), time, -side * slideOut(p), visibility * (1 - easeInOut(p)), now);
 				}
 				slid(draw, cfg, index, time, side * slideIn(p), visibility * Math.min(1, p * 1.5f), now);
 			}
 			case WORDS -> {
 				// The old line fades away while the new one's words come in one after another
-				if (p < 1 && previousIndex != Integer.MIN_VALUE) {
-					arrangement(draw, cfg, previousIndex, time, 0, visibility * (1 - easeInOut(Math.min(1, p * 1.6f))), 1, now);
+				if (p < 1 && clock.previous() != Integer.MIN_VALUE) {
+					arrangement(draw, cfg, clock.previous(), time, 0, visibility * (1 - easeInOut(Math.min(1, p * 1.6f))), 1, now);
 				}
 				arrangement(draw, cfg, index, time, 0, visibility, 1, now);
 			}
@@ -713,8 +709,8 @@ public final class LyricsRenderer {
 
 	private void crossfade(Draw draw, SkyLyricsConfig cfg, int index, long time, float p, long now) {
 		float e = easeInOut(p);
-		if (p < 1 && previousIndex != Integer.MIN_VALUE) {
-			arrangement(draw, cfg, previousIndex, time, 0, visibility * (1 - e), 1, now);
+		if (p < 1 && clock.previous() != Integer.MIN_VALUE) {
+			arrangement(draw, cfg, clock.previous(), time, 0, visibility * (1 - e), 1, now);
 		}
 		arrangement(draw, cfg, index, time, 0, visibility * e, 1, now);
 	}
@@ -775,12 +771,12 @@ public final class LyricsRenderer {
 			float highlight = Mth.clamp(1 - Math.abs(r), 0, 1);
 			float scale = Mth.lerp(highlight, SECONDARY, 1f) * (i == center ? popScale : 1);
 			int maxChars = -1;
-			if (cfg.animation == Animation.TYPEWRITER && i == center && lastIndex == center) {
-				maxChars = (int) ((now - changedAt) / 28_000_000L);
+			if (cfg.animation == Animation.TYPEWRITER && i == center && clock.last() == center) {
+				maxChars = (int) ((now - clock.changedAt()) / 28_000_000L);
 			}
 			float wordsT = Float.NaN, flareT = Float.NaN;
-			if (i == center && lastIndex == center && previousIndex != Integer.MIN_VALUE) {
-				float since = (now - changedAt) / 1e9f;
+			if (i == center && clock.last() == center && clock.previous() != Integer.MIN_VALUE) {
+				float since = (now - clock.changedAt()) / 1e9f;
 				if (cfg.animation == Animation.WORDS) {
 					wordsT = since - 0.06f; // a beat after the old line starts fading
 				}
@@ -1018,7 +1014,7 @@ public final class LyricsRenderer {
 			boolean timed = cfg.karaoke && shown.synced();
 			long start = line.timeMs(), end = shown.sungEnd(index);
 			long sungAt = time - LEAD_MS - ARC_WORD_DELAY_MS;
-			float since = (now - changedAt) / 1e9f;
+			float since = (now - clock.changedAt()) / 1e9f;
 			int dark = depthDark(color, daylight), light = depthLight(color);
 			int words = arc.words().length;
 			// The one word after those already sung, shown faintly ahead of its time
@@ -1614,7 +1610,7 @@ public final class LyricsRenderer {
 
 	/** Seconds since the lyrics last moved to a new line, for things that flare up with them. */
 	public float secondsSinceLineChange() {
-		return (System.nanoTime() - changedAt) / 1e9f;
+		return clock.secondsSince(System.nanoTime());
 	}
 
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
