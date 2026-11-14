@@ -646,12 +646,15 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.cardCorner.ordinal(), i -> cfg.cardCorner = SkyLyricsConfig.CardCorner.values()[i]).when(() -> cfg.recordCard);
 		Row recordLyrics = new Toggle(Tr.t("Lyric line"), Tr.t("The card also shows the line being sung, under the record"),
 				() -> cfg.cardLyrics, v -> cfg.cardLyrics = v).when(() -> cfg.recordCard);
+		Row recordLines = new Segmented(Tr.t("Card lines"), Tr.t("Just the line being sung, or the line before and after it too"),
+				new String[] {Tr.t("1 line"), Tr.t("3 lines")},
+				() -> cfg.cardLines >= 3 ? 1 : 0, i -> cfg.cardLines = i == 1 ? 3 : 1).when(() -> cfg.recordCard && cfg.cardLyrics);
 
 		return List.of(
 				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, underground, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, ping, frameRate, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barSpin, barEq, barProgress),
-				new Card(Tr.t("Record card"), record, recordCorner, recordLyrics),
+				new Card(Tr.t("Record card"), record, recordCorner, recordLyrics, recordLines),
 				new Card(Tr.t("Main menu"), title),
 				new Card(Tr.t("Performance"), effects, effectsNow),
 				new Card(Tr.t("Keys"), openKey, controls));

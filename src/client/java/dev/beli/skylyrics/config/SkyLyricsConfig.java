@@ -405,6 +405,8 @@ public final class SkyLyricsConfig {
 	public CardCorner cardCorner = CardCorner.BOTTOM_RIGHT;
 	/** The record card also shows the line being sung, on a strip under the record. */
 	public boolean cardLyrics = true;
+	/** How many lines the card's strip shows: 1, or 3 (the line before, the current one and the line after). */
+	public int cardLines = 1;
 
 	// Music
 	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */
@@ -502,6 +504,7 @@ public final class SkyLyricsConfig {
 		worldTilt = clamp(worldTilt, 0, 2);
 		worldRise = clamp(worldRise, 0, 2);
 		worldCurve = clamp(worldCurve, 0, 2);
+		cardLines = cardLines >= 3 ? 3 : 1;
 		barSize = clamp(barSize, 0.75f, 1.5f);
 		barBackground = clamp(barBackground, 0, 1);
 		height = clamp(height, -10, 80);
