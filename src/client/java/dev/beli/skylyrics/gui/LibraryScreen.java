@@ -340,11 +340,12 @@ public final class LibraryScreen extends Screen {
 	private void renderHeader(GuiGraphics g, Frame f) {
 		Ui.rect(g, px + 10, py + 9, 16, 16, 4, Ui.ACCENT);
 		g.drawCenteredString(font, "♪", px + 18, py + 13, 0xFFFFFFFF);
-		g.drawString(font, Ui.visual(Tr.t("Song library")), px + 31, py + 8, Ui.TEXT, false);
+		int textRoom = Ui.headerRoom(px + 31, library != null ? searchX() : px + pw - 22);
+		g.drawString(font, Ui.visual(Ui.clip(font, Tr.t("Song library"), textRoom)), px + 31, py + 8, Ui.TEXT, false);
 		String subtitle = library == null ? Tr.t("Your Spotify songs")
 				: demo ? Tr.t("Made-up songs, for trying it out")
 				: heardMode() ? Tr.t("Songs you've played lately") : Tr.t("From your Spotify");
-		g.drawString(font, Ui.visual(subtitle), px + 31, py + 18, Ui.DIM, false);
+		g.drawString(font, Ui.visual(Ui.clip(font, subtitle, textRoom)), px + 31, py + 18, Ui.DIM, false);
 
 		int cx = px + pw - 22;
 		boolean closeHover = Ui.inside(f.mx(), f.my(), cx, py + 8, 14, 14);

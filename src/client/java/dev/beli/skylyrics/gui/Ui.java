@@ -95,6 +95,11 @@ final class Ui {
 		return font.plainSubstrByWidth(text, Math.max(0, maxW - font.width(ellipsis))) + ellipsis;
 	}
 
+	/** Room for header text that starts at {@code textX} and must stop before something at {@code rightX}. */
+	static int headerRoom(int textX, int rightX) {
+		return Math.max(0, rightX - 6 - textX);
+	}
+
 	static boolean inside(double mx, double my, int x, int y, int w, int h) {
 		return mx >= x && mx < x + w && my >= y && my < y + h;
 	}
