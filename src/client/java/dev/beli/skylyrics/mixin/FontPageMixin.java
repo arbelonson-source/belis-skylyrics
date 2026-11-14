@@ -27,9 +27,14 @@ abstract class FontPageMixin {
 	private int skylyrics$page;
 
 	@Inject(method = "<init>", at = @At("CTOR_HEAD"))
+	//? if >=1.21.5 {
 	private void skylyrics$pickSize(Supplier<String> name, GlyphRenderTypes renderTypes, boolean colored,
 			CallbackInfo ci) {
 		if (name.get().startsWith("skylyrics:")) {
+	//?} else {
+	/*private void skylyrics$pickSize(GlyphRenderTypes renderTypes, boolean colored, CallbackInfo ci) {
+		if (dev.beli.skylyrics.render.FontPageFlag.ours) {
+	*///?}
 			skylyrics$page = SKYLYRICS_PAGE;
 		}
 	}

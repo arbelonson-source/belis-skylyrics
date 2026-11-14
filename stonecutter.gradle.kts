@@ -69,6 +69,17 @@ stonecutter parameters {
 			replace("g.setTooltipForNextFrame(", "g.renderTooltip(")
 			replace("camera.position()", "camera.getPosition()")
 		}
+		// 1.21.4 has no GpuTexture: textures are plain GL ids, so no sampler objects, no texture names, no scaled mouse helper
+		if (current.parsed < "1.21.5") string(true) {
+			replace("import com.mojang.blaze3d.textures.FilterMode;", "import java.lang.Object;")
+			replace("new DynamicTexture(() -> \"SkyLyrics album art\", image)", "new DynamicTexture(image)")
+			replace("new DynamicTexture(() -> \"SkyLyrics cover\", image)", "new DynamicTexture(image)")
+			replace("new DynamicTexture(() -> \"SkyLyrics round corner\", image)", "new DynamicTexture(image)")
+			replace("minecraft.mouseHandler.getScaledXPos(minecraft.getWindow())",
+				"(minecraft.mouseHandler.xpos() * minecraft.getWindow().getGuiScaledWidth() / minecraft.getWindow().getScreenWidth())")
+			replace("minecraft.mouseHandler.getScaledYPos(minecraft.getWindow())",
+				"(minecraft.mouseHandler.ypos() * minecraft.getWindow().getGuiScaledHeight() / minecraft.getWindow().getScreenHeight())")
+		}
 		// 26.3 moved the low-level graphics classes into com.mojang.renderpearl
 		if (current.parsed >= "26.3") string(true) {
 			replace("com.mojang.blaze3d.textures.", "com.mojang.renderpearl.api.textures.")
