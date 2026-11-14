@@ -18,6 +18,8 @@ class MediaTrackerTest {
 		private volatile Snapshot last = Snapshot.NOTHING;
 		final AtomicInteger polls = new AtomicInteger();
 
+		static final Snapshot FAIL = new Snapshot(Track.NONE, -1, false, 0);
+
 		synchronized void then(Snapshot s) {
 			queue.add(s);
 		}
@@ -32,6 +34,9 @@ class MediaTrackerTest {
 				last = queue.poll();
 			}
 			polls.incrementAndGet();
+			if (last == FAIL) {
+				throw new IllegalStateException("player did not answer");
+			}
 			return last;
 		}
 
@@ -158,5 +163,56 @@ class MediaTrackerTest {
 		} finally {
 			tracker.shutdown();
 		}
+	}
+
+	@Test
+	void aFailedPollDoesNotWipeTheSong() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		List<Track> changes = new CopyOnWriteArrayList<>();
+		tracker.onTrackChange(changes::add);
+		try {
+			source.then(song(215_000, ""));
+			tracker.refresh();
+			source.then(FakeSource.FAIL);
+			tracker.refresh();
+			source.then(song(215_000, ""));
+			tracker.refresh();
+			tracker.refresh();
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+			while (source.polls.get() < 4) {
+				assertTrue(System.nanoTime() < until, "timed out");
+				Thread.sleep(5);
+			}
+		} finally {
+			tracker.shutdown();
+		}
+		assertEquals(1, changes.size(), changes.toString());
+	}
+
+	@Test
+	void aListenerThatThrowsDoesNotStopPolling() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		List<Track> seen = new CopyOnWriteArrayList<>();
+		tracker.onTrackChange(t -> {
+			seen.add(t);
+			if (seen.size() == 1) {
+				throw new IllegalStateException("listener broke");
+			}
+		});
+		source.then(song(215_000, ""));
+		source.then(new Track("Other Song", "Made Up Band", "", 200_000, "", "firefox"));
+		tracker.start(20);
+		try {
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+			while (seen.size() < 2 && System.nanoTime() < until) {
+				Thread.sleep(10);
+			}
+		} finally {
+			tracker.shutdown();
+		}
+		assertEquals(2, seen.size(), seen.toString());
+		assertEquals("Other Song", seen.get(1).title());
 	}
 }

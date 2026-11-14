@@ -35,6 +35,7 @@ public final class MediaTracker {
 	private Consumer<Track> onTrackChange = t -> {
 	};
 	private boolean loggedError;
+	private boolean loggedFault;
 	/** How many empty/failed reads in a row still keep the last song (about 1.5 s at the usual poll rate). */
 	private static final int EMPTY_POLLS_HELD = 3;
 	/** How many polls a new song with no artist yet waits for one (the second poll announces it anyway). */
@@ -81,7 +82,20 @@ public final class MediaTracker {
 				|| (old.artist().isEmpty() && !fresh.artist().isEmpty()));
 	}
 
+	/** Never lets an exception out: an escaped one would silently cancel every later scheduled poll. */
 	private void pollOnce() {
+		try {
+			pollInner();
+			loggedFault = false;
+		} catch (Throwable e) {
+			if (!loggedFault) {
+				LOG.warn("Media poll failed, carrying on", e);
+				loggedFault = true; // logged again only after a poll that went through
+			}
+		}
+	}
+
+	private void pollInner() {
 		MediaSource source = source();
 		Snapshot fresh;
 		try {
