@@ -224,12 +224,23 @@ public final class LyricsRenderer {
 	 * when see-through, or cut holes in them when not. Drawn after them instead, both look right.
 	 * Shader packs run their own passes, so with one on the lyrics stay at the earlier, tested spot.
 	 */
+	/**
+	 * On 26.1 the solid and translucent feature passes run, and the submit nodes are cleared, before END_MAIN fires,
+	 * so anything submitted there is never drawn. There the words must be submitted at COLLECT_SUBMITS (26.2+ and
+	 * the 1.21.x line still draw what END_MAIN submits).
+	 */
+	//? if >=26.1 && <26.2 {
+	/*private static final boolean LATE_SUBMITS_LOST = true;
+	*///?} else {
+	private static final boolean LATE_SUBMITS_LOST = false;
+	//?}
+
 	//? if >=26.1 {
 	/*public void renderEarly(LevelRenderContext context) {
 	*///?} else {
 	public void renderEarly(WorldRenderContext context) {
 	//?}
-		if (ScreenLayer.shadersOn()) {
+		if (ScreenLayer.shadersOn() || LATE_SUBMITS_LOST) {
 			render(context);
 		}
 	}
@@ -239,7 +250,7 @@ public final class LyricsRenderer {
 	*///?} else {
 	public void renderLate(WorldRenderContext context) {
 	//?}
-		if (!ScreenLayer.shadersOn()) {
+		if (!ScreenLayer.shadersOn() && !LATE_SUBMITS_LOST) {
 			render(context);
 		}
 	}
