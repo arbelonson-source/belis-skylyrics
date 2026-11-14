@@ -136,6 +136,17 @@ public final class DevTestHook {
 		//?}
 	}
 
+	/** A typed character as the screen receives it: 1.21.9 to 1.21.11 also carry the modifiers, 26.1 on does not. */
+	//? if >=1.21.9 {
+	private static net.minecraft.client.input.CharacterEvent charEvent(int codepoint, int modifiers) {
+		//? if >=26.1 {
+		/*return new net.minecraft.client.input.CharacterEvent(codepoint);
+		*///?} else {
+		return new net.minecraft.client.input.CharacterEvent(codepoint, modifiers);
+		//?}
+	}
+
+	//?}
 	private void run(Minecraft client, String line) {
 		String[] parts = line.split("\\s+", 2);
 		String arg = parts.length > 1 ? parts[1] : "";
@@ -228,6 +239,54 @@ public final class DevTestHook {
 						/*client.screen.mouseClicked(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]), 0);
 						client.screen.mouseReleased(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]), 0);
 						*///?}
+					}
+				}
+				case "key" -> {
+					DevKeys.Key key = DevKeys.parse(arg);
+					Screen screen = currentScreen(client);
+					if (screen == null) {
+						SkyLyricsClient.LOG.info("Test hook: no screen is open, key not sent");
+					} else {
+						int typed = DevKeys.charFor(key);
+						//? if >=1.21.9 {
+						screen.keyPressed(new net.minecraft.client.input.KeyEvent(key.code(), 0, key.modifiers()));
+						if (typed != 0) {
+							screen.charTyped(charEvent(typed, key.modifiers()));
+						}
+						screen.keyReleased(new net.minecraft.client.input.KeyEvent(key.code(), 0, key.modifiers()));
+						//?} else {
+						/*screen.keyPressed(key.code(), 0, key.modifiers());
+						if (typed != 0) {
+							screen.charTyped((char) typed, key.modifiers());
+						}
+						screen.keyReleased(key.code(), 0, key.modifiers());
+						*///?}
+						SkyLyricsClient.LOG.info("Test hook: sent key {} to {}", arg, screen.getClass().getSimpleName());
+					}
+				}
+				case "type" -> {
+					Screen screen = currentScreen(client);
+					if (screen == null) {
+						SkyLyricsClient.LOG.info("Test hook: no screen is open, text not sent");
+					} else {
+						arg.codePoints().forEach(c -> {
+							//? if >=1.21.9 {
+							screen.charTyped(charEvent(c, 0));
+							//?} else {
+							/*screen.charTyped((char) c, 0);
+							*///?}
+						});
+						SkyLyricsClient.LOG.info("Test hook: typed {} characters into {}", arg.codePointCount(0, arg.length()), screen.getClass().getSimpleName());
+					}
+				}
+				case "hover" -> {
+					String[] xy = arg.split("\\s+");
+					Screen screen = currentScreen(client);
+					if (screen == null) {
+						SkyLyricsClient.LOG.info("Test hook: no screen is open, mouse not moved");
+					} else {
+						screen.mouseMoved(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]));
+						SkyLyricsClient.LOG.info("Test hook: mouse moved over {}", screen.getClass().getSimpleName());
 					}
 				}
 				case "press" -> {
