@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -35,6 +36,27 @@ final class ThemePicker extends Controls.Row {
 	@Override
 	int controlWidth(Font font) {
 		return 0;
+	}
+
+	@Override
+	String narration() {
+		@Nullable Theme active = Themes.active(cfg);
+		if (active == null) {
+			return Narration.join(label, Tr.t("Custom"));
+		}
+		int i = Themes.ALL.indexOf(active);
+		return Narration.join(label, active.name().get(), Tr.t("selected"),
+				Narration.position(Tr.t("%s of %s"), i, Themes.ALL.size()));
+	}
+
+	@Override
+	boolean key(KeyEvent event) {
+		if (event.isLeft() || event.isRight()) {
+			int at = Themes.ALL.indexOf(Themes.active(cfg));
+			Themes.apply(Themes.ALL.get(LibraryKeys.nextButton(at, Themes.ALL.size(), event.isRight() ? 1 : -1)), cfg);
+			return true;
+		}
+		return false;
 	}
 
 	@Override

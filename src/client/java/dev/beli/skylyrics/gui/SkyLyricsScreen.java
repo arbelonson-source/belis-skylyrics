@@ -14,6 +14,8 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -99,6 +101,11 @@ public final class SkyLyricsScreen extends Screen {
 			0xC7D0F4, 0xEEBAE8, 0xAE90F6, 0x8CDAFF, 0xC8B29C,
 			0xFF6EC7, 0xFF5A5A, 0xFFA24C, 0xFFE066, 0x6BFF8E, 0xFFFFFF,
 	};
+	/** What the Narrator calls each of {@link #SWATCHES}, in the same order. */
+	private static List<String> swatchNames() {
+		return List.of(Tr.t("Periwinkle"), Tr.t("Soft pink"), Tr.t("Lavender"), Tr.t("Sky blue"), Tr.t("Cream"),
+				Tr.t("Hot pink"), Tr.t("Red"), Tr.t("Orange"), Tr.t("Yellow"), Tr.t("Green"), Tr.t("White"));
+	}
 	/** Night sky choices in {@link SkyEffect} order. Five names don't fit side by side, so this is a Cycle. */
 	private static List<String> skyNames() {
 		return List.of(Tr.t("Off"), Tr.t("Aurora"), Tr.t("Nebula"), Tr.t("Synthwave"), Tr.t("Eclipse"), Tr.t("Aurora + nebula"), Tr.t("Moonlight"), Tr.t("Galaxy"), Tr.t("Comet"), Tr.t("Random"));
@@ -175,6 +182,23 @@ public final class SkyLyricsScreen extends Screen {
 	private double scrollbarGrab;
 	private int previewX, previewW;
 	private int pillX, pillW;
+	private int resetW;
+
+	/** The buttons outside the list of settings that the keyboard can reach. */
+	private enum Chrome {
+		PREVIEW, RESET, DONE
+	}
+
+	/** The row or {@link Chrome} button the keyboard is on, or null. The Lyrics switch in the sidebar is a row too. */
+	private @Nullable Object focus;
+	/** Where {@link #focus} was in the ring last time, to land nearby when its row is hidden. */
+	private int focusAt;
+	/** Whether to draw the focus ring: after keys, not after the mouse. */
+	private boolean focusVisible;
+	/** The row the keyboard was on in each tab. */
+	private final @Nullable Row[] tabFocus = new Row[TAB_COUNT + 1];
+	/** What the Narrator says instead of the focused row, after a tab changes. */
+	private @Nullable String announcement;
 
 	public SkyLyricsScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
@@ -331,12 +355,12 @@ public final class SkyLyricsScreen extends Screen {
 		Row mode = new Segmented(Tr.t("Colour"), Tr.t("From the cover, or your own"),
 				new String[] {Tr.t("Album"), Tr.t("Pick"), Tr.t("Rainbow"), Tr.t("Time of day"), Tr.t("Each line")}, () -> cfg.colorMode.ordinal(),
 				i -> cfg.colorMode = ColorMode.values()[i]);
-		Row swatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
+		Row swatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES, swatchNames(),
 				() -> cfg.colorMode == ColorMode.FIXED ? cfg.color : -1,
 				c -> {
 					cfg.color = c;
 					cfg.colorMode = ColorMode.FIXED;
-				});
+				}).narrateAs(Tr.t("Lyrics colour"));
 		Row albumColor = new Info(Tr.t("Album colour"), null, () -> {
 			Track track = mod.tracker().track();
 			if (track == Track.NONE) {
@@ -346,7 +370,7 @@ public final class SkyLyricsScreen extends Screen {
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 		Row twoTone = new Toggle(Tr.t("Two-tone"), Tr.t("Each line fades into a second colour"),
 				() -> cfg.twoTone, v -> cfg.twoTone = v);
-		Row toneSwatches = new Swatches(Tr.t("Second colour"), null, SWATCHES, () -> cfg.toneColor,
+		Row toneSwatches = new Swatches(Tr.t("Second colour"), null, SWATCHES, swatchNames(), () -> cfg.toneColor,
 				c -> cfg.toneColor = c).when(() -> cfg.twoTone);
 
 		// Five choices over four switches: Bold, Smooth and Round are all the smooth font, told apart by boldFont and roundFont
@@ -368,9 +392,10 @@ public final class SkyLyricsScreen extends Screen {
 		Row glowMode = new Segmented(Tr.t("Glow colour"), Tr.t("The words' colour, or one of its own"),
 				new String[] {Tr.t("Same"), Tr.t("Pick")}, () -> cfg.glowPick ? 1 : 0, i -> cfg.glowPick = i == 1)
 				.when(() -> cfg.glow > 0.01f);
-		Row glowSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
+		Row glowSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES, swatchNames(),
 				() -> cfg.glowPick ? cfg.glowColor : -1,
 				c -> { cfg.glowColor = c; cfg.glowPick = true; })
+				.narrateAs(Tr.t("Glow colour"))
 				.when(() -> cfg.glow > 0.01f && cfg.glowPick);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
 				() -> cfg.shadow, v -> cfg.shadow = v);
@@ -606,9 +631,10 @@ public final class SkyLyricsScreen extends Screen {
 		Row barAccent = new Segmented(Tr.t("Accent colour"), Tr.t("Word highlight and equaliser"),
 				new String[] {Tr.t("Album"), Tr.t("Lyrics"), Tr.t("Pick")}, () -> cfg.barAccent.ordinal(),
 				i -> cfg.barAccent = BarAccent.values()[i]).when(() -> cfg.nowPlayingHud);
-		Row barSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES,
+		Row barSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES, swatchNames(),
 				() -> cfg.barAccent == BarAccent.FIXED ? cfg.barAccentColor : -1,
 				c -> { cfg.barAccentColor = c; cfg.barAccent = BarAccent.FIXED; })
+				.narrateAs(Tr.t("Accent colour"))
 				.when(() -> cfg.nowPlayingHud && cfg.barAccent == BarAccent.FIXED);
 		Row barArt = new Toggle(Tr.t("Album picture"), Tr.t("The round cover on the left"),
 				() -> cfg.barArt, v -> cfg.barArt = v).when(() -> cfg.nowPlayingHud);
@@ -794,6 +820,146 @@ public final class SkyLyricsScreen extends Screen {
 		return active instanceof Slider && System.nanoTime() - activeSince > SOLO_DELAY_NS;
 	}
 
+	// ---- Keyboard focus ---------------------------------------------------------------------------
+
+	/** Every stop Tab visits, in order: the Lyrics switch, Preview, this tab's rows, Reset all, Done. */
+	private record Ring(List<Object> stops, boolean[] available) {
+	}
+
+	private Ring ring() {
+		List<Object> stops = new ArrayList<>();
+		stops.add(masterToggle);
+		stops.add(Chrome.PREVIEW);
+		for (Card card : tabs.get(tab)) {
+			stops.addAll(card.rows());
+		}
+		stops.add(Chrome.RESET);
+		stops.add(Chrome.DONE);
+		boolean[] available = new boolean[stops.size()];
+		for (int i = 0; i < available.length; i++) {
+			available[i] = !(stops.get(i) instanceof Row row) || row == masterToggle || tab == SEARCH_TAB || row.shown();
+		}
+		return new Ring(stops, available);
+	}
+
+	/** Moves the keyboard to the next ({@code dir} 1) or previous (-1) stop, skipping hidden rows and wrapping round. */
+	private void moveFocus(int dir) {
+		layout();
+		Ring ring = ring();
+		int from = focus == null ? -1 : ring.stops().indexOf(focus);
+		if (from < 0 && dir > 0) {
+			from = 1; // from nothing, going forward starts at the first row, after the Lyrics switch and Preview
+		}
+		int to = Focus.next(ring.available(), from, dir);
+		if (to >= 0) {
+			focus = ring.stops().get(to);
+			focusAt = to;
+			focusVisible = true;
+			announcement = null;
+			if (focus instanceof Row row && row != masterToggle) {
+				tabFocus[tab] = row;
+				int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
+				scrollTarget[tab] = Focus.scrollIntoView(scrollTarget[tab], top, top + row.height(), viewH, 14, maxScroll());
+			}
+			afterKeyboardAction();
+		}
+	}
+
+	/** Keeps the focus on a row that can still be reached: a hidden row hands it to the next one, a row of another tab drops it. */
+	private void validateFocus() {
+		if (!(focus instanceof Row row) || row == masterToggle) {
+			return;
+		}
+		Ring ring = ring();
+		int at = ring.stops().indexOf(row);
+		if (at >= 0 && ring.available()[at]) {
+			focusAt = at;
+			return;
+		}
+		int to = at < 0 ? -1 : Focus.next(ring.available(), at, 1);
+		focus = to < 0 ? null : ring.stops().get(to);
+		focusAt = Math.max(to, 0);
+		if (focus instanceof Row now && now != masterToggle) {
+			tabFocus[tab] = now;
+		}
+	}
+
+	/** Goes to the next or previous tab from the keyboard, back to the row the keyboard was on there. */
+	private void switchTab(int dir) {
+		int to = Math.floorMod((tab == SEARCH_TAB ? searchFrom : tab) + dir, TAB_COUNT);
+		selectTab(to);
+		if (focus == null) {
+			focus = tabFocus[to];
+		}
+		focusVisible = true;
+		announcement = Narration.choice(tabName(to), Tr.t("tab"), "", Tr.t("%s of %s"), to, TAB_COUNT);
+		afterKeyboardAction();
+	}
+
+	private void press(Chrome button) {
+		switch (button) {
+			case PREVIEW -> preview = true;
+			case RESET -> pressReset();
+			case DONE -> onClose();
+		}
+	}
+
+	/** The first press of Reset all asks to be pressed again; the second resets. */
+	private void pressReset() {
+		if (System.nanoTime() < resetArmedUntil) {
+			cfg.resetToDefaults();
+			resetArmedUntil = 0;
+			dirty = true;
+			mod.tracker().refresh();
+		} else {
+			resetArmedUntil = System.nanoTime() + RESET_CONFIRM_NS;
+		}
+	}
+
+	/** x, y, width and height of a button outside the settings list. */
+	private int[] chromeRect(Chrome button) {
+		int fy = py + ph - FOOTER_H + 8;
+		return switch (button) {
+			case PREVIEW -> new int[] {previewX, py + 12, previewW, 16};
+			case RESET -> new int[] {viewX, fy, resetW, 16};
+			case DONE -> new int[] {px + pw - 12 - 56, fy, 56, 16};
+		};
+	}
+
+	/** What the Narrator says for what has the keyboard now. */
+	private String focusNarration() {
+		if (announcement != null) {
+			return announcement;
+		}
+		if (typing) {
+			return Narration.join(Tr.t("Search"), Tr.t("text box"), query);
+		}
+		if (focus instanceof Row row) {
+			return row.narration();
+		}
+		if (focus instanceof Chrome button) {
+			String name = switch (button) {
+				case PREVIEW -> Tr.t("Preview");
+				case RESET -> System.nanoTime() < resetArmedUntil ? Tr.t("Click again to reset") : Tr.t("Reset all");
+				case DONE -> Tr.t("Done");
+			};
+			return Narration.join(name, Tr.t("button"));
+		}
+		return "";
+	}
+
+	@Override
+	protected void updateNarrationState(NarrationElementOutput output) {
+		output.add(NarratedElementType.TITLE, getNarrationMessage());
+		// Vanilla's own hint talks about Tab and arrows moving over widgets, which this screen doesn't have
+		output.add(NarratedElementType.USAGE, Component.literal(
+				Tr.t("Tab or Up and Down to move, Left and Right to change, Enter to press, Page Up and Page Down to scroll, Ctrl+Tab for the next tab, Ctrl+F to search")));
+		String now = focusNarration();
+		if (!now.isEmpty()) {
+			output.nest().add(NarratedElementType.TITLE, Component.literal(now));
+		}
+	}
+
 	// ---- Drawing ----------------------------------------------------------------------------------
 
 	@Override
@@ -826,6 +992,7 @@ public final class SkyLyricsScreen extends Screen {
 		tabAnim = Ui.approach(tabAnim, 1, dt, 14);
 		scroll[tab] = Ui.approach(scroll[tab], scrollTarget[tab], dt, 18);
 		layout();
+		validateFocus();
 
 		if (preview) {
 			renderPreviewHint(g);
@@ -845,6 +1012,10 @@ public final class SkyLyricsScreen extends Screen {
 		renderHeader(g, frame);
 		renderContent(g, frame);
 		renderFooter(g, frame);
+		if (focusVisible && focus instanceof Chrome button) {
+			int[] r = chromeRect(button);
+			Ui.outline(g, r[0] - 2, r[1] - 2, r[2] + 4, r[3] + 4, 6, Ui.TEXT);
+		}
 	}
 
 	private void renderSidebar(GuiGraphics g, Frame f) {
@@ -879,6 +1050,9 @@ public final class SkyLyricsScreen extends Screen {
 
 		g.fill(px + 10, py + ph - 36, px + SIDEBAR_W - 10, py + ph - 35, Ui.DIVIDER);
 		masterToggle.render(f);
+		if (focusVisible && focus == masterToggle) {
+			masterToggle.renderFocus(f);
+		}
 	}
 
 	private void renderSearch(GuiGraphics g, Frame f) {
@@ -1036,6 +1210,9 @@ public final class SkyLyricsScreen extends Screen {
 					Ui.rect(g, row.x + 2, row.y + 1, row.w - 4, row.height() - 2, 4, Ui.CARD_HOVER);
 				}
 				row.render(inner);
+				if (focusVisible && row == focus) {
+					row.renderFocus(inner);
+				}
 				if (row.descClipped && row.hovered(inner) && row.desc != null) {
 					g.setTooltipForNextFrame(font, Component.literal(row.desc.get()), f.mx(), f.my());
 				}
@@ -1063,6 +1240,7 @@ public final class SkyLyricsScreen extends Screen {
 		boolean armed = System.nanoTime() < resetArmedUntil;
 		String reset = armed ? Tr.t("Click again to reset") : Tr.t("Reset all");
 		int rw = font.width(reset) + 16;
+		resetW = rw;
 		boolean hoverReset = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), viewX, fy, rw, 16);
 		Controls.drawButton(f, viewX, fy, rw, 16, reset, hoverReset, false, true);
 		if (armed) {
@@ -1121,6 +1299,7 @@ public final class SkyLyricsScreen extends Screen {
 			return true;
 		}
 		typing = false;
+		focusVisible = false;
 		int tabsY = py + TABS_Y;
 		for (int i = 0; i < TAB_COUNT; i++) {
 			if (Ui.inside(mx, my, px + 6, tabsY + i * (TAB_H + 2), SIDEBAR_W - 12, TAB_H)) {
@@ -1147,14 +1326,7 @@ public final class SkyLyricsScreen extends Screen {
 		boolean armed = System.nanoTime() < resetArmedUntil;
 		int rw = font.width(armed ? Tr.t("Click again to reset") : Tr.t("Reset all")) + 16;
 		if (Ui.inside(mx, my, viewX, fy, rw, 16)) {
-			if (armed) {
-				cfg.resetToDefaults();
-				resetArmedUntil = 0;
-				dirty = true;
-				mod.tracker().refresh();
-			} else {
-				resetArmedUntil = System.nanoTime() + RESET_CONFIRM_NS;
-			}
+			pressReset();
 			return true;
 		}
 		if (Ui.inside(mx, my, px + pw - 12 - 56, fy, 56, 16)) {
@@ -1170,6 +1342,11 @@ public final class SkyLyricsScreen extends Screen {
 		}
 
 		Row row = rowAt(mx, my);
+		if (row != null) {
+			// Clicking a row puts the keyboard on it, without a ring until a key is pressed
+			focus = row;
+			tabFocus[tab] = row;
+		}
 		if (row != null && row.click(mx, my)) {
 			dirty = true;
 			if (row instanceof Slider s && s.dragging) {
@@ -1273,6 +1450,13 @@ public final class SkyLyricsScreen extends Screen {
 				clearSearch();
 			} else if (event.isConfirmation()) {
 				typing = false;
+				if (!tabs.get(SEARCH_TAB).isEmpty()) {
+					moveFocus(1);
+				}
+			} else if (event.isCycleFocus() || event.isDown() || event.isUp()) {
+				// Tab or the arrows leave the box for the results
+				typing = false;
+				moveFocus(event.isUp() || event.hasShiftDown() ? -1 : 1);
 			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
 				editSearch(event.hasControlDown() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 			} else if (event.isPaste()) {
@@ -1283,6 +1467,7 @@ public final class SkyLyricsScreen extends Screen {
 		}
 		if (event.key() == InputConstants.KEY_F && event.hasControlDown()) {
 			typing = true;
+			afterKeyboardAction();
 			return true;
 		}
 		if (tab == SEARCH_TAB && event.isEscape()) {
@@ -1294,16 +1479,47 @@ public final class SkyLyricsScreen extends Screen {
 			onClose();
 			return true;
 		}
-		double mx = minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());
-		double my = minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
-		Row row = active == null ? rowAt(mx, my) : null;
-		if (row != null && row.key(event)) {
-			dirty = true;
+		if (event.hasControlDown() && (event.isCycleFocus() || event.key() == InputConstants.KEY_PAGEUP
+				|| event.key() == InputConstants.KEY_PAGEDOWN)) {
+			// Ctrl+Tab, Ctrl+Shift+Tab and Ctrl+Page Up/Down change tab, like tabs in a browser
+			boolean back = event.isCycleFocus() ? event.hasShiftDown() : event.key() == InputConstants.KEY_PAGEUP;
+			switchTab(back ? -1 : 1);
 			return true;
 		}
-		if ((event.isUp() || event.isDown()) && tab != SEARCH_TAB) {
-			selectTab(Math.floorMod(tab + (event.isDown() ? 1 : -1), TAB_COUNT));
+		if (event.isCycleFocus() || event.isUp() || event.isDown()) {
+			moveFocus(event.isUp() || event.hasShiftDown() ? -1 : 1);
 			return true;
+		}
+		if (active == null && (event.key() == InputConstants.KEY_PAGEUP || event.key() == InputConstants.KEY_PAGEDOWN)) {
+			scrollTarget[tab] = Focus.page(scrollTarget[tab], event.key() == InputConstants.KEY_PAGEUP ? -1 : 1, viewH, maxScroll());
+			return true;
+		}
+		if (active == null && event.key() == InputConstants.KEY_HOME) {
+			scrollTarget[tab] = 0;
+			return true;
+		}
+		if (active == null && event.key() == InputConstants.KEY_END) {
+			scrollTarget[tab] = maxScroll();
+			return true;
+		}
+		if (active == null) {
+			if (focus instanceof Chrome button && event.isSelection()) {
+				press(button);
+				afterKeyboardAction();
+				return true;
+			}
+			// With the keyboard on a row it gets the keys; with nothing chosen, the row under the mouse does, as before
+			double mx = minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());
+			double my = minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
+			Row row = focus instanceof Row focused ? focused : focus == null ? rowAt(mx, my) : null;
+			if (row != null && row.key(event)) {
+				dirty = true;
+				if (row == focus) {
+					focusVisible = true;
+				}
+				afterKeyboardAction();
+				return true;
+			}
 		}
 		return super.keyPressed(event);
 	}
@@ -1337,6 +1553,9 @@ public final class SkyLyricsScreen extends Screen {
 		if (index != tab) {
 			tab = index;
 			tabAnim = 0;
+			if (focus instanceof Row row && row != masterToggle) {
+				focus = null; // that row is on the tab we left
+			}
 		}
 	}
 
@@ -1481,9 +1700,28 @@ public final class SkyLyricsScreen extends Screen {
 		}
 
 		@Override
+		String narration() {
+			MediaTracker tracker = mod.tracker();
+			Track track = tracker.track();
+			if (track == Track.NONE) {
+				return Narration.join(Tr.t("Now playing"), Tr.t("Nothing playing"));
+			}
+			return Narration.join(Tr.t("Now playing"), track.title(), track.artist(),
+					tracker.playing() ? Tr.t("Playing") : Tr.t("Paused"), Tr.t("button"));
+		}
+
+		@Override
 		boolean key(KeyEvent event) {
 			if (event.isSelection()) {
 				mod.tracker().playPause();
+				return true;
+			}
+			if (mod.tracker().track() != Track.NONE && (event.isLeft() || event.isRight())) {
+				if (event.isLeft()) {
+					mod.tracker().previous();
+				} else {
+					mod.tracker().next();
+				}
 				return true;
 			}
 			return false;
