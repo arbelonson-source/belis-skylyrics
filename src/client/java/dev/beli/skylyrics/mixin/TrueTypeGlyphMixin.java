@@ -77,7 +77,7 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 			skylyrics$uploading = null;
 		}
 	}
-	//?} else {
+	//?} else if >=1.21.2 {
 	/*// 1.21.4 uploads the mask by calling upload on the image itself, so the call is swapped instead of its argument
 	@Redirect(method = "upload", at = @At(value = "INVOKE",
 			target = "Lcom/mojang/blaze3d/platform/NativeImage;upload(IIIIIIIZ)V"))
@@ -94,6 +94,28 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 			}
 		}
 		picture.upload(level, x, y, skipX, skipY, width, height, true);
+		if (autoClose) {
+			mask.close();
+		}
+	}
+	*///?} else {
+	/*// 1.21.1 uploads the mask the same way, with blur and close flags instead of the 1.21.4 close flag; our pictures also
+	// ask for smooth scaling and clamped edges here, since each upload sets them
+	@Redirect(method = "upload", at = @At(value = "INVOKE",
+			target = "Lcom/mojang/blaze3d/platform/NativeImage;upload(IIIIIIIZZ)V"))
+	private void skylyrics$toPicture(NativeImage mask, int level, int x, int y, int skipX, int skipY, int width,
+			int height, boolean blur, boolean autoClose) {
+		if (!skylyrics$picture) {
+			mask.upload(level, x, y, skipX, skipY, width, height, blur, autoClose);
+			return;
+		}
+		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, mask.getWidth(), mask.getHeight(), false);
+		for (int py = 0; py < mask.getHeight(); py++) {
+			for (int px = 0; px < mask.getWidth(); px++) {
+				picture.setPixelRGBA(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
+			}
+		}
+		picture.upload(level, x, y, skipX, skipY, width, height, true, true, false, true);
 		if (autoClose) {
 			mask.close();
 		}

@@ -286,6 +286,10 @@ public final class LibraryScreen extends Screen {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		//? if <1.21.2 {
+		/*// 1.21.1 draws the background from render() itself; newer versions draw it before calling render()
+		renderBackground(g, mouseX, mouseY, partialTick);
+		*///?}
 		rescue.poll(mouseX, mouseY, rescueTarget);
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);

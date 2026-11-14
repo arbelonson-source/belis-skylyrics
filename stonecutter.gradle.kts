@@ -29,8 +29,10 @@ stonecutter parameters {
 				replace("camera.xRot()", "camera.getXRot()")
 				replace("camera.blockPosition()", "camera.getBlockPosition()")
 				replace("ARGB.srgbLerp(", "ARGB.lerp(")
+				// 1.21.1's textures have no setClamp: a helper sets filter and edges together
 				replace("sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);",
-					"setClamp(true); setFilter(true, false);")
+					if (current.parsed < "1.21.2") "dev.beli.skylyrics.render.TextureCompat.smooth(this);"
+					else "setClamp(true); setFilter(true, false);")
 			}
 		}
 		// 1.21.8 and older have no input event classes: use the small stand-ins in LegacyInput. Only forwards.
@@ -59,7 +61,8 @@ stonecutter parameters {
 		// 1.21.5 and older draw the GUI with a 3D PoseStack and RenderType functions instead of 2D matrices and pipelines
 		if (current.parsed < "1.21.6") string(true) {
 			replace("import net.minecraft.client.renderer.RenderPipelines;", "import net.minecraft.client.renderer.RenderType;")
-			replace("RenderPipelines.GUI_TEXTURED", "RenderType::guiTextured")
+			// (1.21.1 has no blit with a render type at all: its blits go through LegacyBlit, below)
+			if (current.parsed >= "1.21.2") replace("RenderPipelines.GUI_TEXTURED", "RenderType::guiTextured")
 			replace("g.pose().pushMatrix()", "g.pose().pushPose()")
 			replace("g.pose().popMatrix()", "g.pose().popPose()")
 			replace("g.pose().translate(", "dev.beli.skylyrics.gui.Gui2D.translate(g, ")
@@ -72,13 +75,27 @@ stonecutter parameters {
 		// 1.21.4 has no GpuTexture: textures are plain GL ids, so no sampler objects, no texture names, no scaled mouse helper
 		if (current.parsed < "1.21.5") string(true) {
 			replace("import com.mojang.blaze3d.textures.FilterMode;", "import java.lang.Object;")
-			replace("new DynamicTexture(() -> \"SkyLyrics album art\", image)", "new DynamicTexture(image)")
-			replace("new DynamicTexture(() -> \"SkyLyrics cover\", image)", "new DynamicTexture(image)")
-			replace("new DynamicTexture(() -> \"SkyLyrics round corner\", image)", "new DynamicTexture(image)")
+			if (current.parsed >= "1.21.2") replace("new DynamicTexture(() -> \"SkyLyrics album art\", image)", "new DynamicTexture(image)")
+			if (current.parsed >= "1.21.2") replace("new DynamicTexture(() -> \"SkyLyrics cover\", image)", "new DynamicTexture(image)")
+			if (current.parsed >= "1.21.2") replace("new DynamicTexture(() -> \"SkyLyrics round corner\", image)", "new DynamicTexture(image)")
 			replace("minecraft.mouseHandler.getScaledXPos(minecraft.getWindow())",
 				"(minecraft.mouseHandler.xpos() * minecraft.getWindow().getGuiScaledWidth() / minecraft.getWindow().getScreenWidth())")
 			replace("minecraft.mouseHandler.getScaledYPos(minecraft.getWindow())",
 				"(minecraft.mouseHandler.ypos() * minecraft.getWindow().getGuiScaledHeight() / minecraft.getWindow().getScreenHeight())")
+		}
+		// 1.21.1 predates the 1.21.2 rendering rewrite: coloured blits, ARGB, the timer and a few names differ
+		if (current.parsed < "1.21.2") string(true) {
+			replace("g.blit(RenderPipelines.GUI_TEXTURED, ", "dev.beli.skylyrics.gui.LegacyBlit.blit(g, ")
+			replace("import net.minecraft.util.ARGB;", "import dev.beli.skylyrics.gui.ARGB;")
+			replace("image.setPixel(", "dev.beli.skylyrics.render.TextureCompat.setPixel(image, ")
+			replace("out.setPixel(", "dev.beli.skylyrics.render.TextureCompat.setPixel(out, ")
+			replace("new DynamicTexture(() -> \"SkyLyrics album art\", image)", "new dev.beli.skylyrics.render.TextureCompat.Smooth(image)")
+			replace("new DynamicTexture(() -> \"SkyLyrics cover\", image)", "new dev.beli.skylyrics.render.TextureCompat.Smooth(image)")
+			replace("new DynamicTexture(() -> \"SkyLyrics round corner\", image)", "new dev.beli.skylyrics.render.TextureCompat.Smooth(image)")
+			replace("client.getToastManager()", "client.getToasts()")
+			replace("mc.getDeltaTracker()", "mc.getTimer()")
+			replace("mc.getFramerateLimitTracker().getFramerateLimit()", "mc.getWindow().getFramerateLimit()")
+			replace("DimensionSpecialEffects.SkyType.OVERWORLD", "DimensionSpecialEffects.SkyType.NORMAL")
 		}
 		// 26.3 moved the low-level graphics classes into com.mojang.renderpearl
 		if (current.parsed >= "26.3") string(true) {
