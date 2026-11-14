@@ -17,7 +17,7 @@ final class Ui {
 	static final int DIVIDER = 0xFF2A2433;
 	static final int TEXT = 0xFFF2EEF8;
 	static final int MUTED = 0xFF9C94AD;
-	static final int DIM = 0xFF6D6680;
+	static final int DIM = 0xFF8A82A3;
 	static final int ACCENT = 0xFFA678FF;
 	static final int ACCENT_SOFT = 0x40A678FF;
 	static final int TRACK = 0xFF3A3346;
