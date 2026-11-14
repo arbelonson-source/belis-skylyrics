@@ -327,6 +327,9 @@ public final class LyricsRenderer {
 		Draw draw = new Draw(new WorldCanvas(context.commandQueue(), pose, mode), mc.font, cfg, rgb(), wrapWidth);
 		//?}
 		for (Spot spot : spots) {
+			if (!LyricsInView.worthDrawing(spot.offset(), 1.2f * wrapWidth * scale, 5f * ROW_H * scale)) {
+				continue; // looking away: skip the line and all its glow copies
+			}
 			pose.pushPose();
 			pose.translate(spot.offset().x, spot.offset().y, spot.offset().z);
 			pose.mulPose(spot.orientation());
@@ -605,6 +608,9 @@ public final class LyricsRenderer {
 			Vector3f at = ScreenLayer.project(spot.offset(), g.guiWidth(), g.guiHeight());
 			if (at == null) {
 				continue; // behind you
+			}
+			if (!LyricsInView.worthDrawing(spot.offset(), 1.2f * frame.wrapWidth() * frame.scale(), 5f * ROW_H * frame.scale())) {
+				continue; // well off to the side
 			}
 			float size = frame.scale() * at.z;
 			g.pose().pushMatrix();

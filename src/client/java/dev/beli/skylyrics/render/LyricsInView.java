@@ -22,6 +22,17 @@ public final class LyricsInView {
 		}
 	}
 
+	/** Extra slack round the screen, as a fraction of it, before a line is skipped: generous so nothing pops at the edge. */
+	static final float CULL_MARGIN = 0.3f;
+
+	/**
+	 * Whether a line block is worth drawing this frame. False only when it is clearly outside the view (behind you,
+	 * or well past an edge, allowing for its size and the slack). Before the first world frame nothing is known, so draw.
+	 */
+	static boolean worthDrawing(Vector3f centre, float halfW, float halfH) {
+		return !ScreenLayer.ready() || ScreenLayer.inView(centre, halfW, halfH, CULL_MARGIN);
+	}
+
 	public static boolean onScreen() {
 		return seenAt != Long.MIN_VALUE && System.nanoTime() - seenAt < HOLD_NS;
 	}
