@@ -9,13 +9,17 @@ The **Music** tab in the settings (press **J**) is the best place to start. It s
 Go through these in order:
 
 1. **Is the mod turned on?** At the top of the settings screen there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
-2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to North, East, South or West. Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look.
+2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to North, East, South or West. Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
 3. **Are they hidden on purpose?** On the **Display** tab check **Hide with F1** (pressing F1 hides them along with the rest of the screen), **Hide in menus** (hidden while chat or any menu is open) and **Hide when paused** (hidden while the music is paused).
 4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen).
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
    - **Looking for lyrics…**: wait a moment.
    - **No lyrics found for this song**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
-   - **Couldn't reach the lyrics sites. Offline?**: check your internet, then press **Retry**. If your internet works, LRCLIB may be down and NetEase didn't have the song. The mod keeps trying while the song plays.
+   - **Couldn't reach the lyrics sites. Offline?**: the mod uses two sites, LRCLIB first and NetEase Cloud Music as a backup, and it couldn't get lyrics from either. Try these in order:
+     1. Check that your internet works (open a web page).
+     2. Press **Retry**.
+     3. If your internet is fine, one of the sites may be down or busy, and the other doesn't have this song. The mod keeps trying while the song plays, and doesn't remember the song as "no lyrics", so the lyrics usually appear by themselves once a site is back. Try again in a few minutes, or play another song.
+     4. A school, work or antivirus network can block one of the sites. Try another network, or allow `lrclib.net` and `music.163.com`.
    - **Instrumental, no words**: the song has no lyrics.
    - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** is on (it is at first). Then the lines are spread evenly over the song.
 
@@ -119,13 +123,25 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 **Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
 
+## Lyrics vanish in caves
+
+With the Arc and Lines layouts, the lyrics stay visible underground as long as **Show underground too** (Display tab) is on, **Draw on top** (Look tab) is on **Auto**, and **Hide in caves** (Display tab) is off. **Hide in caves** hides them on purpose when there is no open sky above you. See [the FAQ](FAQ.md#why-dont-i-see-lyrics-in-caves) for more.
+
 ## Shaders make the lyrics dim
 
 Shader packs darken the sky and draw clouds and fog over it. Open the settings, go to **Look** and set **Draw on top** to **Always**. Then the lyrics are drawn on top of the finished picture, so shaders, clouds, rain and fog can't dim them.
 
-On **Auto** (the starting setting), the mod already draws on top when a shader pack is on, when it rains, or when **See through blocks** is on. **Never** keeps the lyrics inside the world, so hills and buildings can hide them.
+On **Auto** (the starting setting), the mod already draws on top when a shader pack is on, when it rains, when **See through blocks** is on, or when you are in a cave or under a roof (with **Show underground too** on). **Never** keeps the lyrics inside the world, so hills and buildings can hide them.
 
 In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). It gives the words a dark edge that makes them easier to read against a pale sky.
+
+## The mod says a new version is out, but won't install it
+
+On Windows, if your user folder or your Minecraft folder has accented or non-English letters in its name (like `C:\Users\José`), the mod can't swap in the new version by itself, so it just tells you a new one is out. Download the new jar for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases), put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.
+
+## Settings or Spotify sign-in not saved on Windows
+
+Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. From 0.7.9 the mod tries again for a moment before giving up. If a setting still won't stick, update to the newest version first.
 
 ## Opening the settings
 
