@@ -28,12 +28,12 @@ import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.gui.Controls.Frame;
 import dev.beli.skylyrics.media.DemoLibrary;
+import dev.beli.skylyrics.media.HeardLibrary;
 import dev.beli.skylyrics.media.Library;
 import dev.beli.skylyrics.media.LibraryItem;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.LibraryPlaylist;
 import dev.beli.skylyrics.media.SpotifyLibrary.Page;
-import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.render.CoverCache;
 
 /** Browse your songs as a grid of covers and click one to play it. Drawn by hand like the settings window. */
@@ -114,12 +114,19 @@ public final class LibraryScreen extends Screen {
 	protected void init() {
 		// Runs again after coming back from the settings, so signing in there takes effect right away
 		boolean wantDemo = demo || SkyLyricsConfig.get().demoMode;
-		Library next = wantDemo ? new DemoLibrary() : mod.spotify().canBrowse() ? mod.library() : null;
-		if (next != null && (library == null || wantDemo != (library instanceof DemoLibrary))) {
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		// Without Spotify the library shows the songs heard lately, unless that is switched off
+		Library next = wantDemo ? new DemoLibrary() : mod.spotify().canBrowse() ? mod.library()
+				: cfg.recentSongs ? mod.heard() : null;
+		boolean same = next instanceof DemoLibrary ? library instanceof DemoLibrary : next == library;
+		if (!same && (next != null || library != null)) {
 			library = next;
 			demo = wantDemo;
 			shelves.clear();
 			opened = null;
+		}
+		if (library instanceof HeardLibrary && section == Section.PLAYLISTS) {
+			section = Section.LIKED;
 		}
 	}
 
@@ -205,13 +212,30 @@ public final class LibraryScreen extends Screen {
 		py = (height - ph) / 2 + Math.round((1 - openAnim) * 8);
 		viewX = px + 12;
 		viewW = pw - 24;
-		viewY = py + HEADER_H + 6;
-		viewH = ph - HEADER_H - 12;
+		viewY = py + HEADER_H + 6 + bannerH();
+		viewH = ph - HEADER_H - 12 - bannerH();
 		cols = LibraryGrid.columns(viewW);
 		cellW = LibraryGrid.cellWidth(viewW);
 		cellH = cellW + TEXT_H;
 		shelfRows = LibraryViews.shelfRows(viewH - TEXT_H - 4, SHELF_COVER + SHELF_FLOOR);
 		shelfStride = SHELF_COVER + LibraryGrid.GAP;
+	}
+
+	private boolean heardMode() {
+		return library instanceof HeardLibrary;
+	}
+
+	/** Room for the "sign in to Spotify" strip above the recently heard songs. */
+	private int bannerH() {
+		return heardMode() ? 19 : 0;
+	}
+
+	private int bannerButtonW() {
+		return font.width(Tr.t("Open Music tab")) + 14;
+	}
+
+	private Section[] sections() {
+		return heardMode() ? new Section[] {Section.SEARCH, Section.LIKED} : Section.values();
 	}
 
 	private SkyLyricsConfig.LibraryView view() {
@@ -318,7 +342,8 @@ public final class LibraryScreen extends Screen {
 		g.drawCenteredString(font, "♪", px + 18, py + 13, 0xFFFFFFFF);
 		g.drawString(font, Ui.visual(Tr.t("Song library")), px + 31, py + 8, Ui.TEXT, false);
 		String subtitle = library == null ? Tr.t("Your Spotify songs")
-				: demo ? Tr.t("Made-up songs, for trying it out") : Tr.t("From your Spotify");
+				: demo ? Tr.t("Made-up songs, for trying it out")
+				: heardMode() ? Tr.t("Songs you've played lately") : Tr.t("From your Spotify");
 		g.drawString(font, Ui.visual(subtitle), px + 31, py + 18, Ui.DIM, false);
 
 		int cx = px + pw - 22;
@@ -354,7 +379,7 @@ public final class LibraryScreen extends Screen {
 			g.drawString(font, Ui.visual(Ui.clip(font, openedName, pw - w - 100)), px + 18 + w, y + 3, Ui.MUTED, false);
 		} else if (library != null) {
 			int x = px + 10;
-			for (Section s : Section.values()) {
+			for (Section s : sections()) {
 				String name = sectionName(s);
 				int w = font.width(name) + 14;
 				boolean hover = Ui.inside(f.mx(), f.my(), x, y, w, 14);
@@ -371,6 +396,18 @@ public final class LibraryScreen extends Screen {
 			renderViewToggle(g, f, y);
 		}
 		g.fill(px + 10, py + HEADER_H - 1, px + pw - 10, py + HEADER_H, Ui.DIVIDER);
+		if (heardMode()) {
+			renderBanner(g, f);
+		}
+	}
+
+	/** A slim strip telling the user their own Spotify songs are one sign-in away. */
+	private void renderBanner(GuiGraphics g, Frame f) {
+		int y = py + HEADER_H + 3, bw = bannerButtonW();
+		Ui.rect(g, px + 10, y, pw - 20, 16, 5, Ui.CARD);
+		g.drawString(font, Ui.visual(Ui.clip(font, signInText(), pw - 20 - bw - 24)), px + 16, y + 4, Ui.MUTED, false);
+		int bx = px + pw - 10 - bw - 2;
+		Controls.drawButton(f, bx, y + 1, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, y + 1, bw, 14), true, true);
 	}
 
 	private int toggleX(int i) {
@@ -428,10 +465,10 @@ public final class LibraryScreen extends Screen {
 		return px + pw - 30 - SEARCH_W;
 	}
 
-	private static String sectionName(Section s) {
+	private String sectionName(Section s) {
 		return switch (s) {
 			case SEARCH -> Tr.t("Search");
-			case LIKED -> Tr.t("Liked songs");
+			case LIKED -> heardMode() ? Tr.t("Recently heard") : Tr.t("Liked songs");
 			case PLAYLISTS -> Tr.t("Playlists");
 		};
 	}
@@ -691,7 +728,7 @@ public final class LibraryScreen extends Screen {
 		}
 		return switch (section) {
 			case SEARCH -> query.isBlank() ? Tr.t("Type to find a song") : Tr.t("Nothing found for “%s”", query.strip());
-			case LIKED -> Tr.t("No liked songs yet");
+			case LIKED -> heardMode() ? Tr.t("Songs you play will show up here") : Tr.t("No liked songs yet");
 			case PLAYLISTS -> Tr.t("No playlists yet");
 		};
 	}
@@ -775,13 +812,16 @@ public final class LibraryScreen extends Screen {
 		g.pose().popMatrix();
 	}
 
-	private void renderSignIn(GuiGraphics g, Frame f) {
-		SpotifyWebSource spotify = mod.spotify();
-		String text = switch (spotify.account()) {
+	private String signInText() {
+		return switch (mod.spotify().account()) {
 			case NO_CLIENT_ID -> Tr.t("Connect Spotify on the Music tab to see your songs here");
 			case SIGNED_IN -> Tr.t("Sign in to Spotify again so SkyLyrics can see your songs");
 			default -> Tr.t("Sign in to Spotify on the Music tab to see your songs here");
 		};
+	}
+
+	private void renderSignIn(GuiGraphics g, Frame f) {
+		String text = signInText();
 		int w = Math.min(300, pw - 40), x = px + (pw - w) / 2, y = viewY + viewH / 2 - 44;
 		Ui.rect(g, x, y, w, 80, 8, Ui.CARD);
 		List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(text), w - 24);
@@ -908,6 +948,10 @@ public final class LibraryScreen extends Screen {
 			}
 			return true;
 		}
+		if (heardMode() && Ui.inside(mx, my, px + pw - 12 - bannerButtonW(), py + HEADER_H + 4, bannerButtonW(), 14)) {
+			openMusicTab();
+			return true;
+		}
 		typing = Ui.inside(mx, my, searchX(), py + 8, SEARCH_W, 15);
 		if (typing) {
 			if (section != Section.SEARCH || opened != null) {
@@ -939,7 +983,7 @@ public final class LibraryScreen extends Screen {
 			}
 		} else {
 			int x = px + 10;
-			for (Section s : Section.values()) {
+			for (Section s : sections()) {
 				int w = font.width(sectionName(s)) + 14;
 				if (Ui.inside(mx, my, x, y, w, 14)) {
 					showSection(s);
@@ -1097,7 +1141,7 @@ public final class LibraryScreen extends Screen {
 			}
 		}
 		if (event.isCycleFocus()) {
-			Section[] all = Section.values();
+			Section[] all = sections();
 			showSection(all[Math.floorMod(section.ordinal() + (event.hasShiftDown() ? -1 : 1), all.length)]);
 			typing = section == Section.SEARCH;
 			return true;

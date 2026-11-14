@@ -411,6 +411,8 @@ public final class SkyLyricsConfig {
 	public boolean introSeen = false;
 	/** How the song library shows its covers. */
 	public LibraryView libraryView = LibraryView.GRID;
+	/** Remember the songs that play, for the "Recently heard" list in the song library. Kept on this computer only. */
+	public boolean recentSongs = true;
 
 	/** Searches in the song library that led to a song, newest first. */
 	public java.util.List<String> recentSearches = new java.util.ArrayList<>();

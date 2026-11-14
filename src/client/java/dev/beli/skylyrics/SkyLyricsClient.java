@@ -47,6 +47,7 @@ import dev.beli.skylyrics.lyrics.LrclibClient;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.lyrics.NeteaseClient;
 import dev.beli.skylyrics.media.ChosenSource;
+import dev.beli.skylyrics.media.HeardLibrary;
 import dev.beli.skylyrics.media.Library;
 import dev.beli.skylyrics.media.MacMediaSource;
 import dev.beli.skylyrics.media.MediaSource;
@@ -74,6 +75,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private MediaTracker tracker;
 	private SpotifyWebSource spotify;
 	private Library library;
+	private HeardLibrary heard;
 	private LyricsService lyrics;
 	private AlbumArt art;
 	private CoverCache covers;
@@ -115,6 +117,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 		spotify = new SpotifyWebSource(() -> SkyLyricsConfig.get().spotifyClientId, cache.resolve("spotify-login.json"));
 		library = windows() || mac() ? new SpotifyLibrary(spotify) : new SpotifyLibrary(spotify, MprisSource::openInSpotify);
+		heard = new HeardLibrary(cache.resolve("heard.json"), () -> SkyLyricsConfig.get().recentSongs,
+				windows() || mac() ? HeardLibrary.NO_OPENER : HeardLibrary.MPRIS);
 		MediaSource music = new ChosenSource(musicSource(cache), spotify, () -> SkyLyricsConfig.get().preferredPlayer);
 		tracker = new MediaTracker(music, () -> SkyLyricsConfig.get().demoMode);
 		lyrics = new LyricsService(new FallbackSource(new LrclibClient(version), new NeteaseClient(version)), cache);
@@ -125,6 +129,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		card = new RecordCard(tracker, art, hud);
 
 		tracker.onTrackChange(track -> {
+			heard.record(track);
 			lyrics.load(track);
 			art.load(track);
 			hud.flash();
@@ -392,6 +397,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		spotify.cancelLogin();
 		tracker.shutdown();
 		lyrics.shutdown();
+		heard.flush();
 		art.close();
 		covers.close();
 	}
@@ -402,6 +408,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	public SpotifyWebSource spotify() {
 		return spotify;
+	}
+
+	public HeardLibrary heard() {
+		return heard;
 	}
 
 	public Library library() {

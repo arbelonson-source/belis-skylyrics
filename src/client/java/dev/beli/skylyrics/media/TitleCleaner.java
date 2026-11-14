@@ -43,7 +43,7 @@ public final class TitleCleaner {
 		if (title.equals(track.title()) && artist.equals(track.artist())) {
 			return track;
 		}
-		return new Track(title, artist, track.album(), track.lengthMs(), track.artUrl(), track.player());
+		return new Track(title, artist, track.album(), track.lengthMs(), track.artUrl(), track.player(), track.uri());
 	}
 
 	/** A stricter version used only for looking lyrics up: "Song - Remastered 2011" -> "Song". */

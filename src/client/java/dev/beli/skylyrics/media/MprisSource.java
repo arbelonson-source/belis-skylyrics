@@ -106,6 +106,7 @@ public final class MprisSource implements MediaSource {
 			long lengthUs = number(value(meta.get("mpris:length")));
 			String art = string(meta.get("mpris:artUrl"));
 			String trackId = string(meta.get("mpris:trackid"));
+			String url = string(meta.get("xesam:url"));
 
 			String player = busName.substring(PREFIX.length());
 			int dot = player.indexOf('.');
@@ -113,7 +114,7 @@ public final class MprisSource implements MediaSource {
 				player = player.substring(0, dot); // "firefox.instance_1_42" -> "firefox"
 			}
 
-			Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player));
+			Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : url));
 			return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId);
 		} catch (Exception e) {
 			return null; // Player went away mid-read or doesn't implement the interface properly
@@ -141,23 +142,69 @@ public final class MprisSource implements MediaSource {
 		}
 	}
 
+	/** The bus names of the running players called {@code player} ("firefox" also finds "firefox.instance_1_42"). */
+	private static List<String> busNames(DBus bus, String player) {
+		List<String> found = new ArrayList<>();
+		for (String name : bus.ListNames()) {
+			if (name.equals(PREFIX + player) || name.startsWith(PREFIX + player + ".")) {
+				found.add(name);
+			}
+		}
+		return found;
+	}
+
+	/**
+	 * Which kinds of address (file, https, spotify…) the running player {@code player} says it can open, or null
+	 * when no such player is running. Browsers usually list none.
+	 */
+	public static @Nullable List<String> supportedSchemes(String player) {
+		try (DBusConnection conn = DBusConnectionBuilder.forSessionBus().withShared(false).build()) {
+			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
+			List<String> names = busNames(bus, player);
+			if (names.isEmpty()) {
+				return null;
+			}
+			List<String> schemes = new ArrayList<>();
+			try {
+				Object list = value(conn.getRemoteObject(names.getFirst(), PATH, Properties.class)
+						.Get("org.mpris.MediaPlayer2", "SupportedUriSchemes"));
+				if (list instanceof Object[] array) {
+					list = List.of(array);
+				}
+				if (list instanceof Collection<?> items) {
+					for (Object item : items) {
+						schemes.add(string(item).toLowerCase(Locale.ROOT));
+					}
+				}
+			} catch (Exception e) {
+				// The player doesn't say: it can't open anything we know of
+			}
+			return schemes;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	/** Asks the running player {@code player} to play {@code uri}. False if it isn't running or refuses. */
+	public static boolean openUri(String player, String uri) {
+		try (DBusConnection conn = DBusConnectionBuilder.forSessionBus().withShared(false).build()) {
+			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
+			for (String name : busNames(bus, player)) {
+				conn.getRemoteObject(name, PATH, Player.class).OpenUri(uri);
+				return true;
+			}
+		} catch (Exception e) {
+			// No session bus, or the player went away
+		}
+		return false;
+	}
+
 	/**
 	 * Asks the Spotify app on this computer to play {@code uri}. Unlike starting a song through Spotify's servers this
 	 * works without Premium, but it plays just that one song. False if the Spotify app isn't running.
 	 */
 	public static boolean openInSpotify(String uri) {
-		try (DBusConnection conn = DBusConnectionBuilder.forSessionBus().withShared(false).build()) {
-			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
-			for (String name : bus.ListNames()) {
-				if (name.equals(PREFIX + "spotify") || name.startsWith(PREFIX + "spotify.")) {
-					conn.getRemoteObject(name, PATH, Player.class).OpenUri(uri);
-					return true;
-				}
-			}
-		} catch (Exception e) {
-			// No session bus, or Spotify went away
-		}
-		return false;
+		return openUri("spotify", uri);
 	}
 
 	@Override
