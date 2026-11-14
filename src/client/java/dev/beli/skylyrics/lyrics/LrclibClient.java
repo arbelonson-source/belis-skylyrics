@@ -31,8 +31,17 @@ public final class LrclibClient implements LyricsSource {
 	private static final double DURATION_SLACK_S = 4;
 
 	/** What LRCLIB gave us, before parsing. */
-	public record Result(@Nullable String synced, @Nullable String plain, boolean instrumental) {
+	public record Result(@Nullable String synced, @Nullable String plain, boolean instrumental, boolean stopgap) {
 		public static final Result NOT_FOUND = new Result(null, null, false);
+
+		public Result(@Nullable String synced, @Nullable String plain, boolean instrumental) {
+			this(synced, plain, instrumental, false);
+		}
+
+		/** Same lyrics, but only a stand-in used because the main source was down: don't keep it. */
+		public Result asStopgap() {
+			return new Result(synced, plain, instrumental, true);
+		}
 
 		public boolean found() {
 			return instrumental || synced != null || plain != null;

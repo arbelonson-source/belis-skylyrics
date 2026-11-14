@@ -161,7 +161,10 @@ public final class LyricsService {
 				file.toFile().setLastModified(System.currentTimeMillis()); // played again, so kept longer
 			} else {
 				result = client.find(t);
-				writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis()));
+				// A stand-in from the backup (main site was down) isn't saved, so the next play asks the main site again
+				if (!result.stopgap()) {
+					writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis()));
+				}
 			}
 			if (generation.get() != gen) {
 				return;
