@@ -259,6 +259,7 @@
   "skylyrics.ui.signed_in_you_can_close_this_tab_and_go_back_to": "Signed in. You can close this tab and go back to Minecraft.",
   "skylyrics.ui.sign_in_failed_s": "Sign-in failed: %s",
   "skylyrics.ui.sign_in_timed_out": "Sign-in timed out",
+  "skylyrics.ui.port_s_is_already_in_use_close_the_other_game_or": "Port %s is already in use. Close the other game or app using it and try again",
   "skylyrics.ui.sign_in_to_spotify_below": "Sign in to Spotify below",
   "skylyrics.ui.spotify_signed_you_out_sign_in_again": "Spotify signed you out, sign in again",
   "skylyrics.ui.spotify_answered_with_error_s": "Spotify answered with error %s",

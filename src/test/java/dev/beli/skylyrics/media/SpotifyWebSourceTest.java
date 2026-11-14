@@ -7,6 +7,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -113,5 +118,83 @@ class SpotifyWebSourceTest {
 		source.signOut();
 		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
 		assertFalse(Files.exists(login));
+	}
+
+	/** Runs the sign-in wait on a free port with a short idle limit; returns the server's port once it listens. */
+	private static Thread wait(SpotifyWebSource source, ServerSocket server) {
+		Thread t = new Thread(() -> source.awaitBrowser(server, ID, "verifier", "st", 300));
+		t.setDaemon(true);
+		t.start();
+		return t;
+	}
+
+	private static ServerSocket freeServer() throws IOException {
+		return new ServerSocket(0, 4, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
+	}
+
+	private static String get(int port, String path) throws IOException {
+		try (Socket s = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), port)) {
+			s.setSoTimeout(5000);
+			s.getOutputStream().write(("GET " + path + " HTTP/1.1\r\nHost: x\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+			s.getOutputStream().flush();
+			InputStream in = s.getInputStream();
+			return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+		}
+	}
+
+	@Test
+	void theWholeRequestIsReadSoClosingDoesNotResetTheBrowser() throws Exception {
+		// Unread headers make macOS reset the connection on close, so the browser shows an error instead of our page
+		java.io.ByteArrayInputStream in = new java.io.ByteArrayInputStream(
+				"GET /callback?state=s HTTP/1.1\r\nHost: 127.0.0.1\r\nAccept: */*\r\n\r\nNEXT".getBytes(StandardCharsets.US_ASCII));
+		assertEquals("GET /callback?state=s HTTP/1.1", SpotifyWebSource.requestLine(in));
+		assertEquals("NEXT", new String(in.readAllBytes(), StandardCharsets.US_ASCII));
+	}
+
+	@Test
+	void anIdleConnectionDoesNotEndTheSignIn(@TempDir Path dir) throws Exception {
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		try (ServerSocket server = freeServer(); Socket idle = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), server.getLocalPort())) {
+			Thread t = wait(source, server);
+			Thread.sleep(900); // well past the idle limit; the old loop gave up here
+			assertTrue(t.isAlive(), "the sign-in must still be waiting");
+			get(server.getLocalPort(), "/callback?state=st&error=access_denied");
+			t.join(5000);
+			assertFalse(t.isAlive());
+			assertEquals("Sign-in was cancelled", source.problem());
+		}
+	}
+
+	@Test
+	void aConnectionThatHangsUpDoesNotEndTheSignIn(@TempDir Path dir) throws Exception {
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), server.getLocalPort()).close();
+			try (Socket rude = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), server.getLocalPort())) {
+				rude.getOutputStream().write("GET /favicon.ico HTTP/1.1\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+				rude.setSoLinger(true, 0); // hang up without reading the answer
+			}
+			Thread.sleep(200);
+			assertTrue(t.isAlive());
+			assertTrue(get(server.getLocalPort(), "/callback?state=st&error=access_denied").contains("Sign-in was cancelled"));
+			t.join(5000);
+			assertFalse(t.isAlive());
+			assertEquals("Sign-in was cancelled", source.problem());
+		}
+	}
+
+	@Test
+	void aWrongStateIsRefusedAndTheWaitContinues(@TempDir Path dir) throws Exception {
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			assertTrue(get(server.getLocalPort(), "/callback?state=other&error=access_denied").startsWith("HTTP/1.1 404"));
+			assertTrue(t.isAlive());
+			server.close();
+			t.join(5000);
+			assertFalse(t.isAlive());
+			assertEquals("", source.problem());
+		}
 	}
 }

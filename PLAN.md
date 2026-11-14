@@ -26,6 +26,9 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
   and after every window move, run `hyprctl eval 'hl.dispatch(hl.dsp.focus({ monitor = "DP-3" }))'`,
   and before each batch of shots confirm `hyprctl monitors -j` shows SKYLYRICS with "focused": false.
   Place SKYLYRICS so it shares no edge with DP-3 (e.g. position 10000x3000), or the owner's mouse can slide onto it.
+- After moving the test window, check `hyprctl clients -j` that it really is on the skytest workspace (a move sent
+  before the window is ready can silently fail; 2026-11-15 a test window sat on the owner's workspace 1). Creating
+  the output can pull focus onto it a moment later: wait 1-2 s and check focus again before launching.
 - Never remove the SKYLYRICS output while a test game is still running: its window falls onto the owner's screen
   with focus (happened 2026-11-14 23:21). Close the game first. A running test game's Gradle wrapper also holds the
   shared build lock, so keep sessions short.

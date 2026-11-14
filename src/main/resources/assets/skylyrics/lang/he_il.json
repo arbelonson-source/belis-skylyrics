@@ -259,6 +259,7 @@
   "skylyrics.ui.signed_in_you_can_close_this_tab_and_go_back_to": "התחברתם. אפשר לסגור את הלשונית ולחזור למיינקראפט.",
   "skylyrics.ui.sign_in_failed_s": "ההתחברות נכשלה: %s",
   "skylyrics.ui.sign_in_timed_out": "נגמר הזמן להתחברות",
+  "skylyrics.ui.port_s_is_already_in_use_close_the_other_game_or": "פורט %s תפוס כבר. סגרו את המשחק או האפליקציה האחרים שמשתמשים בו ונסו שוב",
   "skylyrics.ui.sign_in_to_spotify_below": "התחברו לספוטיפיי למטה",
   "skylyrics.ui.spotify_signed_you_out_sign_in_again": "ספוטיפיי ניתק אתכם, התחברו שוב",
   "skylyrics.ui.spotify_answered_with_error_s": "ספוטיפיי החזיר שגיאה %s",
