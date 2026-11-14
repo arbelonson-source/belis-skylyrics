@@ -3,6 +3,7 @@ package dev.beli.skylyrics.render;
 import java.util.Locale;
 
 import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.AttackIndicatorStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -13,6 +14,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.HumanoidArm;
 
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
@@ -30,10 +32,18 @@ public final class RecordCard {
 	static final float H = 46;
 	/** The strip under the card that shows the line being sung. */
 	static final float LYRIC_H = 13;
+	/** A dimmed line above or below the current one, when the card shows three lines. */
+	static final float SIDE_H = 9;
+	/** The dimmed lines are drawn this much smaller than the current one. */
+	private static final float SIDE_SCALE = 0.8f;
 	/** Space between the card and the edge of the screen. */
 	static final float MARGIN = 6;
 	/** Half the hotbar's width, which also covers the hearts and food above it. */
 	static final float HOTBAR_HALF = 91;
+	/** How far the off-hand slot reaches past the middle of the screen, on the side away from the main hand. */
+	static final float OFFHAND_REACH = HOTBAR_HALF + 29;
+	/** The same for the hotbar-style attack indicator, which sits on the main-hand side. */
+	static final float INDICATOR_REACH = HOTBAR_HALF + 24;
 	/** Height of the hotbar with hearts, armour and the XP bar, for a card that has to sit above it. */
 	static final float HOTBAR_UP = 52;
 	/** Bottom of the good effects row and of the bad effects row under it. */
@@ -88,8 +98,9 @@ public final class RecordCard {
 		}
 		art.upload();
 
-		float h = height(cfg.cardLyrics);
-		float[] at = corner(cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc), h);
+		int lines = lines(cfg.cardLines, g.guiHeight());
+		float h = height(cfg.cardLyrics, lines);
+		float[] at = corner(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc), h);
 		float x = at[0], y = at[1];
 		float s = (float) mc.getWindow().getGuiScale();
 		spinSpeed = TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt);
@@ -136,7 +147,7 @@ public final class RecordCard {
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
 		if (cfg.cardLyrics) {
-			drawLyric(g, font, style, cfg, x, y + H, scale, dt);
+			drawLyric(g, font, style, cfg, x, y + H, scale, dt, lines);
 		}
 	}
 
@@ -144,7 +155,7 @@ public final class RecordCard {
 	 * The line being sung, across the strip under the record. Between lines (or with no timed lyrics)
 	 * it shows a quiet note, so the card keeps its size instead of jumping.
 	 */
-	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt) {
+	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt, int lines) {
 		String now = hud.singingNow(cfg);
 		String want = now == null ? "" : now;
 		if (!want.equals(lyric)) {
@@ -152,11 +163,17 @@ public final class RecordCard {
 			lyricIn = 0;
 		}
 		lyricIn = Math.min(1, lyricIn + dt * LYRIC_FADE_IN);
-		float midY = top + LYRIC_H / 2 - 2;
+		float rowTop = top + currentRowTop(lines);
+		float midY = rowTop + LYRIC_H / 2 - 2;
 		float left = x + PAD + 2, room = W - 2 * PAD - 4;
 		// A hairline between the song and its words
 		NowPlayingHud.roundRectGui(g, left, top - 2, room, 1, 0, ARGB.color(Math.round(alpha * 40), 0xFFFFFF));
 		float a = alpha * lyricIn;
+		if (lines >= 3) {
+			float side = scale * SIDE_SCALE;
+			dimLine(g, font, style, hud.singingNeighbour(cfg, -1), x, top + SIDE_H / 2 - 1.5f, side, left, room, a);
+			dimLine(g, font, style, hud.singingNeighbour(cfg, 1), x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
+		}
 		if (lyric.isEmpty()) {
 			float noteW = LyricsFont.width(font, style, REST) * scale;
 			text(g, font, style, REST, x + (W - noteW) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 160)), SUB));
@@ -171,9 +188,19 @@ public final class RecordCard {
 		// Too long for the strip: the line slides along as it is sung, so its end can be read too
 		float shift = lyricShift(lineW, room, hud.singingThrough(cfg));
 		float start = NowPlayingHud.isRtl(lyric) ? left - (lineW - room) + shift : left - shift;
-		g.enableScissor(Math.round(left), Math.round(top), Math.round(left + room), Math.round(top + LYRIC_H));
+		g.enableScissor(Math.round(left), Math.round(rowTop), Math.round(left + room), Math.round(rowTop + LYRIC_H));
 		text(g, font, style, lyric, start, midY, scale, color);
 		g.disableScissor();
+	}
+
+	/** A line before or after the current one: dimmed, smaller, centred, and cut with "…" when too long. */
+	private void dimLine(GuiGraphics g, Font font, Style style, String line, float x, float midY, float scale, float left, float room, float a) {
+		if (line == null || line.isEmpty()) {
+			return;
+		}
+		String cut = NowPlayingHud.clip(font, style, line, room / scale);
+		float w = LyricsFont.width(font, style, cut) * scale;
+		text(g, font, style, cut, x + (W - w) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 110)), SUB));
 	}
 
 	/**
@@ -198,7 +225,30 @@ public final class RecordCard {
 
 	/** The card's height, with the lyric strip when it is on. */
 	static float height(boolean lyrics) {
-		return lyrics ? H + LYRIC_H : H;
+		return height(lyrics, 1);
+	}
+
+	/** The card's height with the lyric strip of {@code lines} lines (1 or 3) when it is on. */
+	static float height(boolean lyrics, int lines) {
+		return lyrics ? H + stripHeight(lines) : H;
+	}
+
+	/** The strip's height: the current line, or the current line between a dimmed one above and below. */
+	static float stripHeight(int lines) {
+		return lines >= 3 ? LYRIC_H + 2 * SIDE_H : LYRIC_H;
+	}
+
+	/** Where the current line's row starts, down from the top of the strip. */
+	static float currentRowTop(int lines) {
+		return lines >= 3 ? SIDE_H : 0;
+	}
+
+	/**
+	 * How many lines the strip shows: the wanted 1 or 3, but one when three would not fit on this screen
+	 * with the card's margins.
+	 */
+	static int lines(int wanted, int guiH) {
+		return wanted >= 3 && height(true, 3) + 2 * MARGIN <= guiH ? 3 : 1;
 	}
 
 	/** A dark disc with a few grooves, the cover turning in the middle as its label, and the hole. */
@@ -284,27 +334,63 @@ public final class RecordCard {
 	}
 
 	/**
-	 * The card's top left corner, in GUI units. Bottom corners sit above the hotbar's reach at the sides.
-	 * {@code effects} is how far down the effect icons reach, so a top right card can sit under them, and
-	 * {@code h} is the card's height.
+	 * The card's top left corner for a right-handed player without the hotbar attack indicator; see the
+	 * longer form below.
 	 */
 	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h) {
+		return corner(corner, guiW, guiH, effects, h, true, false);
+	}
+
+	/**
+	 * How far from the middle of the screen the things beside the hotbar reach on one side: the off-hand slot
+	 * on the side away from the main hand, the attack indicator (when it is in the hotbar style) on the other,
+	 * and just the hotbar's half-width otherwise.
+	 */
+	static float sideReach(boolean leftSide, boolean rightHanded, boolean indicator) {
+		boolean offHandSide = leftSide == rightHanded;
+		if (offHandSide) {
+			return OFFHAND_REACH;
+		}
+		return indicator ? INDICATOR_REACH : HOTBAR_HALF;
+	}
+
+	/**
+	 * The card's top left corner, in GUI units. Bottom corners sit above the hotbar's reach at the sides,
+	 * including the off-hand slot and the attack indicator. {@code effects} is how far down the effect icons
+	 * reach, so a top right card can sit under them, and {@code h} is the card's height. The card never
+	 * leaves the screen.
+	 */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator) {
 		float left = MARGIN, right = guiW - MARGIN - W;
 		float top = MARGIN, bottom = guiH - MARGIN - h;
 		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
 			top = effects + 2;
 		}
-		// On a narrow screen a bottom corner would cover the hotbar, so the card moves up above it
+		// On a narrow screen a bottom corner would cover the hotbar or what sits beside it, so the card moves up above it
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
-		if (onLeft ? left + W > guiW / 2f - HOTBAR_HALF : right < guiW / 2f + HOTBAR_HALF) {
+		float reach = sideReach(onLeft, rightHanded, indicator);
+		if (onLeft ? left + W > guiW / 2f - reach : right < guiW / 2f + reach) {
 			bottom = guiH - HOTBAR_UP - h;
 		}
+		top = onScreen(top, guiH, h);
+		bottom = onScreen(bottom, guiH, h);
 		return switch (corner) {
 			case BOTTOM_LEFT -> new float[] {left, bottom};
 			case TOP_LEFT -> new float[] {left, top};
 			case TOP_RIGHT -> new float[] {right, top};
 			case BOTTOM_RIGHT -> new float[] {right, bottom};
 		};
+	}
+
+	private static float onScreen(float y, int guiH, float h) {
+		return Math.max(0, Math.min(y, guiH - h));
+	}
+
+	/** The card with the hotbar's neighbours taken from the player's settings. */
+	private static float[] corner(Minecraft mc, CardCorner corner, int guiW, int guiH, int effects, float h) {
+		boolean rightHanded = mc.options.mainHand().get() == HumanoidArm.RIGHT;
+		boolean indicator = mc.options.attackIndicator().get() == AttackIndicatorStatus.HOTBAR;
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator);
 	}
 
 	/**

@@ -601,6 +601,37 @@ public final class NowPlayingHud {
 		return line == null ? 0 : line.through();
 	}
 
+	/**
+	 * The line {@code delta} lines after the one being sung (-1 for the one before), for the card's dimmed
+	 * lines. Null when there is none, when it is only a break, or when the song has moved well past its last line.
+	 */
+	@Nullable String singingNeighbour(SkyLyricsConfig cfg, int delta) {
+		Lyrics lyrics = service.lyrics();
+		if (!lyrics.synced() || lyrics.isEmpty()) {
+			return null;
+		}
+		long time = lyricsTime(cfg);
+		int i = lyrics.indexAt(time);
+		if (i >= lyrics.lines().size() || (i >= 0 && time > lyrics.lineEnd(i) + 1500 && !lyrics.get(i).isBreak())) {
+			return null;
+		}
+		// Before the first line there is nothing before, and the first line is next
+		int j = i < 0 ? (delta > 0 ? delta - 1 : -1) : i + delta;
+		if (j < 0 || j >= lyrics.lines().size()) {
+			return null;
+		}
+		LyricLine line = lyrics.get(j);
+		//? if >=26.1 {
+		/*String raw = line.drawString();
+		*///?} else {
+		String raw = line.text();
+		//?}
+		if (line.isBreak() || raw.isBlank()) {
+			return null;
+		}
+		return (cfg.uppercase ? WorldWords.capitals(raw) : raw).strip();
+	}
+
 	private long lyricsTime(SkyLyricsConfig cfg) {
 		return tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
 	}
