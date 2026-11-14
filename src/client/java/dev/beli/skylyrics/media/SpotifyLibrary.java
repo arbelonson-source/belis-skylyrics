@@ -92,7 +92,7 @@ public final class SpotifyLibrary implements Library {
 
 	@Override
 	public CompletableFuture<Page<LibraryItem>> playlist(LibraryPlaylist playlist, int offset) {
-		return run(() -> parsePlaylistItems(get("/playlists/" + playlist.id() + "/items?limit=" + PAGE + "&offset=" + offset), playlist.uri()));
+		return run(() -> parsePlaylistItems(get("/playlists/" + encode(playlist.id()) + "/items?limit=" + PAGE + "&offset=" + offset), playlist.uri()));
 	}
 
 	/**

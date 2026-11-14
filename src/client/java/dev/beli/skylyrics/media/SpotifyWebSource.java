@@ -3,6 +3,7 @@ package dev.beli.skylyrics.media;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -26,6 +27,9 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonArray;
@@ -65,6 +69,9 @@ public final class SpotifyWebSource implements MediaSource {
 	private static final long POLL_PLAYING_NS = 1_000_000_000L;
 	private static final long POLL_IDLE_NS = 4_000_000_000L;
 	private static final int LOGIN_TIMEOUT_MS = 5 * 60_000;
+	/** How long a connection may stay silent before it is dropped. */
+	static final int SOCKET_TIMEOUT_MS = 5000;
+	private static final int MAX_CONNECTIONS = 8;
 	/** Asked for the access token a little early, so it never runs out halfway through a request. */
 	private static final long EARLY_NS = 60_000_000_000L;
 	private static final Base64.Encoder B64 = Base64.getUrlEncoder().withoutPadding();
@@ -157,7 +164,12 @@ public final class SpotifyWebSource implements MediaSource {
 		cancelLogin();
 		String verifier = B64.encodeToString(bytes(48));
 		String state = B64.encodeToString(bytes(16));
-		ServerSocket server = new ServerSocket(PORT, 4, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
+		ServerSocket server;
+		try {
+			server = new ServerSocket(PORT, 4, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
+		} catch (BindException e) {
+			throw new IOException(Tr.t("Port %s is already in use. Close the other game or app using it and try again", PORT), e);
+		}
 		loginServer = server;
 		problem = "";
 		Thread thread = new Thread(() -> awaitBrowser(server, id, verifier, state), "SkyLyrics Spotify sign-in");
@@ -199,49 +211,117 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	private void awaitBrowser(ServerSocket server, String id, String verifier, String state) {
+		awaitBrowser(server, id, verifier, state, SOCKET_TIMEOUT_MS);
+	}
+
+	/**
+	 * Answers the browser until the real redirect arrives, the deadline passes or the server is closed. Every
+	 * connection gets its own short-lived thread, so an idle or hung-up socket (browsers open spare ones) can't
+	 * hold up the real redirect or end the sign-in.
+	 */
+	void awaitBrowser(ServerSocket server, String id, String verifier, String state, int socketTimeoutMs) {
 		long deadline = System.currentTimeMillis() + LOGIN_TIMEOUT_MS;
-		try (server) {
-			while (true) {
-				long left = deadline - System.currentTimeMillis();
-				if (left <= 0) {
-					throw new SocketTimeoutException();
-				}
-				server.setSoTimeout((int) left);
-				try (Socket socket = server.accept()) {
-					socket.setSoTimeout(5000);
-					Map<String, String> query = callbackQuery(requestLine(socket.getInputStream()));
-					// Browsers also ask for /favicon.ico and such; only the real answer counts
-					if (query == null || !state.equals(query.get("state"))) {
-						respond(socket.getOutputStream(), "404 Not Found", Tr.t("Nothing here."));
+		AtomicBoolean claimed = new AtomicBoolean();
+		AtomicInteger open = new AtomicInteger();
+		AtomicReference<Thread> winner = new AtomicReference<>();
+		try {
+			try (server) {
+				while (true) {
+					long left = deadline - System.currentTimeMillis();
+					if (left <= 0) {
+						throw new SocketTimeoutException();
+					}
+					server.setSoTimeout((int) left);
+					Socket socket = server.accept();
+					if (open.incrementAndGet() > MAX_CONNECTIONS) {
+						open.decrementAndGet();
+						closeQuietly(socket);
 						continue;
 					}
-					String code = query.get("code");
-					if (code == null) {
-						problem = Tr.t("Sign-in was cancelled");
-						respond(socket.getOutputStream(), "200 OK", problem);
-						return;
-					}
-					try {
-						accept(id, token(form("grant_type", "authorization_code", "code", code, "redirect_uri", REDIRECT,
-								"client_id", id, "code_verifier", verifier)));
-						respond(socket.getOutputStream(), "200 OK", Tr.t("Signed in. You can close this tab and go back to Minecraft."));
-					} catch (IOException | InterruptedException e) {
-						problem = Tr.t("Sign-in failed: %s", e.getMessage());
-						respond(socket.getOutputStream(), "200 OK", problem);
-					}
-					return;
+					Thread thread = new Thread(() -> {
+						try (socket) {
+							handle(socket, server, id, verifier, state, socketTimeoutMs, claimed, winner);
+						} catch (IOException e) {
+							// An idle socket or a browser that hung up: only this connection is over
+						} finally {
+							open.decrementAndGet();
+						}
+					}, "SkyLyrics Spotify sign-in connection");
+					thread.setDaemon(true);
+					thread.start();
+				}
+			} catch (SocketTimeoutException e) {
+				problem = Tr.t("Sign-in timed out");
+			} catch (IOException e) {
+				// Closed by cancelLogin or after the answer came
+			}
+			Thread last = winner.get();
+			if (last != null) {
+				try {
+					last.join(20_000);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
 				}
 			}
-		} catch (SocketTimeoutException e) {
-			problem = Tr.t("Sign-in timed out");
-		} catch (IOException e) {
-			// Closed by cancelLogin, or the browser hung up
 		} finally {
 			synchronized (this) {
 				if (loginServer == server) {
 					loginServer = null;
 				}
 			}
+		}
+	}
+
+	private void handle(Socket socket, ServerSocket server, String id, String verifier, String state, int socketTimeoutMs,
+			AtomicBoolean claimed, AtomicReference<Thread> winner) throws IOException {
+		socket.setSoTimeout(socketTimeoutMs);
+		Map<String, String> query = callbackQuery(requestLine(socket.getInputStream()));
+		// Browsers also ask for /favicon.ico and such; only the real answer counts, and only once
+		if (query == null || !state.equals(query.get("state")) || !claimed.compareAndSet(false, true)) {
+			respond(socket.getOutputStream(), "404 Not Found", Tr.t("Nothing here."));
+			return;
+		}
+		winner.set(Thread.currentThread());
+		try {
+			String code = query.get("code");
+			if (code == null) {
+				problem = Tr.t("Sign-in was cancelled");
+				respond(socket.getOutputStream(), "200 OK", problem);
+				return;
+			}
+			String message;
+			try {
+				JsonObject tokens = token(form("grant_type", "authorization_code", "code", code, "redirect_uri", REDIRECT,
+						"client_id", id, "code_verifier", verifier));
+				if (finishLogin(server, id, tokens)) {
+					message = Tr.t("Signed in. You can close this tab and go back to Minecraft.");
+				} else {
+					// Cancelled or signed out while Spotify was answering: don't sign the player back in
+					message = Tr.t("Sign-in was cancelled");
+				}
+			} catch (IOException | InterruptedException e) {
+				problem = Tr.t("Sign-in failed: %s", e.getMessage());
+				message = problem;
+			}
+			respond(socket.getOutputStream(), "200 OK", message);
+		} finally {
+			closeQuietly(server);
+		}
+	}
+
+	/** Keeps the tokens only while this sign-in is still the current one. */
+	private synchronized boolean finishLogin(ServerSocket server, String id, JsonObject tokens) {
+		if (loginServer != server) {
+			return false;
+		}
+		accept(id, tokens);
+		return true;
+	}
+
+	private static void closeQuietly(java.io.Closeable c) {
+		try {
+			c.close();
+		} catch (IOException ignored) {
 		}
 	}
 
@@ -403,16 +483,28 @@ public final class SpotifyWebSource implements MediaSource {
 		try {
 			Files.createDirectories(loginFile.getParent());
 			Path tmp = loginFile.resolveSibling(loginFile.getFileName() + ".tmp");
-			Files.deleteIfExists(tmp);
+			boolean done = false;
 			try {
-				Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-			} catch (UnsupportedOperationException e) {
-				Files.createFile(tmp);
-				// Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
-				dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
+				Files.deleteIfExists(tmp);
+				try {
+					Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+				} catch (UnsupportedOperationException e) {
+					Files.createFile(tmp);
+					// Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
+					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
+				}
+				Files.writeString(tmp, json.toString(), StandardCharsets.UTF_8);
+				dev.beli.skylyrics.util.SafeFile.replace(tmp, loginFile);
+				done = true;
+			} finally {
+				if (!done) {
+					// Don't leave a partly written token file behind
+					try {
+						Files.deleteIfExists(tmp);
+					} catch (IOException ignored) {
+					}
+				}
 			}
-			Files.writeString(tmp, json.toString(), StandardCharsets.UTF_8);
-			dev.beli.skylyrics.util.SafeFile.replace(tmp, loginFile);
 		} catch (IOException e) {
 			LOG.warn("Couldn't save the Spotify sign-in: {}", e.toString());
 		}
