@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -370,6 +369,11 @@ public final class SkyLyricsConfig {
 	public boolean hideUnderwater = false;
 	/** Hide when there's no open sky above the player, like underground. */
 	public boolean hideInCaves = false;
+	/**
+	 * Arc and Lines (Draw on top: Auto) go on the screen layer while you're under cover, so rock doesn't hide them. On by default: lyrics
+	 * vanishing the moment you walk into a cave looks like a bug. Has no effect with Hide in caves on.
+	 */
+	public boolean showUnderground = true;
 	public boolean hideInMultiplayer = false;
 
 	// Now-playing card
@@ -561,7 +565,7 @@ public final class SkyLyricsConfig {
 			Files.createDirectories(file().getParent());
 			Path tmp = file().resolveSibling("skylyrics.json.tmp");
 			Files.writeString(tmp, GSON.toJson(this), StandardCharsets.UTF_8);
-			Files.move(tmp, file(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			dev.beli.skylyrics.util.SafeFile.replace(tmp, file());
 		} catch (IOException e) {
 			LOG.warn("Couldn't save settings: {}", e.toString());
 		}

@@ -251,7 +251,7 @@ public final class LyricsService {
 			Files.createDirectories(file.getParent());
 			Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 			Files.writeString(tmp, GSON.toJson(entry), StandardCharsets.UTF_8);
-			Files.move(tmp, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+			dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 		} catch (IOException e) {
 			LOG.debug("Couldn't write lyrics cache: {}", e.toString());
 		}
