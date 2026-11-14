@@ -17,7 +17,7 @@ final class Ui {
 	static final int DIVIDER = 0xFF2A2433;
 	static final int TEXT = 0xFFF2EEF8;
 	static final int MUTED = 0xFF9C94AD;
-	static final int DIM = 0xFF6D6680;
+	static final int DIM = 0xFF8A82A3;
 	static final int ACCENT = 0xFFA678FF;
 	static final int ACCENT_SOFT = 0x40A678FF;
 	static final int TRACK = 0xFF3A3346;
@@ -93,6 +93,11 @@ final class Ui {
 		}
 		String ellipsis = "…";
 		return font.plainSubstrByWidth(text, Math.max(0, maxW - font.width(ellipsis))) + ellipsis;
+	}
+
+	/** Room for header text that starts at {@code textX} and must stop before something at {@code rightX}. */
+	static int headerRoom(int textX, int rightX) {
+		return Math.max(0, rightX - 6 - textX);
 	}
 
 	static boolean inside(double mx, double my, int x, int y, int w, int h) {

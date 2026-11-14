@@ -62,6 +62,20 @@ final class LibraryViews {
 		return index < count ? index : -1;
 	}
 
+	/**
+	 * The cover under the mouse, or -1. The shelf starts at {@code viewX} and {@code top}, is scrolled {@code left}
+	 * pixels sideways, and has covers {@code cover} wide and tall, {@code stride} and {@code rowH} apart.
+	 */
+	static int shelfHit(double mx, double my, int viewX, int top, int left, int stride, int rowH, int cover, int rows, int count) {
+		int c = (int) Math.floor((mx - viewX + left) / stride);
+		int r = (int) Math.floor((my - top) / rowH);
+		int hit = shelfIndex(c, r, rows, count);
+		if (hit >= 0 && Ui.inside(mx, my, viewX + c * stride - left, top + r * rowH, cover, cover)) {
+			return hit;
+		}
+		return -1;
+	}
+
 	/** Total width of the covers laid out in columns, without a trailing gap. */
 	static int shelfWidth(int count, int rows, int stride, int gap) {
 		if (count <= 0) {

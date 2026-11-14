@@ -981,11 +981,12 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private void renderHeader(GuiGraphics g, Frame f) {
-		g.drawString(font, Ui.visual(tabName(tab)), viewX, py + 12, Ui.TEXT, false);
-		g.drawString(font, Ui.visual(tabSubtitle(tab)), viewX, py + 23, Ui.MUTED, false);
-
 		int bw = font.width(Tr.t("Preview")) + 16;
 		int bx = px + pw - 12 - bw;
+		int textRoom = Ui.headerRoom(viewX, bx);
+		g.drawString(font, Ui.visual(Ui.clip(font, tabName(tab), textRoom)), viewX, py + 12, Ui.TEXT, false);
+		g.drawString(font, Ui.visual(Ui.clip(font, tabSubtitle(tab), textRoom)), viewX, py + 23, Ui.MUTED, false);
+
 		previewX = bx;
 		previewW = bw;
 		pillW = 0;
