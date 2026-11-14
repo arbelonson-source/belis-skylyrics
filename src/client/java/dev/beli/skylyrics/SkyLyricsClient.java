@@ -15,8 +15,13 @@ import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegist
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
 //?}
+//? if >=1.21.6 {
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+//?} else {
+/*import net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer;
+*///?}
 //? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 *///?} else {
@@ -162,10 +167,19 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				layers.register(new HatLayer(avatar, renderer));
 			}
 		});
+		//? if >=1.21.6 {
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
 		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
 		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("record_card"), card::render);
+		//?} else {
+		/*HudLayerRegistrationCallback.EVENT.register(layers -> {
+			layers.attachLayerBefore(IdentifiedLayer.MISC_OVERLAYS, id("lyrics"), renderer::renderHud);
+			// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
+			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("now_playing"), hud::render);
+			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("record_card"), card::render);
+		});
+		*///?}
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
 				if (!cfg.introSeen) {

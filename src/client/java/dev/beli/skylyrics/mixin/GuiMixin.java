@@ -2,7 +2,12 @@ package dev.beli.skylyrics.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+//? if >=1.21.6 {
 import com.mojang.blaze3d.pipeline.RenderPipeline;
+//?} else {
+/*import net.minecraft.client.renderer.RenderType;
+import java.util.function.Function;
+*///?}
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Crosshair;
@@ -30,9 +35,15 @@ abstract class GuiMixin {
 	*///?} else {
 	@WrapOperation(method = "renderCrosshair", at = @At(value = "INVOKE", ordinal = 0,
 	//?}
+			//? if >=1.21.6 {
 			target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	private void skylyrics$crosshair(GuiGraphics g, RenderPipeline pipeline, Identifier sprite, int x, int y, int width,
 			int height, Operation<Void> original) {
+			//?} else {
+			/*target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+	private void skylyrics$crosshair(GuiGraphics g, Function<ResourceLocation, RenderType> pipeline, ResourceLocation sprite,
+			int x, int y, int width, int height, Operation<Void> original) {
+			*///?}
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		Crosshair style = cfg.crosshair;
 		SkyLyricsClient mod = SkyLyricsClient.get();

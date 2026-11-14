@@ -24,10 +24,13 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 	*///?} else if >=26.2 {
 	/*@Unique
 	private static final String WRITE = "Lcom/mojang/blaze3d/systems/CommandEncoder;writeToTexture(Lcom/mojang/blaze3d/textures/GpuTexture;Lcom/mojang/blaze3d/platform/NativeImage;IIII)V";
-	*///?} else {
+	*///?} else if >=1.21.6 {
 	@Unique
 	private static final String WRITE = "Lcom/mojang/blaze3d/systems/CommandEncoder;writeToTexture(Lcom/mojang/blaze3d/textures/GpuTexture;Lcom/mojang/blaze3d/platform/NativeImage;IIIIIIII)V";
-	//?}
+	//?} else {
+	/*@Unique
+	private static final String WRITE = "Lcom/mojang/blaze3d/systems/CommandEncoder;writeToTexture(Lcom/mojang/blaze3d/textures/GpuTexture;Lcom/mojang/blaze3d/platform/NativeImage;IIIIIII)V";
+	*///?}
 
 	@Unique
 	private boolean skylyrics$picture;

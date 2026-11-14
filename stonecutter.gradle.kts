@@ -56,6 +56,19 @@ stonecutter parameters {
 			replace("open.matches(event)", "open.matches(event.key(), event.scancode())")
 			replace("key.matches(event)", "key.matches(event.key(), event.scancode())")
 		}
+		// 1.21.5 and older draw the GUI with a 3D PoseStack and RenderType functions instead of 2D matrices and pipelines
+		if (current.parsed < "1.21.6") string(true) {
+			replace("import net.minecraft.client.renderer.RenderPipelines;", "import net.minecraft.client.renderer.RenderType;")
+			replace("RenderPipelines.GUI_TEXTURED", "RenderType::guiTextured")
+			replace("g.pose().pushMatrix()", "g.pose().pushPose()")
+			replace("g.pose().popMatrix()", "g.pose().popPose()")
+			replace("g.pose().translate(", "dev.beli.skylyrics.gui.Gui2D.translate(g, ")
+			replace("g.pose().scale(", "dev.beli.skylyrics.gui.Gui2D.scale(g, ")
+			replace("g.pose().rotate(", "dev.beli.skylyrics.gui.Gui2D.rotate(g, ")
+			replace("g.nextStratum()", "dev.beli.skylyrics.gui.Gui2D.nextLayer(g)")
+			replace("g.setTooltipForNextFrame(", "g.renderTooltip(")
+			replace("camera.position()", "camera.getPosition()")
+		}
 		// 26.3 moved the low-level graphics classes into com.mojang.renderpearl
 		if (current.parsed >= "26.3") string(true) {
 			replace("com.mojang.blaze3d.textures.", "com.mojang.renderpearl.api.textures.")
