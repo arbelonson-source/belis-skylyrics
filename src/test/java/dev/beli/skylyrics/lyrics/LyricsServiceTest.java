@@ -149,7 +149,8 @@ class LyricsServiceTest {
 		service.load(track("Song One", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		assertFalse(service.lyrics().isEmpty());
-		assertEquals(4, asked.size(), asked.toString());
+		// a 503 on /get now also tries /search, so a try can take more than one request
+		assertTrue(asked.size() >= 4, asked.toString());
 	}
 
 	@Test

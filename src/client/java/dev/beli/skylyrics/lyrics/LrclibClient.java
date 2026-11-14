@@ -84,7 +84,17 @@ public final class LrclibClient implements LyricsSource {
 				q.put("album_name", track.album());
 			}
 			q.put("duration", Long.toString(Math.round(seconds)));
-			JsonElement exact = get("/get", q);
+			JsonElement exact = null;
+			try {
+				exact = get("/get", q);
+			} catch (StatusException busy) {
+				// LRCLIB often answers 5xx on /get for songs it hasn't cached while /search works.
+				// A quick error reply means the site is reachable, so go on to search. Other
+				// errors (429, timeouts, no network) still fail: searching would only repeat them.
+				if (busy.status() < 500) {
+					throw busy;
+				}
+			}
 			if (exact != null && exact.isJsonObject()) {
 				Result r = toResult(exact.getAsJsonObject());
 				if (r.found()) {
