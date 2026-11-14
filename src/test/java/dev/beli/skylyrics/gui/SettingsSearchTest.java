@@ -32,6 +32,14 @@ class SettingsSearchTest {
 	}
 
 	@Test
+	void viewLockIsFoundByLockViewOrPin() {
+		String text = "Position View lock Pin the lyrics where you look now";
+		assertTrue(SettingsSearch.matches(text, "lock"));
+		assertTrue(SettingsSearch.matches(text, "view"));
+		assertTrue(SettingsSearch.matches(text, "pin"));
+	}
+
+	@Test
 	void hebrewWorks() {
 		assertTrue(SettingsSearch.matches("צבע הזוהר", "זוהר"));
 	}

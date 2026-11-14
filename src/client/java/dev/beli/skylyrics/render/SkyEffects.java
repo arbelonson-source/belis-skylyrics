@@ -403,7 +403,12 @@ public final class SkyEffects {
 		float targetYaw;
 		float targetPitch = -cfg.height;
 		float speed;
-		if (cfg.placement == Placement.FLOATING) {
+		float[] lock = ViewLock.update(cfg, camYaw, camera.xRot());
+		if (lock != null) {
+			targetYaw = lock[0];
+			targetPitch = lock[1];
+			speed = 3f;
+		} else if (cfg.placement == Placement.FLOATING) {
 			targetYaw = camYaw;
 			targetPitch = Mth.clamp(camera.xRot() - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;

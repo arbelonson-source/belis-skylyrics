@@ -481,16 +481,19 @@ public final class LyricsRenderer {
 		}
 		wasDead = dead;
 		// A new song's name floats up first, once the words know which way they gather
+		float[] lock = ViewLock.update(cfg, camera.yRot(), camera.xRot());
+		float fixedYaw = lock != null ? lock[0] : cfg.direction.yaw;
+		float fixedPitch = lock != null ? lock[1] : Float.NaN;
 		Track track = tracker.track();
 		String key = track.title() + "\n" + track.artist();
 		if (!dead && !track.isNone() && !key.equals(announced)) {
 			announced = key;
 			if (cfg.worldTitle) {
-				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), cfg.direction.yaw, camera, mc.font, style, now);
+				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), fixedYaw, fixedPitch, camera, mc.font, style, now);
 			}
 		}
 		if (!dead) {
-			worldWords.update(index, text, sungChars, over, cfg.direction.yaw, camera, mc.level, mc.font, style, now);
+			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
 		float alpha = visibility * cfg.opacity;
 		if (alpha <= 0.01f) {
@@ -545,7 +548,8 @@ public final class LyricsRenderer {
 	 * compass direction the lines keep to it instead.
 	 */
 	private ArcAnchor arcAnchor(SkyLyricsConfig cfg, Camera camera, int index, long now, boolean follow) {
-		boolean fixed = cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW;
+		float[] lock = ViewLock.update(cfg, camera.yRot(), camera.xRot());
+		boolean fixed = lock != null || cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW;
 		ArcAnchor anchor = arcAnchors.get(index);
 		if (anchor != null && !fixed && follow) {
 			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW
@@ -571,15 +575,16 @@ public final class LyricsRenderer {
 			anchor.placed = now;
 			anchor.side = side;
 			if (fixed) {
-				anchor.yaw = cfg.direction.yaw + side;
-				anchor.pitch = -cfg.height - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
+				float[] at = ViewLock.target(lock, cfg.direction, camera.yRot(), cfg.height);
+				anchor.yaw = at[0] + side;
+				anchor.pitch = at[1] - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
 			} else {
 				anchor.yaw = camera.yRot() + side;
 				anchor.pitch = Mth.clamp(camera.xRot() - up, -85, 85);
 			}
 			arcAnchors.put(index, anchor);
 		}
-		if (follow && cfg.placement == Placement.SKY && cfg.direction == SkyLyricsConfig.Direction.FOLLOW
+		if (lock == null && follow && cfg.placement == Placement.SKY && cfg.direction == SkyLyricsConfig.Direction.FOLLOW
 				&& !cfg.lazyFollow) {
 			anchor.yaw = camera.yRot() + anchor.side; // turns with you, no waiting
 		}
@@ -1600,10 +1605,16 @@ public final class LyricsRenderer {
 		float targetYaw;
 		float targetPitch;
 		float speed;
-		if (cfg.placement == Placement.FLOATING) {
+		float[] lock = ViewLock.update(cfg, camYaw, camPitch);
+		if (cfg.placement == Placement.FLOATING && lock == null) {
 			targetYaw = camYaw;
 			targetPitch = Mth.clamp(camPitch - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;
+		} else if (lock != null) {
+			float[] at = ViewLock.target(lock, cfg.direction, camYaw, cfg.height);
+			targetYaw = at[0];
+			targetPitch = at[1];
+			speed = 3f;
 		} else if (cfg.direction == SkyLyricsConfig.Direction.FOLLOW) {
 			// Right where you look; lazy follow stays put while you look around a bit and catches up when you turn away
 			float diff = Mth.wrapDegrees(camYaw - anchorYaw);

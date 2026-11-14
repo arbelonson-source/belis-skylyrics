@@ -7,6 +7,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 //? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
@@ -56,6 +57,7 @@ import dev.beli.skylyrics.media.SpotifyLibrary;
 import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.WindowsMediaSource;
+import dev.beli.skylyrics.render.ViewLock;
 import dev.beli.skylyrics.render.AlbumArt;
 import dev.beli.skylyrics.render.CoverCache;
 import dev.beli.skylyrics.render.HatLayer;
@@ -93,6 +95,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private KeyMapping previousTrack;
 	private KeyMapping lyricsLate;
 	private KeyMapping lyricsEarly;
+	private KeyMapping lockView;
 	/** Whether the library key has been checked against the shader toggle yet. */
 	private boolean keysChecked;
 
@@ -182,6 +185,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
+		// A locked view pins wherever you look first in a new world, never a stale spot from the last one
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> ViewLock.release());
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
@@ -245,6 +250,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		previousTrack = key("previous", InputConstants.UNKNOWN.getValue(), category);
 		lyricsLate = key("lyrics_late", InputConstants.UNKNOWN.getValue(), category);
 		lyricsEarly = key("lyrics_early", InputConstants.UNKNOWN.getValue(), category);
+		lockView = key("lock_view", InputConstants.UNKNOWN.getValue(), category);
 	}
 
 	/**
@@ -362,6 +368,18 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 		while (lyricsEarly.consumeClick()) {
 			nudgeTiming(client, -SYNC_STEP_MS);
+		}
+		while (lockView.consumeClick()) {
+			SkyLyricsConfig cfg = SkyLyricsConfig.get();
+			cfg.viewLock = !cfg.viewLock;
+			ViewLock.release(); // locking again pins the spot you look at now, even if it was toggled twice between frames
+			cfg.save();
+			String message = cfg.viewLock ? "skylyrics.lock.on" : "skylyrics.lock.off";
+			//? if >=26.2 {
+			/*client.gui.hud.setOverlayMessage(Component.translatable(message), false);
+			*///?} else {
+			client.gui.setOverlayMessage(Component.translatable(message), false);
+			//?}
 		}
 	}
 

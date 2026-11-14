@@ -212,6 +212,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row lazyFollow = new Toggle(Tr.t("Lazy follow"), Tr.t("Wait until you turn away, then glide over"),
 				() -> cfg.lazyFollow, v -> cfg.lazyFollow = v)
 				.when(() -> cfg.placement == Placement.SKY && cfg.layout != Layout.WORLD && cfg.direction == Direction.FOLLOW);
+		Row viewLock = new Toggle(Tr.t("View lock"), Tr.t("Pin the lyrics where you look now"),
+				() -> cfg.viewLock, v -> cfg.viewLock = v)
+				.when(() -> cfg.placement == Placement.SKY || cfg.layout == Layout.WORLD);
 		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°")
 				.when(() -> cfg.layout != Layout.WORLD);
@@ -320,7 +323,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
 		return List.of(
-				new Card(Tr.t("Position"), layout, placement, direction, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, curve, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
+				new Card(Tr.t("Position"), layout, placement, direction, viewLock, lazyFollow, height, distance, worldDistance, size, worldWords, linger, tilt, rise, flow, curve, hold, middle, nudge, avoid, knock, tint, glide, death, songTitle),
 				new Card(Tr.t("Lines"), previous, next, karaoke, grow, animation, arrival, leaving, soft, big, pulse, capitals));
 	}
 

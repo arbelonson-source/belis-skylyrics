@@ -744,8 +744,9 @@ final class WorldWords {
 	 * @param sungChars how many code points of the line have been sung so far
 	 * @param over      whether the line has been over for a moment, so its last words can go too
 	 * @param fixedYaw  the compass direction new words appear around, or NaN for wherever you look
+	 * @param fixedPitch the pitch they gather round with a fixed yaw (a locked view), or NaN for the horizon
 	 */
-	void update(int index, @Nullable String text, float sungChars, boolean over, float fixedYaw, Camera camera,
+	void update(int index, @Nullable String text, float sungChars, boolean over, float fixedYaw, float fixedPitch, Camera camera,
 			@Nullable ClientLevel level, Font font, Style style, long now) {
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			line = index;
@@ -774,7 +775,7 @@ final class WorldWords {
 			if (!hold) {
 				letGo(now);
 			}
-			spawn(lineChunks.get(spawned), centre(fixedYaw, camera.yRot(), camera.xRot(), gliding), camera, level, font, style, now);
+			spawn(lineChunks.get(spawned), centre(fixedYaw, fixedPitch, camera.yRot(), camera.xRot(), gliding), camera, level, font, style, now);
 		}
 		if (lineText == null || over) {
 			letGo(now);
@@ -893,13 +894,13 @@ final class WorldWords {
 	 * Shows a new song's title as a big card above where the words gather, facing you, for a few seconds. It stays
 	 * while the lyrics change over, and new words keep clear of it.
 	 */
-	void announce(String title, String artist, float fixedYaw, Camera camera, Font font, Style style, long now) {
+	void announce(String title, String artist, float fixedYaw, float fixedPitch, Camera camera, Font font, Style style, long now) {
 		cards.removeIf(c -> c.title);
 		String text = titleText(title, capitals);
 		if (text.isEmpty()) {
 			return;
 		}
-		float[] centre = centre(fixedYaw, camera.yRot(), camera.xRot(), gliding);
+		float[] centre = centre(fixedYaw, fixedPitch, camera.yRot(), camera.xRot(), gliding);
 		float pitch = Mth.clamp(centre[1] - LIFT - TITLE_LIFT, -75, 60);
 		addTitle(text, centre[0], pitch, TITLE_SIZE, camera, font, style, now);
 		// The artist, smaller, just under it
@@ -942,7 +943,13 @@ final class WorldWords {
 	 * where you look: the fixed spot would be off to the side or behind as soon as you fly another way.
 	 */
 	static float[] centre(float fixedYaw, float yaw, float pitch, boolean gliding) {
-		return gliding || Float.isNaN(fixedYaw) ? new float[] {yaw, pitch} : new float[] {fixedYaw, 0};
+		return centre(fixedYaw, Float.NaN, yaw, pitch, gliding);
+	}
+
+	/** As above; a locked view also fixes the pitch, otherwise (NaN) it is the horizon. */
+	static float[] centre(float fixedYaw, float fixedPitch, float yaw, float pitch, boolean gliding) {
+		return gliding || Float.isNaN(fixedYaw) ? new float[] {yaw, pitch}
+				: new float[] {fixedYaw, Float.isNaN(fixedPitch) ? 0 : fixedPitch};
 	}
 
 	private void spawn(int[] chunk, float[] centre, Camera camera, @Nullable ClientLevel level, Font font, Style style,

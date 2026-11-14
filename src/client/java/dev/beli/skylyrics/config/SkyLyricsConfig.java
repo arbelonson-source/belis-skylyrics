@@ -250,6 +250,8 @@ public final class SkyLyricsConfig {
 	public Direction direction = Direction.FOLLOW;
 	/** Follow waits until you turn away, then glides over, instead of staying right where you look. */
 	public boolean lazyFollow = false;
+	/** Pins the lyrics where you were looking when this turned on, instead of following Direction. */
+	public boolean viewLock = false;
 	public Layout layout = Layout.WORLD;
 	/** World layout: how many word groups float at once, and how many seconds sung ones take to fade away. */
 	public int worldWords = 7;
