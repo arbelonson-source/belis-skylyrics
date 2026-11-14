@@ -16,6 +16,8 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
+import dev.beli.skylyrics.Tr;
+
 /** The rows and controls used on the settings screen. All drawing is custom so it can match the mod's look. */
 final class Controls {
 	private Controls() {
@@ -40,6 +42,7 @@ final class Controls {
 		boolean descClipped;
 		private BooleanSupplier shownIf = () -> true;
 		private boolean searchWhenHidden = true;
+		private @Nullable String narratedName;
 
 		Row(String label, @Nullable String desc) {
 			this.label = label;
@@ -66,6 +69,36 @@ final class Controls {
 		/** Whether the settings search may list this row even while its condition hides it. */
 		boolean searchWhenHidden() {
 			return searchWhenHidden && !(this instanceof Paragraph || this instanceof Info || this instanceof Buttons);
+		}
+
+		/** What the Narrator calls this row, for rows that share a name, like the colour pickers. */
+		Row narrateAs(String name) {
+			this.narratedName = name;
+			return this;
+		}
+
+		final String narratedLabel() {
+			return narratedName != null ? narratedName : label;
+		}
+
+		/** The kind of control, spoken after its name ("slider"); empty for plain text. */
+		String kind() {
+			return "";
+		}
+
+		/** What the control is set to, in words. */
+		String spoken() {
+			return "";
+		}
+
+		/** What the Narrator says when this row has the keyboard focus. */
+		String narration() {
+			return Narration.join(narratedLabel(), kind(), spoken());
+		}
+
+		/** The ring that shows this row has the keyboard focus. */
+		void renderFocus(Frame f) {
+			Ui.outline(f.g(), x + 1, y, w - 2, height(), 5, Ui.TEXT);
 		}
 
 		/** Only show this row while {@code condition} is true. */
@@ -144,7 +177,7 @@ final class Controls {
 		void release() {
 		}
 
-		/** Keyboard input while the mouse is over this row. */
+		/** Keyboard input for this row while it has the focus, or while the mouse is over it when nothing does. */
 		boolean key(KeyEvent event) {
 			return false;
 		}
@@ -185,6 +218,16 @@ final class Controls {
 			Ui.rect(f.g(), tx, ty, 22, 12, 6, track);
 			int kx = tx + 2 + Math.round(anim * 10);
 			Ui.rect(f.g(), kx, ty + 2, 8, 8, 4, 0xFFFFFFFF);
+		}
+
+		@Override
+		String kind() {
+			return Tr.t("toggle");
+		}
+
+		@Override
+		String spoken() {
+			return get.getAsBoolean() ? Tr.t("On") : Tr.t("Off");
 		}
 
 		@Override
@@ -229,6 +272,16 @@ final class Controls {
 
 		private int sx() {
 			return x + w - 10 - WIDTH;
+		}
+
+		@Override
+		String kind() {
+			return Tr.t("slider");
+		}
+
+		@Override
+		String spoken() {
+			return Narration.speakable(format.apply(get.getAsDouble()), Tr.t("percent"), Tr.t("degrees"), Tr.t("times"));
 		}
 
 		@Override
@@ -304,6 +357,12 @@ final class Controls {
 		@Override
 		String searchText() {
 			return super.searchText() + " " + String.join(" ", options);
+		}
+
+		@Override
+		String narration() {
+			int i = Mth.clamp(get.getAsInt(), 0, options.length - 1);
+			return Narration.choice(narratedLabel(), Tr.t("choice"), options[i], Tr.t("%s of %s"), i, options.length);
 		}
 
 		private int optionWidth(Font font, int i) {
@@ -389,9 +448,9 @@ final class Controls {
 
 		@Override
 		boolean key(KeyEvent event) {
-			if (event.isLeft() || event.isRight()) {
+			if (event.isLeft() || event.isRight() || event.isSelection()) {
 				int n = options.length;
-				set.accept(Math.floorMod(get.getAsInt() + (event.isRight() ? 1 : -1), n));
+				set.accept(Math.floorMod(get.getAsInt() + (event.isLeft() ? -1 : 1), n));
 				return true;
 			}
 			return false;
@@ -416,6 +475,12 @@ final class Controls {
 		@Override
 		String searchText() {
 			return super.searchText() + " " + String.join(" ", labels);
+		}
+
+		@Override
+		String narration() {
+			int i = Mth.clamp(get.getAsInt(), 0, labels.size() - 1);
+			return Narration.choice(narratedLabel(), Tr.t("choice"), labels.get(i), Tr.t("%s of %s"), i, labels.size());
 		}
 
 		@Override
@@ -473,8 +538,8 @@ final class Controls {
 
 		@Override
 		boolean key(KeyEvent event) {
-			if (event.isLeft() || event.isRight()) {
-				step(event.isRight() ? 1 : -1);
+			if (event.isLeft() || event.isRight() || event.isSelection()) {
+				step(event.isLeft() ? -1 : 1);
 				return true;
 			}
 			return false;
@@ -487,14 +552,46 @@ final class Controls {
 		private static final int GAP = 5;
 		private static final int LINE = SIZE + GAP;
 		private final int[] colors;
+		private final List<String> names;
 		private final IntSupplier selected;
 		private final IntConsumer pick;
 
-		Swatches(String label, @Nullable String desc, int[] colors, IntSupplier selected, IntConsumer pick) {
+		Swatches(String label, @Nullable String desc, int[] colors, List<String> names, IntSupplier selected, IntConsumer pick) {
 			super(label, desc);
 			this.colors = colors;
+			this.names = names;
 			this.selected = selected;
 			this.pick = pick;
+		}
+
+		/** Which swatch is picked, or -1 when none is. */
+		private int current() {
+			int now = selected.getAsInt();
+			for (int i = 0; i < colors.length; i++) {
+				if ((colors[i] & 0xFFFFFF) == now) {
+					return i;
+				}
+			}
+			return -1;
+		}
+
+		@Override
+		String narration() {
+			int i = current();
+			if (i < 0) {
+				return Narration.join(narratedLabel(), Tr.t("none picked"));
+			}
+			return Narration.join(narratedLabel(), names.get(i), Tr.t("selected"),
+					Narration.position(Tr.t("%s of %s"), i, colors.length));
+		}
+
+		@Override
+		boolean key(KeyEvent event) {
+			if (event.isLeft() || event.isRight()) {
+				pick.accept(colors[LibraryKeys.nextButton(current(), colors.length, event.isRight() ? 1 : -1)] & 0xFFFFFF);
+				return true;
+			}
+			return false;
 		}
 
 		@Override
@@ -578,10 +675,59 @@ final class Controls {
 	/** One or more buttons on the right. */
 	static final class Buttons extends Row {
 		private final List<Button> buttons;
+		/** The button the keyboard is on, when there are several in the row. */
+		private int sub;
 
 		Buttons(String label, @Nullable String desc, Button... buttons) {
 			super(label, desc);
 			this.buttons = List.of(buttons);
+		}
+
+		private static String text(Button b) {
+			//? if >=26.1 {
+			/*return b.drawString().get();
+			*///?} else {
+			return b.text().get();
+			//?}
+		}
+
+		@Override
+		String narration() {
+			Button b = buttons.get(Math.min(sub, buttons.size() - 1));
+			String of = buttons.size() > 1 ? Narration.position(Tr.t("%s of %s"), sub, buttons.size()) : "";
+			return Narration.join(narratedLabel(), text(b), Tr.t("button"), b.enabled().getAsBoolean() ? "" : Tr.t("unavailable"),
+					desc == null ? "" : desc.get(), of);
+		}
+
+		@Override
+		void renderFocus(Frame f) {
+			super.renderFocus(f);
+			if (buttons.size() > 1) {
+				int bx = x + w - 10 - controlWidth(f.font());
+				for (int i = 0; i < buttons.size(); i++) {
+					int bw = width(f.font(), buttons.get(i));
+					if (i == sub) {
+						Ui.outline(f.g(), bx - 2, controlCy() - 10, bw + 4, 20, 6, Ui.ACCENT);
+					}
+					bx += bw + 4;
+				}
+			}
+		}
+
+		@Override
+		boolean key(KeyEvent event) {
+			if (buttons.size() > 1 && (event.isLeft() || event.isRight())) {
+				sub = Math.floorMod(sub + (event.isRight() ? 1 : -1), buttons.size());
+				return true;
+			}
+			if (event.isSelection()) {
+				Button b = buttons.get(Math.min(sub, buttons.size() - 1));
+				if (b.enabled().getAsBoolean()) {
+					b.action().run();
+				}
+				return true;
+			}
+			return false;
 		}
 
 		private static int width(Font font, Button b) {
@@ -642,6 +788,11 @@ final class Controls {
 		}
 
 		@Override
+		String narration() {
+			return Narration.join(narratedLabel(), value.get(), desc == null ? "" : desc.get());
+		}
+
+		@Override
 		int controlWidth(Font font) {
 			return Math.min(160, font.width(value.get()));
 		}
@@ -663,6 +814,11 @@ final class Controls {
 		Paragraph(Supplier<String> text) {
 			super("", null);
 			this.text = text;
+		}
+
+		@Override
+		String narration() {
+			return text.get();
 		}
 
 		@Override
