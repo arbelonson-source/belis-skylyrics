@@ -76,16 +76,14 @@ public final class ScreenLayer {
 		if (layer == SkyLyricsConfig.Layer.SCREEN) {
 			return true;
 		}
-		// Under rock the sky is behind it, so unless the player says otherwise the screen is the only place to see it
-		if (underground && showUnderground) {
-			return true;
-		}
 		return switch (layer) {
 			case SCREEN -> true;
+			// "Never draw on top" is the player's own choice: blocks are meant to hide the lyrics
 			case WORLD -> false;
 			// See-through text in the world gets painted over by clouds, so only keep it there
 			// when blocks are meant to hide it and nothing would wash it out.
-			case AUTO -> seeThrough || shaders || rain;
+			// Under rock the sky is behind it, so the screen is the only place to see it
+			case AUTO -> seeThrough || shaders || rain || underground && showUnderground;
 		};
 	}
 

@@ -40,10 +40,10 @@ class ScreenLayerTest {
 	}
 
 	@Test
-	void worldLayerFollowsShowUndergroundToo() {
+	void worldLayerIsNeverOverriddenByShowUnderground() {
 		assertFalse(wanted(Layer.WORLD, true, true, true, false, true));
 		assertFalse(wanted(Layer.WORLD, false, false, false, true, false));
-		assertTrue(wanted(Layer.WORLD, false, false, false, true, true));
+		assertFalse(wanted(Layer.WORLD, false, false, false, true, true));
 	}
 
 	@Test

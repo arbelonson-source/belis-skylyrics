@@ -565,7 +565,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.hideInCaves, v -> cfg.hideInCaves = v);
 		Row underground = new Toggle(Tr.t("Show underground too"), Tr.t("Lyrics stay visible in caves and under roofs"),
 				() -> cfg.showUnderground, v -> cfg.showUnderground = v)
-				.when(() -> cfg.layer != Layer.SCREEN && !cfg.hideInCaves && cfg.layout != Layout.WORLD);
+				.when(() -> cfg.layer == Layer.AUTO && !cfg.hideInCaves && cfg.layout != Layout.WORLD);
 		Row multiplayer = new Toggle(Tr.t("Hide in multiplayer"), Tr.t("Only show them in your own worlds"),
 				() -> cfg.hideInMultiplayer, v -> cfg.hideInMultiplayer = v);
 
