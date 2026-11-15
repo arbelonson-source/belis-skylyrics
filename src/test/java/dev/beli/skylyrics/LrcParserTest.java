@@ -255,6 +255,13 @@ class LrcParserTest {
 	}
 
 	@Test
+	void aBareMusicLineIsSungButABareInstrumentalIsAPause() {
+		Lyrics l = LrcParser.parseSynced("[00:01.00]words\n[00:03.00]Music\n[00:05.00]Instrumental\n[00:09.00]end");
+		assertEquals("Music", l.get(1).text());
+		assertEquals("", l.get(2).text());
+	}
+
+	@Test
 	void longWordStampsAreStripped() {
 		Lyrics l = LrcParser.parseSynced("[00:01.00]<00:01.0000>hel<00:01.5000>lo <00:00:02.50>there");
 		assertEquals("hello there", l.get(0).text());

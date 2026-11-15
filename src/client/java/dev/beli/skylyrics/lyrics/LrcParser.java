@@ -16,9 +16,10 @@ public final class LrcParser {
 	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
 	private static final Pattern SECTION = Pattern.compile("\\[[^\\[\\]]*]");
-	// Whole line that is only an instrumental marker: "(Instrumental)", "[music]", "Instrumental"
+	// Whole line that is only an instrumental marker: "(Instrumental)", "[music]", "Instrumental". A bare "Music" stays a
+	// lyric, since a song can sing just that word; only the bracketed form is a marker
 	private static final Pattern MARKER = Pattern.compile(
-			"[(\\[（【]?\\s*(?:instrumental|music|musique|musica|instrumental break|instrumental interlude)\\s*[)\\]）】]?",
+			"[(\\[（【]\\s*(?:instrumental(?: break| interlude)?|music|musique|musica)\\s*[)\\]）】]|instrumental(?: break| interlude)?",
 			Pattern.CASE_INSENSITIVE);
 	private static final Pattern FULL_WIDTH = Pattern.compile("［[\\d：．.:]+］");
 	private static final char BOM = 0xFEFF;
