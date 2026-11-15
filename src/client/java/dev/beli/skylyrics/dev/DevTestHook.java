@@ -40,6 +40,12 @@ import dev.beli.skylyrics.media.DemoSource;
  * and {@code hover <x> <y>} (moves the mouse over the open screen, in scaled GUI pixels). These three do nothing but log
  * when no screen is open.
  * <p>
+ * {@code use} presses the Use key (right click) once, as a click would: with the player looking at a bed at night they
+ * lie down, and an item like a spyglass starts to be used. {@code hold use on} keeps the Use key held down (a spyglass
+ * stays up) and {@code hold use off} lets go. A held key is let go by itself when the world closes, so it can't stay stuck.
+ * <p>
+ * {@code debug on|off} opens or closes the F3 debug screen, as the F3 key does.
+ * <p>
  * {@code burst <name> <count> <everyMs>} grabs the game frame {@code count} times (1 to 60), {@code everyMs} apart (0 = every
  * rendered frame), one grab per rendered frame, and saves them as {@code screenshots/<name>_00.png}, {@code _01}, ...
  * The frames are kept in memory and only written (on another thread) after the last grab, so encoding does not slow
@@ -73,10 +79,17 @@ public final class DevTestHook {
 		active = this;
 	}
 
+	/** Whether {@code hold use on} has the Use key held down. */
+	private boolean holdingUse;
+
 	/** Called once per rendered frame by the game loop; a no-op unless the test hook is on. */
 	public static void frame(Minecraft client) {
 		DevTestHook hook = active;
 		if (hook != null) {
+			if (hook.holdingUse && client.level == null) {
+				hook.holdingUse = false; // the world closed: never leave the key stuck down
+				client.options.keyUse.setDown(false);
+			}
 			try {
 				hook.onFrame(client);
 			} catch (RuntimeException e) {
@@ -496,6 +509,26 @@ public final class DevTestHook {
 						server.execute(() -> server.getCommands()
 								.performPrefixedCommand(server.createCommandSourceStack(), arg));
 					}
+				}
+				case "debug" -> {
+					boolean on = arg.equals("on");
+					//? if >=1.21.11 {
+					client.debugEntries.setOverlayVisible(on);
+					//?} else if >=1.21.9 {
+					/*client.debugEntries.setF3Visible(on);
+					*///?} else {
+					/*if (client.getDebugOverlay().showDebugScreen() != on) {
+						client.getDebugOverlay().toggleOverlay();
+					}
+					*///?}
+				}
+				case "use" -> net.minecraft.client.KeyMapping.click(com.mojang.blaze3d.platform.InputConstants.getKey(client.options.keyUse.saveString()));
+				case "hold" -> {
+					if (!arg.startsWith("use ")) {
+						throw new IllegalArgumentException("hold: only 'hold use on|off'");
+					}
+					holdingUse = arg.endsWith("on");
+					client.options.keyUse.setDown(holdingUse);
 				}
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
