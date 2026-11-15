@@ -157,6 +157,12 @@ public final class LyricsRenderer {
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
 
+	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
+	public void onLeaveWorld() {
+		wordsLevel = null;
+		WorldWords.forgetPlayers();
+	}
+
 	/** You swung at something; a World word under the crosshair gets knocked. */
 	public void swing() {
 		worldWords.swing();

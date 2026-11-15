@@ -213,6 +213,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 		// A locked view pins wherever you look first in a new world, never a stale spot from the last one
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> ViewLock.release());
+		// Don't keep the old world's level alive on the title screen
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> renderer.onLeaveWorld());
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
