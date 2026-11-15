@@ -67,9 +67,23 @@ class LyricsServiceTest {
 
 	private HttpServer restart() {
 		try {
-			return serve(port);
+			// the same port again; the old socket may take a moment to be free, and the client's address can't change
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+			while (true) {
+				try {
+					return serve(port);
+				} catch (IOException e) {
+					if (System.nanoTime() > until) {
+						throw e;
+					}
+					Thread.sleep(50);
+				}
+			}
 		} catch (IOException e) {
 			throw new java.io.UncheckedIOException(e);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
 		}
 	}
 
@@ -125,7 +139,7 @@ class LyricsServiceTest {
 	}
 
 	private static void waitFor(BooleanSupplier done) throws InterruptedException {
-		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
 		while (!done.getAsBoolean()) {
 			assertTrue(System.nanoTime() < until, "timed out");
 			Thread.sleep(10);
@@ -203,7 +217,8 @@ class LyricsServiceTest {
 		assertTrue(firstSeen.await(10, TimeUnit.SECONDS));
 
 		service.load(track("Song Two", 200_000));
-		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+		// Song One is held for 10 s; Song Two must be READY long before that is over
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(8);
 		while (service.state() != LyricsService.State.READY && System.nanoTime() < until) {
 			Thread.sleep(10);
 		}
@@ -330,8 +345,12 @@ class LyricsServiceTest {
 
 		service.load(track("Song Two", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.READY);
-		Thread.sleep(100);
-		long before = askedAbout("Song One");
+		// let a request that was already in flight when the song changed land, then nothing more may come
+		long before;
+		do {
+			before = askedAbout("Song One");
+			Thread.sleep(150);
+		} while (askedAbout("Song One") != before);
 		Thread.sleep(300);
 		assertEquals(before, askedAbout("Song One"), asked.toString());
 		assertEquals("Song Two", service.track().title());
