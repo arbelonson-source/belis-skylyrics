@@ -55,4 +55,13 @@ class TrackCleanTest {
 		assertEquals("Band – Song", of("Song\n", " Band", "").key());
 		assertTrue(of("\n ‮", "x", "").isNone());
 	}
+
+	@Test
+	void sectionSignCodesAreRemoved() {
+		Track t = of("§kHello", "A§cB", "Tail§");
+		assertEquals("Hello", t.title());
+		assertEquals("AB", t.artist());
+		assertEquals("Tail", t.album());
+		assertEquals("¶ Ș", of("¶ Ș", "x", "x").title());
+	}
 }
