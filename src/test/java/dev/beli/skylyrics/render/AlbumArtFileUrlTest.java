@@ -8,8 +8,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class AlbumArtFileUrlTest {
+	/** What a Unix-style address gives: on Windows "/home/a" has no drive, so it isn't an absolute path and is refused (null). */
 	private static Path p(String s) {
-		return Path.of(s);
+		return java.io.File.separatorChar == '\\' ? null : Path.of(s);
 	}
 
 	@Test
@@ -61,6 +62,8 @@ class AlbumArtFileUrlTest {
 		Path back = AlbumArt.fileUrlPath(file.toUri().toString());
 		org.junit.jupiter.api.Assertions.assertNotNull(back);
 		org.junit.jupiter.api.Assertions.assertTrue(java.nio.file.Files.isRegularFile(back));
+		assertEquals(Path.of("C:/Users/a b/cover.img"), AlbumArt.fileUrlPath("file:///C:/Users/a%20b/cover.img"));
+		assertEquals(Path.of("C:/x.img"), AlbumArt.fileUrlPath("file:/C:/x.img"));
 	}
 
 	@Test
