@@ -343,4 +343,11 @@ class HeardLibraryTest {
 		assertFalse(Files.exists(file()));
 		assertTrue(Files.exists(dir.resolve("heard.json.bad")));
 	}
+
+	@Test
+	void aNegativeOffsetIsTheFirstPage() {
+		List<Integer> all = List.of(1, 2, 3);
+		assertEquals(0, HeardLibrary.page(all, -5).offset());
+		assertEquals(3, HeardLibrary.page(all, -5).items().size());
+	}
 }

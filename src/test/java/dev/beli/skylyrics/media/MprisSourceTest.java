@@ -281,4 +281,32 @@ class MprisSourceTest {
 		// no /.flatpak-info: nothing is said
 		assertFalse(MprisSource.hidesPlayers(Map.of(), null));
 	}
+
+	@Test
+	void aStoppedPlayerHasNoSongButAPausedOneKeepsIt() {
+		assertTrue(MprisSource.stopped(Map.of("PlaybackStatus", new Variant<>("Stopped"))));
+		assertFalse(MprisSource.stopped(Map.of("PlaybackStatus", new Variant<>("Paused"))));
+		assertFalse(MprisSource.stopped(Map.of("PlaybackStatus", new Variant<>("Playing"))));
+		assertFalse(MprisSource.stopped(Map.of()));
+	}
+
+	@Test
+	void aPlayerWithNothingToShowClearsTheBar() throws Exception {
+		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return List.of(GOOD);
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) {
+				return null; // what read() gives for a Stopped player
+			}
+		});
+		try {
+			assertTrue(source.poll().track().isNone());
+		} finally {
+			source.close();
+		}
+	}
 }

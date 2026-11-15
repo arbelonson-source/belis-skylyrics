@@ -243,9 +243,10 @@ public final class AlbumArt {
 	}
 
 	private @Nullable BufferedImage read(String url) throws Exception {
-		if (url.startsWith("file://")) {
-			Path path = Path.of(URI.create(url));
-			if (!CoverCache.acceptable(Files.size(path))) {
+		Path path = fileUrlPath(url);
+		if (path != null) {
+			// Only a plain file: a pipe, a device or a folder is never read
+			if (!Files.isRegularFile(path) || !CoverCache.acceptable(Files.size(path))) {
 				return null;
 			}
 			try (InputStream in = Files.newInputStream(path)) {
@@ -274,6 +275,100 @@ public final class AlbumArt {
 			}
 		}
 		return null; // data: URIs and other odd schemes aren't worth it
+	}
+
+	/**
+	 * The local path a file cover address points to, or null when it isn't one. Players write these loosely: "file:///a b/c.jpg"
+	 * with raw spaces, "file://localhost/a", "file:/a", percent-encoded or raw unicode. Another host's file is not local.
+	 */
+	static @Nullable Path fileUrlPath(@Nullable String url) {
+		if (url == null) {
+			return null;
+		}
+		try {
+			// The strict way first: right for a Windows drive and for any well-formed address on every system
+			URI uri = URI.create(url);
+			if ("file".equalsIgnoreCase(uri.getScheme())) {
+				String authority = uri.getRawAuthority();
+				if (authority != null && !authority.isEmpty() && !authority.equalsIgnoreCase("localhost")) {
+					return null; // another computer: on Windows that is a network share, which would send login details to it
+				}
+				if (authority == null || authority.isEmpty()) {
+					String raw = uri.getPath();
+					if (raw == null || uncLike(raw)) {
+						return null;
+					}
+					return safe(Path.of(uri));
+				}
+			}
+		} catch (RuntimeException e) {
+			// raw spaces, "localhost" and other loose forms: decoded by hand below
+		}
+		String decoded = fileUrlString(url);
+		if (decoded == null) {
+			return null;
+		}
+		try {
+			return safe(Path.of(decoded));
+		} catch (java.nio.file.InvalidPathException e) {
+			return null;
+		}
+	}
+
+	/** Two slashes or backslashes in a row at the start: a network share or device path on Windows. */
+	private static boolean uncLike(String path) {
+		return path.length() >= 2 && (path.charAt(0) == '/' || path.charAt(0) == '\\') && (path.charAt(1) == '/' || path.charAt(1) == '\\');
+	}
+
+	private static @Nullable Path safe(Path path) {
+		String text = path.toString();
+		return path.isAbsolute() && !text.startsWith("\\\\") && !text.startsWith("//") ? path : null;
+	}
+
+	/** The decoded path text of a loose file address ("/home/a b/c.jpg", "C:/Users/c.jpg"), or null when it isn't a local file. */
+	static @Nullable String fileUrlString(@Nullable String url) {
+		if (url == null || url.length() < 6 || !url.regionMatches(true, 0, "file:", 0, 5)) {
+			return null;
+		}
+		String rest = url.substring(5);
+		if (rest.startsWith("//")) {
+			int slash = rest.indexOf('/', 2);
+			if (slash < 0) {
+				return null;
+			}
+			String host = rest.substring(2, slash);
+			if (!host.isEmpty() && !host.equalsIgnoreCase("localhost")) {
+				return null;
+			}
+			rest = rest.substring(slash);
+		}
+		if (!rest.startsWith("/")) {
+			return null;
+		}
+		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+		for (int i = 0; i < rest.length(); ) {
+			int cp = rest.codePointAt(i);
+			if (cp == '%' && i + 2 < rest.length() && Character.digit(rest.charAt(i + 1), 16) >= 0 && Character.digit(rest.charAt(i + 2), 16) >= 0) {
+				bytes.write(Character.digit(rest.charAt(i + 1), 16) * 16 + Character.digit(rest.charAt(i + 2), 16));
+				i += 3;
+			} else {
+				byte[] b = new String(Character.toChars(cp)).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+				bytes.write(b, 0, b.length);
+				i += Character.charCount(cp);
+			}
+		}
+		String decoded = bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
+		if (decoded.indexOf('\0') >= 0) {
+			return null;
+		}
+		if (uncLike(decoded)) {
+			return null;
+		}
+		// "/C:/Users/x": a Windows drive, without the slash in front
+		if (decoded.length() >= 3 && decoded.charAt(0) == '/' && Character.isLetter(decoded.charAt(1)) && decoded.charAt(1) < 128 && decoded.charAt(2) == ':') {
+			decoded = decoded.substring(1);
+		}
+		return decoded;
 	}
 
 	/** Decodes the bytes unless there are none (over the byte cap) or the picture header announces too many pixels. */

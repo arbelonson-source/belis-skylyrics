@@ -65,6 +65,10 @@
 - **Lyrics saved by older versions.** Lyrics saved by version 0.8.0 or older are checked again in the background: the ones that were another song's or an "instrumental" placeholder are replaced, or dropped when neither lyrics site has any.
 - **Themes keep your other settings.** Picking a theme now changes only what themes set (the layout, colours, fonts, glow, size, opacity, animation, sky and a few more). Settings no theme touches, such as **Karaoke fill**, **Shadow** and **Two-tone**, stay as you set them, and the theme still shows as picked (not Custom).
 - **Elytra mode.** After a steep dive or climb, the words come back to where they were once you level out, instead of staying higher or lower.
+- **Covers with odd file addresses.** On Linux, a player that gives its cover as a file with spaces or accents in the name, or as file://localhost or file:/, now shows the cover.
+- **Stopped players.** On Linux, a player that is stopped (not just paused) but still remembers its last song (Rhythmbox, VLC) no longer keeps that song in the bar.
+- **More pauses in the lyrics.** Lines that are only a note emoji, "♪ instrumental ♪", "(Intro)", "(Outro)" or "(Solo)" count as pauses, and a line starting with a part tag such as "[Chorus] words" no longer shows the tag.
+- **Song library.** A negative scroll position in the recently heard list can no longer cause an error.
 
 ### Faster
 

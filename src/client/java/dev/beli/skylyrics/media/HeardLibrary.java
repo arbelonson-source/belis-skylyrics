@@ -525,7 +525,7 @@ public final class HeardLibrary implements Library {
 	}
 
 	static <T> SpotifyLibrary.Page<T> page(List<T> all, int offset) {
-		int from = Math.min(offset, all.size());
+		int from = Math.max(0, Math.min(offset, all.size()));
 		return new SpotifyLibrary.Page<>(List.copyOf(all.subList(from, Math.min(all.size(), from + PAGE))), all.size(), from);
 	}
 

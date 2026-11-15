@@ -294,4 +294,52 @@ class LrcParserTest {
 		assertEquals("ab", LrcParser.parsePlain("a\u0007b", 0).get(0).text());
 		assertEquals("a b", LrcParser.parseSynced("[00:01.00]a\tb").get(0).text());
 	}
+
+	private static void assertPause(String line) {
+		Lyrics l = LrcParser.parseSynced("[00:01.00]sing\n[00:05.00]" + line + "\n[00:09.00]more");
+		assertTrue(l.get(1).isBreak(), "should be a pause: " + line);
+	}
+
+	private static void assertLyric(String line) {
+		Lyrics l = LrcParser.parseSynced("[00:01.00]sing\n[00:05.00]" + line + "\n[00:09.00]more");
+		assertEquals(line, l.get(1).text());
+	}
+
+	@Test
+	void moreWholeLineMarkersArePauses() {
+		for (String m : new String[] {"\uD83C\uDFB5", "\uD83C\uDFB6", "\uD83C\uDFB5 \uD83C\uDFB6 \uD83C\uDFB5", "\uD83C\uDFB5\uD83C\uDFB5", "\u266A instrumental \u266A", "(Intro)", "(Outro)",
+				"(Guitar Solo)", "(Solo)", "[Instrumental Break]", "[Intro]"}) {
+			assertPause(m);
+		}
+	}
+
+	@Test
+	void aLyricThatMerelyHasTheWordStaysALyric() {
+		assertLyric("Intro to love");
+		assertLyric("solo dolo");
+		assertLyric("Music");
+		assertLyric("Outro of my heart");
+		assertLyric("instrumental in my love");
+	}
+
+	@Test
+	void aLeadingPartTagIsDropped() {
+		assertEquals("We will rock you", LrcParser.parseSynced("[00:01.00][Chorus] We will rock you").get(0).text());
+		assertEquals("words", LrcParser.parseSynced("[00:01.00][Verse 1] words").get(0).text());
+		assertEquals("words", LrcParser.parseSynced("[00:01.00][Pre-Chorus]words").get(0).text());
+		assertEquals("words", LrcParser.parseSynced("[00:01.00][Bridge: Someone] words").get(0).text());
+		assertEquals("words", LrcParser.parseSynced("[00:01.00][hook] words").get(0).text());
+		assertEquals("words", LrcParser.parseSynced("[00:01.00][Outro] words").get(0).text());
+		assertEquals("[Laughs] ha", LrcParser.parseSynced("[00:01.00][Laughs] ha").get(0).text());
+	}
+
+	@Test
+	void hostileLinesParseFast() {
+		String[] lines = {"\u266A".repeat(50_000) + "x", "\u266A" + " ".repeat(50_000) + "instrumentalx", "[Chorus:" + " ".repeat(50_000) + " words",
+				"(" + "a".repeat(50_000) + " solo", "\uD83C\uDFB5".repeat(50_000) + "x"};
+		for (String line : lines) {
+			org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(2),
+					() -> LrcParser.parseSynced("[00:01.00]" + line + "\n[00:05.00]more"));
+		}
+	}
 }
