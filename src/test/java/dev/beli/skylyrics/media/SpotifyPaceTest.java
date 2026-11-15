@@ -34,4 +34,11 @@ class SpotifyPaceTest {
 		assertEquals(60 * S, SpotifyPace.backoffNs(500));
 		assertEquals(4 * S, SpotifyPace.backoffNs(0));
 	}
+
+	@Test
+	void aForbiddenAnswerWaitsAMinuteAtOnce() {
+		assertEquals(60 * S, SpotifyPace.failureDelayNs(403, 1));
+		assertEquals(4 * S, SpotifyPace.failureDelayNs(503, 1));
+		assertEquals(8 * S, SpotifyPace.failureDelayNs(0, 2));
+	}
 }

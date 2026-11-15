@@ -575,6 +575,17 @@ public final class SpotifyWebSource implements MediaSource {
 
 	// Playing
 
+	/** Spotify answered with a status that isn't an answer; the poller backs off by it. */
+	private static final class BadStatus extends IOException {
+		final int status;
+
+		BadStatus(int status) {
+			// The usual 403: a development-mode app only answers the accounts listed under User Management
+			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management") : Tr.t("Spotify answered with error %s", status));
+			this.status = status;
+		}
+	}
+
 	@Override
 	public Snapshot poll() throws Exception {
 		long now = System.nanoTime();
@@ -589,7 +600,7 @@ public final class SpotifyWebSource implements MediaSource {
 			return result;
 		} catch (IOException e) {
 			failures++;
-			nextPollNs = now + SpotifyPace.backoffNs(failures);
+			nextPollNs = now + SpotifyPace.failureDelayNs(e instanceof BadStatus b ? b.status : 0, failures);
 			throw e;
 		}
 	}
@@ -614,7 +625,7 @@ public final class SpotifyWebSource implements MediaSource {
 				nextPollNs = now + SpotifyPace.retryAfterNs(response.headers().firstValue("Retry-After").orElse(null));
 				return last;
 			}
-			default -> throw new IOException(Tr.t("Spotify answered with error %s", response.statusCode()));
+			default -> throw new BadStatus(response.statusCode());
 		}
 		if (last.playing()) {
 			nextPollNs = now + POLL_PLAYING_NS;

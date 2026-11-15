@@ -22,6 +22,11 @@ final class SpotifyPace {
 		return Math.min(ns, BACKOFF_MAX_NS);
 	}
 
+	/** How long to leave Spotify alone after a failure: a 403 won't fix itself, so it waits the longest right away. */
+	static long failureDelayNs(int status, int failures) {
+		return status == 403 ? BACKOFF_MAX_NS : backoffNs(failures);
+	}
+
 	/** The {@code Retry-After} header as nanoseconds: seconds only (an HTTP date or junk reads as 10 s), kept within 1 to 300 s. */
 	static long retryAfterNs(@Nullable String header) {
 		long seconds = RETRY_DEFAULT_S;

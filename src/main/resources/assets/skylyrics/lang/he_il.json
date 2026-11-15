@@ -292,6 +292,7 @@
   "skylyrics.ui.sign_in_to_spotify_below": "התחברו לספוטיפיי למטה",
   "skylyrics.ui.spotify_signed_you_out_sign_in_again": "ספוטיפיי ניתק אתכם, התחברו שוב",
   "skylyrics.ui.spotify_answered_with_error_s": "ספוטיפיי החזיר שגיאה %s",
+  "skylyrics.ui.spotify_blocked_this_app_on_the_spotify_dashboar": "ספוטיפיי חסם את האפליקציה הזו. בלוח הבקרה של ספוטיפיי, הוסיפו את החשבון שלכם תחת User Management",
   "skylyrics.ui.follows_your_spotify_account_on_any_device_even": "עוקב אחרי חשבון הספוטיפיי שלכם בכל מכשיר, גם בטלפון. ספוטיפיי דורש ליצור לשם כך אפליקציה חינמית: פתחו את לוח הבקרה, צרו אפליקציה עם ה-Redirect URI שלמטה וסמנו Web API, ואז הדביקו כאן את ה-Client ID שלה.",
   "skylyrics.ui.spotify_dashboard": "לוח הבקרה של ספוטיפיי",
   "skylyrics.ui.needs_a_spotify_premium_account": "דורש חשבון ספוטיפיי פרימיום",
