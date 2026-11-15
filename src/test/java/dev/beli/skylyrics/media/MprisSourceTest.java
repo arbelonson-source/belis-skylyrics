@@ -83,4 +83,35 @@ class MprisSourceTest {
 			source.close();
 		}
 	}
+
+	@Test
+	void aLateAnswerIsStampedWhenItWasAsked() throws Exception {
+		long ms = 1_000_000L;
+		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return List.of(GOOD);
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) throws Exception {
+				Thread.sleep(MprisSource.ANSWER_WAIT_MS + 250); // answers after the first poll has given up waiting
+				return reading(GOOD, "Good Song", 5000);
+			}
+		});
+		try {
+			long asked = System.nanoTime();
+			assertTrue(source.poll().track().isNone(), "no answer yet");
+			Snapshot s = null;
+			for (int i = 0; i < 20 && (s == null || s.track().isNone()); i++) {
+				Thread.sleep(100);
+				s = source.poll();
+			}
+			assertEquals("Good Song", s.track().title());
+			// The answer was gathered at the first poll, a second or more before it was picked up
+			assertTrue(s.readAtNanos() < asked + 200 * ms, "stamped " + (s.readAtNanos() - asked) / ms + " ms after the ask");
+		} finally {
+			source.close();
+		}
+	}
 }

@@ -503,7 +503,7 @@ public final class SkyEffects {
 		if (shown == null || !shown.synced() || shown.isEmpty()) {
 			return 0;
 		}
-		int index = shown.indexAt(tracker.positionMs() + cfg.offsetFor(tracker.track()));
+		int index = shown.indexAt(tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS);
 		LyricLine line = shown.get(index);
 		if (line == null || line.isBreak()) {
 			return 0;

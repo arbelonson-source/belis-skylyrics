@@ -13,8 +13,10 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +85,8 @@ public final class WindowsMediaSource implements MediaSource {
 	/** The followed player: {@link Session#key()} for choosing, the rest for the controls. */
 	private @Nullable String current;
 	private @Nullable Session currentSession;
+	/** What the last poll said about each player, to tell a player that just started playing from one that has been. */
+	private Map<String, Seen> seen = new HashMap<>();
 	private String currentDisplayName = "";
 
 	/** @param dir where the helper script and the covers it saves go */
@@ -112,7 +116,9 @@ public final class WindowsMediaSource implements MediaSource {
 
 	@Override
 	public synchronized Snapshot poll() throws Exception {
-		List<Session> sessions = sessions(request("poll"), System.currentTimeMillis());
+		Map<String, Seen> next = new HashMap<>();
+		List<Session> sessions = sessions(request("poll"), System.currentTimeMillis(), seen, next);
+		seen = next;
 		Session chosen = PlayerPicker.choose(sessions, Session::key, s -> s.track().player(), Session::playing,
 				preferredPlayer.get(), followKey(sessions, current));
 		currentSession = chosen;
@@ -149,8 +155,48 @@ public final class WindowsMediaSource implements MediaSource {
 		return same == null ? current : same.key();
 	}
 
-	/** The players in a poll answer, with their positions moved on to {@code nowMs}. */
+	/**
+	 * What a poll said about one player: its state and reported position, when we asked, and the time its
+	 * position counts from (see {@link #countFrom}).
+	 */
+	record Seen(boolean playing, long reportedMs, long polledMs, long countFromMs) {
+	}
+
+	/**
+	 * The time a player's reported position counts from, to move it on while playing. Normally that is
+	 * {@code updatedMs}, when the player wrote it. But an app can flip to Playing before it rewrites its update
+	 * time: then {@code updatedMs} is from before the pause, and counting from it adds the whole pause on top of
+	 * the old position. A report no newer than the poll that still saw it paused counts from now instead. A
+	 * player that never says when (updatedMs 0) counts from when we first saw this position, rather than
+	 * standing still. A report that changed, or an update time newer than the one we count from, starts over.
+	 */
+	static long countFrom(boolean playing, long reportedMs, long updatedMs, long nowMs, @Nullable Seen prev) {
+		if (!playing) {
+			return updatedMs;
+		}
+		if (prev == null) {
+			return updatedMs > 0 ? updatedMs : nowMs;
+		}
+		if (!prev.playing()) {
+			return updatedMs > prev.polledMs() ? updatedMs : nowMs;
+		}
+		if (reportedMs != prev.reportedMs() || updatedMs > prev.countFromMs()) {
+			return updatedMs > 0 ? updatedMs : nowMs;
+		}
+		return prev.countFromMs();
+	}
+
 	static List<Session> sessions(JsonObject reply, long nowMs) {
+		return sessions(reply, nowMs, Map.of(), new HashMap<>());
+	}
+
+	/**
+	 * The players in a poll answer, with their positions moved on to {@code nowMs}.
+	 *
+	 * @param before what the last poll said, by {@link Session#key()}
+	 * @param after  filled with what this poll says, for the next
+	 */
+	static List<Session> sessions(JsonObject reply, long nowMs, Map<String, Seen> before, Map<String, Seen> after) {
 		List<Session> out = new ArrayList<>();
 		JsonElement list = reply.get("sessions");
 		if (list == null || !list.isJsonArray()) {
@@ -170,7 +216,12 @@ public final class WindowsMediaSource implements MediaSource {
 			long start = number(o, "startMs");
 			long length = Math.max(0, number(o, "endMs") - start);
 			double rate = rate(o);
-			long position = position(number(o, "positionMs") - start, number(o, "updatedMs"), playing, length, nowMs, rate);
+			long reported = number(o, "positionMs") - start;
+			long updated = number(o, "updatedMs");
+			String key = id + "#" + (int) number(o, "index");
+			long from = countFrom(playing, reported, updated, nowMs, before.get(key));
+			after.put(key, new Seen(playing, reported, nowMs, from));
+			long position = position(reported, from, playing, length, nowMs, rate);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
 			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing, rate));
 		}

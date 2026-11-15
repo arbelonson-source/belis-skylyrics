@@ -10,7 +10,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -290,5 +292,69 @@ class WindowsMediaSourceTest {
 			}
 		}
 		return null;
+	}
+
+	/** One poll answer with one player. */
+	private static JsonObject poll(String status, long positionMs, long updatedMs) {
+		return JsonParser.parseString("""
+				{"seq":1,"ok":true,"sessions":[{"id":"Spotify.exe","title":"Song","status":"%s","positionMs":%d,"startMs":0,"endMs":200000,"updatedMs":%d}]}"""
+				.formatted(status, positionMs, updatedMs)).getAsJsonObject();
+	}
+
+	/** Runs polls through sessions() the way poll() does, and returns the position each one gives. */
+	private static long[] positions(Object... pollsAndTimes) {
+		Map<String, WindowsMediaSource.Seen> seen = new HashMap<>();
+		long[] out = new long[pollsAndTimes.length / 2];
+		for (int i = 0; i < out.length; i++) {
+			Map<String, WindowsMediaSource.Seen> next = new HashMap<>();
+			out[i] = WindowsMediaSource.sessions((JsonObject) pollsAndTimes[2 * i], (Long) pollsAndTimes[2 * i + 1], seen, next).getFirst().positionMs();
+			seen = next;
+		}
+		return out;
+	}
+
+	@Test
+	void resumingBeforeTheUpdateTimeIsRewrittenDoesNotAddThePause() {
+		// Paused at 60 s since t=1000 (updatedMs); polls at 40 s and 41 s; resumes with updatedMs still 1000
+		long[] p = positions(
+				poll("Paused", 60_000, 1_000), 40_000L,
+				poll("Paused", 60_000, 1_000), 41_000L,
+				poll("Playing", 60_000, 1_000), 42_000L, // flipped, update time still old: must not jump to 101 s
+				poll("Playing", 60_000, 1_000), 43_000L); // keeps counting from the flip
+		assertEquals(60_000, p[1]);
+		assertEquals(60_000, p[2], "the pause is not added");
+		assertEquals(61_000, p[3]);
+	}
+
+	@Test
+	void aResumeThatRewritesTheUpdateTimeCountsFromIt() {
+		long[] p = positions(
+				poll("Paused", 60_000, 1_000), 40_000L,
+				poll("Playing", 60_000, 41_500), 42_000L, // written 500 ms before this poll, after the one that saw it paused
+				poll("Playing", 60_000, 41_500), 43_000L);
+		assertEquals(60_500, p[1]);
+		assertEquals(61_500, p[2]);
+	}
+
+	@Test
+	void aPlayerWithNoUpdateTimeIsCountedFromWhenWeSawThePosition() {
+		long[] p = positions(
+				poll("Playing", 60_000, 0), 10_000L,
+				poll("Playing", 60_000, 0), 12_000L,
+				poll("Playing", 60_000, 0), 13_500L,
+				poll("Playing", 90_000, 0), 14_000L); // the player moved it (seek): start over
+		assertEquals(60_000, p[0]);
+		assertEquals(62_000, p[1], "was frozen at 60 s");
+		assertEquals(63_500, p[2]);
+		assertEquals(90_000, p[3]);
+	}
+
+	@Test
+	void normalPlayingStillCountsFromTheUpdateTime() {
+		long[] p = positions(
+				poll("Playing", 60_000, 5_000), 6_000L,
+				poll("Playing", 60_000, 5_000), 8_000L);
+		assertEquals(61_000, p[0]);
+		assertEquals(63_000, p[1]);
 	}
 }

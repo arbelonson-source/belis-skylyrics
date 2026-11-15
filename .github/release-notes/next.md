@@ -36,6 +36,10 @@
 - Shooting stars and sparkles stay visible in front of the eclipse.
 - The sky fades back in after leaving the Nether or the End, or coming up out of water, instead of popping in.
 - The sky effects fade out under Blindness and Darkness, as the vanilla sky does.
+- On a Mac, lyrics no longer run a little late.
+- A music player that answers slowly, or Spotify right after a pause, no longer makes the World words vanish for a moment.
+- On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
+- The sky effects change line at the same moment as the words.
 
 ### Faster
 
