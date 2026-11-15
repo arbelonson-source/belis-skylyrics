@@ -154,7 +154,7 @@ Other reasons for the notice: the download failed (a slow connection, say), or i
 
 ## Settings or Spotify sign-in not saved on Windows
 
-Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. From 0.7.9 the mod tries again for a moment before giving up. If a setting still won't stick, update to the newest version first.
+Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. From 0.8.0 the mod tries again for a moment before giving up. If a setting still won't stick, update to the newest version first.
 
 ## Opening the settings
 
