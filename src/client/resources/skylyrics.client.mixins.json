@@ -10,6 +10,7 @@
 		"GlyphStitcherMixin",
 		"GuiMixin",
 		"LevelRendererMixin",
+		"MinecraftFrameMixin",
 		"TrueTypeGlyphMixin"
 	],
 	"injectors": {
