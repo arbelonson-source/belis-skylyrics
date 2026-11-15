@@ -361,6 +361,38 @@ class MacMediaSourceTest {
 		org.junit.jupiter.api.Assertions.assertDoesNotThrow(source::poll);
 	}
 
+	@Test
+	void readIsStampedWhenTheScriptRanNotWhenItReturned() {
+		long ms = 1_000_000L;
+		assertEquals(150 * ms, MacMediaSource.readStamp(100 * ms, 200 * ms), "a quick run: the middle");
+		assertEquals(10_000 * ms - MacMediaSource.MAX_LAG_NS, MacMediaSource.readStamp(0, 10_000 * ms),
+				"a run that waited on a permission question read near its end");
+		assertEquals(5 * ms, MacMediaSource.readStamp(5 * ms, 5 * ms));
+	}
+
+	@Test
+	void snapshotCarriesTheTimeTheScriptStarted() throws Exception {
+		long ms = 1_000_000L;
+		MacMediaSource.Run slowRun = new MacMediaSource.Run() {
+			@Override
+			public MacMediaSource.Result await(long waitMs) throws InterruptedException {
+				Thread.sleep(400); // osascript took 400 ms to start up, read and answer
+				return new MacMediaSource.Result(0, SPOTIFY_PLAYING, "");
+			}
+
+			@Override
+			public void kill() {
+			}
+		};
+		MacMediaSource source = new MacMediaSource(() -> "", command -> slowRun, 0);
+		long before = System.nanoTime();
+		Snapshot s = source.poll();
+		long after = System.nanoTime();
+		assertTrue(s.readAtNanos() >= before, "not before the poll");
+		assertTrue(s.readAtNanos() < before + 300 * ms, "stamped about 200 ms in, not at the end: " + (s.readAtNanos() - before) / ms + " ms");
+		assertTrue(s.readAtNanos() < after);
+	}
+
 	/** The arguments after the main script. */
 	private static List<String> args(List<String> command) {
 		int i = command.lastIndexOf("-e");

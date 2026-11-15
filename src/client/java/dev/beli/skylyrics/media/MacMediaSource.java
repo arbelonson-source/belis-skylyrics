@@ -188,6 +188,11 @@ public final class MacMediaSource implements MediaSource {
 	/** The osascript that hasn't finished yet, if any. */
 	private volatile @Nullable Run pending;
 	private long pendingSince;
+	/** When the osascript that gave the last answer started and when it finished ({@link System#nanoTime()}). */
+	private long ranFromNs;
+	private long ranToNs;
+	/** The time the last answer's positions were read at, see {@link #readStamp}. */
+	private long lastReadAt;
 	private volatile int fails;
 	private volatile long retryAt;
 	/** Apps macOS refused to let us control, and when to ask again. */
@@ -232,6 +237,21 @@ public final class MacMediaSource implements MediaSource {
 		};
 	}
 
+	/** The most a reading is believed to be older than the moment osascript finished. */
+	static final long MAX_LAG_NS = 500_000_000L;
+
+	/**
+	 * When the positions in an answer were read, given when its osascript started and finished. The script reads
+	 * after it starts up and before its output gets back, so the midpoint is within half the run time of the
+	 * truth; stamping the finish (as this used to) made lyrics run late by the whole lag, which MediaTracker
+	 * never corrects. A run that took long (macOS was asking for permission) read near its end, not its middle,
+	 * so the stamp is never more than {@link #MAX_LAG_NS} before the finish.
+	 */
+	static long readStamp(long startNs, long endNs) {
+		long mid = startNs + (endNs - startNs) / 2;
+		return Math.max(mid, endNs - MAX_LAG_NS);
+	}
+
 	/** Whether this answer means macOS refused the Automation permission. */
 	static boolean isDenied(int code) {
 		return code == NOT_ALLOWED || code == NEEDS_CONSENT;
@@ -264,6 +284,7 @@ public final class MacMediaSource implements MediaSource {
 			if (args.isEmpty() && !late) {
 				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied); // nothing to ask, no osascript to start
 				lastAt = System.nanoTime();
+				lastReadAt = lastAt;
 				haveLast = true;
 			} else {
 				String out = osascript(args, true);
@@ -277,6 +298,7 @@ public final class MacMediaSource implements MediaSource {
 				failures.addAll(denied);
 				last = new Answer(answer.players(), failures);
 				lastAt = System.nanoTime();
+				lastReadAt = readStamp(ranFromNs, ranToNs);
 				haveLast = !late; // a late answer may be old: read again next time
 			}
 		}
@@ -298,7 +320,7 @@ public final class MacMediaSource implements MediaSource {
 		}
 		current = chosen.app();
 		currentDisplayName = chosen.app().displayName();
-		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), lastAt);
+		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), lastReadAt);
 	}
 
 	/**
@@ -392,6 +414,7 @@ public final class MacMediaSource implements MediaSource {
 			pendingSince = System.nanoTime();
 		}
 		Result result = run.await(WAIT_MS);
+		long finished = System.nanoTime();
 		if (result == null) {
 			if (!mayWait || System.nanoTime() - pendingSince > GIVE_UP_NS) {
 				run.kill();
@@ -401,6 +424,8 @@ public final class MacMediaSource implements MediaSource {
 			throw new IOException(Tr.t("Waiting for Spotify or Music. If macOS asks to let Minecraft control them, click OK"));
 		}
 		pending = null;
+		ranFromNs = pendingSince; // of the run that answered, which may be an older one than this call started
+		ranToNs = finished;
 		if (result.exitCode() != 0) {
 			String err = result.err().strip();
 			int newline = err.indexOf('\n');
