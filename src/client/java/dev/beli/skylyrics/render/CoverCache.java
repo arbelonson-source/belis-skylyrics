@@ -5,7 +5,6 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -86,6 +85,9 @@ public final class CoverCache {
 		}
 	}
 
+	/** The most a cover's body may take to arrive. */
+	private static final long BODY_TIMEOUT_S = 20;
+
 	/** A cover whose download failed is tried again after this long. */
 	static final long RETRY_NS = 120_000_000_000L;
 
@@ -106,7 +108,7 @@ public final class CoverCache {
 				if (c == null) {
 					httpClient = c = HttpClient.newBuilder()
 						.connectTimeout(Duration.ofSeconds(5))
-						.followRedirects(HttpClient.Redirect.NORMAL)
+						.followRedirects(HttpClient.Redirect.NEVER)
 						.build();
 				}
 			}
@@ -290,10 +292,11 @@ public final class CoverCache {
 		if (cached != null) {
 			return cached;
 		}
-		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
-		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		HttpResponse<java.io.InputStream> response = dev.beli.skylyrics.util.Net.getFollowing(http(), URI.create(url), Duration.ofSeconds(10));
 		byte[] bytes;
 		try (java.io.InputStream body = response.body()) {
+			// A server that stalls mid-body would hold this worker for ever, so the stream is closed after a while
+			dev.beli.skylyrics.util.Net.closeAfter(body, Duration.ofSeconds(BODY_TIMEOUT_S));
 			if (response.statusCode() / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 				return null;
 			}
