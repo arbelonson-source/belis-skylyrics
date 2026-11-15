@@ -300,6 +300,10 @@ public final class LyricsRenderer {
 		updateAnchor(cfg, camera, dt);
 		// Every layout, so the crosshair, sky and hat flashes follow the lines even where nothing here animates them
 		clock.frame(visibility > 0.01f && !shown.isEmpty(), shown.instrumental(), shown.indexAt(time), now, ANIM_NS);
+		// Only the Arc layout prunes these; coming back to it must fade each line in afresh, not snap to an old spot
+		if (cfg.layout != Layout.ARC) {
+			arcAnchors.clear();
+		}
 		if (cfg.layout == Layout.WORLD && !shown.instrumental()) {
 			renderWorldWords(context, mc, cfg, camera, time, now);
 			return;
