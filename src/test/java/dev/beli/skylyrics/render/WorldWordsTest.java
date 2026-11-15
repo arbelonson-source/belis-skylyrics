@@ -939,4 +939,15 @@ class WorldWordsTest {
 		assertFalse(LyricsRenderer.titleCanShow(true, 0f), "lyrics in but nothing visible yet");
 		assertTrue(LyricsRenderer.titleCanShow(true, 0.5f));
 	}
+
+	@Test
+	void aLongTitleIsShrunkToFitTheView() {
+		float card = 0.06f * 1.7f, distance = WorldWords.TITLE_DISTANCE;
+		// 32 letters of about 5.5 text units each, at a big Size setting
+		float fitted = WorldWords.fitTitle(card, 176f, 2f, distance);
+		assertTrue(fitted < card);
+		float width = 176f * fitted * 2f;
+		assertEquals(WorldWords.TITLE_MAX_DEGREES, 2 * (float) Math.toDegrees(Math.atan(width / 2 / distance)), 0.5f);
+		assertEquals(card, WorldWords.fitTitle(card, 40f, 1f, distance), "a short title keeps its size");
+	}
 }

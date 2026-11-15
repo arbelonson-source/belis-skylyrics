@@ -204,6 +204,8 @@ final class WorldWords {
 	static final float ARTIST_SIZE = 0.55f, ARTIST_DROP = 4.2f;
 	/** Longest title shown, in characters; longer ones are cut with an ellipsis. */
 	static final int TITLE_MAX = 32;
+	/** The widest a title may look, in degrees of view: a bit more than a word, as it is the one big card. */
+	static final float TITLE_MAX_DEGREES = 45;
 
 	/** One card: where it stands, what it shows, and how it's turned. */
 	private static final class Card {
@@ -946,10 +948,17 @@ final class WorldWords {
 	private void addTitle(String text, float yaw, float pitch, float size, Camera camera, Font font, Style style, long now) {
 		Display d = Display.of(text);
 		Vec3 dir = direction(yaw, pitch);
-		Card c = new Card(d, widths(d, font, style), camera.position().add(dir.scale(TITLE_DISTANCE * away)), yaw, 0, 0,
-				SIZE * size * away, now);
+		float[] at = widths(d, font, style);
+		float distance = TITLE_DISTANCE * away;
+		Card c = new Card(d, at, camera.position().add(dir.scale(distance)), yaw, 0, 0,
+				fitTitle(SIZE * size * away, at[at.length - 1], wordScale, distance), now);
 		c.title = true;
 		cards.add(c);
+	}
+
+	/** A title card's size, scaled down if its text of {@code textWidth} would look wider than {@link #TITLE_MAX_DEGREES}. */
+	static float fitTitle(float cardSize, float textWidth, float wordScale, float distance) {
+		return fitSize(cardSize, textWidth * cardSize * wordScale, distance, TITLE_MAX_DEGREES);
 	}
 
 	/** A title as shown: trimmed, in capitals if the words are, and cut short with an ellipsis if it's long. */
