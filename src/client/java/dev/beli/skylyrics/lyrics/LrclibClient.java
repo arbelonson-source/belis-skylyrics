@@ -85,6 +85,10 @@ public final class LrclibClient implements LyricsSource {
 		}
 	}
 
+	/** The most a reply may weigh, and take to arrive. */
+	static final int MAX_REPLY = 2 * 1024 * 1024;
+	private static final Duration BODY_TIMEOUT = Duration.ofSeconds(20);
+
 	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
 	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
 
@@ -275,16 +279,21 @@ public final class LrclibClient implements LyricsSource {
 				.header("Accept", "application/json")
 				.GET()
 				.build();
-		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-		if (response.statusCode() == 404) {
-			return null;
-		}
-		if (response.statusCode() / 100 != 2) {
-			throw new StatusException(response.statusCode(), retryAfterMs(response.headers().firstValue("Retry-After").orElse(null)));
+		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		String body;
+		try (java.io.InputStream in = response.body()) {
+			if (response.statusCode() == 404) {
+				return null;
+			}
+			if (response.statusCode() / 100 != 2) {
+				throw new StatusException(response.statusCode(), retryAfterMs(response.headers().firstValue("Retry-After").orElse(null)));
+			}
+			// Too big or too slow counts as a failed try, like a dropped connection
+			dev.beli.skylyrics.util.Net.closeAfter(in, BODY_TIMEOUT);
+			body = dev.beli.skylyrics.util.Net.readText(in, MAX_REPLY);
 		}
 		// A proxy or login page can answer 200 with nothing, or a bare word: that is a failed try, not "no lyrics"
-		String body = response.body();
-		if (body == null || body.isBlank()) {
+		if (body.isBlank()) {
 			throw new IOException("LRCLIB sent an empty reply");
 		}
 		JsonElement json;

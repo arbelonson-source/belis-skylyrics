@@ -311,4 +311,12 @@ class LrclibClientTest {
 		assertEquals("[00:01.00]right", findWith(TRACK, hit("Another Song", BAND, 200, "[00:01.00]wrong"),
 				hit("A Made-Up Song", BAND, 203, "[00:01.00]right")).synced());
 	}
+
+	@Test
+	void aReplyOverTheCapIsAFailedRequest() {
+		searchBody = "[{\"trackName\":\"x\",\"pad\":\"" + "a".repeat(3 * 1024 * 1024) + "\"}]";
+		getCode = 404;
+		IOException e = assertThrows(IOException.class, () -> client.find(TRACK));
+		assertFalse(e instanceof LrclibClient.StatusException);
+	}
 }
