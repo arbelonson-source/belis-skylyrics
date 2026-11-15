@@ -36,12 +36,27 @@ public final class TitleCleaner {
 	private TitleCleaner() {
 	}
 
+	/**
+	 * The longest title or artist the patterns look at. Titles come from music players and lyrics sites, and some
+	 * patterns here backtrack a lot on a long text with an unclosed bracket; real titles are far shorter.
+	 */
+	public static final int MAX_TEXT = 200;
+
+	/** {@code s} cut to {@link #MAX_TEXT}, never in the middle of a surrogate pair. */
+	public static String capped(String s) {
+		if (s.length() <= MAX_TEXT) {
+			return s;
+		}
+		int end = Character.isHighSurrogate(s.charAt(MAX_TEXT - 1)) ? MAX_TEXT - 1 : MAX_TEXT;
+		return s.substring(0, end);
+	}
+
 	public static Track clean(Track track) {
 		String title = track.title();
-		String artist = ARTIST_NOISE.matcher(track.artist()).replaceAll("").trim();
+		String artist = ARTIST_NOISE.matcher(capped(track.artist())).replaceAll("").trim();
 
 		if (BROWSERS.contains(track.player().toLowerCase(Locale.ROOT))) {
-			title = NOISE.matcher(title).replaceAll("").trim();
+			title = NOISE.matcher(capped(title)).replaceAll("").trim();
 			String[] parts = DASH.split(title, 2);
 			// "Artist - Song" video titles; the channel name is usually not the real artist.
 			// "Topic" channels already give the real artist and song.
@@ -59,7 +74,7 @@ public final class TitleCleaner {
 
 	/** A stricter version used only for looking lyrics up: "Song - Remastered 2011" -> "Song". */
 	public static String forSearch(String title) {
-		String t = NOISE.matcher(title).replaceAll("");
+		String t = NOISE.matcher(capped(title)).replaceAll("");
 		t = t.replaceAll("(?i)\\s+[-\u2013\u2014]\\s+(\\d{4}\\s*)?(remaster(ed)?|mono|stereo|single|radio edit|live|version|edit|from .*)\\b.*$", "");
 		String bracketed = GUEST_BRACKETS.matcher(t).replaceAll("");
 		// A title that is only a credit ("(feat. X)") is all there is to search for.
@@ -72,7 +87,7 @@ public final class TitleCleaner {
 
 	/** "(Remastered)", "[Live]", "(Radio Edit)", "(from X)" …: a version of the same song. "remix" and "part N" are not. */
 	private static final Pattern VERSION_BRACKET = Pattern.compile(
-			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014][^)\\]\uFF09\uFF3D\u3011\u3015]*\\b(remaster(ed)?|live|radio edit|edit|version|mix|mono|stereo|acoustic|demo|from .+|feat\\.?|ft\\.?|featuring|with|prod\\.?)\\b[^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
+			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014][^)\\]\uFF09\uFF3D\u3011\u3015]*\\b(remaster(ed)?|live|radio edit|edit|version|mix|mono|stereo|acoustic|demo|from [^)\\]\uFF09\uFF3D\u3011\u3015]+|feat\\.?|ft\\.?|featuring|with|prod\\.?)\\b[^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
 			Pattern.CASE_INSENSITIVE);
 
 	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */
@@ -111,7 +126,7 @@ public final class TitleCleaner {
 
 	/** The title without its bracketed parts, or null when one of them names another work. */
 	static @Nullable String withoutBrackets(String title) {
-		Matcher m = ANY_BRACKET.matcher(title);
+		Matcher m = ANY_BRACKET.matcher(capped(title));
 		StringBuilder out = new StringBuilder();
 		while (m.find()) {
 			if (OTHER_WORK.matcher(m.group(1)).find()) {

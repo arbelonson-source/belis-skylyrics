@@ -173,4 +173,30 @@ class TitleCleanerTest {
 		assertFalse(TitleCleaner.sameSong("Song", ""));
 		assertFalse(TitleCleaner.sameSong("Song", "  "));
 	}
+
+	@Test
+	void aHugeTitleWithAnUnclosedBracketIsStillQuick() {
+		// Titles come from players and lyrics sites; these shapes made the bracket patterns backtrack for minutes
+		String[] hostile = {
+				"(" + "from x ".repeat(2000),
+				"(" + "official live ".repeat(2000),
+				"[" + "a".repeat(10000),
+				"Song" + " - live".repeat(2000),
+				"\uFF08" + "with ".repeat(3000)};
+		org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(2), () -> {
+			for (String h : hostile) {
+				TitleCleaner.sameSong(h, h + "x");
+				TitleCleaner.forSearch(h);
+				TitleCleaner.clean(new Track(h, h + " - Topic", "", 200_000, "", "firefox", ""));
+			}
+		});
+	}
+
+	@Test
+	void cappingNeverSplitsAnEmoji() {
+		String s = "a".repeat(TitleCleaner.MAX_TEXT - 1) + "\uD83C\uDFB5" + "b";
+		String c = TitleCleaner.capped(s);
+		assertFalse(Character.isHighSurrogate(c.charAt(c.length() - 1)));
+		assertEquals("short", TitleCleaner.capped("short"));
+	}
 }

@@ -21,6 +21,7 @@
 - A bigger top bar now shrinks to fit the screen instead of overflowing it.
 - "Set up Spotify" scrolls to the Spotify card even when the settings screen has just opened, and tabs keep their scroll after you visit a shorter one.
 - When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist.
+- A very long song title from a player or a lyrics site can no longer hold up the lyrics lookup.
 
 ### Faster
 
