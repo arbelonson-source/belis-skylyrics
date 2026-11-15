@@ -244,7 +244,7 @@ public final class WindowsMediaSource implements MediaSource {
 		} catch (IOException e) {
 			stop();
 			backOffIfEarly();
-			throw new IOException("The Windows media helper stopped");
+			throw new IOException(Tr.t("The Windows music reader stopped"));
 		}
 		long deadline = System.nanoTime() + replyTimeoutMs * 1_000_000;
 		while (true) {
@@ -253,14 +253,14 @@ public final class WindowsMediaSource implements MediaSource {
 			if (line == END) {
 				stop();
 				backOffIfEarly();
-				throw new IOException("The Windows media helper stopped");
+				throw new IOException(Tr.t("The Windows music reader stopped"));
 			}
 			if (line == null) {
 				if (++missed >= MAX_MISSED) {
 					stop();
 					missed = 0;
 				}
-				throw new IOException("Windows didn't say what's playing in time");
+				throw new IOException(Tr.t("Windows didn't say what's playing in time"));
 			}
 			JsonObject reply = parse(line);
 			if (reply == null || number(reply, "seq") != id) {
@@ -269,8 +269,8 @@ public final class WindowsMediaSource implements MediaSource {
 			missed = 0;
 			JsonElement ok = reply.get("ok");
 			if (ok == null || !ok.isJsonPrimitive() || !ok.getAsBoolean()) {
-				String error = string(reply, "error");
-				throw new IOException(error.isEmpty() ? "The Windows media helper sent something odd" : error);
+				String error = helperError(reply);
+				throw new IOException(error.isEmpty() ? Tr.t("The Windows music reader sent something unexpected") : error);
 			}
 			return reply;
 		}
@@ -294,17 +294,35 @@ public final class WindowsMediaSource implements MediaSource {
 			start();
 		} catch (IOException | RuntimeException e) {
 			stop();
-			startError = e.getMessage() == null || e.getMessage().isEmpty() ? e.toString() : e.getMessage();
+			startError = detail(e);
 			retryAt = System.nanoTime() + RETRY_NS;
 			LOG.warn("Couldn't read Windows' media controls: {}", startError);
 			throw new IOException(startError, e);
 		}
 	}
 
+	private static String detail(Exception e) {
+		return e.getMessage() == null || e.getMessage().isEmpty() ? e.toString() : e.getMessage();
+	}
+
+	/**
+	 * What the helper's error says, in the player's language. The script sends a stable {@code code} (and the
+	 * technical part as {@code detail}); anything else it says is shown as it is.
+	 */
+	static String helperError(JsonObject reply) {
+		String detail = string(reply, "detail");
+		return switch (string(reply, "code")) {
+			case "unavailable" -> Tr.t("Windows' media controls aren't available (%s)", detail);
+			case "stopped" -> Tr.t("Windows' media controls stopped answering (%s)", detail);
+			case "no_web" -> Tr.t("Windows is missing a part the music reader needs (System.Web)");
+			default -> string(reply, "error");
+		};
+	}
+
 	private void backOffIfEarly() {
 		if (shouldBackOff(false, startedAt, System.nanoTime())) {
 			// Starting it again straight away would most likely end the same way
-			startError = "The Windows media helper keeps stopping (see windows-media.log)";
+			startError = Tr.t("The Windows music reader keeps stopping (see windows-media.log)");
 			retryAt = System.nanoTime() + RETRY_NS;
 		}
 	}
@@ -316,21 +334,25 @@ public final class WindowsMediaSource implements MediaSource {
 
 	private void start() throws IOException, InterruptedException {
 		Path covers = dir.resolve("covers");
-		Files.createDirectories(covers);
-		deleteFilesIn(covers); // left over from the last game
 		Path script = dir.resolve(SCRIPT);
-		byte[] bytes;
-		try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
-			if (in == null) {
-				throw new IOException(SCRIPT + " is missing from the mod");
+		try {
+			Files.createDirectories(covers);
+			deleteFilesIn(covers); // left over from the last game
+			byte[] bytes;
+			try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
+				if (in == null) {
+					throw new IOException(SCRIPT + " is missing from the mod");
+				}
+				bytes = in.readAllBytes();
 			}
-			bytes = in.readAllBytes();
-		}
-		// Rewriting an unchanged file can collide with an antivirus scanning it
-		if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
-			Path tmp = dir.resolve(SCRIPT + ".tmp");
-			Files.write(tmp, bytes);
-			Files.move(tmp, script, StandardCopyOption.REPLACE_EXISTING);
+			// Rewriting an unchanged file can collide with an antivirus scanning it
+			if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
+				Path tmp = dir.resolve(SCRIPT + ".tmp");
+				Files.write(tmp, bytes);
+				Files.move(tmp, script, StandardCopyOption.REPLACE_EXISTING);
+			}
+		} catch (IOException e) {
+			throw new IOException(Tr.t("Couldn't prepare the Windows music reader (%s)", detail(e)), e);
 		}
 
 		ProcessBuilder builder = new ProcessBuilder(launcher.command(script, covers));
@@ -355,7 +377,7 @@ public final class WindowsMediaSource implements MediaSource {
 		String first = queue.poll(startTimeoutMs, TimeUnit.MILLISECONDS);
 		JsonObject hello = first == null || first == END ? null : parse(first);
 		if (hello == null || !hello.has("ready") || !hello.get("ready").getAsBoolean()) {
-			String error = hello == null ? "" : string(hello, "error");
+			String error = hello == null ? "" : helperError(hello);
 			throw new IOException(!error.isEmpty() ? error
 					: first == null ? Tr.t("The Windows music reader took too long to start. Reopen the game and give it a moment.")
 					: Tr.t("The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game."));

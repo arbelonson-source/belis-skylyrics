@@ -97,6 +97,17 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void helperErrorsComeFromCodes() {
+		assertEquals("Windows' media controls aren't available (boom)", WindowsMediaSource.helperError(
+				JsonParser.parseString("{\"ready\":false,\"code\":\"unavailable\",\"detail\":\"boom\",\"error\":\"unavailable: boom\"}").getAsJsonObject()));
+		assertEquals("Windows' media controls stopped answering (late)", WindowsMediaSource.helperError(
+				JsonParser.parseString("{\"ok\":false,\"code\":\"stopped\",\"detail\":\"late\"}").getAsJsonObject()));
+		assertEquals("Nothing is playing", WindowsMediaSource.helperError(
+				JsonParser.parseString("{\"ok\":false,\"error\":\"Nothing is playing\"}").getAsJsonObject()));
+		assertEquals("", WindowsMediaSource.helperError(JsonParser.parseString("{\"ok\":false}").getAsJsonObject()));
+	}
+
+	@Test
 	void readsPollAnswers() {
 		JsonObject reply = JsonParser.parseString("""
 				{"seq":3,"ok":true,"sessions":[
