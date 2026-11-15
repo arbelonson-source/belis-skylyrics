@@ -286,12 +286,9 @@ public final class CoverCache {
 
 	private @Nullable BufferedImage read(String url) throws Exception {
 		Path file = dir.resolve(fileName(url));
-		if (Files.isRegularFile(file)) {
-			BufferedImage image = ImageIO.read(file.toFile());
-			if (image != null) {
-				file.toFile().setLastModified(System.currentTimeMillis());
-				return image;
-			}
+		BufferedImage cached = readCached(file);
+		if (cached != null) {
+			return cached;
 		}
 		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
 		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
@@ -310,6 +307,24 @@ public final class CoverCache {
 			store(dir, file, bytes);
 		}
 		return image;
+	}
+
+	/** The cover saved earlier, or null when there is none or the file is damaged (which is then removed so it downloads again). */
+	static @Nullable BufferedImage readCached(Path file) {
+		if (!Files.isRegularFile(file)) {
+			return null;
+		}
+		try {
+			BufferedImage image = ImageIO.read(file.toFile());
+			if (image != null) {
+				file.toFile().setLastModified(System.currentTimeMillis());
+				return image;
+			}
+		} catch (java.io.IOException | RuntimeException e) {
+			LOG.debug("Cached cover {} is damaged", file, e);
+		}
+		file.toFile().delete();
+		return null;
 	}
 
 	/** Keeps a downloaded cover on disk for next time; a full or locked disk only costs the next download. */

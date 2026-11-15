@@ -104,4 +104,16 @@ class CoverCacheTest {
 		CoverCache.store(ok, ok.resolve("b.img"), png(8, 8));
 		assertTrue(java.nio.file.Files.isRegularFile(ok.resolve("b.img")));
 	}
+
+	@Test
+	void aDamagedCachedCoverIsRemovedSoItDownloadsAgain(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		byte[] whole = png(16, 16);
+		java.nio.file.Path file = tmp.resolve("c.img");
+		java.nio.file.Files.write(file, whole);
+		assertEquals(16, CoverCache.readCached(file).getWidth());
+		java.nio.file.Files.write(file, java.util.Arrays.copyOf(whole, whole.length / 2));
+		assertNull(CoverCache.readCached(file));
+		assertFalse(java.nio.file.Files.exists(file));
+		assertNull(CoverCache.readCached(file));
+	}
 }
