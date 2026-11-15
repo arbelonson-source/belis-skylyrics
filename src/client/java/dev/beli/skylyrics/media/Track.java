@@ -42,9 +42,12 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		return title.isEmpty();
 	}
 
-	/** Both sides name their song and the names differ: two songs that share title, artist and album (two "Interlude"s). */
+	/**
+	 * Both sides carry a Spotify song or episode id and the ids differ: two songs that share title, artist and album
+	 * (two "Interlude"s). Other addresses (a browser's page url can change mid-song) never tell songs apart.
+	 */
 	public boolean otherUri(Track other) {
-		return !uri.isEmpty() && !other.uri.isEmpty() && !uri.equals(other.uri);
+		return uri.startsWith("spotify:") && other.uri.startsWith("spotify:") && !uri.equals(other.uri);
 	}
 
 	/** Same song (ignores the player and art, which can change mid-song; a different address on both sides is another song). */

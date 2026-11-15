@@ -134,6 +134,13 @@ class MediaTrackerTest {
 	}
 
 	@Test
+	void aBrowserPageAddressThatChangesMidSongIsStillTheSameSong() throws InterruptedException {
+		Track a = new Track("Made Up Song", "Made Up Band", "", 215_000, "", "firefox", "https://music.example/watch?v=1&list=a&index=1");
+		Track b = new Track("Made Up Song", "Made Up Band", "", 215_000, "", "firefox", "https://music.example/watch?v=1&list=a&index=2");
+		assertEquals(1, run(a, b, b).size());
+	}
+
+	@Test
 	void anAddressThatAppearsLateOrIsMissingIsStillTheSameSong() throws InterruptedException {
 		assertEquals(1, run(withUri(""), withUri("spotify:track:1"), withUri("spotify:track:1")).size());
 		assertEquals(1, run(withUri("spotify:track:1"), withUri(""), withUri("")).size());
