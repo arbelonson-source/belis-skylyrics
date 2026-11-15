@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -140,5 +141,30 @@ class HatLayerTest {
 			double turns = speed * HatLayer.NOTE_LOOP / (2 * Math.PI);
 			org.junit.jupiter.api.Assertions.assertEquals(Math.rint(turns), turns, 1e-3, "speed " + speed);
 		}
+	}
+
+	@Test
+	void anEmptyHeadLeavesTheHatAtNormalSize() {
+		assertFalse(HatLayer.headCovered(true, true, false));
+		assertEquals(1f, HatLayer.hatScale(false), 0f);
+	}
+
+	@Test
+	void armorAPumpkinOrASkullOnTheHeadCountsAsWorn() {
+		assertTrue(HatLayer.headCovered(false, true, false), "a helmet");
+		assertTrue(HatLayer.headCovered(true, false, false), "a carved pumpkin or other block on the head");
+		assertTrue(HatLayer.headCovered(true, true, true), "a player head or mob skull");
+		assertEquals(HatLayer.WORN_HEAD_SCALE, HatLayer.hatScale(true), 0f);
+	}
+
+	@Test
+	void theWornHeadScaleLiftsEveryHatClearOfAHelmet() {
+		float helmetTop = -0.5625f, helmetHalf = 0.3125f, c = HatLayer.HEAD_CENTER, s = HatLayer.hatScale(true);
+		for (float y : new float[] {HatLayer.TOP_HAT_BRIM_Y, HatLayer.CAP_Y, HatLayer.FLOWER_Y}) {
+			assertTrue(c + (y - c) * s < helmetTop - 0.005f, "a hat at y=" + y + " sits above the helmet");
+		}
+		assertTrue(HatLayer.PUMPKIN_HALF * s > helmetHalf + 0.03f, "the pumpkin hat is clear of a helmet's sides");
+		assertTrue(HatLayer.LENS_Z * s < -helmetHalf - 0.01f, "the shades are in front of the helmet's face");
+		assertTrue(s < 1.3f, "not so big it looks wrong");
 	}
 }
