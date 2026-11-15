@@ -151,9 +151,9 @@ public final class LibraryScreen extends Screen {
 		int next;
 		boolean loaded;
 		String error = "";
+		float retryAt;
 		float scroll;
 		float scrollTarget;
-		float retryAt;
 
 		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader) {
 			this.loader = loader;
@@ -180,9 +180,9 @@ public final class LibraryScreen extends Screen {
 				next = page.next();
 			} catch (CompletionException e) {
 				error = message(e.getCause());
+				retryAt = clock + RETRY_AFTER;
 			}
 			pending = null;
-				retryAt = clock + RETRY_AFTER;
 			loaded = true;
 		}
 	}
@@ -1033,14 +1033,14 @@ public final class LibraryScreen extends Screen {
 				shelf.more();
 				return true;
 			}
-			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
-				int hit = shelfHitAt(shelf, mx, my);
 			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
 					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) + 8)) <= 8) {
 				// The error line under the last card is a button too
 				shelf.more();
 				return true;
 			}
+			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+				int hit = shelfHitAt(shelf, mx, my);
 				if (hit >= 0) {
 					selected = hit;
 					activate(shelf, hit);
@@ -1304,6 +1304,7 @@ public final class LibraryScreen extends Screen {
 
 	private void edit(String text) {
 		query = dev.beli.skylyrics.util.TextCut.limit(text, 80);
+		selected = -1;
 		typedAt = System.nanoTime();
 		searchDirty = true;
 	}
