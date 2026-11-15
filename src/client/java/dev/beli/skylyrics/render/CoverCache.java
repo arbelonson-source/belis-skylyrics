@@ -61,6 +61,8 @@ public final class CoverCache {
 		private volatile @Nullable NativeImage image;
 		private volatile boolean dropped;
 		private volatile int color = AlbumArt.FALLBACK_COLOR;
+		/** When the download last failed, or 0 while it hasn't. */
+		private volatile long failedAt;
 		private boolean uploaded;
 		private long shownAt;
 
@@ -82,6 +84,14 @@ public final class CoverCache {
 		public float shown(long now) {
 			return Math.clamp((now - shownAt) / (float) FADE_NS, 0f, 1f);
 		}
+	}
+
+	/** A cover whose download failed is tried again after this long. */
+	static final long RETRY_NS = 120_000_000_000L;
+
+	/** Whether a download that failed at {@code failedAt} (nanoTime, 0 for never) is due another go. */
+	public static boolean retryDue(long failedAt, long now) {
+		return failedAt != 0 && now - failedAt >= RETRY_NS;
 	}
 
 	private final Path dir;
@@ -120,6 +130,10 @@ public final class CoverCache {
 				}
 			}
 			trim();
+		}
+		if (!cover.uploaded && cover.image == null && retryDue(cover.failedAt, System.nanoTime())) {
+			cover.failedAt = 0;
+			waiting.offerFirst(cover);
 		}
 		return cover.uploaded ? cover : null;
 	}
@@ -202,13 +216,18 @@ public final class CoverCache {
 	private void load(Cover cover) {
 		try {
 			BufferedImage image = read(cover.url);
-			if (image == null || cover.dropped) {
+			if (cover.dropped) {
+				return;
+			}
+			if (image == null) {
+				cover.failedAt = Math.max(1, System.nanoTime());
 				return;
 			}
 			cover.color = AlbumArt.pickColor(image);
 			cover.image = AlbumArt.shrink(image, SIZE, CORNER);
 			ready.add(cover);
 		} catch (Exception | OutOfMemoryError e) {
+			cover.failedAt = Math.max(1, System.nanoTime());
 			LOG.debug("Couldn't load cover {}: {}", cover.url, e.toString());
 		}
 	}
