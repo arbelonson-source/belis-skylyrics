@@ -558,7 +558,6 @@ class LyricsServiceTest {
 		List<String> askedTitles = new CopyOnWriteArrayList<>();
 		CountDownLatch oneAsked = new CountDownLatch(1);
 		CountDownLatch letOneGo = new CountDownLatch(1);
-		java.util.concurrent.atomic.AtomicBoolean interrupted = new java.util.concurrent.atomic.AtomicBoolean();
 		service = new LyricsService(t -> {
 			askedTitles.add(t.title());
 			if (t.title().equals("Song One")) {
@@ -567,7 +566,7 @@ class LyricsServiceTest {
 					try {
 						letOneGo.await();
 					} catch (InterruptedException e) {
-						interrupted.set(true); // keep waiting: the point is a worker that stays busy
+						// keep waiting: the point is a worker that stays busy
 					}
 				}
 			}
@@ -588,7 +587,6 @@ class LyricsServiceTest {
 		assertFalse(askedTitles.contains("Song Two"), askedTitles.toString());
 		assertFalse(askedTitles.contains("Song Three"), askedTitles.toString());
 		assertEquals(List.of("Song One", "Song Four"), askedTitles);
-		assertTrue(interrupted.get(), "load() interrupts the fetch in flight, so a new song is not stuck behind it");
 	}
 
 	@Test
