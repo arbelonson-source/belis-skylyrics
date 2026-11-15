@@ -166,6 +166,8 @@ class SkyEffectsTest {
 	@Test
 	void sparklesSitInFrontOfEveryCloudAndCurtain() {
 		assertTrue(SkyEffects.SPARKLE_FRONT < SkyEffects.nearestLayer());
+		assertTrue(SkyEffects.METEOR_FRONT < SkyEffects.nearestLayer());
+		assertTrue(SkyEffects.METEOR_FRONT <= SkyEffects.SPARKLE_FRONT);
 		assertTrue(SkyEffects.blobFraction(0) > SkyEffects.blobFraction(1));
 		assertTrue(SkyEffects.ribbonFraction(0) > SkyEffects.ribbonFraction(1));
 	}

@@ -482,6 +482,7 @@ public final class NowPlayingHud {
 		boolean rtl = TopBarWords.baseRtl(c.text());
 		//?}
 		float total = extent(words);
+		boolean probe = BarProbe.begin(live);
 		int current = 0;
 		for (int i = 0; i < words.length; i++) {
 			if (words[i].sung()) {
@@ -509,6 +510,9 @@ public final class NowPlayingHud {
 			start = x - shift;
 		}
 
+		if (probe) {
+			BarProbe.line(c.text(), rtl, scale, start, shift, pad, wordGap(font, style, scale), total, g);
+		}
 		if (live) {
 			float left = Math.min(prev.x(), cur.x()), right = Math.max(prev.x() + prev.w(), cur.x() + cur.w());
 			if (hlRight < 0) {
@@ -520,6 +524,9 @@ public final class NowPlayingHud {
 			hlRight += (right - hlRight) * hk;
 			float x0 = rtl ? start - hlRight : start + hlLeft;
 			float hw = hlRight - hlLeft;
+			if (probe) {
+				BarProbe.highlight(current, left, right, hlLeft, hlRight, x0);
+			}
 			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS,
 					ARGB.color(Math.round(a * 255), accent(SkyLyricsConfig.get())));
 		}
@@ -529,11 +536,17 @@ public final class NowPlayingHud {
 			// The old line greys out the moment it is replaced
 			int color = live && w.sung() ? sung : upcoming;
 			float wx = rtl ? start - w.x() - w.w() : start + w.x();
+			if (probe) {
+				BarProbe.word(font, style, w.text(), rtl, w.x(), w.w(), wx, scale);
+			}
 			//? if >=26.1 {
 			/*word(g, font, style, w.drawString(), rtl, wx, midY, scale, color);
 			*///?} else {
 			word(g, font, style, w.text(), rtl, wx, midY, scale, color);
 			//?}
+		}
+		if (probe) {
+			BarProbe.end();
 		}
 	}
 
@@ -593,6 +606,9 @@ public final class NowPlayingHud {
 		g.pose().pushMatrix();
 		g.pose().translate(x, midY);
 		g.pose().scale(scale, scale);
+		if (BarProbe.on()) {
+			BarProbe.wordPose(g);
+		}
 		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
 		g.pose().popMatrix();
 	}
@@ -618,8 +634,24 @@ public final class NowPlayingHud {
 			text(g, font, style, text, x, midY, scale, color);
 			return;
 		}
+		FormattedCharSequence seq = wordSeq(text, lineRtl, style);
+		g.pose().pushMatrix();
+		g.pose().translate(x, midY);
+		g.pose().scale(scale, scale);
+		if (BarProbe.on()) {
+			BarProbe.wordPose(g);
+		}
+		g.drawString(font, seq, 0, -4, color, false);
+		g.pose().popMatrix();
+	}
+
+	/** What {@link #word} draws for one word, also what the dev probe measures. */
+	static FormattedCharSequence wordSeq(String text, boolean lineRtl, Style style) {
+		if (TopBarWords.vanilla(text)) {
+			return Language.getInstance().getVisualOrder(FormattedText.of(text, style));
+		}
 		String shown = TopBarWords.shown(text, lineRtl);
-		FormattedCharSequence seq = sink -> {
+		return sink -> {
 			for (int i = 0, v = 0; i < shown.length(); v++) {
 				int cp = shown.codePointAt(i);
 				if (!sink.accept(v, style, cp)) {
@@ -629,11 +661,6 @@ public final class NowPlayingHud {
 			}
 			return true;
 		};
-		g.pose().pushMatrix();
-		g.pose().translate(x, midY);
-		g.pose().scale(scale, scale);
-		g.drawString(font, seq, 0, -4, color, false);
-		g.pose().popMatrix();
 	}
 
 	private static int fade(float a, int rgb) {
@@ -801,8 +828,12 @@ public final class NowPlayingHud {
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */
 	static void roundRectGui(GuiGraphics g, float x, float y, float w, float h, float r, int color) {
 		float s = (float) Minecraft.getInstance().getWindow().getGuiScale();
+		String before = BarProbe.on() ? BarProbe.pose(g) : null;
 		g.pose().pushMatrix();
 		g.pose().scale(1 / s, 1 / s);
+		if (before != null) {
+			BarProbe.box(x, w, before, BarProbe.pose(g));
+		}
 		roundRect(g, x * s, y * s, w * s, h * s, r * s, color);
 		g.pose().popMatrix();
 	}
