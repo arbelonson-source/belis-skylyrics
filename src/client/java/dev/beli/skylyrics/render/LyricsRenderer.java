@@ -1269,16 +1269,32 @@ public final class LyricsRenderer {
 						float fl = flare[from];
 						int start = charIndex;
 						int a0 = from, a1 = to;
+						// One-entry cache: a run mostly shares one colour, so build its Style once, not per glyph per frame
+						Style[] lastStyle = {null};
+						int[] lastColor = {0};
+						float[] lastFill = {Float.NaN};
 						FormattedCharSequence seq = sink -> {
 							for (int v = a0; v < a1; v++) {
 								float fill = Mth.clamp(sungChars - (start + d.logical[v]), 0, 1);
-								int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
-								if (tone >= 0) {
-									float t = letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1);
-									int shade = mix(mix(secondaryTo, mix(dimTo, brightTo, fill), highlight), 0xFFFFFF, 0.35f * fl);
-									c = mix(c, shade, t);
+								Style st;
+								if (tone < 0 && lastStyle[0] != null && fill == lastFill[0]) {
+									// Without a second tone the colour depends on the fill alone
+									st = lastStyle[0];
+								} else {
+									int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
+									if (tone >= 0) {
+										float t = letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1);
+										int shade = mix(mix(secondaryTo, mix(dimTo, brightTo, fill), highlight), 0xFFFFFF, 0.35f * fl);
+										c = mix(c, shade, t);
+									}
+									if (lastStyle[0] == null || c != lastColor[0]) {
+										lastStyle[0] = base.withColor(c);
+										lastColor[0] = c;
+									}
+									lastFill[0] = fill;
+									st = lastStyle[0];
 								}
-								if (!sink.accept(v, base.withColor(c), d.cps[v])) {
+								if (!sink.accept(v, st, d.cps[v])) {
 									return false;
 								}
 							}
