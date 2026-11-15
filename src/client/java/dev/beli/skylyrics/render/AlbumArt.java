@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.imageio.ImageIO;
 
@@ -51,7 +52,11 @@ public final class AlbumArt {
 	private final AtomicLong generation = new AtomicLong();
 
 	private volatile int color = FALLBACK_COLOR;
-	private volatile @Nullable NativeImage pending;
+	/**
+	 * The newest decoded cover, waiting for the render thread. Both sides only ever swap it with getAndSet, so every image is
+	 * owned by exactly one side at a time: the worker closes the one it replaced, the render thread owns the one it took.
+	 */
+	private final AtomicReference<@Nullable NativeImage> pending = new AtomicReference<>();
 	private volatile boolean hasTexture;
 	private @Nullable DynamicTexture texture;
 	private String loadedUrl = "";
@@ -91,8 +96,7 @@ public final class AlbumArt {
 					return;
 				}
 				color = picked;
-				NativeImage old = pending;
-				pending = scaled;
+				NativeImage old = pending.getAndSet(scaled);
 				if (old != null) {
 					old.close();
 				}
@@ -107,11 +111,10 @@ public final class AlbumArt {
 
 	/** Moves a freshly loaded cover to the GPU. Render thread only. */
 	public void upload() {
-		NativeImage image = pending;
+		NativeImage image = pending.getAndSet(null);
 		if (image == null) {
 			return;
 		}
-		pending = null;
 		Minecraft mc = Minecraft.getInstance();
 		if (texture == null) {
 			texture = new DynamicTexture(() -> "SkyLyrics album art", image) {
@@ -226,7 +229,7 @@ public final class AlbumArt {
 
 	public void close() {
 		executor.shutdownNow();
-		NativeImage image = pending;
+		NativeImage image = pending.getAndSet(null);
 		if (image != null) {
 			image.close();
 		}
