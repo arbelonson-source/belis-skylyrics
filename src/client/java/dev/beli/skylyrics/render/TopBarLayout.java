@@ -55,6 +55,11 @@ final class TopBarLayout {
 
 	private TopBarLayout() {}
 
+	/** How far above the screen's bottom the action bar message's text reaches (its top), and the gap the bar keeps above it. */
+	static final float ACTION_UP = 72, ACTION_GAP = 3;
+	/** The bar keeps this far above the armour row (or the top row of hearts without armour). */
+	static final float HEALTH_GAP = 4;
+
 	/** The bar's top edge in GUI units: just below the boss bars, or above the hotbar's text for the bottom position. */
 	static float bottomTop(int guiHeight) {
 		return bottomTop(guiHeight, true);
@@ -62,7 +67,53 @@ final class TopBarLayout {
 
 	/** The same, where {@code healthRows} says whether hearts and armour are drawn (survival and adventure). */
 	static float bottomTop(int guiHeight, boolean healthRows) {
-		return guiHeight - BOTTOM_UP + (healthRows ? 0 : NO_HEALTH_DROP) - PILL_H;
+		return bottomTop(guiHeight, healthRows, 0, false);
+	}
+
+	/**
+	 * The same, also clear of the top of the hearts and armour ({@link #healthTopUp}) and, while an action bar message
+	 * shows, of that text.
+	 */
+	static float bottomTop(int guiHeight, boolean healthRows, float healthTopUp, boolean actionBar) {
+		return guiHeight - bottomUp(healthRows, healthTopUp, actionBar) - PILL_H;
+	}
+
+	/** How far above the screen's bottom the bar's lower edge sits; never lower than {@link #BOTTOM_UP} without health rows. */
+	static float bottomUp(boolean healthRows, float healthTopUp, boolean actionBar) {
+		float up = healthRows ? Math.max(BOTTOM_UP, healthTopUp + HEALTH_GAP) : BOTTOM_UP - NO_HEALTH_DROP;
+		return actionBar ? Math.max(up, ACTION_UP + ACTION_GAP) : up;
+	}
+
+	/** How many rows of hearts the game draws for this much health (absorption counts), at least one. */
+	static int heartRows(float maxHealth, float absorption) {
+		return Math.max(1, (int) Math.ceil((maxHealth + Math.ceil(absorption)) / 20));
+	}
+
+	/** The distance between rows of hearts: 10, closing up by one a row from the third row on, to at least 3. */
+	static int rowSpacing(int rows) {
+		return Math.max(10 - (rows - 2), 3);
+	}
+
+	/**
+	 * How far above the screen's bottom the top of the hearts and armour reaches: the armour row (10 above the hearts)
+	 * when there is armour, else the top row of hearts.
+	 */
+	static float healthTopUp(float maxHealth, float absorption, int armour) {
+		int rows = heartRows(maxHealth, absorption);
+		return 39 + (rows - 1) * rowSpacing(rows) + (armour > 0 ? 10 : 0);
+	}
+
+	/**
+	 * The bottom bar's box in screen units (left, top, right, bottom) including the clock and the stats, for a bar drawn
+	 * {@code size} times bigger about its bottom edge and the screen's middle, with its pill {@code pill} wide.
+	 */
+	static float[] barBox(float guiWidth, float size, float pill, float clockW, boolean clock, float statsW, boolean stats,
+			float top) {
+		float mid = guiWidth / 2f;
+		float left = mid - pill / 2f - (clock ? CLOCK_GAP + clockW : 0);
+		float right = mid + pill / 2f + (stats ? STATS_GAP + statsW : 0);
+		float bottom = top + PILL_H;
+		return new float[] {mid + (left - mid) * size, bottom - PILL_H * size, mid + (right - mid) * size, bottom};
 	}
 
 	/**

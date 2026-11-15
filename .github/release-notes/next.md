@@ -16,6 +16,7 @@
 - **Open song library key.** With Iris installed, an **Open song library** key you set to K (the same key as Iris's shader switch) is moved back to N only once, not on every start.
 - **Album covers.** A cover shows even when it can't be saved for next time, and a damaged saved cover is fetched again. A cover that stalls while downloading is cut off instead of blocking the next song's cover. A cover the game can't read no longer leaves the last song's colour.
 - **Bottom bar.** The bottom bar sits above the held item's name. A bigger **Bar size** grows upward instead of off the screen.
+- **Bottom bar and card.** A bar at the bottom of the screen now rises above the hearts and armour when you have several rows of them, and above the text that a jukebox or a command shows over the hotbar. The Record card in a bottom corner now sits above the bar instead of covering it, and above the armour and the held item's name.
 - **Big bars fit.** A big **Bar size** on a narrow screen now fits: the bar shrinks and, if needed, hides the stats and then the clock.
 - **Bar and F3.** A bar at the top hides while the debug screen (F3) is showing.
 - **Record card.** The Record card in a top corner moves below the boss bars on a narrow screen.

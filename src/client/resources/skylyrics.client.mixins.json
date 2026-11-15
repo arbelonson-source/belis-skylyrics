@@ -9,6 +9,7 @@
 		"FontTextureMixin",
 		"GlyphStitcherMixin",
 		"GuiMixin",
+		"GuiOverlayAccessor",
 		"LevelRendererMixin",
 		"MinecraftFrameMixin",
 		"TrueTypeGlyphMixin"

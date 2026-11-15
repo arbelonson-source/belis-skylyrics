@@ -49,6 +49,7 @@ import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.mixin.BossHealthOverlayAccessor;
+import dev.beli.skylyrics.mixin.GuiOverlayAccessor;
 import dev.beli.skylyrics.util.Guard;
 
 /**
@@ -201,6 +202,7 @@ public final class NowPlayingHud {
 				//?}
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
+			bottomBox = null;
 			content = null;
 			old = null;
 			width = -1;
@@ -248,11 +250,15 @@ public final class NowPlayingHud {
 
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
-				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer())
+				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc),
+						actionBarShowing(mc))
 				: topBelowBossBars(mc, g.guiHeight());
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
+		bottomBox = cfg.barPosition == BarPosition.BOTTOM
+				? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, width, clockW, fit.clock(), statsW, fit.stats(), top) : null;
+		bottomBoxAt = now;
 
 		float barSize = cfg.barSize;
 		g.pose().pushMatrix();
@@ -297,6 +303,39 @@ public final class NowPlayingHud {
 		*///?} else {
 		/*return mc.getDebugOverlay().showDebugScreen();
 		*///?}
+	}
+
+	/** The bar's box (left, top, right, bottom) while it sits at the bottom of the screen, else null; the Record card keeps clear of it. */
+	private static volatile float[] bottomBox;
+
+	private static volatile long bottomBoxAt;
+
+	/** The box, or null when the bar didn't draw it in the last moment (hidden, GUI off, or the bar moved to the top). */
+	static float[] bottomBox() {
+		return System.nanoTime() - bottomBoxAt > BOX_STALE_NS ? null : bottomBox;
+	}
+
+	private static final long BOX_STALE_NS = 250_000_000L;
+
+	/** How far above the screen's bottom the player's hearts and armour reach, from their health, absorption and armour. */
+	static float healthTopUp(Minecraft mc) {
+		if (mc.player == null) {
+			return TopBarLayout.healthTopUp(20, 0, 0);
+		}
+		return TopBarLayout.healthTopUp(mc.player.getMaxHealth(), mc.player.getAbsorptionAmount(), mc.player.getArmorValue());
+	}
+
+	/** Whether an action bar message (the text above the hotbar) is on screen. */
+	static boolean actionBarShowing(Minecraft mc) {
+		try {
+			//? if >=26.2 {
+			/*return ((GuiOverlayAccessor) mc.gui.hud).skylyrics$getOverlayMessageTime() > 0;
+			*///?} else {
+			return ((GuiOverlayAccessor) mc.gui).skylyrics$getOverlayMessageTime() > 0;
+			//?}
+		} catch (RuntimeException | LinkageError e) {
+			return false;
+		}
 	}
 
 	/** How many boss bars the game has (it draws only the first few that fit). */

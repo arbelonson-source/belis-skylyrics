@@ -222,4 +222,59 @@ class RecordCardTest {
 		assertEquals(0f, RecordCard.bossClear(CardCorner.TOP_LEFT, 400, 240, 0));
 		assertEquals(0f, RecordCard.bossClear(CardCorner.BOTTOM_LEFT, 400, 240, 1));
 	}
+
+	private static float[] barAt(int w, int h, boolean hurt) {
+		TopBarLayout.Fit fit = TopBarLayout.fit(w, 1, 30, 40);
+		float top = TopBarLayout.bottomTop(h, hurt, 49, false);
+		return TopBarLayout.barBox(w, 1, fit.pill(), 30, fit.clock(), 40, fit.stats(), top);
+	}
+
+	private static float[] atBottom(CardCorner c, int w, int h, float cardH, float[] bar) {
+		return RecordCard.corner(c, w, h, 0, cardH, true, false, 0, RecordCard.liftUp(true, 49), bar);
+	}
+
+	private static boolean overlaps(float[] at, float cardH, float[] bar) {
+		return at[0] < bar[2] && at[0] + RecordCard.W > bar[0] && at[1] < bar[3] && at[1] + cardH > bar[1];
+	}
+
+	@Test
+	void aBottomCardSitsAboveTheBottomBar() {
+		for (int w : new int[] {320, 427, 480, 640}) {
+			for (CardCorner c : new CardCorner[] {CardCorner.BOTTOM_LEFT, CardCorner.BOTTOM_RIGHT}) {
+				for (float cardH : new float[] {RecordCard.height(false, 1), RecordCard.height(true, 1), RecordCard.height(true, 3)}) {
+					int h = 360;
+					float[] bar = barAt(w, h, true);
+					float[] at = atBottom(c, w, h, cardH, bar);
+					assertTrue(!overlaps(at, cardH, bar), "w=" + w + " " + c + " h=" + cardH);
+					assertTrue(at[1] >= 0 && at[1] + cardH <= h);
+					assertTrue(at[0] + RecordCard.W <= bar[0] || at[0] >= bar[2] || at[1] >= bar[3] || at[1] + cardH <= bar[1] - RecordCard.BAR_GAP + 1e-3f,
+							"w=" + w + " " + c + " h=" + cardH);
+				}
+			}
+		}
+	}
+
+	@Test
+	void aCardWithNoRoomAboveTheBarKeepsItsPlace() {
+		float[] bar = {0, 20, 400, 40};
+		assertEquals(27f, RecordCard.aboveBar(new float[] {0, 60, 400, 80}, 10, 70, 30));
+		// the card's own place is kept when it would have to leave the screen
+		assertEquals(25f, RecordCard.aboveBar(bar, 10, 25, 30));
+		// a card far from the bar's sides is left alone
+		assertEquals(25f, RecordCard.aboveBar(new float[] {300, 20, 500, 40}, 10, 25, 30));
+	}
+
+	@Test
+	void theLiftClearsArmourAndTheHeldItemName() {
+		// two rows of hearts (a golden apple) with armour: the armour row is 59 up
+		assertTrue(RecordCard.liftUp(true, TopBarLayout.healthTopUp(20, 4, 5)) >= 59 + 3);
+		assertTrue(RecordCard.liftUp(true, TopBarLayout.healthTopUp(40, 4, 5)) >= 67 + 3);
+		// the name's top is 60 up for a player that can be hurt, 46 otherwise
+		assertTrue(RecordCard.liftUp(true, 39) >= 62);
+		assertTrue(RecordCard.liftUp(false, 0) >= 48);
+		assertEquals(RecordCard.HOTBAR_UP, RecordCard.liftUp(false, 0));
+		float[] at = RecordCard.corner(CardCorner.BOTTOM_LEFT, 320, 240, 0, RecordCard.H, true, false, 0,
+				RecordCard.liftUp(true, 59), null);
+		assertTrue(240 - (at[1] + RecordCard.H) >= 62);
+	}
 }

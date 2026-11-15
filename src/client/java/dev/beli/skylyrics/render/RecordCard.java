@@ -47,6 +47,10 @@ public final class RecordCard {
 	static final float INDICATOR_REACH = HOTBAR_HALF + 24;
 	/** Height of the hotbar with hearts, armour and the XP bar, for a card that has to sit above it. */
 	static final float HOTBAR_UP = 52;
+	/** The held item's name reaches this far up (this high when the player can't be hurt), and the card keeps this clear of it. */
+	static final float NAME_UP = 60, NAME_UP_SAFE = 46, NAME_GAP = 2;
+	/** The card keeps this far above the armour, and above the bottom bar. */
+	static final float ARMOUR_GAP = 3, BAR_GAP = 3;
 	/** Bottom of the good effects row and of the bad effects row under it. */
 	static final int GOOD_ROW = 25, BAD_ROW = 51;
 	private static final float DISC = 38;
@@ -398,6 +402,37 @@ public final class RecordCard {
 	/** The full form: {@code bossClear} is the least a top card's top may be, from {@link #bossClear}. */
 	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
 			float bossClear) {
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear, HOTBAR_UP, null);
+	}
+
+	/**
+	 * How far above the screen's bottom a lifted card's lower edge sits: above the hotbar's hearts and armour
+	 * ({@code healthTopUp}, from {@link TopBarLayout#healthTopUp}) and above the held item's name (which a player that
+	 * can't be hurt gets lower down), never lower than {@link #HOTBAR_UP}.
+	 */
+	static float liftUp(boolean canHurt, float healthTopUp) {
+		if (!canHurt) {
+			return Math.max(HOTBAR_UP, NAME_UP_SAFE + NAME_GAP);
+		}
+		return Math.max(Math.max(HOTBAR_UP, NAME_UP + NAME_GAP), healthTopUp + ARMOUR_GAP);
+	}
+
+	/**
+	 * The card's place above the bottom bar: its lower edge {@link #BAR_GAP} above the bar's top when the card's box
+	 * reaches into the bar's box ({@code bar}: left, top, right, bottom). Returns {@code bottom} when it doesn't, or when
+	 * there is no room above the bar.
+	 */
+	static float aboveBar(float[] bar, float x, float bottom, float h) {
+		if (bar == null || x + W <= bar[0] || x >= bar[2] || bottom + h <= bar[1] - BAR_GAP || bottom >= bar[3]) {
+			return bottom;
+		}
+		float up = bar[1] - BAR_GAP - h;
+		return up >= 0 ? up : bottom;
+	}
+
+	/** The full form with the lift ({@link #liftUp}) and the bottom bar's box (null when it isn't there). */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
+			float bossClear, float liftUp, float[] bar) {
 		float left = MARGIN, right = guiW - MARGIN - W;
 		float top = MARGIN, bottom = guiH - MARGIN - h;
 		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
@@ -408,8 +443,9 @@ public final class RecordCard {
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
 		float reach = sideReach(onLeft, rightHanded, indicator);
 		if (onLeft ? left + W > guiW / 2f - reach : right < guiW / 2f + reach) {
-			bottom = guiH - HOTBAR_UP - h;
+			bottom = guiH - liftUp - h;
 		}
+		bottom = aboveBar(bar, onLeft ? left : right, bottom, h);
 		top = onScreen(top, guiH, h);
 		bottom = onScreen(bottom, guiH, h);
 		return switch (corner) {
@@ -429,7 +465,9 @@ public final class RecordCard {
 		boolean rightHanded = mc.options.mainHand().get() == HumanoidArm.RIGHT;
 		boolean indicator = mc.options.attackIndicator().get() == AttackIndicatorStatus.HOTBAR;
 		int bars = NowPlayingHud.bossBarCount(mc);
-		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars));
+		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars),
+				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox());
 	}
 
 	/**
