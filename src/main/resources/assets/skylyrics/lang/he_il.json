@@ -512,7 +512,7 @@
   "skylyrics.ui.the_windows_music_reader_stopped": "קורא המוזיקה של Windows נעצר",
   "skylyrics.ui.windows_didn_t_say_what_s_playing_in_time": "Windows לא אמרה בזמן מה מתנגן",
   "skylyrics.ui.the_windows_music_reader_sent_something_unexpect": "קורא המוזיקה של Windows שלח תשובה לא צפויה",
-  "skylyrics.ui.windows_media_controls_aren_t_available_s": "פקדי המדיה של Windows אינם זמינים (%s)",
+  "skylyrics.ui.windows_media_controls_aren_t_available_s": "פקדי המדיה של Windows לא זמינים (%s)",
   "skylyrics.ui.windows_media_controls_stopped_answering_s": "פקדי המדיה של Windows הפסיקו להגיב (%s)",
   "skylyrics.ui.windows_is_missing_a_part_the_music_reader_needs": "חסר ב-Windows רכיב שקורא המוזיקה צריך (System.Web)",
   "skylyrics.ui.couldn_t_prepare_the_windows_music_reader_s": "לא הצלחנו להכין את קורא המוזיקה של Windows (%s)"
