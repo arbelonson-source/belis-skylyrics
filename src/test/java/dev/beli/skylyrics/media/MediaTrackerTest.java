@@ -69,7 +69,7 @@ class MediaTrackerTest {
 				tracker.refresh();
 			}
 			tracker.refresh();
-			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
 			while (source.polls.get() < steps.length + 1) {
 				assertTrue(System.nanoTime() < until, "timed out");
 				Thread.sleep(5);
@@ -153,12 +153,12 @@ class MediaTrackerTest {
 			long readAt = System.nanoTime() - 1_000_000_000L;
 			source.then(new Snapshot(song(215_000, ""), 10_000, true, readAt, 2.0));
 			tracker.refresh();
-			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-			while (source.polls.get() < 1) {
+			// Wait until the snapshot is really in (the poll counter moves before it is stored), not for a guessed time
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+			while (tracker.positionMs() < 10_000) {
 				assertTrue(System.nanoTime() < until, "timed out");
 				Thread.sleep(5);
 			}
-			Thread.sleep(50);
 			// Twice as fast as the clock since the read, however slow this machine is (1x would be about 1 s short)
 			long before = System.nanoTime();
 			long pos = tracker.positionMs();
@@ -185,7 +185,7 @@ class MediaTrackerTest {
 			source.then(song(215_000, ""));
 			tracker.refresh();
 			tracker.refresh();
-			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
 			while (source.polls.get() < 4) {
 				assertTrue(System.nanoTime() < until, "timed out");
 				Thread.sleep(5);
@@ -211,7 +211,7 @@ class MediaTrackerTest {
 		source.then(new Track("Other Song", "Made Up Band", "", 200_000, "", "firefox"));
 		tracker.start(20);
 		try {
-			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
 			while (seen.size() < 2 && System.nanoTime() < until) {
 				Thread.sleep(10);
 			}

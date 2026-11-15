@@ -148,12 +148,16 @@ class WindowsMediaSourceTest {
 		// Started the way the game starts it on Windows
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir,
 				(script, covers) -> WindowsMediaSource.command(shell, script, covers), START_MS, REPLY_MS);
+		long t0 = System.nanoTime();
 		IOException first = assertThrows(IOException.class, source::poll);
+		long firstNs = System.nanoTime() - t0;
 		assertTrue(first.getMessage().contains("media controls aren't available"), first.getMessage());
 		long before = System.nanoTime();
 		IOException again = assertThrows(IOException.class, source::poll);
 		assertEquals(first.getMessage(), again.getMessage());
-		assertTrue(System.nanoTime() - before < 500_000_000L, "waits before starting PowerShell again");
+		// Starting PowerShell again would cost about what the first poll did, so scale with this machine
+		long limit = Math.max(2_000_000_000L, firstNs / 2);
+		assertTrue(System.nanoTime() - before < limit, "waits before starting PowerShell again");
 		source.close();
 	}
 

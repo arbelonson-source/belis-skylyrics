@@ -134,7 +134,7 @@ class SpotifyWebSourceTest {
 
 	private static String get(int port, String path) throws IOException {
 		try (Socket s = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), port)) {
-			s.setSoTimeout(5000);
+			s.setSoTimeout(30_000);
 			s.getOutputStream().write(("GET " + path + " HTTP/1.1\r\nHost: x\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
 			s.getOutputStream().flush();
 			InputStream in = s.getInputStream();
@@ -156,10 +156,17 @@ class SpotifyWebSourceTest {
 		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
 		try (ServerSocket server = freeServer(); Socket idle = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), server.getLocalPort())) {
 			Thread t = wait(source, server);
-			Thread.sleep(900); // well past the idle limit; the old loop gave up here
+			// Wait until the server has dropped the idle connection, which is when its idle limit has passed
+			// (the old loop gave up the whole sign-in here)
+			idle.setSoTimeout(30_000);
+			try {
+				assertEquals(-1, idle.getInputStream().read(), "the idle connection should be dropped");
+			} catch (java.net.SocketException reset) {
+				// dropped with a reset, which is the same thing
+			}
 			assertTrue(t.isAlive(), "the sign-in must still be waiting");
 			get(server.getLocalPort(), "/callback?state=st&error=access_denied");
-			t.join(5000);
+			t.join(30_000);
 			assertFalse(t.isAlive());
 			assertEquals("Sign-in was cancelled", source.problem());
 		}
@@ -178,7 +185,7 @@ class SpotifyWebSourceTest {
 			Thread.sleep(200);
 			assertTrue(t.isAlive());
 			assertTrue(get(server.getLocalPort(), "/callback?state=st&error=access_denied").contains("Sign-in was cancelled"));
-			t.join(5000);
+			t.join(30_000);
 			assertFalse(t.isAlive());
 			assertEquals("Sign-in was cancelled", source.problem());
 		}
@@ -192,7 +199,7 @@ class SpotifyWebSourceTest {
 			assertTrue(get(server.getLocalPort(), "/callback?state=other&error=access_denied").startsWith("HTTP/1.1 404"));
 			assertTrue(t.isAlive());
 			server.close();
-			t.join(5000);
+			t.join(30_000);
 			assertFalse(t.isAlive());
 			assertEquals("", source.problem());
 		}

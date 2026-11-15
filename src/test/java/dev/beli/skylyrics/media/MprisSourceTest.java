@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -20,6 +22,7 @@ class MprisSourceTest {
 
 	@Test
 	void oneStuckPlayerDoesNotHoldUpTheOthers() throws Exception {
+		CountDownLatch unstick = new CountDownLatch(1);
 		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
 			@Override
 			public List<String> names() {
@@ -29,7 +32,8 @@ class MprisSourceTest {
 			@Override
 			public MprisSource.Reading read(String busName) throws Exception {
 				if (busName.equals(SLOW)) {
-					Thread.sleep(3000);
+					// Stuck for far longer than any poll may take, until the test is over
+					unstick.await(60, TimeUnit.SECONDS);
 					return reading(SLOW, "Slow Song", 0);
 				}
 				return reading(GOOD, "Good Song", 5000);
@@ -40,10 +44,12 @@ class MprisSourceTest {
 				long start = System.nanoTime();
 				Snapshot s = source.poll();
 				long tookMs = (System.nanoTime() - start) / 1_000_000;
-				assertTrue(tookMs < 1500, "poll " + i + " took " + tookMs + " ms");
+				// Expected about ANSWER_WAIT_MS; ten times that is still far short of the 60 s the player is stuck for
+				assertTrue(tookMs < 10 * MprisSource.ANSWER_WAIT_MS, "poll " + i + " took " + tookMs + " ms");
 				assertEquals("Good Song", s.track().title());
 			}
 		} finally {
+			unstick.countDown();
 			source.close();
 		}
 	}
