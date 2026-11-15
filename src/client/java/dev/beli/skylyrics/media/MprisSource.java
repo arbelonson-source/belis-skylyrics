@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -142,13 +143,17 @@ public final class MprisSource implements MediaSource {
 	private record Remembered(Reading reading, long atNanos) {
 	}
 
+	/** What a read answered and when it asked, so a slow answer is not mistaken for a fresh one. */
+	private record Answered(@Nullable Reading reading, long askedAtNanos) {
+	}
+
 	private final ExecutorService readers = Executors.newCachedThreadPool(r -> {
 		Thread t = new Thread(r, "SkyLyrics MPRIS read");
 		t.setDaemon(true);
 		return t;
 	});
 	/** Reads still running from an earlier poll (a stuck player); only touched on the media thread. */
-	private final Map<String, Future<@Nullable Reading>> asked = new HashMap<>();
+	private final Map<String, Future<Answered>> asked = new HashMap<>();
 	private final Map<String, Remembered> lastGood = new HashMap<>();
 
 	@Override
@@ -172,20 +177,29 @@ public final class MprisSource implements MediaSource {
 		Set<String> fresh = new HashSet<>();
 		for (String name : names) {
 			if (!asked.containsKey(name)) {
-				asked.put(name, readers.submit(() -> reader.read(name)));
+				asked.put(name, readers.submit(() -> {
+					long askedAt = System.nanoTime();
+					return new Answered(reader.read(name), askedAt);
+				}));
 				fresh.add(name);
 			}
 		}
 		long deadline = System.nanoTime() + ANSWER_WAIT_MS * 1_000_000;
 
 		List<Reading> readings = new ArrayList<>();
+		// When each reading's position was true: the moment its read asked (a read that was pending from an
+		// earlier poll is old by now), or now for one moved on by hand
+		Map<Reading, Long> readAt = new IdentityHashMap<>();
 		for (String name : names) {
-			Future<@Nullable Reading> future = asked.get(name);
+			Future<Answered> future = asked.get(name);
 			Reading reading = null;
+			long askedAt = 0;
 			boolean answered = false;
 			try {
 				long wait = fresh.contains(name) ? Math.max(0, deadline - System.nanoTime()) : 0;
-				reading = future.get(wait, TimeUnit.NANOSECONDS);
+				Answered a = future.get(wait, TimeUnit.NANOSECONDS);
+				reading = a.reading();
+				askedAt = a.askedAtNanos();
 				answered = true;
 			} catch (TimeoutException e) {
 				// Still thinking: keep waiting for it in the background
@@ -199,8 +213,9 @@ public final class MprisSource implements MediaSource {
 				if (reading == null || reading.track.isNone()) {
 					lastGood.remove(name);
 				} else {
-					lastGood.put(name, new Remembered(reading, System.nanoTime()));
+					lastGood.put(name, new Remembered(reading, askedAt));
 					readings.add(reading);
+					readAt.put(reading, askedAt);
 				}
 				continue;
 			}
@@ -209,7 +224,9 @@ public final class MprisSource implements MediaSource {
 			if (kept != null) {
 				long ageMs = (System.nanoTime() - kept.atNanos) / 1_000_000;
 				if (ageMs <= KEEP_READING_MS) {
-					readings.add(kept.reading.advancedBy(ageMs));
+					Reading moved = kept.reading.advancedBy(ageMs);
+					readings.add(moved);
+					readAt.put(moved, System.nanoTime());
 				} else {
 					lastGood.remove(name);
 				}
@@ -226,7 +243,7 @@ public final class MprisSource implements MediaSource {
 		current = chosen.busName;
 		currentTrackId = chosen.trackId;
 		currentDisplayName = prettyName(chosen.track.player());
-		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, System.nanoTime(), chosen.rate);
+		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, readAt.get(chosen), chosen.rate);
 	}
 
 	private static @Nullable Reading read(DBusConnection conn, String busName) throws Exception {
@@ -384,7 +401,7 @@ public final class MprisSource implements MediaSource {
 
 	@Override
 	public void close() {
-		for (Future<@Nullable Reading> f : asked.values()) {
+		for (Future<Answered> f : asked.values()) {
 			f.cancel(true);
 		}
 		asked.clear();
