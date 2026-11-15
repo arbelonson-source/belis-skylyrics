@@ -35,7 +35,7 @@ final class GalaxySky {
 	private static final float ARM_START = 0.08f;
 
 	/** Rings packed tighter near the middle, where the core changes fastest. */
-	private static final int RINGS = 22, SEGMENTS = 120;
+	static final int RINGS = 22, SEGMENTS = 120;
 	private static final float[] RING_AT = new float[RINGS + 1];
 	private static final float[] COS = new float[SEGMENTS + 1], SIN = new float[SEGMENTS + 1];
 	private static final int[] GRID = new int[(RINGS + 1) * (SEGMENTS + 1)];
@@ -58,6 +58,10 @@ final class GalaxySky {
 	}
 
 	private final SkyFrame frame = new SkyFrame();
+	/** Where each grid point lands on the sky and its colour this frame, reused so a frame allocates nothing. */
+	private final float[] pointX = new float[(RINGS + 1) * (SEGMENTS + 1)], pointY = new float[pointX.length],
+			pointZ = new float[pointX.length];
+	private final int[] pointArgb = new int[pointX.length];
 	private final float[] turnedCos = new float[SEGMENTS + 1], turnedSin = new float[SEGMENTS + 1];
 
 	/**
@@ -121,23 +125,33 @@ final class GalaxySky {
 		float r = radius * LAYER;
 		float size = (float) Math.tan(RADIUS * DEG);
 		c.fadeBelowHorizon(HORIZON_FADE);
+		// Each grid point is a corner of up to four quads: work out its place and colour once, then emit the quads from them
+		for (int i = 0; i <= RINGS; i++) {
+			float out = RING_AT[i] * size;
+			for (int j = 0; j <= SEGMENTS; j++) {
+				float[] s = slant(out * turnedCos[j], out * turnedSin[j]);
+				// As SkyCanvas.at, kept as the same operations so every vertex is exactly what it was
+				float x = frame.dx + s[0] * frame.ux + s[1] * frame.vx;
+				float y = frame.dy + s[0] * frame.uy + s[1] * frame.vy;
+				float z = frame.dz + s[0] * frame.uz + s[1] * frame.vz;
+				float k = r / (float) Math.sqrt(x * x + y * y + z * z);
+				int n = i * (SEGMENTS + 1) + j;
+				pointX[n] = x * k;
+				pointY[n] = y * k;
+				pointZ[n] = z * k;
+				pointArgb[n] = SkyColors.argb(GRID[n], level);
+			}
+		}
 		for (int i = 0; i < RINGS; i++) {
-			float r0 = RING_AT[i] * size, r1 = RING_AT[i + 1] * size;
 			int row0 = i * (SEGMENTS + 1), row1 = row0 + SEGMENTS + 1;
 			for (int j = 0; j < SEGMENTS; j++) {
-				corner(c, r, r0, j, SkyColors.argb(GRID[row0 + j], level));
-				corner(c, r, r0, j + 1, SkyColors.argb(GRID[row0 + j + 1], level));
-				corner(c, r, r1, j + 1, SkyColors.argb(GRID[row1 + j + 1], level));
-				corner(c, r, r1, j, SkyColors.argb(GRID[row1 + j], level));
+				c.vertex(pointX[row0 + j], pointY[row0 + j], pointZ[row0 + j], pointArgb[row0 + j]);
+				c.vertex(pointX[row0 + j + 1], pointY[row0 + j + 1], pointZ[row0 + j + 1], pointArgb[row0 + j + 1]);
+				c.vertex(pointX[row1 + j + 1], pointY[row1 + j + 1], pointZ[row1 + j + 1], pointArgb[row1 + j + 1]);
+				c.vertex(pointX[row1 + j], pointY[row1 + j], pointZ[row1 + j], pointArgb[row1 + j]);
 			}
 		}
 		c.fadeBelowHorizon(0);
-	}
-
-	/** One corner: {@code out} along the turned spoke {@code j}, squashed by the lean and rolled. */
-	private void corner(SkyCanvas c, float radius, float out, int j, int argb) {
-		float[] at = slant(out * turnedCos[j], out * turnedSin[j]);
-		c.at(frame, at[0], at[1], radius, argb);
 	}
 
 	private final float[] slanted = new float[2];
