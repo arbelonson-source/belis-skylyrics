@@ -75,6 +75,43 @@ class UpdaterTest {
 		assertTrue(Updater.batchSafe("C:\\Users\\Jose\\mods\\a-1.jar"));
 	}
 
+	/** Checked before the download, so an update is not fetched at every launch only to be thrown away. */
+	@Test
+	void swapPlacesAreCheckedBeforeDownloading() {
+		Path ok = Path.of("/Games/mods/belis-skylyrics-0.1.0+1.21.11.jar");
+		assertTrue(Updater.swapPathsSafe(ok, Path.of("/Games/mods/belis-skylyrics-0.2.0+1.21.11.jar")));
+		assertFalse(Updater.swapPathsSafe(Path.of("/Jos\u00e9/mods/a.jar"), Path.of("/Jos\u00e9/mods/b.jar")));
+		assertFalse(Updater.swapPathsSafe(ok, Path.of("/Games/mods/b&c.jar")));
+	}
+
+	/** The script lives beside the jar (already checked), not in %TEMP%, which may have letters cmd can't read. */
+	@Test
+	void swapScriptGoesToTheTempFolderUnlessItsNameHasAccents() {
+		Path mods = dir.resolve("mods");
+		Path old = mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar");
+		Path plain = dir.resolve("Temp");
+		Path accented = dir.resolve("Jos\u00e9").resolve("Temp");
+		assertEquals(Updater.batchSafe(plain.toAbsolutePath().toString()) ? plain : mods, Updater.scriptFolder(plain, old));
+		assertEquals(mods, Updater.scriptFolder(accented, old));
+	}
+
+	@Test
+	void swapScriptIsWrittenWhereItsPathIsSafe() throws Exception {
+		Path mods = Files.createDirectories(dir.resolve("mods"));
+		Path old = Files.createFile(mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
+		Path target = mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar");
+		Path waiting = mods.resolve(target.getFileName() + ".new");
+		Path part = Files.createFile(mods.resolve(target.getFileName() + ".part"));
+		Path bat = Updater.writeSwapScript(old, waiting, target, part);
+		assertEquals(Updater.scriptFolder(Path.of(System.getProperty("java.io.tmpdir")), old), bat.getParent());
+		Files.deleteIfExists(bat);
+		assertTrue(bat.getFileName().toString().endsWith(".bat"));
+		assertTrue(Files.exists(waiting));
+		assertFalse(Files.exists(part));
+		String text = Updater.swapScript(old, waiting, target);
+		assertTrue(text.contains("move /y \"" + waiting + "\" \"" + target + "\""));
+	}
+
 	@Test
 	void downloadedJarMustBeThisModAtTheExpectedVersion() throws Exception {
 		Path good = zip(dir.resolve("good.jar"), "{\"id\":\"skylyrics\",\"version\":\"0.2.0+1.21.11\"}");

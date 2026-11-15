@@ -44,6 +44,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private static final String SCRIPT = "windows-media.ps1";
 	/** PowerShell and the Windows media API can be slow to wake up the first time after boot. */
 	private static final long START_TIMEOUT_MS = 20_000;
+	/** The very first start of the session gets longer: antivirus often scans PowerShell the first time. */
+	private static final long FIRST_START_TIMEOUT_MS = 45_000;
 	private static final long REPLY_TIMEOUT_MS = 4_000;
 	/** After the helper fails to start, wait before trying again instead of starting PowerShell on every poll. */
 	private static final long RETRY_NS = 15_000_000_000L;
@@ -75,6 +77,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private int missed;
 	private long retryAt;
 	private long startedAt;
+	/** Whether a helper has been ready yet this session. */
+	private boolean everReady;
 	private String startError = "";
 	/** The followed player: {@link Session#key()} for choosing, the rest for the controls. */
 	private @Nullable String current;
@@ -100,7 +104,7 @@ public final class WindowsMediaSource implements MediaSource {
 	 *
 	 * @param index its place in the helper's list; browsers give every tab the same {@code id}, so this tells them apart
 	 */
-	record Session(int index, String id, Track track, long positionMs, boolean playing) {
+	record Session(int index, String id, Track track, long positionMs, boolean playing, double rate) {
 		String key() {
 			return id + "#" + index;
 		}
@@ -110,7 +114,7 @@ public final class WindowsMediaSource implements MediaSource {
 	public synchronized Snapshot poll() throws Exception {
 		List<Session> sessions = sessions(request("poll"), System.currentTimeMillis());
 		Session chosen = PlayerPicker.choose(sessions, Session::key, s -> s.track().player(), Session::playing,
-				preferredPlayer.get(), current);
+				preferredPlayer.get(), followKey(sessions, current));
 		currentSession = chosen;
 		if (chosen == null) {
 			current = null;
@@ -118,7 +122,31 @@ public final class WindowsMediaSource implements MediaSource {
 		}
 		current = chosen.key();
 		currentDisplayName = prettyName(chosen.track().player());
-		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), System.nanoTime());
+		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), System.nanoTime(), chosen.rate());
+	}
+
+	/**
+	 * The key to keep following. When another player closes, the numbers after it shift and the followed player's
+	 * exact key is gone; then it is the same app (preferably the one playing) that we still mean.
+	 */
+	static @Nullable String followKey(List<Session> sessions, @Nullable String current) {
+		if (current == null) {
+			return null;
+		}
+		for (Session s : sessions) {
+			if (s.key().equals(current)) {
+				return current;
+			}
+		}
+		int hash = current.lastIndexOf('#');
+		String id = hash < 0 ? current : current.substring(0, hash);
+		Session same = null;
+		for (Session s : sessions) {
+			if (s.id().equals(id) && (same == null || s.playing() && !same.playing())) {
+				same = s;
+			}
+		}
+		return same == null ? current : same.key();
 	}
 
 	/** The players in a poll answer, with their positions moved on to {@code nowMs}. */
@@ -141,9 +169,10 @@ public final class WindowsMediaSource implements MediaSource {
 			boolean playing = "Playing".equalsIgnoreCase(string(o, "status"));
 			long start = number(o, "startMs");
 			long length = Math.max(0, number(o, "endMs") - start);
-			long position = position(number(o, "positionMs") - start, number(o, "updatedMs"), playing, length, nowMs);
+			double rate = rate(o);
+			long position = position(number(o, "positionMs") - start, number(o, "updatedMs"), playing, length, nowMs, rate);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
-			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing));
+			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing, rate));
 		}
 		return out;
 	}
@@ -153,14 +182,33 @@ public final class WindowsMediaSource implements MediaSource {
 	 * While playing, the song has moved on since.
 	 */
 	static long position(long positionMs, long updatedMs, boolean playing, long lengthMs, long nowMs) {
+		return position(positionMs, updatedMs, playing, lengthMs, nowMs, 1.0);
+	}
+
+	/** As above, for a player running at {@code rate} (1.5 = song time passes 1.5 times faster than the clock). */
+	static long position(long positionMs, long updatedMs, boolean playing, long lengthMs, long nowMs, double rate) {
 		long pos = positionMs;
 		if (playing && updatedMs > 0 && nowMs > updatedMs) {
-			pos += nowMs - updatedMs;
+			pos += (long) ((nowMs - updatedMs) * saneRate(rate));
 		}
 		if (lengthMs > 0) {
 			pos = Math.min(pos, lengthMs);
 		}
 		return Math.max(0, pos);
+	}
+
+	/** Speeds that make no sense (zero, negative, over 4x, not a number) count as normal speed. */
+	static double saneRate(double rate) {
+		return rate > 0 && rate <= 4 ? rate : 1.0;
+	}
+
+	private static double rate(JsonObject o) {
+		JsonElement e = o.get("rate");
+		try {
+			return e == null || !e.isJsonPrimitive() ? 1.0 : saneRate(e.getAsDouble());
+		} catch (NumberFormatException ex) {
+			return 1.0;
+		}
 	}
 
 	private static String coverUrl(String file) {
@@ -223,7 +271,8 @@ public final class WindowsMediaSource implements MediaSource {
 			w.flush();
 		} catch (IOException e) {
 			stop();
-			throw new IOException("The Windows media helper stopped");
+			backOffIfEarly();
+			throw new IOException(Tr.t("The Windows music reader stopped"));
 		}
 		long deadline = System.nanoTime() + replyTimeoutMs * 1_000_000;
 		while (true) {
@@ -231,19 +280,15 @@ public final class WindowsMediaSource implements MediaSource {
 			String line = left > 0 ? queue.poll(left, TimeUnit.NANOSECONDS) : null;
 			if (line == END) {
 				stop();
-				if (System.nanoTime() - startedAt < EARLY_EXIT_NS) {
-					// Starting it again straight away would most likely end the same way
-					startError = "The Windows media helper keeps stopping (see windows-media.log)";
-					retryAt = System.nanoTime() + RETRY_NS;
-				}
-				throw new IOException("The Windows media helper stopped");
+				backOffIfEarly();
+				throw new IOException(Tr.t("The Windows music reader stopped"));
 			}
 			if (line == null) {
 				if (++missed >= MAX_MISSED) {
 					stop();
 					missed = 0;
 				}
-				throw new IOException("Windows didn't say what's playing in time");
+				throw new IOException(Tr.t("Windows didn't say what's playing in time"));
 			}
 			JsonObject reply = parse(line);
 			if (reply == null || number(reply, "seq") != id) {
@@ -252,8 +297,8 @@ public final class WindowsMediaSource implements MediaSource {
 			missed = 0;
 			JsonElement ok = reply.get("ok");
 			if (ok == null || !ok.isJsonPrimitive() || !ok.getAsBoolean()) {
-				String error = string(reply, "error");
-				throw new IOException(error.isEmpty() ? "The Windows media helper sent something odd" : error);
+				String error = helperError(reply);
+				throw new IOException(error.isEmpty() ? Tr.t("The Windows music reader sent something unexpected") : error);
 			}
 			return reply;
 		}
@@ -264,7 +309,12 @@ public final class WindowsMediaSource implements MediaSource {
 		if (p != null && p.isAlive()) {
 			return;
 		}
+		boolean died = p != null;
 		stop();
+		if (died) {
+			// It said what was wrong and exited (the script does that when Windows' media controls fail for good)
+			backOffIfEarly();
+		}
 		if (System.nanoTime() < retryAt) {
 			throw new IOException(startError);
 		}
@@ -272,30 +322,70 @@ public final class WindowsMediaSource implements MediaSource {
 			start();
 		} catch (IOException | RuntimeException e) {
 			stop();
-			startError = e.getMessage() == null || e.getMessage().isEmpty() ? e.toString() : e.getMessage();
+			startError = detail(e);
 			retryAt = System.nanoTime() + RETRY_NS;
 			LOG.warn("Couldn't read Windows' media controls: {}", startError);
 			throw new IOException(startError, e);
 		}
 	}
 
+	/** How long to wait for a helper to say it is ready: longer until one has managed it once. */
+	static long startLimitMs(long normalMs, boolean everReady) {
+		return everReady ? normalMs : Math.max(normalMs, FIRST_START_TIMEOUT_MS);
+	}
+
+	private static String detail(Exception e) {
+		return e.getMessage() == null || e.getMessage().isEmpty() ? e.toString() : e.getMessage();
+	}
+
+	/**
+	 * What the helper's error says, in the player's language. The script sends a stable {@code code} (and the
+	 * technical part as {@code detail}); anything else it says is shown as it is.
+	 */
+	static String helperError(JsonObject reply) {
+		String detail = string(reply, "detail");
+		return switch (string(reply, "code")) {
+			case "unavailable" -> Tr.t("Windows' media controls aren't available (%s)", detail);
+			case "stopped" -> Tr.t("Windows' media controls stopped answering (%s)", detail);
+			case "no_web" -> Tr.t("Windows is missing a part the music reader needs (System.Web)");
+			default -> string(reply, "error");
+		};
+	}
+
+	private void backOffIfEarly() {
+		if (shouldBackOff(false, startedAt, System.nanoTime())) {
+			// Starting it again straight away would most likely end the same way
+			startError = Tr.t("The Windows music reader keeps stopping (see windows-media.log)");
+			retryAt = System.nanoTime() + RETRY_NS;
+		}
+	}
+
+	/** A helper that is gone soon after it started would most likely stop again, so wait before starting another. */
+	static boolean shouldBackOff(boolean alive, long startedAtNanos, long nowNanos) {
+		return !alive && nowNanos - startedAtNanos < EARLY_EXIT_NS;
+	}
+
 	private void start() throws IOException, InterruptedException {
 		Path covers = dir.resolve("covers");
-		Files.createDirectories(covers);
-		deleteFilesIn(covers); // left over from the last game
 		Path script = dir.resolve(SCRIPT);
-		byte[] bytes;
-		try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
-			if (in == null) {
-				throw new IOException(SCRIPT + " is missing from the mod");
+		try {
+			Files.createDirectories(covers);
+			deleteFilesIn(covers); // left over from the last game
+			byte[] bytes;
+			try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
+				if (in == null) {
+					throw new IOException(SCRIPT + " is missing from the mod");
+				}
+				bytes = in.readAllBytes();
 			}
-			bytes = in.readAllBytes();
-		}
-		// Rewriting an unchanged file can collide with an antivirus scanning it
-		if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
-			Path tmp = dir.resolve(SCRIPT + ".tmp");
-			Files.write(tmp, bytes);
-			Files.move(tmp, script, StandardCopyOption.REPLACE_EXISTING);
+			// Rewriting an unchanged file can collide with an antivirus scanning it
+			if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
+				Path tmp = dir.resolve(SCRIPT + ".tmp");
+				Files.write(tmp, bytes);
+				Files.move(tmp, script, StandardCopyOption.REPLACE_EXISTING);
+			}
+		} catch (IOException e) {
+			throw new IOException(Tr.t("Couldn't prepare the Windows music reader (%s)", detail(e)), e);
 		}
 
 		ProcessBuilder builder = new ProcessBuilder(launcher.command(script, covers));
@@ -317,14 +407,15 @@ public final class WindowsMediaSource implements MediaSource {
 		reader.start();
 		startedAt = System.nanoTime();
 
-		String first = queue.poll(startTimeoutMs, TimeUnit.MILLISECONDS);
+		String first = queue.poll(startLimitMs(startTimeoutMs, everReady), TimeUnit.MILLISECONDS);
 		JsonObject hello = first == null || first == END ? null : parse(first);
 		if (hello == null || !hello.has("ready") || !hello.get("ready").getAsBoolean()) {
-			String error = hello == null ? "" : string(hello, "error");
+			String error = hello == null ? "" : helperError(hello);
 			throw new IOException(!error.isEmpty() ? error
 					: first == null ? Tr.t("The Windows music reader took too long to start. Reopen the game and give it a moment.")
 					: Tr.t("The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game."));
 		}
+		everReady = true;
 		LOG.info("Reading music from Windows' media controls");
 	}
 

@@ -67,6 +67,77 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void positionFollowsPlaybackSpeed() {
+		// Reported 61 s in, 2 s ago, at 1.5x: 3 s of song have passed
+		assertEquals(64_000, WindowsMediaSource.position(61_000, 1_000_000, true, 200_000, 1_002_000, 1.5));
+		assertEquals(65_000, WindowsMediaSource.position(61_000, 1_000_000, true, 200_000, 1_002_000, 2.0));
+		// Paused: speed doesn't matter
+		assertEquals(61_000, WindowsMediaSource.position(61_000, 1_000_000, false, 200_000, 1_002_000, 2.0));
+		// Silly speeds count as normal
+		for (double silly : new double[] {0, -1, 4.5, 100, Double.NaN, Double.POSITIVE_INFINITY}) {
+			assertEquals(63_000, WindowsMediaSource.position(61_000, 1_000_000, true, 200_000, 1_002_000, silly), "rate " + silly);
+		}
+		assertEquals(4.0, WindowsMediaSource.saneRate(4.0));
+	}
+
+	@Test
+	void readsPlaybackSpeedFromPollAnswers() {
+		JsonObject reply = JsonParser.parseString("""
+				{"seq":3,"ok":true,"sessions":[
+				 {"id":"MSEdge","title":"Fast","status":"Playing","positionMs":10000,"startMs":0,"endMs":0,"updatedMs":1000,"rate":1.5},
+				 {"id":"Spotify.exe","title":"Plain","status":"Playing","positionMs":10000,"startMs":0,"endMs":0,"updatedMs":1000},
+				 {"id":"Chrome","title":"Odd","status":"Playing","positionMs":10000,"startMs":0,"endMs":0,"updatedMs":1000,"rate":"fast"}
+				]}""").getAsJsonObject();
+		List<WindowsMediaSource.Session> s = WindowsMediaSource.sessions(reply, 3000);
+		assertEquals(1.5, s.get(0).rate());
+		assertEquals(13_000, s.get(0).positionMs());
+		assertEquals(1.0, s.get(1).rate());
+		assertEquals(12_000, s.get(1).positionMs());
+		assertEquals(1.0, s.get(2).rate());
+	}
+
+	@Test
+	void helperErrorsComeFromCodes() {
+		assertEquals("Windows' media controls aren't available (boom)", WindowsMediaSource.helperError(
+				JsonParser.parseString("{\"ready\":false,\"code\":\"unavailable\",\"detail\":\"boom\",\"error\":\"unavailable: boom\"}").getAsJsonObject()));
+		assertEquals("Windows' media controls stopped answering (late)", WindowsMediaSource.helperError(
+				JsonParser.parseString("{\"ok\":false,\"code\":\"stopped\",\"detail\":\"late\"}").getAsJsonObject()));
+		assertEquals("Nothing is playing", WindowsMediaSource.helperError(
+				JsonParser.parseString("{\"ok\":false,\"error\":\"Nothing is playing\"}").getAsJsonObject()));
+		assertEquals("", WindowsMediaSource.helperError(JsonParser.parseString("{\"ok\":false}").getAsJsonObject()));
+	}
+
+	@Test
+	void keepsFollowingTheSameAppWhenAnEarlierPlayerCloses() {
+		Track t = new Track("A", "", "", 0, "", "chrome");
+		// Followed Spotify#2; the player before it closed, so Spotify is #1 now and Edge (playing) is #0
+		List<WindowsMediaSource.Session> sessions = List.of(
+				new WindowsMediaSource.Session(0, "MSEdge", t, 0, true, 1.0),
+				new WindowsMediaSource.Session(1, "Spotify.exe", t, 0, true, 1.0));
+		assertEquals("Spotify.exe#1", WindowsMediaSource.followKey(sessions, "Spotify.exe#2"));
+		// The exact key is still there: unchanged
+		assertEquals("MSEdge#0", WindowsMediaSource.followKey(sessions, "MSEdge#0"));
+		// Two tabs of one app: prefer the one playing
+		List<WindowsMediaSource.Session> tabs = List.of(
+				new WindowsMediaSource.Session(0, "Chrome", t, 0, false, 1.0),
+				new WindowsMediaSource.Session(1, "Chrome", t, 0, true, 1.0));
+		assertEquals("Chrome#1", WindowsMediaSource.followKey(tabs, "Chrome#5"));
+		// The app is gone, or nothing followed yet
+		assertEquals("Gone.exe#0", WindowsMediaSource.followKey(sessions, "Gone.exe#0"));
+		assertEquals(null, WindowsMediaSource.followKey(sessions, null));
+		// And the picker then sticks with it, as it does for an exact key
+		assertEquals("Spotify.exe#1", PlayerPicker.choose(sessions, WindowsMediaSource.Session::key, s -> "x",
+				WindowsMediaSource.Session::playing, "", WindowsMediaSource.followKey(sessions, "Spotify.exe#2")).key());
+	}
+
+	@Test
+	void theFirstStartMayTakeLonger() {
+		assertEquals(45_000, WindowsMediaSource.startLimitMs(20_000, false));
+		assertEquals(20_000, WindowsMediaSource.startLimitMs(20_000, true));
+		assertEquals(150_000, WindowsMediaSource.startLimitMs(150_000, false), "never shortens a longer limit");
+	}
+
+	@Test
 	void readsPollAnswers() {
 		JsonObject reply = JsonParser.parseString("""
 				{"seq":3,"ok":true,"sessions":[
@@ -91,6 +162,36 @@ class WindowsMediaSourceTest {
 		assertEquals("edge", edge.track().player());
 		assertTrue(edge.track().artUrl().startsWith("file:"), edge.track().artUrl());
 		assertEquals(0, edge.track().lengthMs());
+	}
+
+	@Test
+	void backsOffWhenTheHelperIsGoneSoonAfterStarting() {
+		long s = 1_000_000_000L;
+		assertTrue(WindowsMediaSource.shouldBackOff(false, s, s + 2_000_000_000L), "died after 2 s");
+		assertFalse(WindowsMediaSource.shouldBackOff(false, s, s + 11_000_000_000L), "ran for a while first");
+		assertFalse(WindowsMediaSource.shouldBackOff(true, s, s + 2_000_000_000L), "still running");
+	}
+
+	/** A helper that answers "ok":false and exits at once must not be started again on every poll. */
+	@Test
+	@Timeout(60)
+	void doesNotRestartAHelperThatKeepsExiting() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String body = "printf '{\"ready\":true}\\n'; read line; printf '{\"seq\":1,\"ok\":false,\"error\":\"gone\"}\\n'; exit 2";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, 20_000, 5_000);
+		try {
+			assertThrows(IOException.class, source::poll);
+			for (int i = 0; i < 4; i++) {
+				assertThrows(IOException.class, source::poll);
+			}
+			assertEquals(1, starts[0], "started once, then waited");
+		} finally {
+			source.close();
+		}
 	}
 
 	/** Runs the real helper script against a made-up media manager (windows-media-fake.ps1). */

@@ -507,5 +507,13 @@
   "skylyrics.ui.the_windows_music_reader_took_too_long_to_start": "The Windows music reader took too long to start. Reopen the game and give it a moment.",
   "skylyrics.ui.the_windows_music_reader_stopped_right_away_chec": "The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game.",
   "skylyrics.ui.minecraft_runs_as_a_flatpak_and_can_t_see_your_m": "Minecraft runs as a Flatpak and can't see your music players. Allow it with: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s",
-  "skylyrics.ui.can_t_reach_your_music_players_no_d_bus_session": "Can't reach your music players (no D-Bus session). Start the game from your desktop session."
+  "skylyrics.ui.can_t_reach_your_music_players_no_d_bus_session": "Can't reach your music players (no D-Bus session). Start the game from your desktop session.",
+  "skylyrics.ui.the_windows_music_reader_keeps_stopping_see_wind": "The Windows music reader keeps stopping (see windows-media.log)",
+  "skylyrics.ui.the_windows_music_reader_stopped": "The Windows music reader stopped",
+  "skylyrics.ui.windows_didn_t_say_what_s_playing_in_time": "Windows didn't say what's playing in time",
+  "skylyrics.ui.the_windows_music_reader_sent_something_unexpect": "The Windows music reader sent something unexpected",
+  "skylyrics.ui.windows_media_controls_aren_t_available_s": "Windows' media controls aren't available (%s)",
+  "skylyrics.ui.windows_media_controls_stopped_answering_s": "Windows' media controls stopped answering (%s)",
+  "skylyrics.ui.windows_is_missing_a_part_the_music_reader_needs": "Windows is missing a part the music reader needs (System.Web)",
+  "skylyrics.ui.couldn_t_prepare_the_windows_music_reader_s": "Couldn't prepare the Windows music reader (%s)"
 }

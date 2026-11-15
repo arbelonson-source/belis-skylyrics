@@ -163,7 +163,7 @@ public final class Updater {
 			LOG.warn("Update not downloaded: {} is not a release file of this mod", asset.url());
 			return false;
 		}
-		if (windows() && !(batchSafe(oldJar.toString()) && batchSafe(target.toString() + ".new"))) {
+		if (windows() && !swapPathsSafe(oldJar, target)) {
 			// The swap script could not handle this folder, so don't download a jar that would only be thrown away
 			LOG.info("Update not downloaded: the mods folder path is not plain ASCII");
 			return false;
@@ -358,20 +358,68 @@ public final class Updater {
 	 * new one its real name. If the script never gets to run, the old version simply stays and nothing breaks.
 	 */
 	static boolean installLater(Path oldJar, Path part, Path target) throws IOException {
-		Path waiting = target.resolveSibling(target.getFileName() + ".new");
-		for (Path p : List.of(oldJar, waiting, target)) {
-			// cmd reads a .bat in the OEM code page, so any non-ASCII character (C:\Users\José) would be mangled and the
-			// swap would fail without a word. Characters with a meaning in a batch file are not worth the risk either.
+		if (!swapPathsSafe(oldJar, target)) {
+			return false;
+		}
+		Path waiting = waitingName(target);
+		Path bat = writeSwapScript(oldJar, waiting, target, part);
+		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+			try {
+				new ProcessBuilder("cmd", "/c", bat.toString())
+						.redirectOutput(ProcessBuilder.Redirect.DISCARD)
+						.redirectError(ProcessBuilder.Redirect.DISCARD)
+						.start();
+			} catch (IOException e) {
+				// the old jar stays, and the .new file is ignored by the game
+			}
+		}, "SkyLyrics-update-swap"));
+		LOG.info("SkyLyrics {} will replace {} when the game closes", target.getFileName(), oldJar.getFileName());
+		return true;
+	}
+
+	private static Path waitingName(Path target) {
+		return target.resolveSibling(target.getFileName() + ".new");
+	}
+
+	/**
+	 * Whether the swap script can handle these places. cmd reads a .bat in the OEM code page, so any non-ASCII
+	 * character (C:\Users\José) would be mangled and the swap would fail without a word. Characters with a meaning
+	 * in a batch file are not worth the risk either. The script goes where its path is safe too (see
+	 * {@link #scriptFolder}), so all of this can be checked before anything is downloaded.
+	 */
+	static boolean swapPathsSafe(Path oldJar, Path target) {
+		for (Path p : List.of(oldJar, waitingName(target), target)) {
 			if (!batchSafe(p.toString())) {
 				return false;
 			}
 		}
-		Path bat = Files.createTempFile("skylyrics-update-", ".bat");
-		if (!batchSafe(bat.toString())) {
+		return true;
+	}
+
+	/**
+	 * Where the swap script goes: the temp folder, out of sight, unless cmd couldn't read its name there (C:\\Users\\José
+	 * puts accents in it); then next to the old jar, whose place {@link #swapPathsSafe} has already checked. The script's
+	 * own name is plain ASCII either way, and it deletes itself when it has run.
+	 */
+	static Path scriptFolder(Path temp, Path oldJar) {
+		return batchSafe(temp.toAbsolutePath().toString()) ? temp : oldJar.getParent();
+	}
+
+	/** Moves the new jar to its waiting name and writes the script that swaps it in (see {@link #scriptFolder}). */
+	static Path writeSwapScript(Path oldJar, Path waiting, Path target, Path part) throws IOException {
+		Path temp = Path.of(System.getProperty("java.io.tmpdir"));
+		Path bat = Files.createTempFile(scriptFolder(temp, oldJar), "skylyrics-update-", ".bat");
+		try {
+			Files.move(part, waiting, StandardCopyOption.REPLACE_EXISTING);
+			Files.write(bat, swapScript(oldJar, waiting, target).getBytes(StandardCharsets.US_ASCII));
+		} catch (IOException | RuntimeException e) {
 			Files.deleteIfExists(bat);
-			return false;
+			throw e;
 		}
-		Files.move(part, waiting, StandardCopyOption.REPLACE_EXISTING);
+		return bat;
+	}
+
+	static String swapScript(Path oldJar, Path waiting, Path target) {
 		String script = String.join("\r\n",
 				"@echo off",
 				"ping -n 6 127.0.0.1 >nul",
@@ -388,19 +436,7 @@ public final class Updater {
 				":end",
 				"(goto) 2>nul & del \"%~f0\"",
 				"");
-		Files.write(bat, script.getBytes(StandardCharsets.US_ASCII));
-		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			try {
-				new ProcessBuilder("cmd", "/c", bat.toString())
-						.redirectOutput(ProcessBuilder.Redirect.DISCARD)
-						.redirectError(ProcessBuilder.Redirect.DISCARD)
-						.start();
-			} catch (IOException e) {
-				// the old jar stays, and the .new file is ignored by the game
-			}
-		}, "SkyLyrics-update-swap"));
-		LOG.info("SkyLyrics {} will replace {} when the game closes", target.getFileName(), oldJar.getFileName());
-		return true;
+		return script;
 	}
 
 	private static boolean windows() {

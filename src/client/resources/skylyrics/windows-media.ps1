@@ -30,7 +30,7 @@ $stdout.AutoFlush = $true
 try {
 	Add-Type -AssemblyName System.Web
 } catch {
-	$stdout.WriteLine('{"ready":false,"error":"System.Web is missing from Windows"}')
+	$stdout.WriteLine('{"ready":false,"code":"no_web","error":"System.Web is missing from Windows"}')
 	exit 1
 }
 
@@ -51,6 +51,11 @@ function Reply([string]$body) {
 
 function Fail($message) {
 	Reply ('"ok":false,"error":' + (J $message))
+}
+
+# An error the mod shows translated: CODE is stable, DETAIL is the technical part
+function FailCode([string]$code, [string]$detail) {
+	Reply ('"ok":false,"code":' + (J $code) + ',"detail":' + (J $detail) + ',"error":' + (J ($code + ': ' + $detail)))
 }
 
 # The useful part of an error: .NET wraps the real one in "One or more errors occurred."
@@ -91,6 +96,22 @@ function Unix([DateTimeOffset]$time) {
 		return 0
 	}
 	return $time.ToUnixTimeMilliseconds()
+}
+
+# Playback speed (1.0 normal, 1.5 for a 1.5x video); players that don't say get 1.0
+function Rate($info) {
+	$rate = 1.0
+	try {
+		if ($null -ne $info.PlaybackRate) {
+			$rate = [double]$info.PlaybackRate
+		}
+	} catch {
+		$rate = 1.0
+	}
+	if ([double]::IsNaN($rate) -or [double]::IsInfinity($rate) -or $rate -le 0) {
+		$rate = 1.0
+	}
+	return $rate.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
 # Covers are saved as files the mod can open. Song key -> file. Players often switch the title a moment
@@ -177,7 +198,7 @@ function Sessions {
 		$script:Manager = Await ($script:ManagerType::RequestAsync()) $script:ManagerType 10000
 		return , @($script:Manager.GetSessions())
 	} catch {
-		Fail ("Windows' media controls stopped answering: " + (Why $_.Exception))
+		FailCode 'stopped' (Why $_.Exception)
 		exit 2
 	}
 }
@@ -216,12 +237,14 @@ function Poll {
 			$timeline = $session.GetTimelineProperties()
 			$id = [string]$session.SourceAppUserModelId
 			$cover = Cover $media ($id + '|' + $media.Artist + '|' + $media.Title)
+			$info = $session.GetPlaybackInfo()
 			$json = '{"index":' + $i +
 				',"id":' + (J $id) +
 				',"title":' + (J $media.Title) +
 				',"artist":' + (J $media.Artist) +
 				',"album":' + (J $media.AlbumTitle) +
-				',"status":' + (J ([string]$session.GetPlaybackInfo().PlaybackStatus)) +
+				',"status":' + (J ([string]$info.PlaybackStatus)) +
+				',"rate":' + (Rate $info) +
 				',"positionMs":' + (Ms $timeline.Position) +
 				',"startMs":' + (Ms $timeline.StartTime) +
 				',"endMs":' + (Ms $timeline.EndTime) +
@@ -285,7 +308,7 @@ if ($null -eq $Manager) {
 		# The first request after boot can be slow while Windows wakes its media service
 		$Manager = Await ($ManagerType::RequestAsync()) $ManagerType 10000
 	} catch {
-		$stdout.WriteLine('{"ready":false,"error":' + (J ("Windows' media controls aren't available: " + (Why $_.Exception))) + '}')
+		$stdout.WriteLine('{"ready":false,"code":"unavailable","detail":' + (J (Why $_.Exception)) + ',"error":' + (J ("unavailable: " + (Why $_.Exception))) + '}')
 		exit 1
 	}
 }
