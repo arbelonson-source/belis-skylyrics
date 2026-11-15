@@ -53,7 +53,7 @@ class LrcParserTest {
 		Lyrics l = LrcParser.parseSynced("[00:05.00] [00:30.00]  chorus\n[00:10.00] verse [00:20.00]");
 		assertEquals(3, l.lines().size());
 		assertEquals("chorus", l.get(0).text());
-		assertEquals("verse [00:20.00]", l.get(1).text());
+		assertEquals("verse", l.get(1).text());
 		assertEquals("chorus", l.get(2).text());
 		assertEquals(30000, l.get(2).timeMs());
 	}
