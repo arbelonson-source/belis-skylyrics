@@ -349,13 +349,27 @@ class LyricsServiceTest {
 	}
 
 	@Test
-	void olderLyricsAreDroppedWhenTheMainSiteSaysThereAreNone() throws Exception {
+	void olderLyricsStayShownWhenTheMainSiteSaysThereAreNoneButTheFileGoes() throws Exception {
 		Path file = saveOldVersionFile(OLD_SONG, STANDIN, ",\"v\":2");
-		service = new LyricsService(x -> LrclibClient.Result.NOT_FOUND, cache);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return LrclibClient.Result.NOT_FOUND;
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		waitFor(() -> !Files.exists(file));
+		Thread.sleep(300);
+		// this play keeps what it shows
+		assertEquals(LyricsService.State.READY, service.state());
+		assertFalse(service.lyrics().isEmpty());
+		assertEquals(1, asks.get());
+		// the next play looks the song up fresh
+		service.load(track("Song Two", 200_000));
+		waitFor(() -> service.track().title().equals("Song Two") && service.state() != LyricsService.State.LOADING);
 		service.load(OLD_SONG);
 		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
-		waitFor(() -> !Files.exists(file));
-		assertTrue(service.lyrics().isEmpty());
+		assertEquals(3, asks.get()); // Song One, Song Two, Song One again
 	}
 
 	@Test

@@ -65,16 +65,22 @@ public final class SafeFile {
 		throw last != null ? last : new IOException("Couldn't read " + file);
 	}
 
+	/** The first free {@code <name>.bad}, {@code .bad.1} to {@code .bad.9}, or null when all ten are taken. */
+	private static Path freeBadName(Path file) {
+		Path target = file.resolveSibling(file.getFileName() + ".bad");
+		for (int i = 1; Files.exists(target) && i <= 9; i++) {
+			target = file.resolveSibling(file.getFileName() + ".bad." + i);
+		}
+		return Files.exists(target) ? null : target;
+	}
+
 	/**
 	 * Moves a file nobody can read aside, to {@code <name>.bad} or, when that exists, the first free {@code <name>.bad.1} to
 	 * {@code .bad.9}, so no earlier copy is destroyed. Returns where it went; throws when it can't be moved.
 	 */
 	public static Path moveAside(Path file) throws IOException {
-		Path target = file.resolveSibling(file.getFileName() + ".bad");
-		for (int i = 1; Files.exists(target) && i <= 9; i++) {
-			target = file.resolveSibling(file.getFileName() + ".bad." + i);
-		}
-		if (Files.exists(target)) {
+		Path target = freeBadName(file);
+		if (target == null) {
 			throw new IOException("No free name to move " + file + " aside");
 		}
 		Files.move(file, target);
@@ -82,15 +88,26 @@ public final class SafeFile {
 	}
 
 	/**
-	 * Copies a damaged file to {@code <name>.bad} so a reset never costs the original. An older copy is replaced only
-	 * by a file at least as big, so an empty or cut-off file can't overwrite a better copy.
+	 * Copies a damaged file to {@code <name>.bad} so a reset never costs the original. An earlier copy is never
+	 * overwritten: the new one goes to the first free {@code .bad.1} to {@code .bad.9}, and when all ten are taken it
+	 * replaces the oldest one (by modified time).
 	 */
 	public static void keepBad(Path file) throws IOException {
-		Path bad = file.resolveSibling(file.getFileName() + ".bad");
-		if (Files.isRegularFile(bad) && Files.size(file) < Files.size(bad)) {
-			return;
+		Path target = freeBadName(file);
+		if (target == null) {
+			Path oldest = null;
+			long oldestTime = Long.MAX_VALUE;
+			for (int i = 0; i <= 9; i++) {
+				Path p = file.resolveSibling(file.getFileName() + (i == 0 ? ".bad" : ".bad." + i));
+				long time = Files.getLastModifiedTime(p).toMillis();
+				if (time < oldestTime) {
+					oldest = p;
+					oldestTime = time;
+				}
+			}
+			target = oldest;
 		}
-		Files.copy(file, bad, StandardCopyOption.REPLACE_EXISTING);
+		Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	/** Replaces target with tmp. If it can't be done, tmp is deleted and the last error is thrown. */

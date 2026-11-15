@@ -275,12 +275,13 @@ class HeardLibraryTest {
 	}
 
 	@Test
-	void damagedFileDoesNotReplaceABetterBadCopyWithAnEmptyOne() throws IOException {
+	void damagedFileDoesNotReplaceABetterBadCopyAndGetsItsOwn() throws IOException {
 		Path bad = dir.resolve("heard.json.bad");
 		Files.writeString(bad, "{\"songs\": [{\"title\": \"Kept\"");
 		Files.writeString(file(), "{");
 		assertTrue(HeardLibrary.read(file()).isEmpty());
 		assertEquals("{\"songs\": [{\"title\": \"Kept\"", Files.readString(bad));
+		assertEquals("{", Files.readString(dir.resolve("heard.json.bad.1")));
 	}
 
 	@Test
