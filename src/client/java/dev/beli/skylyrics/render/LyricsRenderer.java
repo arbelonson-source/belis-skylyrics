@@ -175,6 +175,7 @@ public final class LyricsRenderer {
 	public void onLeaveWorld() {
 		wordsLevel = null;
 		announced = null;
+		SkyEffects.forgetStars();
 		WorldWords.forgetPlayers();
 	}
 
@@ -1851,16 +1852,14 @@ public final class LyricsRenderer {
 	private void updateDaylight(Minecraft mc, Camera camera, float dt) {
 		ClientLevel level = mc.level;
 		float target = 0;
-		if (level != null && SkyEffects.overworldSky(level)
-				&& camera.getFluidInCamera() == FogType.NONE) {
-			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			target = daylight(SkyEffects.starBrightness(level, camera, partial),
-					level.getRainLevel(partial));
-		}
 		float sun = 0;
 		if (level != null && SkyEffects.overworldSky(level)) {
 			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			sun = 1 - Mth.clamp(SkyEffects.starBrightness(level, camera, partial) / SkyEffects.NIGHT_STARS, 0, 1);
+			float stars = SkyEffects.starBrightness(level, camera, partial);
+			if (camera.getFluidInCamera() == FogType.NONE) {
+				target = daylight(stars, level.getRainLevel(partial));
+			}
+			sun = 1 - Mth.clamp(stars / SkyEffects.NIGHT_STARS, 0, 1);
 		}
 		sunlight = approach(sunlight, sun, dt * 2f);
 		daylight = approach(daylight, Math.max(target, BACKDROP * backdrop), dt * 2f);

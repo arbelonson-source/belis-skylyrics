@@ -842,8 +842,43 @@ public final class SkyEffects {
 		*///?}
 	}
 
-	/** How bright the stars are: 0 in the day, highest on a clear night */
+	/**
+	 * How bright the stars are: 0 in the day, highest on a clear night. The sky and the lyrics both ask every frame,
+	 * so the last answer is kept for as long as everything it comes from is the same (level, tick and partial tick,
+	 * camera and where it is). Render thread only.
+	 */
 	static float starBrightness(ClientLevel level, Camera camera, float partial) {
+		var at = camera.position();
+		long tick = level.getGameTime();
+		if (starsLevel == level && starsCamera == camera && starsTick == tick && starsPartial == partial
+				&& starsX == at.x && starsY == at.y && starsZ == at.z) {
+			return starsValue;
+		}
+		float value = readStarBrightness(level, camera, partial);
+		starsLevel = level;
+		starsCamera = camera;
+		starsTick = tick;
+		starsPartial = partial;
+		starsX = at.x;
+		starsY = at.y;
+		starsZ = at.z;
+		starsValue = value;
+		return value;
+	}
+
+	private static ClientLevel starsLevel;
+	private static Camera starsCamera;
+	private static long starsTick;
+	private static float starsPartial, starsValue;
+	private static double starsX, starsY, starsZ;
+
+	/** Lets go of the kept level and camera, so leaving a world doesn't keep it alive. */
+	static void forgetStars() {
+		starsLevel = null;
+		starsCamera = null;
+	}
+
+	private static float readStarBrightness(ClientLevel level, Camera camera, float partial) {
 		//? if >=1.21.11 {
 		return camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial);
 		//?} else {
