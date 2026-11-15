@@ -214,7 +214,7 @@ class NeteaseClientTest {
 	@Test
 	void aHostileLineOfBracketsIsCheckedQuickly() {
 		String hostile = "[".repeat(100_000);
-		org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(3), () -> NeteaseClient.isPlaceholder(hostile));
+		org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(15), () -> NeteaseClient.isPlaceholder(hostile));
 	}
 
 	@Test

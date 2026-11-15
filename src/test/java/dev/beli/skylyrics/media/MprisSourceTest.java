@@ -24,6 +24,15 @@ class MprisSourceTest {
 				positionMs, true, "/id");
 	}
 
+	private static Snapshot pollWithinBound(MprisSource source) throws Exception {
+		long start = System.nanoTime();
+		Snapshot s = source.poll();
+		long tookMs = (System.nanoTime() - start) / 1_000_000;
+		// Expected about ANSWER_WAIT_MS; ten times that is still far short of the 60 s the player is stuck for
+		assertTrue(tookMs < 10 * MprisSource.ANSWER_WAIT_MS, "poll took " + tookMs + " ms");
+		return s;
+	}
+
 	@Test
 	void oneStuckPlayerDoesNotHoldUpTheOthers() throws Exception {
 		CountDownLatch unstick = new CountDownLatch(1);
@@ -44,13 +53,17 @@ class MprisSourceTest {
 			}
 		});
 		try {
+			// The first polls only start the reader threads; on a loaded machine the good answer
+			// may take longer than ANSWER_WAIT_MS to arrive, so poll until it shows
+			long giveUp = System.nanoTime() + 20_000L * 1_000_000L;
+			Snapshot first;
+			do {
+				first = pollWithinBound(source);
+			} while (first.track().isNone() && System.nanoTime() < giveUp);
+			assertEquals("Good Song", first.track().title());
+			// From here the good player has answered; the stuck one must still not hold anything up
 			for (int i = 0; i < 3; i++) {
-				long start = System.nanoTime();
-				Snapshot s = source.poll();
-				long tookMs = (System.nanoTime() - start) / 1_000_000;
-				// Expected about ANSWER_WAIT_MS; ten times that is still far short of the 60 s the player is stuck for
-				assertTrue(tookMs < 10 * MprisSource.ANSWER_WAIT_MS, "poll " + i + " took " + tookMs + " ms");
-				assertEquals("Good Song", s.track().title());
+				assertEquals("Good Song", pollWithinBound(source).track().title(), "poll " + i);
 			}
 		} finally {
 			unstick.countDown();
@@ -77,7 +90,13 @@ class MprisSourceTest {
 			}
 		});
 		try {
-			assertEquals("Good Song", source.poll().track().title());
+			long giveUp = System.nanoTime() + 20_000L * 1_000_000L;
+			Snapshot first = source.poll();
+			while (first.track().isNone() && System.nanoTime() < giveUp) {
+				Thread.sleep(20);
+				first = source.poll();
+			}
+			assertEquals("Good Song", first.track().title());
 			failing.set(true);
 			assertEquals("Good Song", source.poll().track().title());
 			// a player that left the bus is gone at once

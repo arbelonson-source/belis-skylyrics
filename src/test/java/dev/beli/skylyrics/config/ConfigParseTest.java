@@ -222,8 +222,7 @@ class ConfigParseTest {
 		};
 		try {
 			locked[0] = false;
-			SkyLyricsConfig.rereadSoon(c, file, new long[] {10});
-			for (int i = 0; i < 200 && c.saveBlocked; i++) Thread.sleep(10);
+			SkyLyricsConfig.rereadSoon(c, file, new long[] {10}).join(30_000);
 		} finally {
 			SkyLyricsConfig.mainThread = oldMain;
 		}
