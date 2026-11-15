@@ -417,6 +417,11 @@ public final class SkyLyricsConfig {
 
 	/** Whether the first-run tour has been shown. Settings files from before the tour count as seen. */
 	public boolean introSeen = false;
+	/**
+	 * Whether the one-time 0.6.2 move of the library key off Iris's shader toggle has run. The settings file has no version,
+	 * so a file from before this field counts as not run yet: the move happens once, then this stays true.
+	 */
+	public boolean keysMigrated = false;
 	/** How the song library shows its covers. */
 	public LibraryView libraryView = LibraryView.GRID;
 	/** Remember the songs that play, for the "Recently heard" list in the song library. Kept on this computer only. */
@@ -676,7 +681,7 @@ public final class SkyLyricsConfig {
 
 	/** Fields that are the player's own data or state, not look/behaviour settings; "Reset all" leaves them alone. */
 	private static final java.util.Set<String> KEPT_ON_RESET = java.util.Set.of(
-			"introSeen", "updates", "spotifyClientId", "songOffsets", "recentSearches");
+			"introSeen", "keysMigrated", "updates", "spotifyClientId", "songOffsets", "recentSearches");
 
 	public void resetToDefaults() {
 		SkyLyricsConfig d = new SkyLyricsConfig();
