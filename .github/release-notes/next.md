@@ -29,6 +29,10 @@
 - Hitting mobs while the World lyrics are hidden no longer knocks a word when they show again.
 - With Spotify signed in, the mod asks Spotify much less often while nothing shows the song, and slows down when Spotify is having trouble.
 - A Spotify app that isn't set up for your account now says what to do instead of "error 403".
+- The Comet sky no longer flickers on 26.2 and later.
+- Shooting stars and sparkles stay visible in front of the eclipse.
+- The sky fades back in after leaving the Nether or the End, or coming up out of water, instead of popping in.
+- The sky effects fade out under Blindness and Darkness, as the vanilla sky does.
 
 ### Faster
 

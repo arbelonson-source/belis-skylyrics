@@ -21,6 +21,8 @@ final class CometSky {
 	static final float ION_TILT = 7;
 	/** How far it sits, as a share of the sky radius: behind the aurora and nebula. */
 	static final float LAYER = 0.96f;
+	/** On 26.2 and later the added light writes depth, so the gas tail and the head sit a hair nearer than the dust. */
+	static final float ION_LAYER = 0.995f, HEAD_LAYER = 0.99f;
 	/** How fast the streamers run out along the gas tail, in tail lengths per second. */
 	static final float DRIFT = 0.03f;
 	/** Light below the horizon fades out over this many degrees, like the galaxy. */
@@ -149,12 +151,23 @@ final class CometSky {
 				ionGrid[i * (ION_ACROSS + 1) + j] = SkyColors.scale(ION_RGB, ION_PEAK * tail(s, w) * streak(s, w, time));
 			}
 		}
-		float r = radius * LAYER;
+		boolean depth = false;
+		//? if >=26.2 {
+		/*// The added-light pipeline writes depth here: shapes at one distance would z-fight, so each gets its own
+		depth = true;
+		*///?}
+		float[] r = radii(radius, depth);
 		c.fadeBelowHorizon(HORIZON_FADE);
-		mesh(c, r, DUST_A, DUST_B, DUST_GRID, STEPS, DUST_ACROSS, level);
-		mesh(c, r, ION_A, ION_B, ionGrid, STEPS, ION_ACROSS, level);
-		mesh(c, r, HEAD_A, HEAD_B, HEAD_GRID, RINGS, SEGMENTS, level);
+		mesh(c, r[0], DUST_A, DUST_B, DUST_GRID, STEPS, DUST_ACROSS, level);
+		mesh(c, r[1], ION_A, ION_B, ionGrid, STEPS, ION_ACROSS, level);
+		mesh(c, r[2], HEAD_A, HEAD_B, HEAD_GRID, RINGS, SEGMENTS, level);
 		c.fadeBelowHorizon(0);
+	}
+
+	/** The distances of the dust, the gas and the head, drawn in that order: with {@code depth} each nearer than the last. */
+	static float[] radii(float radius, boolean depth) {
+		float r = radius * LAYER;
+		return depth ? new float[] {r, r * ION_LAYER, r * HEAD_LAYER} : new float[] {r, r, r};
 	}
 
 	/** A grid of quads, {@code rows} by {@code columns}, from points and colours laid out row by row. */

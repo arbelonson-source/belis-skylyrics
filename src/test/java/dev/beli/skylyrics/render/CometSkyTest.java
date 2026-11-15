@@ -40,4 +40,19 @@ class CometSkyTest {
 			assertEquals(CometSky.streak(0.3f, w, 0), CometSky.streak(0.4f, w, later), 1e-4f);
 		}
 	}
+
+	@Test
+	void layersGetTheirOwnDistanceWhenDepthIsWritten() {
+		float[] r = CometSky.radii(100, true);
+		assertTrue(r[0] > r[1] && r[1] > r[2], "dust, gas, head must each be nearer than the last");
+		assertTrue(r[2] > 100 * CometSky.LAYER * 0.97f, "but only a hair apart");
+	}
+
+	@Test
+	void layersShareOneDistanceWithoutDepth() {
+		float[] r = CometSky.radii(100, false);
+		assertEquals(100 * CometSky.LAYER, r[0]);
+		assertEquals(r[0], r[1]);
+		assertEquals(r[0], r[2]);
+	}
 }
