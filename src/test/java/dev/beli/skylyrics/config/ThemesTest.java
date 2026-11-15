@@ -138,9 +138,9 @@ class ThemesTest {
 
 		Themes.apply(theme("retro"), cfg);
 		assertSame(theme("retro"), Themes.active(cfg));
-		cfg.shadow = false;
+		cfg.size = 1.7f;
 		assertNull(Themes.active(cfg));
-		cfg.shadow = true;
+		cfg.size = theme("retro").preview().size;
 		assertSame(theme("retro"), Themes.active(cfg));
 
 		cfg.distance = 20;
@@ -192,6 +192,58 @@ class ThemesTest {
 		for (Theme theme : Themes.ALL) {
 			SkyLyricsConfig loaded = gson.fromJson(gson.toJson(theme.preview()), SkyLyricsConfig.class);
 			assertSame(theme, Themes.active(loaded), theme.id());
+		}
+	}
+
+	@Test
+	void settingsNoThemeSetsSurviveEveryTheme() {
+		java.util.List<String> themed = Themes.themed();
+		for (String name : new String[] { "karaoke", "shadow", "twoTone", "roundFont", "toneColor" }) {
+			assertFalse(themed.contains(name), name);
+		}
+		for (Theme theme : Themes.ALL) {
+			SkyLyricsConfig cfg = new SkyLyricsConfig();
+			cfg.karaoke = !cfg.karaoke;
+			cfg.shadow = !cfg.shadow;
+			cfg.twoTone = !cfg.twoTone;
+			cfg.roundFont = !cfg.roundFont;
+			cfg.toneColor = 0x123456;
+			Themes.apply(theme, cfg);
+			assertEquals(!new SkyLyricsConfig().karaoke, cfg.karaoke, theme.id());
+			assertEquals(!new SkyLyricsConfig().shadow, cfg.shadow, theme.id());
+			assertEquals(!new SkyLyricsConfig().twoTone, cfg.twoTone, theme.id());
+			assertEquals(!new SkyLyricsConfig().roundFont, cfg.roundFont, theme.id());
+			assertEquals(0x123456, cfg.toneColor, theme.id());
+		}
+	}
+
+	@Test
+	void aSettingOneThemeSetsGoesBackWhenAnotherThemeDoesNotSetIt() {
+		assertTrue(Themes.themed().containsAll(java.util.List.of("size", "uppercase", "worldFlow", "glowPick", "opacity", "layout")));
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		Themes.apply(theme("lilac"), cfg);
+		assertTrue(cfg.worldFlow && cfg.glowPick);
+		Themes.apply(theme("karaoke"), cfg);
+		assertFalse(cfg.worldFlow);
+		assertFalse(cfg.glowPick);
+		assertEquals(new SkyLyricsConfig().glowColor, cfg.glowColor);
+		assertSame(theme("karaoke"), Themes.active(cfg));
+		cfg.size = 1.8f;
+		Themes.apply(theme("neon"), cfg);
+		assertEquals(1f, cfg.size, 0f);
+		assertSame(theme("neon"), Themes.active(cfg));
+	}
+
+	@Test
+	void settingsNoThemeSetsDoNotMakeTheThemeCustom() {
+		for (Theme theme : Themes.ALL) {
+			SkyLyricsConfig cfg = new SkyLyricsConfig();
+			cfg.karaoke = false;
+			cfg.shadow = !cfg.shadow;
+			Themes.apply(theme, cfg);
+			assertSame(theme, Themes.active(cfg), theme.id());
+			cfg.glow = cfg.glow > 0.5f ? 0.1f : 0.95f;
+			assertNull(Themes.active(cfg), theme.id());
 		}
 	}
 }

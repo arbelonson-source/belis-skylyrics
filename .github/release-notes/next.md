@@ -62,7 +62,9 @@
 - **Instrumental and karaoke tracks.** "Song (Instrumental)", a karaoke, a backing track or an a cappella version no longer gets the lyrics of the sung song, and the other way round.
 - **Synced lyrics first.** When LRCLIB's best match for a song has only plain lyrics, the mod also looks for a synced copy before settling for the plain one. Lyrics whose track length is more than 20 seconds off your song's are no longer used. A lyrics file with only tags and no lines no longer counts as an answer.
 - **Odd lyric files.** Lines that start with a no-break or invisible space, spaces inside the brackets ("[ 00:12.00 ]"), and stray control characters no longer lose lines or show as boxes.
-- **Lyrics saved by older versions.** Lyrics saved by version 0.8.0 or older are checked again in the background: the ones that were another song's or an "instrumental" placeholder are replaced, or dropped when LRCLIB has nothing.
+- **Lyrics saved by older versions.** Lyrics saved by version 0.8.0 or older are checked again in the background: the ones that were another song's or an "instrumental" placeholder are replaced, or dropped when neither lyrics site has any.
+- **Themes keep your other settings.** Picking a theme now changes only what themes set (the layout, colours, fonts, glow, size, opacity, animation, sky and a few more). Settings no theme touches, such as **Karaoke**, **Shadow**, **Two-tone** and **Round font**, stay as you set them, and the theme still shows as picked (not Custom).
+- **Elytra mode.** After a steep dive or climb, the words come back to where they were once you level out, instead of staying higher or lower.
 
 ### Faster
 

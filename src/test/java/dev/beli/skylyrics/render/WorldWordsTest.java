@@ -314,6 +314,27 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void tiltClippedAtTheLimitIsGivenBack() {
+		// A steep dive and back up: the line ends where it began, not higher
+		WorldWords.Sentence line = new WorldWords.Sentence(-10, 75, 10, 0);
+		line.swing(0, 20);
+		assertEquals(80, line.top, 1e-6f);
+		line.swing(0, -20);
+		assertEquals(75, line.top, 1e-4f);
+		// The same for a word
+		Vec3 start = WorldWords.direction(0, 75).scale(10);
+		Vec3 down = WorldWords.swing(start, 0, 20, 0);
+		float clip = WorldWords.clipAfter(start, 0, 20);
+		assertEquals(15, clip, 0.05);
+		Vec3 back = WorldWords.swing(down, 0, -20, clip);
+		assertEquals(start.y, back.y, 0.05);
+		assertEquals(0, WorldWords.clipAfter(down, clip, -20), 0.05);
+		// However far the view went, nothing is drawn past 85 degrees
+		assertEquals(80, WorldWords.shownPitch(75, 0, 170), 1e-6f);
+		assertEquals(-80, WorldWords.shownPitch(-75, 0, -170), 1e-6f);
+	}
+
+	@Test
 	void aFlowingLineReadsLeftToRight() {
 		WorldWords.Sentence line = new WorldWords.Sentence(-10, 5, 10, 0);
 		float[] first = line.place(3, 1, 0, 0), second = line.place(2, 0.5f, 0, 0);
