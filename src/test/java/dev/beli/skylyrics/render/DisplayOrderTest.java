@@ -123,11 +123,29 @@ class DisplayOrderTest {
 
 	@Test
 	void wrappedArabicRowsStartWhereTheTextDoes() {
-		// Lam-alef is one drawn letter but two letters of the line, so row two starts after row one's two letters
+		// Lam-alef is one drawn letter but two letters of the line, so row two starts after row one's seven letters
+		// and the space that was dropped where the line broke
 		java.util.List<String> rows = java.util.List.of("سلام لا", "كلام");
-		int[] starts = LyricsRenderer.rowStarts(rows);
+		int[] starts = LyricsRenderer.rowStarts("سلام لا كلام", rows);
 		assertEquals(0, starts[0]);
-		assertEquals(7, starts[1]);
+		assertEquals(8, starts[1]);
 		assertTrue(LyricsRenderer.Display.of(rows.get(0)).cps().length < 7);
+	}
+
+	@Test
+	void rowsAfterABreakCountTheSpaceThatWasDropped() {
+		assertArrayEquals(new int[] {0, 3, 6}, LyricsRenderer.rowStarts("aa bb cc", java.util.List.of("aa", "bb", "cc")));
+		assertArrayEquals(new int[] {0, 6}, LyricsRenderer.rowStarts("aa bb cc", java.util.List.of("aa bb", "cc")));
+	}
+
+	@Test
+	void aCutInsideAWordAddsNoSpace() {
+		assertArrayEquals(new int[] {0, 3}, LyricsRenderer.rowStarts("abcdef", java.util.List.of("abc", "def")));
+	}
+
+	@Test
+	void collapsedAndUnwrappedSpacesStayInStep() {
+		assertArrayEquals(new int[] {0, 4}, LyricsRenderer.rowStarts("aa  bb", java.util.List.of("aa", "bb")));
+		assertArrayEquals(new int[] {0}, LyricsRenderer.rowStarts("aa  bb", java.util.List.of("aa  bb")));
 	}
 }

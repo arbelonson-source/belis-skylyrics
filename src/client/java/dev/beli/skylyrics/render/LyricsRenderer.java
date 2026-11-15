@@ -1160,9 +1160,11 @@ public final class LyricsRenderer {
 				return;
 			}
 			List<String> rows = rows(text);
-			int total = 0, words = 0;
+			int[] starts = rowStarts(text, rows);
+			int last = rows.size() - 1;
+			// Counted through the last row, so the break spaces are part of what has to be sung
+			int total = starts[last] + rows.get(last).codePointCount(0, rows.get(last).length()), words = 0;
 			for (String row : rows) {
-				total += row.codePointCount(0, row.length());
 				words += wordCount(row);
 			}
 			float sungChars = sung * total;
@@ -1187,7 +1189,6 @@ public final class LyricsRenderer {
 
 			canvas.push(0, y, scale, 0);
 			float top = -rows.size() * ROW_H / 2;
-			int[] starts = rowStarts(rows);
 			boolean rtl = WorldWords.rightToLeft(text);
 			int wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
@@ -1312,13 +1313,27 @@ public final class LyricsRenderer {
 	/**
 	 * Where each wrapped row starts, counted in the line's own code points (the unit of how far it has been sung). Not the
 	 * rows' drawn lengths: shaping merges lam-alef and drops marks, so those run shorter and would put later rows ahead.
+	 * {@code wrap} drops the space where it breaks a row (and collapses doubled ones), so the rows are lined up against
+	 * the line's text to count those too; a cut inside a long word has no space to count.
 	 */
-	static int[] rowStarts(List<String> rows) {
+	static int[] rowStarts(String text, List<String> rows) {
+		int[] cps = text.codePoints().toArray();
 		int[] starts = new int[rows.size()];
 		int at = 0;
 		for (int r = 0; r < starts.length; r++) {
+			while (at < cps.length && cps[at] == ' ') {
+				at++;
+			}
 			starts[r] = at;
-			at += rows.get(r).codePointCount(0, rows.get(r).length());
+			int[] row = rows.get(r).codePoints().toArray();
+			for (int i = 0; i < row.length; i++) {
+				at++;
+				if (row[i] == ' ' && (i + 1 == row.length || row[i + 1] != ' ')) {
+					while (at < cps.length && cps[at] == ' ') {
+						at++;
+					}
+				}
+			}
 		}
 		return starts;
 	}
