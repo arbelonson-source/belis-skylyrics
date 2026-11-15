@@ -3,14 +3,33 @@ package dev.beli.skylyrics.media;
 import org.jspecify.annotations.Nullable;
 
 /** The timing decisions of the Spotify Web poller, kept free of the network so they can be tested. */
-final class SpotifyPace {
+public final class SpotifyPace {
 	static final long RETRY_DEFAULT_S = 10;
 	static final long RETRY_MAX_S = 300;
 
 	static final long BACKOFF_FIRST_NS = 4_000_000_000L;
 	static final long BACKOFF_MAX_NS = 60_000_000_000L;
 
+	/** The tracker's smooth clock fills the gaps, so once a second while playing is plenty. */
+	static final long PLAYING_NS = 1_000_000_000L;
+	static final long IDLE_NS = 4_000_000_000L;
+	/** While nothing on screen shows the song. */
+	static final long QUIET_NS = 15_000_000_000L;
+
 	private SpotifyPace() {
+	}
+
+	/**
+	 * Whether any visible part needs the song's position: the lyrics (the sky lyrics, the top bar, the Record card and
+	 * the title screen lyrics all need Lyrics on), or the settings, library or intro screen, which show what is playing.
+	 * Whether the window has focus doesn't count: sky lyrics can be watched from a second monitor.
+	 */
+	public static boolean looking(boolean lyricsOn, boolean songScreenOpen) {
+		return lyricsOn || songScreenOpen;
+	}
+
+	static long intervalNs(boolean playing, boolean looking) {
+		return !looking ? QUIET_NS : playing ? PLAYING_NS : IDLE_NS;
 	}
 
 	/** 4 s after the first failure in a row, doubling each time, never over 60 s. */

@@ -1,6 +1,8 @@
 package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -40,5 +42,25 @@ class SpotifyPaceTest {
 		assertEquals(60 * S, SpotifyPace.failureDelayNs(403, 1));
 		assertEquals(4 * S, SpotifyPace.failureDelayNs(503, 1));
 		assertEquals(8 * S, SpotifyPace.failureDelayNs(0, 2));
+	}
+
+	@Test
+	void polledOnceASecondWhilePlayingAndEveryFourPaused() {
+		assertEquals(S, SpotifyPace.intervalNs(true, true));
+		assertEquals(4 * S, SpotifyPace.intervalNs(false, true));
+	}
+
+	@Test
+	void polledEveryFifteenSecondsWhenNobodyIsLooking() {
+		assertEquals(15 * S, SpotifyPace.intervalNs(true, false));
+		assertEquals(15 * S, SpotifyPace.intervalNs(false, false));
+	}
+
+	@Test
+	void anyoneLookingMeansLyricsOnOrASongScreenOpen() {
+		assertTrue(SpotifyPace.looking(true, false));
+		assertTrue(SpotifyPace.looking(false, true));
+		assertTrue(SpotifyPace.looking(true, true));
+		assertFalse(SpotifyPace.looking(false, false));
 	}
 }

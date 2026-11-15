@@ -21,6 +21,8 @@
 - A bigger top bar now shrinks to fit the screen instead of overflowing it.
 - "Set up Spotify" scrolls to the Spotify card even when the settings screen has just opened, and tabs keep their scroll after you visit a shorter one.
 - When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist.
+- With Spotify signed in, the mod asks Spotify much less often while nothing shows the song, and slows down when Spotify is having trouble.
+- A Spotify app that isn't set up for your account now says what to do instead of "error 403".
 
 ### Faster
 

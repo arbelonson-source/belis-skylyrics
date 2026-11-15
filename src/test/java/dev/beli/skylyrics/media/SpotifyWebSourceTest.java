@@ -215,15 +215,26 @@ class SpotifyWebSourceTest {
 	void aRetryAfterFromAnyCallHoldsThePoller(@TempDir Path dir) {
 		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
 		long now = System.nanoTime();
-		assertTrue(source.pollDue(now + 1));
+		assertTrue(source.pollDue(now + 1, true));
 		source.holdOff("30");
-		assertFalse(source.pollDue(now + 20_000_000_000L));
-		assertTrue(source.pollDue(now + 31_000_000_000L));
+		assertFalse(source.pollDue(now + 20_000_000_000L, true));
+		assertTrue(source.pollDue(now + 31_000_000_000L, true));
 		// A shorter ask later never shortens the hold
 		source.holdOff("2");
-		assertFalse(source.pollDue(now + 20_000_000_000L));
+		assertFalse(source.pollDue(now + 20_000_000_000L, true));
 		// A date instead of seconds is 10 s, not a crash
 		source.holdOff("Wed, 21 Oct 2026 07:28:00 GMT");
-		assertFalse(source.pollDue(now + 20_000_000_000L));
+		assertFalse(source.pollDue(now + 20_000_000_000L, true));
+	}
+
+	@Test
+	void theWebPollSlowsDownWhenNobodyLooksAndCatchesUpWhenSomeoneDoes(@TempDir Path dir) {
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		long now = System.nanoTime();
+		source.settle(now); // as if just asked, nothing playing
+		assertTrue(source.pollDue(now + 5_000_000_000L, true));   // looking: every 4 s
+		assertFalse(source.pollDue(now + 5_000_000_000L, false)); // nobody: every 15 s
+		assertFalse(source.pollDue(now + 14_000_000_000L, false));
+		assertTrue(source.pollDue(now + 16_000_000_000L, false));
 	}
 }
