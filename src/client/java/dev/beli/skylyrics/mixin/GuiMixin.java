@@ -26,6 +26,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+//? if <1.21.2 {
+/*import net.minecraft.client.DeltaTracker;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+*///?}
 
 /** Swaps the crosshair picture for one of our shapes. Minecraft still decides when it shows, and the attack meter stays. */
 //? if >=26.2 {
@@ -78,4 +83,25 @@ abstract class GuiMixin {
 		CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
 		//?}
 	}
+
+	//? if <1.21.2 {
+	/*// 1.21.1's HUD is a stack of private layers that Fabric doesn't hook, and HudRenderCallback fires after the chat. So draw
+	// where later versions do: the lyrics before everything, the bar and the Record card just before the action bar text
+	// and the chat. If either point isn't found, the callback in SkyLyricsClient draws them as before.
+	@Inject(method = "renderCameraOverlays", at = @At("HEAD"), require = 0)
+	private void skylyrics$lyricsLayer(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
+		SkyLyricsClient mod = SkyLyricsClient.get();
+		if (mod != null) {
+			mod.drawLyricsLayer(g, delta);
+		}
+	}
+
+	@Inject(method = "renderOverlayMessage", at = @At("HEAD"), require = 0)
+	private void skylyrics$barLayer(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
+		SkyLyricsClient mod = SkyLyricsClient.get();
+		if (mod != null) {
+			mod.drawBarLayer(g, delta);
+		}
+	}
+	*///?}
 }

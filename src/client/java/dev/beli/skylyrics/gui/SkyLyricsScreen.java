@@ -1219,7 +1219,12 @@ public final class SkyLyricsScreen extends Screen {
 					row.renderFocus(inner);
 				}
 				if (row.descClipped && row.hovered(inner) && row.desc != null) {
+					//? if >=1.21.6 {
 					g.setTooltipForNextFrame(font, Component.literal(row.desc.get()), f.mx(), f.my());
+					//?} else {
+					/*// Drawn after render() returns, so the row clip above can't cut it (renderTooltip draws on the spot here)
+					setTooltipForNextRenderPass(Component.literal(row.desc.get()));
+					*///?}
 				}
 			}
 		}

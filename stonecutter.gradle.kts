@@ -73,7 +73,6 @@ stonecutter parameters {
 			replace("g.pose().scale(", "dev.beli.skylyrics.gui.Gui2D.scale(g, ")
 			replace("g.pose().rotate(", "dev.beli.skylyrics.gui.Gui2D.rotate(g, ")
 			replace("g.nextStratum()", "dev.beli.skylyrics.gui.Gui2D.nextLayer(g)")
-			replace("g.setTooltipForNextFrame(", "g.renderTooltip(")
 			replace("camera.position()", "camera.getPosition()")
 		}
 		// 1.21.4 has no GpuTexture: textures are plain GL ids, so no sampler objects, no texture names, no scaled mouse helper

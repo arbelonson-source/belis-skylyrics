@@ -22,6 +22,8 @@
 - "Set up Spotify" scrolls to the Spotify card even when the settings screen has just opened, and tabs keep their scroll after you visit a shorter one.
 - When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist.
 - A very long song title from a player or a lyrics site can no longer hold up the lyrics lookup.
+- On Minecraft 1.21.1 the top bar's text is clipped right at every Bar size, and the lyrics no longer cover the chat.
+- On 1.21.1 to 1.21.5, setting descriptions are no longer cut off at the edge of the list.
 
 ### Faster
 
