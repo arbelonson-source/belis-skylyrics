@@ -34,7 +34,7 @@ public final class Tr {
 
 	/** The English a shown text was translated from, or the text itself when it is English or not from {@link #t}. */
 	public static String english(String shown) {
-		return SOURCE.getOrDefault(shown, shown);
+		return shown == null ? "" : SOURCE.getOrDefault(shown, shown);
 	}
 
 	/** The lang key for an English text: "skylyrics.ui." + slug. */
