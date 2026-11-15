@@ -112,10 +112,19 @@ public final class AlbumArt {
 		executor.execute(() -> {
 			try {
 				BufferedImage image = read(url);
-				if (image == null || generation.get() != gen) {
+				if (generation.get() != gen) {
 					return;
 				}
-				int picked = pickColor(image);
+				if (image == null) {
+					// A cover we can't read (WebP, a failed answer, a data: URI) must not leave the last song's colour behind
+					synchronized (accept) {
+						if (generation.get() == gen) {
+							color = colorFor(null);
+						}
+					}
+					return;
+				}
+				int picked = colorFor(image);
 				NativeImage scaled = shrink(image, SIZE, SIZE / 2f);
 				NativeImage old;
 				synchronized (accept) {
@@ -234,6 +243,11 @@ public final class AlbumArt {
 		float cy = Math.clamp(y + 0.5f, radius, size - radius);
 		float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
 		return Math.clamp(radius - (float) Math.sqrt(dx * dx + dy * dy) + 0.5f, 0f, 1f);
+	}
+
+	/** The colour for a cover: picked from it, or the fallback when there is none. */
+	static int colorFor(@Nullable BufferedImage image) {
+		return image == null ? FALLBACK_COLOR : pickColor(image);
 	}
 
 	/**
