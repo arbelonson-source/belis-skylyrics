@@ -56,7 +56,7 @@ public final class LrcParser {
 			if (times.isEmpty()) {
 				continue;
 			}
-			String text = tidy(WORD_TIME.matcher(raw.substring(end)).replaceAll(""));
+			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
 			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches()) {
 				text = "";
 			}

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -84,5 +85,29 @@ class UpdaterTest {
 		assertFalse(Updater.valid(old, null, "0.2.0+1.21.11"));
 		assertEquals("0.2.0+1.21.11", Updater.expectedVersion("belis-skylyrics-0.2.0+1.21.11.jar"));
 		assertNull(Updater.expectedVersion("random.jar"));
+	}
+
+	@Test
+	void jarInsideASymlinkedModsFolderIsStillOurs(@TempDir Path tmp) throws IOException {
+		Path real = Files.createDirectory(tmp.resolve("real-mods"));
+		Path jar = Files.writeString(real.resolve("skylyrics.jar"), "x");
+		Path link = tmp.resolve("mods");
+		try {
+			Files.createSymbolicLink(link, real);
+		} catch (UnsupportedOperationException | IOException | SecurityException e) {
+			assumeTrue(false, "symlinks not available: " + e);
+		}
+		// the loader reports the real path while the game folder goes through the link, and the other way round
+		assertEquals(jar.toRealPath(), Updater.ownJar(link, List.of(jar)));
+		assertEquals(jar.toRealPath(), Updater.ownJar(real, List.of(link.resolve("skylyrics.jar"))));
+		assertNull(Updater.ownJar(tmp.resolve("elsewhere"), List.of(jar)));
+	}
+
+	@Test
+	void plainModsFolderStillWorks(@TempDir Path tmp) throws IOException {
+		Path jar = Files.writeString(tmp.resolve("skylyrics.jar"), "x");
+		assertEquals(jar.toRealPath(), Updater.ownJar(tmp, List.of(jar)));
+		assertNull(Updater.ownJar(tmp, List.of(Files.writeString(tmp.resolve("a.txt"), "x"))));
+		assertNull(Updater.ownJar(tmp.resolve("missing"), List.of(jar)));
 	}
 }

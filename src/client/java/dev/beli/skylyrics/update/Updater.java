@@ -120,14 +120,28 @@ public final class Updater {
 		if (container == null) {
 			return null;
 		}
-		Path mods = FabricLoader.getInstance().getGameDir().resolve("mods").toAbsolutePath().normalize();
-		for (Path path : container.getOrigin().getPaths()) {
-			Path p = path.toAbsolutePath().normalize();
+		return ownJar(FabricLoader.getInstance().getGameDir().resolve("mods"), container.getOrigin().getPaths());
+	}
+
+	/** The first of the paths that is a real .jar inside the mods folder (links followed), or null. */
+	static Path ownJar(Path modsFolder, Iterable<Path> paths) {
+		Path mods = real(modsFolder);
+		for (Path path : paths) {
+			Path p = real(path);
 			if (Files.isRegularFile(p) && p.getFileName().toString().endsWith(".jar") && p.startsWith(mods)) {
 				return p;
 			}
 		}
 		return null;
+	}
+
+	/** Launchers often link the mods or instance folder, so compare where things really are when that can be told. */
+	private static Path real(Path path) {
+		try {
+			return path.toRealPath();
+		} catch (IOException | RuntimeException e) {
+			return path.toAbsolutePath().normalize();
+		}
 	}
 
 	/** Downloads the new jar next to the old one and makes sure only one of them is left. True when it is in place. */
