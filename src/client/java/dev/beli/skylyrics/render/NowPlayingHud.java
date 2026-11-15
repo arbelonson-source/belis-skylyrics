@@ -19,6 +19,7 @@ import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -475,11 +476,11 @@ public final class NowPlayingHud {
 			return;
 		}
 		//? if >=26.1 {
-		/*boolean rtl = isRtl(c.drawString());
+		/*boolean rtl = TopBarWords.baseRtl(c.drawString());
 		*///?} else {
-		boolean rtl = isRtl(c.text());
+		boolean rtl = TopBarWords.baseRtl(c.text());
 		//?}
-		float total = words[words.length - 1].x() + words[words.length - 1].w();
+		float total = extent(words);
 		int current = 0;
 		for (int i = 0; i < words.length; i++) {
 			if (words[i].sung()) {
@@ -508,7 +509,7 @@ public final class NowPlayingHud {
 		}
 
 		if (live) {
-			float left = prev.x(), right = cur.x() + cur.w();
+			float left = Math.min(prev.x(), cur.x()), right = Math.max(prev.x() + prev.w(), cur.x() + cur.w());
 			if (hlRight < 0) {
 				hlLeft = words[0].x();
 				hlRight = hlLeft + HL_START_W;
@@ -535,6 +536,15 @@ public final class NowPlayingHud {
 		}
 	}
 
+	/** How far the words reach from the line's start edge. */
+	private static float extent(Word[] words) {
+		float end = 0;
+		for (Word w : words) {
+			end = Math.max(end, w.x() + w.w());
+		}
+		return end;
+	}
+
 	/** The gap between the line's words, in GUI units. */
 	private static float wordGap(Font font, Style style, float scale) {
 		return LyricsFont.width(font, style, " ") * scale + WORD_EXTRA;
@@ -550,20 +560,29 @@ public final class NowPlayingHud {
 			letters += text.charAt(i) == ' ' ? 0 : 1;
 		}
 		float at = sungShare * letters;
-		String[] parts = text.trim().split(" +");
-		if (parts.length == 1 && parts[0].isEmpty()) {
+		List<TopBarWords.Piece> parts = TopBarWords.split(text);
+		if (parts.isEmpty()) {
 			return new Word[0];
 		}
-		Word[] out = new Word[parts.length];
-		float gap = wordGap(font, style, scale);
-		float x = 0;
+		int n = parts.size();
+		float[] widths = new float[n];
+		for (int i = 0; i < n; i++) {
+			widths[i] = LyricsFont.width(font, style, parts.get(i).text()) * scale;
+		}
+		// Placed as they are seen (a Hebrew word in an English line, numbers in a Hebrew one), then measured from
+		// the start edge: the left for a left-to-right line, the right for a right-to-left one
+		float[] left = TopBarWords.leftEdges(parts, widths, wordGap(font, style, scale));
+		float total = 0;
+		for (int i = 0; i < n; i++) {
+			total = Math.max(total, left[i] + widths[i]);
+		}
+		boolean rtl = TopBarWords.baseRtl(text);
+		Word[] out = new Word[n];
 		int seen = 0;
-		for (int i = 0; i < parts.length; i++) {
-			float w = LyricsFont.width(font, style, parts[i]) * scale;
+		for (int i = 0; i < n; i++) {
 			boolean sung = seen <= at || sungShare >= 1;
-			out[i] = new Word(parts[i], x, w, sung);
-			x += w + gap;
-			seen += parts[i].length();
+			out[i] = new Word(parts.get(i).text(), rtl ? total - left[i] - widths[i] : left[i], widths[i], sung);
+			seen += parts.get(i).text().length();
 		}
 		return out;
 	}
@@ -704,7 +723,7 @@ public final class NowPlayingHud {
 			*///?} else {
 			Word[] words = words(font, style, scale, c.text(), 1);
 			//?}
-			return words.length == 0 ? 0 : words[words.length - 1].x() + words[words.length - 1].w();
+			return extent(words);
 		}
 		//? if >=26.1 {
 		/*float w = LyricsFont.width(font, style, c.drawString());

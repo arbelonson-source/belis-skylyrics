@@ -91,8 +91,20 @@ final class Ui {
 		if (font.width(text) <= maxW) {
 			return text;
 		}
+		return clipBy(text, maxW, font::width);
+	}
+
+	/** The text cut to fit {@code maxW} and ending in "…", cut between whole characters (never inside a flag or an accent). */
+	static String clipBy(String text, int maxW, java.util.function.ToIntFunction<String> width) {
+		if (maxW <= 0) {
+			return "";
+		}
+		if (width.applyAsInt(text) <= maxW) {
+			return text;
+		}
 		String ellipsis = "…";
-		return font.plainSubstrByWidth(text, Math.max(0, maxW - font.width(ellipsis))) + ellipsis;
+		int room = Math.max(0, maxW - width.applyAsInt(ellipsis));
+		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> width.applyAsInt(t) <= room).stripTrailing() + ellipsis;
 	}
 
 	/** Room for header text that starts at {@code textX} and must stop before something at {@code rightX}. */

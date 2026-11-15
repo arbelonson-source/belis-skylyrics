@@ -103,7 +103,8 @@ class MacMediaSourceTest {
 		// The script turns tabs and line breaks inside titles into spaces before they get here
 		String out = "Music\tplaying\t200\t1\tשיר  \"Quoted\" \\ back/slash 🎵 & <b>\tBjörk, Sigur Rós\tÀlbum: Part 2\t\r\n";
 		MacMediaSource.Reading r = MacMediaSource.parse(out).players().getFirst();
-		assertEquals("שיר  \"Quoted\" \\ back/slash 🎵 & <b>", r.track().title());
+		// The double space after the Hebrew word is now one space: a Track collapses runs of space
+		assertEquals("שיר \"Quoted\" \\ back/slash 🎵 & <b>", r.track().title());
 		assertEquals("Björk, Sigur Rós", r.track().artist());
 		assertEquals("Àlbum: Part 2", r.track().album());
 		assertEquals("", r.track().artUrl(), "the carriage return at the end is dropped");

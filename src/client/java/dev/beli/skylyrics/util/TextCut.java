@@ -53,4 +53,16 @@ public final class TextCut {
 		}
 		return "";
 	}
+
+	/** The first whole character people see in {@code text} (a flag, an emoji with its joiners, a letter with its accents), after leading space is dropped; "" if there is none. */
+	public static String first(String text) {
+		String s = text.strip();
+		return s.isEmpty() ? "" : firstOf(s);
+	}
+
+	private static String firstOf(String s) {
+		BreakIterator it = BreakIterator.getCharacterInstance();
+		it.setText(s);
+		return s.substring(0, it.next());
+	}
 }
