@@ -193,21 +193,50 @@ public final class HeardLibrary implements Library {
 
 	// ---- file ----
 
-	private void save() {
-		if (readFailed) {
-			// The file couldn't be read at start; writing now would replace the old history. Look once more: if it reads now, the lock is gone.
-			try {
-				SafeFile.readText(file, reader, 1, 0);
-			} catch (java.nio.file.NoSuchFileException | java.nio.charset.CharacterCodingException e) {
-				// gone or damaged: nothing worth protecting
-			} catch (IOException e) {
-				if (!blockedLogged) {
-					blockedLogged = true;
-					LOG.warn("Recently heard songs not saved: {} still can't be read ({})", file, e.toString());
-				}
-				return;
+	/**
+	 * Looks once more at a file that couldn't be read at start. When it reads now, its songs are merged with the ones
+	 * recorded since (newest first, no repeats, up to the cap) and writing is fine again. False while it is still unreadable.
+	 */
+	private boolean mergeFile() {
+		List<Entry> old = new ArrayList<>();
+		try {
+			String text = SafeFile.readText(file, reader, 1, 0);
+			if (!text.isBlank()) {
+				readSongs(text, old);
 			}
-			readFailed = false;
+		} catch (java.nio.file.NoSuchFileException | java.nio.charset.CharacterCodingException e) {
+			old.clear(); // gone or damaged: nothing worth protecting
+		} catch (IOException e) {
+			if (!blockedLogged) {
+				blockedLogged = true;
+				LOG.warn("Recently heard songs not saved: {} still can't be read ({})", file, e.toString());
+			}
+			return false;
+		} catch (RuntimeException e) {
+			old.clear();
+			keepCopy(file);
+		}
+		synchronized (lock) {
+			java.util.Set<String> seen = new java.util.HashSet<>();
+			for (Entry e : songs) {
+				seen.add(e.key());
+			}
+			for (Entry e : old) {
+				if (seen.add(e.key())) {
+					songs.add(e);
+				}
+			}
+			while (songs.size() > CAP) {
+				songs.removeLast();
+			}
+		}
+		readFailed = false;
+		return true;
+	}
+
+	private void save() {
+		if (readFailed && !mergeFile()) {
+			return; // the file couldn't be read at start and still can't: writing now would replace the old history
 		}
 		List<Entry> copy = snapshot();
 		try {

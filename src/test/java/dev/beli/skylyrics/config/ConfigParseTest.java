@@ -176,9 +176,9 @@ class ConfigParseTest {
 	}
 
 	@Test
-	void aBlockedSaveWritesOnceTheFileReadsAgain() throws Exception {
+	void whenABlockedFileReadsAgainTheFileWinsAndIsNotOverwrittenWithDefaults() throws Exception {
 		Path file = dir.resolve("skylyrics.json");
-		String real = "{\"glow\": 0.4}";
+		String real = "{\"glow\": 0.4, \"songOffsets\": {\"a|b\": 250}}";
 		Files.writeString(file, real);
 		boolean[] locked = {true};
 		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
@@ -186,12 +186,44 @@ class ConfigParseTest {
 			return Files.readString(f);
 		}, 3, 0);
 		assertTrue(c.saveBlocked);
-		c.glow = 0.9f;
 		c.save(file);
 		assertEquals(real, Files.readString(file));
 		locked[0] = false;
 		c.save(file);
 		assertFalse(c.saveBlocked);
-		assertTrue(Files.readString(file).contains("0.9"));
+		assertEquals(0.4f, c.glow, 1e-6f);
+		assertEquals(250, c.songOffsets.get("a|b"));
+		assertEquals(real, Files.readString(file));
+		c.glow = 0.7f;
+		c.save(file);
+		assertTrue(Files.readString(file).contains("0.7"));
+		assertTrue(Files.readString(file).contains("250"));
+	}
+
+	@Test
+	void aBlockedFileIsReadAgainSoonAfterStartOnTheMainThread() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Files.writeString(file, "{\"glow\": 0.4}");
+		boolean[] locked = {true};
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			if (locked[0]) throw new java.io.IOException("locked");
+			return Files.readString(f);
+		}, 1, 0);
+		var oldMain = SkyLyricsConfig.mainThread;
+		int[] handed = {0};
+		SkyLyricsConfig.mainThread = r -> {
+			handed[0]++;
+			r.run();
+		};
+		try {
+			locked[0] = false;
+			SkyLyricsConfig.rereadSoon(c, file, new long[] {10});
+			for (int i = 0; i < 200 && c.saveBlocked; i++) Thread.sleep(10);
+		} finally {
+			SkyLyricsConfig.mainThread = oldMain;
+		}
+		assertFalse(c.saveBlocked);
+		assertEquals(1, handed[0]);
+		assertEquals(0.4f, c.glow, 1e-6f);
 	}
 }

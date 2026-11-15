@@ -448,7 +448,12 @@ public final class SkyLyricsConfig {
 	transient dev.beli.skylyrics.util.SafeFile.Reader reader;
 
 	private static SkyLyricsConfig load() {
-		return load(file(), dev.beli.skylyrics.util.SafeFile::readText);
+		Path file = file();
+		SkyLyricsConfig cfg = load(file, dev.beli.skylyrics.util.SafeFile::readText);
+		if (cfg.saveBlocked) {
+			rereadSoon(cfg, file, REREAD_DELAYS_MS);
+		}
+		return cfg;
 	}
 
 	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader) {
@@ -742,21 +747,10 @@ public final class SkyLyricsConfig {
 	}
 
 	void save(Path file) {
-		if (saveBlocked) {
-			// The file couldn't be read at start; writing now would replace the player's settings with defaults. Look once more:
-			// if it reads now, the lock is gone and what the player chose since wins.
-			try {
-				dev.beli.skylyrics.util.SafeFile.readText(file, reader, 1, 0);
-			} catch (java.nio.file.NoSuchFileException | java.nio.charset.CharacterCodingException e) {
-				keepCopyIfPresent(file); // gone or damaged: nothing worth protecting
-			} catch (IOException e) {
-				if (!blockedLogged) {
-					blockedLogged = true;
-					LOG.warn("Settings not saved: {} still can't be read ({})", file, e.toString());
-				}
-				return;
+		synchronized (this) {
+			if (saveBlocked && !reread(file)) {
+				return; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
 			}
-			saveBlocked = false;
 		}
 		try {
 			Files.createDirectories(file.getParent());
@@ -768,10 +762,86 @@ public final class SkyLyricsConfig {
 		}
 	}
 
-	private static void keepCopyIfPresent(Path file) {
-		if (Files.isRegularFile(file)) {
+	/** True when writing is fine now: the file is gone or damaged, so there is nothing to protect. False while it is still unreadable, and when it was just loaded (the file wins). */
+	private boolean reread(Path file) {
+		String text;
+		try {
+			text = dev.beli.skylyrics.util.SafeFile.readText(file, reader, 1, 0);
+		} catch (java.nio.file.NoSuchFileException e) {
+			saveBlocked = false;
+			return true;
+		} catch (java.nio.charset.CharacterCodingException e) {
+			keepCopy(file);
+			saveBlocked = false;
+			return true;
+		} catch (IOException e) {
+			if (!blockedLogged) {
+				blockedLogged = true;
+				LOG.warn("Settings not saved: {} still can't be read ({})", file, e.toString());
+			}
+			return false;
+		}
+		adopt(file, text);
+		return false;
+	}
+
+	/** The file reads again: its settings become the live ones (the file wins; what was set meanwhile is lost) and saving is allowed. */
+	private void adopt(Path file, String text) {
+		Parsed parsed = parse(text);
+		if (parsed.damaged()) {
 			keepCopy(file);
 		}
+		copyFrom(parsed.config());
+		saveBlocked = false;
+		LOG.info("The settings file could be read again and was loaded.");
+	}
+
+	private void copyFrom(SkyLyricsConfig other) {
+		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
+			int mods = field.getModifiers();
+			if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods) || field.isSynthetic()) {
+				continue;
+			}
+			try {
+				field.setAccessible(true);
+				field.set(this, field.get(other));
+			} catch (IllegalAccessException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
+	/** Runs a task on the game's main thread; a seam so tests needn't start Minecraft. */
+	static java.util.function.Consumer<Runnable> mainThread = task -> net.minecraft.client.Minecraft.getInstance().execute(task);
+
+	/** Waits before each later try at a file that was locked at start. The read is on a helper thread; the loaded settings are applied on the main thread. */
+	static final long[] REREAD_DELAYS_MS = {2_000, 10_000, 60_000};
+
+	static void rereadSoon(SkyLyricsConfig blocked, Path file, long[] delaysMs) {
+		Thread t = new Thread(() -> {
+			for (long delay : delaysMs) {
+				try {
+					Thread.sleep(delay);
+				} catch (InterruptedException e) {
+					return;
+				}
+				try {
+					String text = dev.beli.skylyrics.util.SafeFile.readText(file, blocked.reader, 1, 0);
+					mainThread.accept(() -> {
+						synchronized (blocked) {
+							if (blocked.saveBlocked) {
+								blocked.adopt(file, text);
+							}
+						}
+					});
+					return;
+				} catch (IOException e) {
+					// still locked: next delay
+				}
+			}
+		}, "SkyLyrics settings reread");
+		t.setDaemon(true);
+		t.start();
 	}
 
 	/** Fields that are the player's own data or state, not look/behaviour settings; "Reset all" leaves them alone. */

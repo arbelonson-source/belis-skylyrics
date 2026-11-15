@@ -307,20 +307,24 @@ class HeardLibraryTest {
 	}
 
 	@Test
-	void aBlockedLibrarySavesOnceTheFileReadsAgain() throws IOException {
-		Files.writeString(file(), "{\"songs\": []}");
+	void aBlockedLibraryMergesTheFileWithThisSessionsSongsWhenItReadsAgain() throws IOException {
+		HeardLibrary.write(file(), List.of(
+				new HeardLibrary.Entry("A", "X", "", 1, "", "uri:a", "mpv"),
+				new HeardLibrary.Entry("B", "X", "", 1, "", "uri:b", "mpv"),
+				new HeardLibrary.Entry("C", "X", "", 1, "", "uri:c", "mpv")));
 		boolean[] locked = {true};
 		HeardLibrary lib = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, f -> {
 			if (locked[0]) throw new IOException("locked");
 			return Files.readString(f);
 		});
 		made.add(lib);
-		lib.record(song("One", "X"));
+		lib.record(song("Fresh", "X"));
 		lib.flush();
-		assertTrue(HeardLibrary.read(file()).isEmpty());
+		assertEquals(3, HeardLibrary.read(file()).size());
 		locked[0] = false;
-		lib.record(song("Two", "X"));
+		lib.record(song("Fresh", "X")); // heard again: no duplicate
 		lib.flush();
-		assertEquals(2, HeardLibrary.read(file()).size());
+		List<String> saved = HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList();
+		assertEquals(List.of("Fresh", "A", "B", "C"), saved);
 	}
 }
