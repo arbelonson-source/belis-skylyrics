@@ -449,7 +449,7 @@ public final class NowPlayingHud {
 			int artPx = Math.round(ART * s);
 			int artX = Math.round(px + ART_INSET * s), artY = Math.round(py + (ph - artPx) / 2);
 			spinSpeed = cfg.barSpin ? TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt) : 0;
-			spin = cfg.barSpin ? (spin + spinSpeed * SPIN_TURNS * Mth.TWO_PI * dt) % Mth.TWO_PI : 0;
+			spin = cfg.barSpin ? TopBarLayout.spinStep(spin, spinSpeed, SPIN_TURNS, dt, Calm.motion()) : 0;
 			if (cfg.barArt && art.hasTexture()) {
 				float cx = artX + artPx / 2f, cy = artY + artPx / 2f;
 				g.pose().pushMatrix();

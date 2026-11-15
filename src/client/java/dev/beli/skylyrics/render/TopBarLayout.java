@@ -278,6 +278,11 @@ final class TopBarLayout {
 		return speed + (target - speed) * Math.min(1, dt * SPIN_EASE);
 	}
 
+	/** The record's angle after one frame, in radians: {@code motion} is Distortion Effects (0 stands still, 1 turns fully). */
+	static float spinStep(float spin, float speed, float turnsPerSecond, float dt, float motion) {
+		return (spin + speed * turnsPerSecond * (float) (2 * Math.PI) * dt * motion) % (float) (2 * Math.PI);
+	}
+
 	/** How much of the song has played, 0 to 1, or -1 when the player doesn't say how long it is. */
 	static float progress(long positionMs, long lengthMs) {
 		if (lengthMs <= 0) {

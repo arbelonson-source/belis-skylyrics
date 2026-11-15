@@ -264,4 +264,12 @@ class TopBarLayoutTest {
 		assertTrue(TopBarLayout.barRight(480, 1.5f, 200, 50, true) > normal);
 		assertTrue(TopBarLayout.barRight(480, 1, 200, 50, false) < normal);
 	}
+
+	@Test
+	void recordSpinFollowsDistortionEffects() {
+		assertEquals(0.5f, TopBarLayout.spinStep(0.5f, 1, 0.25f, 1, 0f), 0f);
+		float full = TopBarLayout.spinStep(0, 1, 0.25f, 1, 1f);
+		assertEquals((float) (Math.PI / 2), full, 1e-5f);
+		assertEquals(full / 2, TopBarLayout.spinStep(0, 1, 0.25f, 1, 0.5f), 1e-5f);
+	}
 }

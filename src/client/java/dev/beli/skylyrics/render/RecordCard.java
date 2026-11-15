@@ -117,7 +117,7 @@ public final class RecordCard {
 		float x = at[0], y = cardY;
 		float s = (float) mc.getWindow().getGuiScale();
 		spinSpeed = TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt);
-		spin = (spin + spinSpeed * TURNS_PER_SECOND * Mth.TWO_PI * dt) % Mth.TWO_PI;
+		spin = TopBarLayout.spinStep(spin, spinSpeed, TURNS_PER_SECOND, dt, Calm.motion());
 
 		// The panel and the record in real pixels, so the round edges stay smooth
 		g.pose().pushMatrix();

@@ -867,6 +867,16 @@ final class WorldWords {
 		lastYaw = yaw;
 		lastPitch = pitch;
 		if (moved == Vec3.ZERO) {
+			// Not carried this frame: the cards stay in the world while you move, so held-back tilt no longer fits them
+			for (Card c : cards) {
+				c.clip = clipKept(c.clip, moved);
+			}
+			if (sentence != null) {
+				sentence.clip = clipKept(sentence.clip, moved);
+			}
+			if (last != null) {
+				last.clip = clipKept(last.clip, moved);
+			}
 			return;
 		}
 		for (Card c : cards) {
@@ -881,6 +891,15 @@ final class WorldWords {
 		if (last != null) {
 			last.swing(turn, tilt);
 		}
+	}
+
+	/**
+	 * The held-back tilt that still applies after a frame that carried the cards by {@code moved}: a frame that didn't
+	 * carry them ({@link Vec3#ZERO}) lets you move away from where the tilt was cut, so it is dropped, and a later
+	 * turn can't make a card jump by it.
+	 */
+	static float clipKept(float clip, Vec3 moved) {
+		return moved == Vec3.ZERO ? 0 : clip;
 	}
 
 	/** An offset from the eye turned with the view: {@code turn} degrees round and {@code tilt} degrees down. */

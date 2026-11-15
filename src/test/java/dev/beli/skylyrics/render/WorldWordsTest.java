@@ -314,6 +314,22 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void heldBackTiltIsDroppedWhenTheCardsAreNotCarried() {
+		Vec3 start = WorldWords.direction(0, 75).scale(10);
+		float clip = WorldWords.clipAfter(start, 0, 20);
+		assertEquals(15, clip, 0.05);
+		// Carried frames keep it; a frame that doesn't carry them (not gliding, or a teleport) drops it
+		assertEquals(clip, WorldWords.clipKept(clip, new Vec3(0, 1, 0)), 0f);
+		float kept = WorldWords.clipKept(clip, Vec3.ZERO);
+		assertEquals(0f, kept, 0f);
+		// You moved down meanwhile, so the card sits at 40 degrees; a turn-only frame must not lift it
+		Vec3 lower = WorldWords.direction(0, 40).scale(10);
+		Vec3 turned = WorldWords.swing(lower, 5, 0, kept);
+		assertEquals(lower.y, turned.y, 0.01);
+		assertEquals(0, WorldWords.clipAfter(lower, kept, 0), 0.01);
+	}
+
+	@Test
 	void tiltClippedAtTheLimitIsGivenBack() {
 		// A steep dive and back up: the line ends where it began, not higher
 		WorldWords.Sentence line = new WorldWords.Sentence(-10, 75, 10, 0);
