@@ -99,12 +99,12 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 			return;
 		}
 		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, mask.getWidth(), mask.getHeight(), false);
-		for (int py = 0; py < mask.getHeight(); py++) {
-			for (int px = 0; px < mask.getWidth(); px++) {
-				picture.setPixel(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
-			}
-		}
 		try {
+			for (int py = 0; py < mask.getHeight(); py++) {
+				for (int px = 0; px < mask.getWidth(); px++) {
+					picture.setPixel(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
+				}
+			}
 			picture.upload(level, x, y, skipX, skipY, width, height, true);
 		} catch (RuntimeException | Error e) {
 			picture.close(); // closing twice is harmless, so this is safe even if upload already closed it
@@ -126,12 +126,12 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 			return;
 		}
 		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, mask.getWidth(), mask.getHeight(), false);
-		for (int py = 0; py < mask.getHeight(); py++) {
-			for (int px = 0; px < mask.getWidth(); px++) {
-				picture.setPixelRGBA(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
-			}
-		}
 		try {
+			for (int py = 0; py < mask.getHeight(); py++) {
+				for (int px = 0; px < mask.getWidth(); px++) {
+					picture.setPixelRGBA(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
+				}
+			}
 			picture.upload(level, x, y, skipX, skipY, width, height, true, true, false, true);
 		} catch (RuntimeException | Error e) {
 			picture.close(); // closing twice is harmless, so this is safe even if upload already closed it
