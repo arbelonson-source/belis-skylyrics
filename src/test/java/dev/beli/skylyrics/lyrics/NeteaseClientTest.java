@@ -210,4 +210,44 @@ class NeteaseClientTest {
 		assertEquals("[00:05.00]男：a line", NeteaseClient.clean("[00:05.00]男：a line"));
 		assertEquals("Ab12שלום", NeteaseClient.key("A b-1'2 שלום").replace("ab12", "Ab12"));
 	}
+
+	@Test
+	void aHostileLineOfBracketsIsCheckedQuickly() {
+		String hostile = "[".repeat(100_000);
+		org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(3), () -> NeteaseClient.isPlaceholder(hostile));
+	}
+
+	@Test
+	void aBadDurationMeansNoLengthMatch() throws Exception {
+		lyric(21, LYRIC);
+		String other = "{\"id\":21,\"name\":\"A Made-Up Song\",\"duration\":[1],\"artists\":[{\"name\":\"Someone Else\"}]}";
+		songs(other);
+		assertFalse(client.find(track("A Made-Up Song", "Made Up Band", 200_000)).found());
+		String same = "{\"id\":21,\"name\":\"A Made-Up Song\",\"duration\":null,\"artists\":[{\"name\":\"Made Up Band\"}]}";
+		songs(same);
+		assertTrue(client.find(track("A Made-Up Song", "Made Up Band", 200_000)).found());
+	}
+
+	@Test
+	void aBadIdSkipsThatSong() throws Exception {
+		lyric(22, LYRIC);
+		String bad = "{\"id\":{\"x\":1},\"name\":\"A Made-Up Song\",\"duration\":200000,\"artists\":[{\"name\":\"Made Up Band\"}]}";
+		String nul = "{\"id\":null,\"name\":\"A Made-Up Song\",\"duration\":200000,\"artists\":[{\"name\":\"Made Up Band\"}]}";
+		songs(bad, nul, song(22, "A Made-Up Song", "Made Up Band", 200_500));
+		assertTrue(client.find(track("A Made-Up Song", "Made Up Band", 200_000)).found());
+	}
+
+	@Test
+	void aBadCodeIsAFailedRequest() {
+		for (String code : new String[] {"[200]", "{\"a\":1}", "null", "\"x\""}) {
+			searchAnswer = "{\"result\":{\"songs\":[]},\"code\":" + code + "}";
+			assertThrows(IOException.class, () -> client.find(track("A Made-Up Song", "Made Up Band", 200_000)), code);
+		}
+	}
+
+	@Test
+	void aReplyOverTheCapIsAFailedRequest() {
+		searchAnswer = "{\"result\":{\"songs\":[]},\"code\":200,\"pad\":\"" + "a".repeat(3 * 1024 * 1024) + "\"}";
+		assertThrows(IOException.class, () -> client.find(track("A Made-Up Song", "Made Up Band", 200_000)));
+	}
 }

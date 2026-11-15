@@ -61,6 +61,10 @@ public final class NeteaseClient implements LyricsSource {
 	/** NetEase's placeholder text for instrumentals: "pure music, please enjoy". */
 	private static final Pattern PLACEHOLDER = Pattern.compile("纯音乐(?:\\s*[,，、:：-]?\\s*(?:请欣赏|请您欣赏))?[\\s。.!！]*");
 
+	/** The most a reply may weigh, and take to arrive. */
+	static final int MAX_REPLY = 2 * 1024 * 1024;
+	private static final Duration BODY_TIMEOUT = Duration.ofSeconds(20);
+
 	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
 	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
 
@@ -117,15 +121,20 @@ public final class NeteaseClient implements LyricsSource {
 		long best = -1;
 		double bestDiff = Double.MAX_VALUE;
 		for (JsonElement el : songs) {
-			if (!(el instanceof JsonObject song) || !song.has("id") || !key(TitleCleaner.forSearch(string(song, "name"))).equals(wantTitle)) {
+			if (!(el instanceof JsonObject song) || !key(TitleCleaner.forSearch(string(song, "name"))).equals(wantTitle)) {
 				continue;
 			}
-			double diff = seconds > 0 && song.has("duration") ? Math.abs(song.get("duration").getAsLong() / 1000.0 - seconds) : -1;
+			Long songId = number(song, "id");
+			if (songId == null) {
+				continue; // no usable id: nothing to fetch lyrics with
+			}
+			Long duration = number(song, "duration");
+			double diff = seconds > 0 && duration != null ? Math.abs(duration / 1000.0 - seconds) : -1;
 			boolean sameArtist = sameArtist(song, wantArtist);
 			boolean ok = diff < 0 ? sameArtist : sameArtist ? diff <= DURATION_SLACK_S : diff <= STRICT_SLACK_S;
 			double rank = diff < 0 ? 0 : diff + (sameArtist ? 0 : DURATION_SLACK_S);
 			if (ok && rank < bestDiff) {
-				best = song.get("id").getAsLong();
+				best = songId;
 				bestDiff = rank;
 			}
 		}
@@ -151,7 +160,7 @@ public final class NeteaseClient implements LyricsSource {
 	static boolean isPlaceholder(String text) {
 		boolean any = false;
 		for (String row : text.split("\\R")) {
-			String line = row.replaceAll("\\[[^\\]]*]", "").strip();
+			String line = row.replaceAll("\\[[^\\[\\]]*]", "").strip();
 			if (line.isEmpty()) {
 				continue;
 			}
@@ -244,14 +253,49 @@ public final class NeteaseClient implements LyricsSource {
 				.header("Accept", "application/json")
 				.GET()
 				.build();
-		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-		if (response.statusCode() / 100 != 2) {
-			throw new IOException("NetEase answered " + response.statusCode());
+		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		String body;
+		try (java.io.InputStream in = response.body()) {
+			if (response.statusCode() / 100 != 2) {
+				throw new IOException("NetEase answered " + response.statusCode());
+			}
+			// Too big or too slow counts as a failed try, like a dropped connection
+			dev.beli.skylyrics.util.Net.closeAfter(in, BODY_TIMEOUT);
+			body = dev.beli.skylyrics.util.Net.readText(in, MAX_REPLY);
 		}
-		JsonElement json = JsonParser.parseString(response.body());
-		if (!(json instanceof JsonObject o) || (o.has("code") && o.get("code").getAsInt() != 200)) {
-			throw new IOException("NetEase refused the request: " + response.body().substring(0, Math.min(120, response.body().length())));
+		JsonElement json = JsonParser.parseString(body);
+		if (!(json instanceof JsonObject o) || !codeOk(o)) {
+			throw new IOException("NetEase refused the request: " + body.substring(0, Math.min(120, body.length())));
 		}
 		return o;
+	}
+
+	/** True when the reply has no code or says 200; a code that isn't a plain number is a failed request. */
+	static boolean codeOk(JsonObject o) {
+		if (!o.has("code")) {
+			return true;
+		}
+		JsonElement code = o.get("code");
+		if (!code.isJsonPrimitive()) {
+			return false;
+		}
+		try {
+			return code.getAsInt() == 200;
+		} catch (NumberFormatException e) {
+			return false;
+		}
+	}
+
+	/** A JSON number as a long, or null when it's missing, null, a list, an object or not a number. */
+	private static @Nullable Long number(JsonObject o, String key) {
+		JsonElement e = o.get(key);
+		if (e == null || !e.isJsonPrimitive()) {
+			return null;
+		}
+		try {
+			return e.getAsLong();
+		} catch (NumberFormatException ex) {
+			return null;
+		}
 	}
 }

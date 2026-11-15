@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,7 +53,7 @@ public final class AlbumArt {
 				if (c == null) {
 					httpClient = c = HttpClient.newBuilder()
 						.connectTimeout(Duration.ofSeconds(5))
-						.followRedirects(HttpClient.Redirect.NORMAL)
+						.followRedirects(HttpClient.Redirect.NEVER)
 						.build();
 				}
 			}
@@ -254,19 +253,11 @@ public final class AlbumArt {
 			}
 		}
 		if (url.startsWith("http://") || url.startsWith("https://")) {
-			HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
-			HttpResponse<InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
+			HttpResponse<InputStream> response = dev.beli.skylyrics.util.Net.getFollowing(http(), URI.create(url), Duration.ofSeconds(10));
 			try (InputStream in = response.body()) {
 				// The request's timeout only covers the wait for the answer: a server that stalls mid-body would hold
 				// the single worker (and every later cover) forever, so the stream is closed after a while
-				java.util.concurrent.CompletableFuture.delayedExecutor(BODY_TIMEOUT_S, java.util.concurrent.TimeUnit.SECONDS)
-					.execute(() -> {
-						try {
-							in.close();
-						} catch (java.io.IOException ignored) {
-							// already closed
-						}
-					});
+				dev.beli.skylyrics.util.Net.closeAfter(in, Duration.ofSeconds(BODY_TIMEOUT_S));
 				if (response.statusCode() / 100 != 2
 						|| !CoverCache.acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 					return null;
