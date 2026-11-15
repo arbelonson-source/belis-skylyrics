@@ -32,6 +32,8 @@ import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.LivingEntity;
 //? if >=1.21.11 {
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.level.dimension.DimensionType.Skybox;
@@ -158,6 +160,17 @@ public final class SkyEffects {
 	 */
 	static float visibility(float starBrightness, float rainLevel, float strength) {
 		return clamp01(starBrightness / NIGHT_STARS) * (1 - clamp01(rainLevel)) * clamp01(strength);
+	}
+
+	/** Whether the sky should be on: wanted, not waiting for the old sky to fade out, and the camera seeing an open sky. */
+	static boolean presenceTarget(boolean wanted, boolean swapping, boolean open) {
+		return wanted && !swapping && open;
+	}
+
+	/** Vanilla draws no sky under Blindness or Darkness, so neither do we. */
+	private static boolean skyBlocked(Minecraft mc) {
+		return mc.getCameraEntity() instanceof LivingEntity living
+				&& (living.hasEffect(MobEffects.BLINDNESS) || living.hasEffect(MobEffects.DARKNESS));
 	}
 
 	/** Moves {@code presence} towards 1 (on) or 0 (off) so a full fade takes {@link #FADE_SECONDS}. */
@@ -292,22 +305,22 @@ public final class SkyEffects {
 		SkyEffect next = pick(cfg.sky, tracker.track());
 		// A new song's random sky waits for the old one to fade out
 		boolean swapping = waitsForFade(cfg.sky, effect, next, presence);
-		boolean on = wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg) && !swapping;
-		presence = step(presence, on, dt);
-		// Swap once the old sky is gone; it has to happen here, as nothing below runs while the sky is hidden
-		if (!swapping || presence <= 0) {
-			effect = next;
-		}
 		ClientLevel level = mc.level;
-		if (presence <= 0 || !wanted || level == null || !overworldSky(level)) {
-			return;
-		}
 		//? if >=26.2 {
 		/*Camera camera = mc.gameRenderer.mainCamera();
 		*///?} else {
 		Camera camera = mc.gameRenderer.getMainCamera();
 		//?}
-		if (camera.getFluidInCamera() != FogType.NONE) {
+		// The nether, the end, water and a blinding effect count as off, so the sky fades back in when they end
+		boolean open = level != null && overworldSky(level) && camera.getFluidInCamera() == FogType.NONE
+				&& !skyBlocked(mc);
+		boolean on = presenceTarget(wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg), swapping, open);
+		presence = step(presence, on, dt);
+		// Swap once the old sky is gone; it has to happen here, as nothing below runs while the sky is hidden
+		if (!swapping || presence <= 0) {
+			effect = next;
+		}
+		if (presence <= 0 || !wanted || !open) {
 			return;
 		}
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
@@ -372,6 +385,10 @@ public final class SkyEffects {
 		}
 		if (effect == SkyEffect.ECLIPSE) {
 			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
+			// Shooting stars and sparkles come after the disc, or it would black them out where they cross the sun
+			if (sparkles || meteorsAlive > 0) {
+				sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), this::drawFront);
+			}
 		}
 		pose.popPose();
 	}
@@ -550,6 +567,13 @@ public final class SkyEffects {
 			}
 		}
 		//?}
+		if (effect != SkyEffect.ECLIPSE) {
+			drawFront(pose, vc);
+		}
+	}
+
+	/** The sparkles and shooting stars, the nearest layers; the eclipse draws them on their own after its disc. */
+	private void drawFront(PoseStack.Pose pose, VertexConsumer vc) {
 		if (sparkles) {
 			sparkles(pose, vc);
 		}

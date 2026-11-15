@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -170,5 +171,13 @@ class SkyEffectsTest {
 		assertTrue(SkyEffects.METEOR_FRONT <= SkyEffects.SPARKLE_FRONT);
 		assertTrue(SkyEffects.blobFraction(0) > SkyEffects.blobFraction(1));
 		assertTrue(SkyEffects.ribbonFraction(0) > SkyEffects.ribbonFraction(1));
+	}
+
+	@Test
+	void presenceTargetIsOffInTheNetherAndUnderwater() {
+		assertTrue(SkyEffects.presenceTarget(true, false, true));
+		assertFalse(SkyEffects.presenceTarget(true, false, false), "no open sky: presence must drop so it fades in again");
+		assertFalse(SkyEffects.presenceTarget(true, true, true));
+		assertFalse(SkyEffects.presenceTarget(false, false, true));
 	}
 }
