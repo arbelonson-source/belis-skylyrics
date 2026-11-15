@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
@@ -318,5 +319,13 @@ class RecordCardTest {
 		// only the corner under the bar moves
 		assertEquals(27f, RecordCard.aboveBar(bar, 6, 65, 30));
 		assertEquals(65f, RecordCard.aboveBar(bar, 478, 65, 30));
+	}
+
+	@Test
+	void onlyTopCornersAreUnderTheDebugScreen() {
+		assertTrue(RecordCard.topCorner(CardCorner.TOP_LEFT));
+		assertTrue(RecordCard.topCorner(CardCorner.TOP_RIGHT));
+		assertFalse(RecordCard.topCorner(CardCorner.BOTTOM_LEFT));
+		assertFalse(RecordCard.topCorner(CardCorner.BOTTOM_RIGHT));
 	}
 }

@@ -20,6 +20,11 @@
 - **Bottom bar and card.** A bar at the bottom of the screen now rises above the hearts and armour when you have several rows of them, and above the text that a jukebox or a command shows over the hotbar. The Record card in a bottom corner now sits above the bar instead of covering it, and above the armour and the held item's name.
 - **Big bars fit.** A big **Bar size** on a narrow screen now fits: the bar shrinks and, if needed, hides the stats and then the clock.
 - **Bar and F3.** A bar at the top hides while the debug screen (F3) is showing.
+- **Bar and card in bed.** The top bar and the Record card now fade to black with the rest of the screen when you sleep, instead of staying bright over it.
+- **Bar and potion effects.** A bar at the top of a medium-wide screen no longer touches the potion effect icons: it moves down below them when its numbers would reach them.
+- **Card and F3.** The Record card in a top corner hides while the debug screen (F3) is showing, like the bar.
+- **Song change.** For a moment after a song change, the bar, the card and the shooting stars no longer show the last song's line or "finding lyrics" next to the new song's name.
+- **Cover colour.** A song with the same name as an earlier one but another cover no longer keeps the earlier one's colour while its cover loads.
 - **Record card.** The Record card in a top corner moves below the boss bars on a narrow screen.
 - **Minecraft 1.21.1 to 1.21.5.** On 1.21.1 the top bar's text is clipped right at every **Bar size**, and the lyrics, bar and card no longer cover the chat. On 1.21.1 to 1.21.5, setting descriptions are no longer cut off at the edge of the list.
 - **Caves and the Nether.** **Show underground too** now also works in the Nether (when **See through blocks** is off). Swimming deep underwater no longer counts as being in a cave.

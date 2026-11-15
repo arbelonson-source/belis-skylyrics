@@ -155,6 +155,34 @@ final class TopBarLayout {
 		return new int[] {l, t, l + (int) Math.floor(x2 - x1), t + (int) Math.floor(y2 - y1)};
 	}
 
+	/**
+	 * The least a top bar's top may be so it keeps clear of the potion effect icons Minecraft draws in the top right
+	 * corner (25 units each, good effects in a row along the top, bad ones in a second row under it). Only a row the bar's
+	 * right edge reaches is cleared; 0 when none. Like the Record card, the bar goes under the icons rather than over them.
+	 *
+	 * @param barRight the right edge of the bar with its stats, in screen units
+	 * @param goodRow where the good effects' row ends, from the top; {@code badRow} the same for the bad ones
+	 */
+	static float effectsClear(float guiWidth, float barRight, int good, int bad, int goodRow, int badRow) {
+		float clear = 0;
+		if (good > 0 && barRight > guiWidth - EFFECT_W * good - EDGE) {
+			clear = goodRow + 2;
+		}
+		if (bad > 0 && barRight > guiWidth - EFFECT_W * bad - EDGE) {
+			clear = badRow + 2;
+		}
+		return clear;
+	}
+
+	/** How wide each effect icon's slot is. */
+	static final float EFFECT_W = 25;
+
+	/** The right edge of a bar at the top: the pill, then the stats if they show, scaled about the screen's middle by {@code size}. */
+	static float barRight(float guiWidth, float size, float pill, float statsW, boolean stats) {
+		float mid = guiWidth / 2f;
+		return mid + (pill / 2f + (stats ? STATS_GAP + statsW : 0)) * size;
+	}
+
 	/** {@link #fit} for a bar drawn {@code size} times bigger: everything is measured in the bar's own, scaled units. */
 	static Fit fit(float guiWidth, float size, float clockW, float statsW) {
 		return fit(guiWidth / size, clockW, statsW);

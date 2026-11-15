@@ -185,15 +185,17 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		});
 		//? if >=1.21.6 {
 		HudElementRegistry.addFirst(id("lyrics"), renderer::renderHud);
-		// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
-		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("now_playing"), hud::render);
-		HudElementRegistry.attachElementBefore(VanillaHudElements.OVERLAY_MESSAGE, id("record_card"), card::render);
+		// Under the sleep fade (it comes right after the boss bars) and so under the action bar text and the chat, which
+		// stay readable when the bar sits at the bottom. Attached to the boss bars' slot, so F1 still hides them.
+		HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR, id("now_playing"), hud::render);
+		HudElementRegistry.attachElementAfter(VanillaHudElements.BOSS_BAR, id("record_card"), card::render);
 		//?} else if >=1.21.2 {
 		/*HudLayerRegistrationCallback.EVENT.register(layers -> {
 			layers.attachLayerBefore(IdentifiedLayer.MISC_OVERLAYS, id("lyrics"), renderer::renderHud);
-			// Under the action bar text and the chat, so both stay readable when the bar sits at the bottom
-			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("now_playing"), hud::render);
-			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("record_card"), card::render);
+			// Under the sleep fade (it comes right after the boss bars) and so under the action bar text and the chat, which
+			// stay readable when the bar sits at the bottom. Attached to the boss bars' slot, so F1 still hides them.
+			layers.attachLayerAfter(IdentifiedLayer.BOSS_BAR, id("now_playing"), hud::render);
+			layers.attachLayerAfter(IdentifiedLayer.BOSS_BAR, id("record_card"), card::render);
 		});
 		*///?} else {
 		/*// 1.21.1's HUD layers aren't hooked by Fabric, and this callback fires after the chat. GuiMixin draws these before
@@ -566,7 +568,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 	}
 
-	// From GuiMixin, just before the action bar text, so the chat and that text stay over the bar and the card
+	// From GuiMixin, just before the sleep fade, so the fade, the chat and the action bar text stay over the bar and the card
 	public void drawBarLayer(GuiGraphics g, DeltaTracker delta) {
 		if (hud != null && card != null) {
 			hud.render(g, delta);

@@ -511,11 +511,12 @@ public final class SkyEffects {
 
 	/** How long the line being sung lasts, or 0 between lines and without synced lyrics. */
 	private float lineSeconds(SkyLyricsConfig cfg) {
-		Lyrics shown = service.lyrics();
+		Track playing = tracker.track();
+		Lyrics shown = service.snapshot().forSong(playing).lyrics();
 		if (shown == null || !shown.synced() || shown.isEmpty()) {
 			return 0;
 		}
-		int index = shown.indexAt(tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS);
+		int index = shown.indexAt(tracker.positionMs() + cfg.offsetFor(playing) + LyricsRenderer.LEAD_MS);
 		LyricLine line = shown.get(index);
 		if (line == null || line.isBreak()) {
 			return 0;

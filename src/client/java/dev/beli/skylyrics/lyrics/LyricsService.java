@@ -71,6 +71,17 @@ public final class LyricsService {
 
 	/** What the song, its lyrics and the state are right now. One object, so a reader never sees the new song with the old lyrics. */
 	public record Snapshot(Track track, Lyrics lyrics, State state) {
+		/**
+		 * What to show while {@code playing} is the song the player hears. The tracker moves to a new song a moment before
+		 * the lyrics are asked for: until then the old song's lyrics and state must not be drawn with the new title. The
+		 * same song means the same title and artist (a late album alone doesn't reload the lyrics).
+		 */
+		public Snapshot forSong(Track playing) {
+			if (track.title().equals(playing.title()) && track.artist().equals(playing.artist())) {
+				return this;
+			}
+			return new Snapshot(playing, Lyrics.NONE, State.IDLE);
+		}
 	}
 
 	private volatile Snapshot current = new Snapshot(Track.NONE, Lyrics.NONE, State.IDLE);

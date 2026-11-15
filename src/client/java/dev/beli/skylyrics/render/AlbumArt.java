@@ -119,11 +119,12 @@ public final class AlbumArt {
 
 	public void load(Track track) {
 		String url = track.artUrl();
+		String song = track.title() + "\n" + track.artist();
 		if (url.equals(loadedUrl)) {
+			loadedSong = song; // an album-mate with the same cover: remember the song, so a later one with another cover is new
 			return;
 		}
 		loadedUrl = url;
-		String song = track.title() + "\n" + track.artist();
 		boolean newSong = !song.equals(loadedSong);
 		loadedSong = song;
 		long gen;

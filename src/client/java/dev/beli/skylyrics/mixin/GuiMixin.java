@@ -101,8 +101,8 @@ abstract class GuiMixin {
 
 	//? if <1.21.2 {
 	/*// 1.21.1's HUD is a stack of private layers that Fabric doesn't hook, and HudRenderCallback fires after the chat. So draw
-	// where later versions do: the lyrics before everything, the bar and the Record card just before the action bar text
-	// and the chat. If either point isn't found, the callback in SkyLyricsClient draws them as before.
+	// where later versions do: the lyrics before everything, the bar and the Record card just before the sleep fade
+	// (so under the action bar text and the chat). If either point isn't found, the callback in SkyLyricsClient draws them as before.
 	@Inject(method = "renderCameraOverlays", at = @At("HEAD"), require = 0)
 	private void skylyrics$lyricsLayer(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
 		SkyLyricsClient mod = SkyLyricsClient.get();
@@ -111,7 +111,10 @@ abstract class GuiMixin {
 		}
 	}
 
-	@Inject(method = "renderOverlayMessage", at = @At("HEAD"), require = 0)
+	// The sleep fade is drawn between the boss bars and the action bar text, so draw just before it: under the fade
+	// (the bar and the card shouldn't stay bright while the screen goes dark). It runs even with the GUI off (F1), but
+	// the bar and the card check that themselves.
+	@Inject(method = "renderSleepOverlay", at = @At("HEAD"), require = 0)
 	private void skylyrics$barLayer(GuiGraphics g, DeltaTracker delta, CallbackInfo ci) {
 		SkyLyricsClient mod = SkyLyricsClient.get();
 		if (mod != null) {

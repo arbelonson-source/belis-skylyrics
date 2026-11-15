@@ -2,6 +2,7 @@ package dev.beli.skylyrics.lyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -603,5 +604,18 @@ class LyricsServiceTest {
 			assertEquals(i >= 2, Files.exists(dir.resolve(String.format("%024x.json", i))), "song " + i);
 		}
 		assertTrue(Files.exists(login));
+	}
+
+	@Test
+	void aSnapshotOfTheSongBeforeShowsNothingForTheNewOne() {
+		Lyrics lines = new Lyrics(List.of(new LyricLine(1000, "old line")), true, false);
+		LyricsService.Snapshot before = new LyricsService.Snapshot(
+				new Track("A", "X", "", 0, "", ""), lines, LyricsService.State.LOADING);
+		Track next = new Track("B", "X", "", 0, "", "");
+		LyricsService.Snapshot shown = before.forSong(next);
+		assertEquals(Lyrics.NONE, shown.lyrics(), "B must not get A's lines");
+		assertEquals(LyricsService.State.IDLE, shown.state(), "nor A's state");
+		// The same song, even with the album arriving late, keeps its lyrics
+		assertSame(before, before.forSong(new Track("A", "X", "Late album", 0, "", "")));
 	}
 }

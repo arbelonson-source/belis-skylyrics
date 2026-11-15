@@ -102,7 +102,9 @@ public final class RecordCard {
 		*///?} else {
 		boolean want = cfg.enabled && cfg.recordCard && !track.equals(Track.NONE) && !mc.options.hideGui
 		//?}
-				&& !Visibility.hidden(mc, cfg);
+				&& !Visibility.hidden(mc, cfg)
+				// The debug screen (F3) fills the top corners and a card there would be drawn over its text
+				&& !(topCorner(cfg.cardCorner) && NowPlayingHud.f3Open(mc));
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			cardY = Float.NaN;
@@ -331,6 +333,28 @@ public final class RecordCard {
 		} finally {
 			g.pose().popMatrix();
 		}
+	}
+
+	/** Whether the corner is at the top of the screen, where the debug screen (F3) draws its text. */
+	static boolean topCorner(CardCorner corner) {
+		return corner == CardCorner.TOP_LEFT || corner == CardCorner.TOP_RIGHT;
+	}
+
+	/** How many good and bad potion effect icons Minecraft shows in the top right corner. */
+	static int[] effectCounts(Minecraft mc) {
+		int good = 0, bad = 0;
+		if (mc.player != null) {
+			for (MobEffectInstance effect : mc.player.getActiveEffects()) {
+				if (effect.showIcon()) {
+					if (effect.getEffect().value().isBeneficial()) {
+						good++;
+					} else {
+						bad++;
+					}
+				}
+			}
+		}
+		return new int[] {good, bad};
 	}
 
 	/**

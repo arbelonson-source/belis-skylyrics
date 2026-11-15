@@ -182,9 +182,10 @@ public final class NowPlayingHud {
 		lastFrame = now;
 
 		Track track = tracker.track();
-		Content line = cfg.barLyrics ? currentLine(cfg) : null;
+		LyricsService.Snapshot snap = service.snapshot().forSong(track);
+		Content line = cfg.barLyrics ? currentLine(cfg, snap.lyrics()) : null;
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
-		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg);
+		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg, snap.lyrics());
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
 		*///?} else {
@@ -211,7 +212,7 @@ public final class NowPlayingHud {
 			return;
 		}
 
-		Content next = line != null && now - shownAt >= TITLE_NS ? line : songInfo(track);
+		Content next = line != null && now - shownAt >= TITLE_NS ? line : songInfo(track, snap.state());
 		if (content == null || !content.key().equals(next.key())) {
 			old = content;
 			oldScroll = scroll;
@@ -252,7 +253,7 @@ public final class NowPlayingHud {
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
 				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc),
 						actionBarShowing(mc))
-				: topBelowBossBars(mc, g.guiHeight());
+				: Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW));
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
@@ -281,6 +282,17 @@ public final class NowPlayingHud {
 		} finally {
 			g.pose().popMatrix();
 		}
+	}
+
+	/** How far down a bar at the top must start to keep clear of the potion effect icons (0 when it doesn't reach them). */
+	private static float effectsClear(Minecraft mc, int guiWidth, SkyLyricsConfig cfg, TopBarLayout.Fit fit, float statsW) {
+		int[] counts = RecordCard.effectCounts(mc);
+		if (counts[0] + counts[1] == 0) {
+			return 0;
+		}
+		// The widest the pill can be, not its moving width, so the bar doesn't hop up and down with each line
+		float right = TopBarLayout.barRight(guiWidth, cfg.barSize, fit.pill(), statsW, fit.stats());
+		return TopBarLayout.effectsClear(guiWidth, right, counts[0], counts[1], RecordCard.GOOD_ROW, RecordCard.BAD_ROW);
 	}
 
 	/**
@@ -779,13 +791,13 @@ public final class NowPlayingHud {
 
 	/** The line being sung right now, as the bar would show it, or null between lines. */
 	@Nullable String singingNow(SkyLyricsConfig cfg) {
-		Content line = currentLine(cfg);
+		Content line = currentLine(cfg, lyricsNow());
 		return line == null ? null : line.text();
 	}
 
 	/** How far the song is through the line being sung, 0 to 1 (0 between lines). */
 	float singingThrough(SkyLyricsConfig cfg) {
-		Content line = currentLine(cfg);
+		Content line = currentLine(cfg, lyricsNow());
 		return line == null ? 0 : line.through();
 	}
 
@@ -794,7 +806,7 @@ public final class NowPlayingHud {
 	 * lines. Null when there is none, when it is only a break, or when the song has moved well past its last line.
 	 */
 	@Nullable String singingNeighbour(SkyLyricsConfig cfg, int delta) {
-		Lyrics lyrics = service.lyrics();
+		Lyrics lyrics = lyricsNow();
 		if (!lyrics.synced() || lyrics.isEmpty()) {
 			return null;
 		}
@@ -828,8 +840,7 @@ public final class NowPlayingHud {
 	 * The song is playing between its first and last line (it may be a gap between lines now). Paused, or in a
 	 * long outro after the last line, the bar goes back to hiding.
 	 */
-	private boolean singing(SkyLyricsConfig cfg) {
-		Lyrics lyrics = service.lyrics();
+	private boolean singing(SkyLyricsConfig cfg, Lyrics lyrics) {
 		if (!tracker.playing() || !lyrics.synced() || lyrics.isEmpty()) {
 			return false;
 		}
@@ -837,8 +848,12 @@ public final class NowPlayingHud {
 		return lyrics.indexAt(time) >= 0 && time <= lyrics.get(lyrics.lines().size() - 1).timeMs() + LAST_LINE_MS;
 	}
 
-	private @Nullable Content currentLine(SkyLyricsConfig cfg) {
-		Lyrics lyrics = service.lyrics();
+	/** The lyrics of the song the player hears, none while the lyrics still belong to the song before. */
+	private Lyrics lyricsNow() {
+		return service.snapshot().forSong(tracker.track()).lyrics();
+	}
+
+	private @Nullable Content currentLine(SkyLyricsConfig cfg, Lyrics lyrics) {
 		if (!lyrics.synced() || lyrics.isEmpty()) {
 			return null;
 		}
@@ -869,9 +884,9 @@ public final class NowPlayingHud {
 		return new Content("L" + i + text, true, text.strip(), "", sung, through);
 	}
 
-	private Content songInfo(Track track) {
+	private Content songInfo(Track track, LyricsService.State state) {
 		String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
-		String status = switch (service.state()) {
+		String status = switch (state) {
 			case LOADING -> Tr.t("finding lyrics…");
 			case NOT_FOUND -> Tr.t("no lyrics");
 			case ERROR -> Tr.t("lyrics sites unreachable");
