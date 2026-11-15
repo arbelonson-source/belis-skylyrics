@@ -131,6 +131,13 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void theFirstStartMayTakeLonger() {
+		assertEquals(45_000, WindowsMediaSource.startLimitMs(20_000, false));
+		assertEquals(20_000, WindowsMediaSource.startLimitMs(20_000, true));
+		assertEquals(150_000, WindowsMediaSource.startLimitMs(150_000, false), "never shortens a longer limit");
+	}
+
+	@Test
 	void readsPollAnswers() {
 		JsonObject reply = JsonParser.parseString("""
 				{"seq":3,"ok":true,"sessions":[

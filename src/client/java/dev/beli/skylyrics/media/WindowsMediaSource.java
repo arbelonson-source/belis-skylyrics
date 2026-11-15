@@ -44,6 +44,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private static final String SCRIPT = "windows-media.ps1";
 	/** PowerShell and the Windows media API can be slow to wake up the first time after boot. */
 	private static final long START_TIMEOUT_MS = 20_000;
+	/** The very first start of the session gets longer: antivirus often scans PowerShell the first time. */
+	private static final long FIRST_START_TIMEOUT_MS = 45_000;
 	private static final long REPLY_TIMEOUT_MS = 4_000;
 	/** After the helper fails to start, wait before trying again instead of starting PowerShell on every poll. */
 	private static final long RETRY_NS = 15_000_000_000L;
@@ -75,6 +77,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private int missed;
 	private long retryAt;
 	private long startedAt;
+	/** Whether a helper has been ready yet this session. */
+	private boolean everReady;
 	private String startError = "";
 	/** The followed player: {@link Session#key()} for choosing, the rest for the controls. */
 	private @Nullable String current;
@@ -325,6 +329,11 @@ public final class WindowsMediaSource implements MediaSource {
 		}
 	}
 
+	/** How long to wait for a helper to say it is ready: longer until one has managed it once. */
+	static long startLimitMs(long normalMs, boolean everReady) {
+		return everReady ? normalMs : Math.max(normalMs, FIRST_START_TIMEOUT_MS);
+	}
+
 	private static String detail(Exception e) {
 		return e.getMessage() == null || e.getMessage().isEmpty() ? e.toString() : e.getMessage();
 	}
@@ -398,7 +407,7 @@ public final class WindowsMediaSource implements MediaSource {
 		reader.start();
 		startedAt = System.nanoTime();
 
-		String first = queue.poll(startTimeoutMs, TimeUnit.MILLISECONDS);
+		String first = queue.poll(startLimitMs(startTimeoutMs, everReady), TimeUnit.MILLISECONDS);
 		JsonObject hello = first == null || first == END ? null : parse(first);
 		if (hello == null || !hello.has("ready") || !hello.get("ready").getAsBoolean()) {
 			String error = hello == null ? "" : helperError(hello);
@@ -406,6 +415,7 @@ public final class WindowsMediaSource implements MediaSource {
 					: first == null ? Tr.t("The Windows music reader took too long to start. Reopen the game and give it a moment.")
 					: Tr.t("The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game."));
 		}
+		everReady = true;
 		LOG.info("Reading music from Windows' media controls");
 	}
 
