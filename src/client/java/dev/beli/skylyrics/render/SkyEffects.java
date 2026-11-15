@@ -495,6 +495,22 @@ public final class SkyEffects {
 		if (starPatterns && !painted()) {
 			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
 		}
+		//? if >=26.2 {
+		/*// 26.2 on: the added-light pipeline writes depth, so a nearer shape drawn first hides every farther one drawn
+		// after it (a nebula cloud cutting off the aurora). Draw the stars, then the clouds and curtains far to near,
+		// merged by their distances (blob: 0.97 - 0.025 k, ribbon: 1 - 0.07 k, the same as in blob() and ribbon()).
+		if (nebula) {
+			dots(pose, vc);
+		}
+		int cloud = nebula ? 0 : BLOBS, curtain = aurora ? 0 : RIBBONS;
+		while (cloud < BLOBS || curtain < RIBBONS) {
+			if (curtain < RIBBONS && (cloud >= BLOBS || 1 - 0.07f * curtain >= 0.97f - 0.025f * cloud)) {
+				ribbon(pose, vc, curtain++);
+			} else {
+				blob(pose, vc, cloud++);
+			}
+		}
+		*///?} else {
 		if (nebula) {
 			for (int k = 0; k < BLOBS; k++) {
 				blob(pose, vc, k);
@@ -506,6 +522,7 @@ public final class SkyEffects {
 				ribbon(pose, vc, k);
 			}
 		}
+		//?}
 		if (sparkles) {
 			sparkles(pose, vc);
 		}
@@ -642,6 +659,19 @@ public final class SkyEffects {
 			float lx = ca * ux + sa * vx, ly = sa * vy, lz = ca * uz + sa * vz;
 			float mx = cx + lx * size * 0.5f * wob, my = cy + ly * size * 0.5f * wob, mz = cz + lz * size * 0.5f * wob;
 			float ex = cx + lx * size * wob, ey = cy + ly * size * wob, ez = cz + lz * size * wob;
+			//? if >=26.2 {
+			/*// Slide each corner along its line of sight onto the sphere the cloud's centre is on. It looks the same from
+			// the middle, but the cloud no longer cuts through the aurora's sphere, so the depth the 26.2 pipeline writes
+			// can hide a farther layer only where a nearer one really lies in front of it
+			float toSphere = dist / Mth.sqrt(mx * mx + my * my + mz * mz);
+			mx *= toSphere;
+			my *= toSphere;
+			mz *= toSphere;
+			toSphere = dist / Mth.sqrt(ex * ex + ey * ey + ez * ez);
+			ex *= toSphere;
+			ey *= toSphere;
+			ez *= toSphere;
+			*///?}
 			if (i > 0) {
 				point(vc, pose, cx, cy, cz, centreC);
 				point(vc, pose, cx, cy, cz, centreC);
