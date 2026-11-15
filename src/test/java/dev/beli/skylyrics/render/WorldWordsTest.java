@@ -846,4 +846,31 @@ class WorldWordsTest {
 			assertEquals(0, WorldWords.shownLetters(logical, false, 0), word + " start");
 		}
 	}
+
+	@Test
+	void plainLyricsWordsComeOutOverTheLineSlot() {
+		dev.beli.skylyrics.lyrics.Lyrics plain = dev.beli.skylyrics.lyrics.LrcParser.parsePlain("one two three four five\nsix seven", 120_000);
+		long start = plain.get(0).timeMs();
+		int total = plain.get(0).text().length();
+		long end = plain.sungEnd(0);
+		assertEquals(0f, LyricsRenderer.sungChars(plain, 0, start, total), 0.5f);
+		float mid = LyricsRenderer.sungChars(plain, 0, (start + end) / 2 + LyricsRenderer.LEAD_MS, total);
+		assertTrue(mid > 1 && mid < total - 1, "halfway through the slot only part is sung: " + mid);
+		// Few enough words are due at once for none to be skipped
+		int due = 0;
+		for (int[] c : WorldWords.chunks(plain.get(0).text())) {
+			if (c[0] <= mid) {
+				due++;
+			}
+		}
+		assertTrue(due > 0 && due < WorldWords.chunks(plain.get(0).text()).size());
+	}
+
+	@Test
+	void theLastPlainLineLeavesAfterItsSlot() {
+		dev.beli.skylyrics.lyrics.Lyrics plain = dev.beli.skylyrics.lyrics.LrcParser.parsePlain("one two\nsix seven", 120_000);
+		int last = plain.lines().size() - 1;
+		assertFalse(LyricsRenderer.lineOver(plain, last, plain.get(last).timeMs() + 1000));
+		assertTrue(LyricsRenderer.lineOver(plain, last, plain.lineEnd(last) + 5000));
+	}
 }

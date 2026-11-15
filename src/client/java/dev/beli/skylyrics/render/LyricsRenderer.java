@@ -464,8 +464,8 @@ public final class LyricsRenderer {
 			text = line.text();
 			//?}
 			int total = text.codePointCount(0, text.length());
-			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), shown.sungEnd(index)) * total : total;
-			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
+			sungChars = sungChars(shown, index, time, total);
+			over = lineOver(shown, index, time);
 		}
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
@@ -550,6 +550,19 @@ public final class LyricsRenderer {
 		}
 		arcAnchors.keySet().removeIf(i -> i != index && i != previous);
 		return shots;
+	}
+
+	/**
+	 * How many of a line's {@code total} letters have been sung at {@code time}: spread over the line's time slot. Plain
+	 * (unsynced) lyrics have estimated slots too, so their words come out one by one the same way instead of all at once.
+	 */
+	static float sungChars(Lyrics lyrics, int index, long time, int total) {
+		return progress(time - LEAD_MS, lyrics.get(index).timeMs(), lyrics.sungEnd(index)) * total;
+	}
+
+	/** Whether a line's slot ended a moment ago, so its last words can leave (also for the last line, which has no next one). */
+	static boolean lineOver(Lyrics lyrics, int index, long time) {
+		return time - LEAD_MS > lyrics.lineEnd(index) + WORLD_LINGER_MS;
 	}
 
 	private boolean sungLine(int index) {
