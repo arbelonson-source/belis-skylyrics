@@ -537,10 +537,12 @@ public final class LyricsRenderer {
 				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), fixedYaw, fixedPitch, camera, mc.font, style, now);
 			}
 		}
-		if (jumpedBack(worldTime, time)) {
+		// The raw song position, not the lyrics time: a timing slider moves the lyrics time without any seek
+		long position = tracker.positionMs();
+		if (jumpedBack(worldTime, position)) {
 			worldWords.rewind(now);
 		}
-		worldTime = time;
+		worldTime = position;
 		if (!dead) {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
