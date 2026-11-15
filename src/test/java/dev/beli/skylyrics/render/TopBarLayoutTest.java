@@ -115,4 +115,21 @@ class TopBarLayoutTest {
 	void sizeOneChangesNothing() {
 		assertEquals(TopBarLayout.fit(320, 30, 45), TopBarLayout.fit(320, 1f, 30, 45));
 	}
+
+	@Test
+	void aBottomBarGrowsUpFromItsBottomEdge() {
+		assertEquals(100f, TopBarLayout.pivotY(false, 100f));
+		assertEquals(100f + TopBarLayout.PILL_H, TopBarLayout.pivotY(true, 100f));
+		// Scaled about the pivot, the edge on the screen's side stays put
+		float top = TopBarLayout.bottomTop(240), size = 1.5f;
+		float pivot = TopBarLayout.pivotY(true, top);
+		float bottomAfter = (1 - size) * pivot + size * (top + TopBarLayout.PILL_H);
+		assertEquals(top + TopBarLayout.PILL_H, bottomAfter, 0.001f);
+	}
+
+	@Test
+	void theBottomBarSitsAboveTheHeldItemName() {
+		// The held item's name is drawn from 59 above the bottom
+		assertTrue(240 - (TopBarLayout.bottomTop(240) + TopBarLayout.PILL_H) >= 59);
+	}
 }

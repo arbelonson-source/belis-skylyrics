@@ -241,7 +241,7 @@ public final class NowPlayingHud {
 
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
-				? g.guiHeight() - 54 - PILL_H
+				? TopBarLayout.bottomTop(g.guiHeight())
 				: topBelowBossBars(mc, g.guiHeight());
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
@@ -249,7 +249,8 @@ public final class NowPlayingHud {
 
 		float barSize = cfg.barSize;
 		g.pose().pushMatrix();
-		g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * y);
+		float pivotY = TopBarLayout.pivotY(cfg.barPosition == BarPosition.BOTTOM, y);
+		g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * pivotY);
 		g.pose().scale(barSize, barSize);
 		drawPill(g, mc, x, y, now, dt);
 		float midY = y + PILL_H / 2f;
