@@ -773,12 +773,12 @@ public final class SkyEffects {
 	/** Each shooting star is one tapered quad: a bright head and a tail that fades to nothing. */
 	private void meteors(PoseStack.Pose pose, VertexConsumer vc) {
 		float r = radius * 0.95f;
-		// Their width follows the distance, so it is worked out here and they look as big wherever they sit
-		float w = r * 0.003f;
 		//? if >=26.2 {
 		/*// The added-light pipeline writes depth here, so a nearer cloud or curtain would cut a streak: put them in front of all
 		r = radius * METEOR_FRONT;
 		*///?}
+		// A share of their distance, so they look as wide wherever they sit
+		float w = r * 0.003f;
 		int clear = argb(meteorColor, 0);
 		for (int i = 0; i < METEORS; i++) {
 			float age = meteorAge[i];
