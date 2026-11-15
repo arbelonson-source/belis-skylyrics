@@ -60,6 +60,7 @@
 
 - **Lighter lyrics and Galaxy.** Lines and Arc lyrics and the Galaxy sky do less work each frame.
 - **Lighter Aurora and Nebula.** The default Aurora sky, the Nebula clouds and stars, and the constellations skip the parts behind you or off the side of the screen. They look the same and cost less each frame.
+- **Lighter top bar and Record card.** The bar keeps its line laid out instead of measuring it again every frame, and the card keeps its times and cut titles. Nothing looks different.
 
 ### Changed
 
