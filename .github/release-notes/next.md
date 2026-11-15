@@ -2,28 +2,28 @@
 
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title, especially one with a bracket left open, no longer makes the lyrics lookup hang.
-- **Quick skips.** After a quick skip, the new song never shows the old song's lyrics, cover or colour, a late lyrics retry for the old song can no longer get in the way of the new song's lyrics, and the new cover isn't held up by the old one's slow download.
+- **Quick skips.** After a quick skip, the new song never shows the old song's lyrics, cover or colour, and a slow lyrics or cover lookup for the old song can't hold up the new one.
 - **Rare lyric files.** Lyrics with an hour in their time stamps, extra digits after the seconds, or wide (full-width) brackets no longer lose those lines.
 - **Instrumental lines.** A line that is only "(Instrumental)", "(music)" or "Instrumental" now counts as a pause instead of being shown as words. A line that is just "Music" is still sung.
 - **NetEase lyrics.** When the lyrics come from the NetEase backup, a song whose words contain "纯音乐" (Chinese for "instrumental") no longer loses them; only NetEase's own "instrumental" placeholder counts.
 - **Effects after loading.** With **Effects** on Auto, reloading resources or switching shaders no longer leaves the lyrics on Light effects for up to two minutes, and a single stutter no longer counts as a slow game (stutter that keeps coming still does).
 - **Lyrics on time on a Mac.** On a Mac, lyrics no longer run a little late.
 - **Steady timing on Windows.** On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
-- **Windows and Mac music readers.** On Windows, a cover that stalls can no longer make the music reader time out and restart, a player that is slow to answer once no longer makes the lyrics blink away, a cover that was still the last song's is read again a few seconds later, and Pause, Skip and Seek never reach another app when the one you follow has closed. On a Mac, a song with something missing (for example a local file or podcast with no cover) still shows its title and lyrics. The Windows changes were tested on GitHub's Windows machine with a made-up player, not with a real one.
+- **Windows music player.** A cover that stalls no longer makes the music reader time out and restart, and a player that is slow to answer once no longer makes the lyrics blink away. A cover that was still the last song's is read again a few seconds later. Pause, Skip and Seek never reach another app when the one you follow has closed.
+- **Mac music player.** A song with something missing (for example a local file or podcast with no cover) still shows its title and lyrics.
 - **World words stay put.** On Linux, a music player that answers slowly, or Spotify right after a pause or resume, no longer makes the World words vanish for a moment. Moving the **Timing** slider no longer makes them blink.
 - **World title.** In the World layout the song title shows for its full time even when the lyrics take a moment to load, and a long title is shrunk to fit.
 - **World after respawning.** Respawning or changing world during the end of a line no longer flashes its last words, and a word more than 48 blocks away fades out instead of vanishing. Swinging your arm while the World lyrics are hidden no longer knocks a word when they show again.
 - **Song library.** Songs in a long list show up right away as you scroll, and can't be clicked before they appear. If more of a list fails to load, the library tries again a few times by itself; in the grid view you can also click the error line. Spotify playlists with local files or podcasts no longer repeat songs or stop loading partway.
 - **Library keys.** Pressing Space on a playlist opens it without jumping to search. Pressing Enter after changing the search no longer plays a song from the old results.
 - **Open song library key.** With Iris installed, an **Open song library** key you set to K (the same key as Iris's shader switch) is moved back to N only once, not on every start.
-- **Album covers.** A cover shows even when it can't be saved for next time, and a damaged saved cover is fetched again. A cover that stalls while downloading is cut off instead of blocking the next song's cover. A cover the game can't read no longer leaves the last song's colour. A cover that fails to save no longer leaves a stray file behind, and a cover scrolled past can no longer cause a second download of a newer one.
+- **Album covers.** A cover shows even when it can't be saved for next time, and a damaged saved cover is fetched again. A cover that stalls while downloading is cut off instead of blocking the next song's cover, and a cover the game can't read no longer leaves the last song's colour.
 - **Bottom bar.** The bottom bar sits above the held item's name. A bigger **Bar size** grows upward instead of off the screen.
 - **Bottom bar and card.** A bar at the bottom of the screen now rises above the hearts and armour when you have several rows of them, and above the text that a jukebox or a command shows over the hotbar. The Record card in a bottom corner now sits above the bar instead of covering it, and above the armour and the held item's name.
 - **Big bars fit.** A big **Bar size** on a narrow screen now fits: the bar shrinks and, if needed, hides the stats and then the clock.
-- **Bar and F3.** A bar at the top hides while the debug screen (F3) is showing.
+- **Bar, card and F3.** The bar at the top, and the Record card in a top corner, hide while the debug screen (F3) is showing.
 - **Bar and card in bed.** The top bar and the Record card now fade to black with the rest of the screen when you sleep, instead of staying bright over it.
 - **Bar and potion effects.** A bar at the top of a medium-wide screen no longer touches the potion effect icons: it moves down below them when its numbers would reach them.
-- **Card and F3.** The Record card in a top corner hides while the debug screen (F3) is showing, like the bar.
 - **Song change.** For a moment after a song change, the bar, the card and the shooting stars no longer show the last song's line or "finding lyrics" next to the new song's name.
 - **Cover colour.** A song with the same name as an earlier one but another cover no longer keeps the earlier one's colour while its cover loads.
 - **Record card.** The Record card in a top corner moves below the boss bars on a narrow screen.
@@ -36,9 +36,9 @@
 - **Propeller.** With **Glow with the lyrics** off, the propeller cap turns at its calm speed.
 - **Lyrics stuck after a bad camera value.** A bad camera value can no longer pin the lyrics in the wrong place or stick the **View lock**.
 - **Clicks on 26.3.** On Minecraft 26.3, a click outside the game window no longer counts as a click inside it.
-- **Linux without a D-Bus address.** On Linux, when the game is started by a launcher that doesn't pass the D-Bus address, the mod now still finds your music players through your user's own D-Bus socket instead of saying it can't reach them.
+- **Linux launchers.** On Linux, when a launcher hides your session from the game, the mod now still finds your music players instead of saying it can't reach them.
 - **Flatpak.** In a Flatpak (for example the Prism Launcher), when the sandbox isn't allowed to talk to music players and none show up, the mod now shows the Flatpak hint instead of just "nothing playing".
-- **Players with long names.** On Linux, a player with a name like io.bassi.Amberol or org.gnome.Rhythmbox3 is now shown by its own name (not "Io" or "Org"), picking it as your player in the settings works, and songs from the library open in the right player.
+- **Players with long names.** On Linux, players such as Amberol or Rhythmbox are now shown by their own name, picking one as your player in the settings works, and songs from the library open in the right player.
 - **Players without a position.** On Linux, a player that doesn't say where it is in the song no longer holds the lyrics on the first line; they keep time from when the song started.
 - **Spotify asks less.** With Spotify signed in, when the lyrics are off and none of the mod's screens is open, the mod asks Spotify for the song only every 15 seconds. When Spotify says it is busy or keeps failing, the mod waits longer before asking again.
 - **Spotify gaps.** With Spotify, a moment when Spotify says nothing is playing (around an ad, a track change or a switch to another device) no longer makes the lyrics blink out and come back up to 4 s late: the mod asks again after a second. An ad is no longer taken for a song.
@@ -47,7 +47,7 @@
 - **Two game copies, one Spotify login.** When two copies of the game share a folder, one renewing the Spotify login no longer signs the other one out.
 - **Spotify 403.** A Spotify app that doesn't know your account now tells you to add it under User Management on the Spotify dashboard, instead of "error 403".
 - **Spotify signed out.** If Spotify refuses your sign-in even after the mod renewed it, the mod now says "Spotify signed you out, sign in again" instead of "error 401", and waits longer before trying again.
-- **No crash from a drawing error.** A rare error in the mod's drawing no longer crashes the game. Only the part that failed (lyrics, title-screen lyrics, sky, bar, card, hat or crosshair) pauses for 5 seconds, and the error goes to the log.
+- **No crash from a drawing error.** A rare error in the mod's drawing no longer crashes the game: the part that failed pauses for 5 seconds and the error goes to the log.
 - **Font mods.** Fixes a clash with other font mods on Minecraft 1.21.1 and 1.21.4, and a small memory leak when a letter can't be loaded.
 - **Intro tour.** The intro tour fits small windows and big GUI scales. It no longer opens over a screen that replaced the title screen, and its last page says the keys work in a world.
 - **Reset all.** **Reset all** keeps your intro tour done, your update choice, your Spotify app id, your per-song timings and your recent searches.
@@ -60,10 +60,10 @@
 - **Floating distance.** With Floating placement, every step of the **Distance** slider now moves the lyrics nearer or farther (before, 8 to 24 were all the same distance, and so were 96 to 160). They keep the same size on screen, so you see it as you walk past them or with **See through blocks** off. The default is unchanged.
 - **Faint glow on 1.21.1 to 1.21.5.** A very faint glow (the previous and next lines, the end of the pulse) no longer flashes as solid colour.
 - **Instrumental and karaoke tracks.** "Song (Instrumental)", a karaoke, a backing track or an a cappella version no longer gets the lyrics of the sung song, and the other way round.
-- **Synced lyrics first.** When LRCLIB's best match for a song has only plain lyrics, the mod also looks for a synced copy before settling for the plain one. Lyrics whose track length is more than 20 seconds off your song's are no longer used. A lyrics file with only tags and no lines no longer counts as an answer.
-- **Odd lyric files.** Lines that start with a no-break or invisible space, spaces inside the brackets ("[ 00:12.00 ]"), and stray control characters no longer lose lines or show as boxes.
+- **Synced lyrics first.** When the lyrics site's best match for a song has only plain lyrics, the mod also looks for a synced copy before settling for the plain one. Lyrics whose track length is more than 20 seconds off your song's are no longer used. A lyrics file with only tags and no lines no longer counts as an answer.
+- **Odd lyric files.** Lines that start with an invisible space, spaces inside the brackets ("[ 00:12.00 ]") or odd hidden characters no longer lose lines or show as boxes.
 - **Lyrics saved by older versions.** Lyrics saved by version 0.8.0 or older are checked again in the background: the ones that were another song's or an "instrumental" placeholder are replaced, or dropped when neither lyrics site has any.
-- **Themes keep your other settings.** Picking a theme now changes only what themes set (the layout, colours, fonts, glow, size, opacity, animation, sky and a few more). Settings no theme touches, such as **Karaoke**, **Shadow**, **Two-tone** and **Round font**, stay as you set them, and the theme still shows as picked (not Custom).
+- **Themes keep your other settings.** Picking a theme now changes only what themes set (the layout, colours, fonts, glow, size, opacity, animation, sky and a few more). Settings no theme touches, such as **Karaoke fill**, **Shadow** and **Two-tone**, stay as you set them, and the theme still shows as picked (not Custom).
 - **Elytra mode.** After a steep dive or climb, the words come back to where they were once you level out, instead of staying higher or lower.
 
 ### Faster
