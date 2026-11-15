@@ -198,9 +198,13 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				if (!cfg.introSeen) {
 					client.execute(() -> {
 						//? if >=26.2 {
-						/*client.gui.setScreen(new IntroScreen(screen));
+						/*if (IntroScreen.shouldOpen(client.gui.screen(), screen)) {
+							client.gui.setScreen(new IntroScreen(screen));
+						}
 						*///?} else {
-						client.setScreen(new IntroScreen(screen));
+						if (IntroScreen.shouldOpen(client.screen, screen)) {
+							client.setScreen(new IntroScreen(screen));
+						}
 						//?}
 					});
 				}

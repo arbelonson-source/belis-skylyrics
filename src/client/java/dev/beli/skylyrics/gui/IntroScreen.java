@@ -40,6 +40,11 @@ public final class IntroScreen extends Screen {
 		this.parent = parent;
 	}
 
+	/** Whether to open the tour: only over the very title screen that asked, and not over a tour already open. */
+	public static boolean shouldOpen(@Nullable Object current, Object titleScreen) {
+		return current == titleScreen && !(current instanceof IntroScreen);
+	}
+
 	@Override
 	protected void init() {
 		px = (width - PANEL_W) / 2;
