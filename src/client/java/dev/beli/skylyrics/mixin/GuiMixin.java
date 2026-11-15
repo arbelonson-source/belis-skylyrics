@@ -74,9 +74,12 @@ abstract class GuiMixin {
 			/*// 1.21.1 draws the crosshair with inverted colours; ours are plain, so put the normal blending back for them
 			// and the inverted blending back for whatever vanilla draws next (the attack meter)
 			RenderSystem.defaultBlendFunc();
-			CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
-			RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
-					GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+			try {
+				CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
+			} finally {
+				RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
+						GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+			}
 			*///?} else {
 			CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
 			//?}
