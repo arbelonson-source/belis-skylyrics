@@ -247,7 +247,7 @@ public final class CoverCache {
 	}
 
 	/** The biggest cover body taken, and the biggest picture decoded; real covers are 300-640 px and well under 1 MB. */
-	private static final int MAX_BYTES = 8 * 1024 * 1024;
+	static final int MAX_BYTES = 8 * 1024 * 1024;
 	private static final int MAX_SIDE = 4096;
 
 	/** False when the announced length is over the limit; -1 (not announced) passes and is capped while reading. */
