@@ -82,4 +82,33 @@ class TopBarWordsTest {
 	void plainLineIsUntouched() {
 		assertEquals(List.of("hello", "sky", "tonight"), texts("  hello   sky tonight "));
 	}
+
+	@Test
+	void aHebrewWordKeepsItsCommaOnTheRightInALeftToRightLine() {
+		assertEquals("םולש,", TopBarWords.shown("שלום,", false));
+		assertEquals("םולש!", TopBarWords.shown("שלום!", false));
+	}
+
+	@Test
+	void aHebrewWordKeepsItsCommaOnTheLeftInARightToLeftLine() {
+		assertEquals(",םולש", TopBarWords.shown("שלום,", true));
+	}
+
+	@Test
+	void plainWordsAreDrawnAsTheyWere() {
+		assertEquals("hello", TopBarWords.shown("hello", false));
+		assertEquals("hello,", TopBarWords.shown("hello,", false));
+		assertEquals("םולש", TopBarWords.shown("שלום", true));
+		assertEquals("םולש", TopBarWords.shown("שלום", false));
+	}
+
+	@Test
+	void anArabicWordWithAVowelMarkIsLeftToTheGame() {
+		assertTrue(TopBarWords.vanilla("مَرحبا"));
+		assertEquals("مَرحبا", TopBarWords.shown("مَرحبا", true));
+		assertEquals("مَرحبا،", TopBarWords.shown("مَرحبا،", false));
+		assertFalse(TopBarWords.vanilla("مرحبا"));
+		assertFalse(TopBarWords.vanilla("שלום,"));
+		assertFalse(TopBarWords.vanilla("hello"));
+	}
 }
