@@ -219,11 +219,68 @@ class MacMediaSourceTest {
 		assertDoesNotThrow(source);
 
 		// An app that quit as we asked is just nothing playing; other errors are shown
+		source.close(); // forgets the refusal, as Reconnect does
 		runner.answer("Music\terror\t-600\tApplication isn't running.\n");
 		assertDoesNotThrow(source);
 		runner.answer("Music\terror\t-10000\tSomething odd.\n");
 		e = assertThrows(IOException.class, source::poll);
 		assertTrue(e.getMessage().contains("Something odd"), e.getMessage());
+	}
+
+	/** macOS's refusal comes back as normal output (exit 0), so without a wait osascript would start every poll. */
+	@Test
+	void refusedAutomationIsNotAskedAgainForAWhile() {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0, app -> app == MacMediaSource.SPOTIFY);
+		runner.answer("Spotify\terror\t-1744\tNot authorized to send Apple events to Spotify.\n");
+		for (int i = 0; i < 5; i++) {
+			IOException e = assertThrows(IOException.class, source::poll);
+			assertTrue(e.getMessage().contains("Allow") && e.getMessage().contains("Spotify"), e.getMessage());
+		}
+		assertEquals(1, runner.starts, "waits before asking again");
+
+		source.close(); // like Reconnect: try again at once
+		runner.answer(SPOTIFY_PLAYING);
+		assertDoesNotThrow(source);
+		assertEquals(2, runner.starts);
+	}
+
+	@Test
+	void refusedAppDoesNotHideTheOtherOne() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer("Spotify\terror\t-1743\tNot authorized\n" + MUSIC_PAUSED);
+		assertEquals("Song Two", source.poll().track().title());
+		runner.answer(MUSIC_PAUSED);
+		assertEquals("Song Two", source.poll().track().title());
+		assertEquals(List.of("Music"), args(runner.commands.get(1)).stream().filter(a -> a.equals("Spotify") || a.equals("Music")).toList(),
+				"only the app that agreed is asked");
+	}
+
+	@Test
+	void decomposedAccentsAreComposed() {
+		MacMediaSource.Answer a = MacMediaSource.parse("Music\tpaused\t245.5\t12.5\tCafe\u0301\tBe\u0301yonce\u0301\tAlbum\t\n");
+		Track t = a.players().get(0).track();
+		assertEquals("Caf\u00e9", t.title());
+		assertEquals("B\u00e9yonc\u00e9", t.artist());
+	}
+
+	@Test
+	void runningAnswerIsRememberedForAMoment() {
+		long[] now = {0};
+		int[] asked = {0};
+		java.util.function.Predicate<MacMediaSource.App> p = MacMediaSource.cached(app -> {
+			asked[0]++;
+			return true;
+		}, () -> now[0], 3_000);
+		assertTrue(p.test(MacMediaSource.SPOTIFY));
+		assertTrue(p.test(MacMediaSource.SPOTIFY));
+		assertEquals(1, asked[0], "one process walk per app per moment");
+		assertTrue(p.test(MacMediaSource.MUSIC));
+		assertEquals(2, asked[0], "each app has its own answer");
+		now[0] = 3_000;
+		assertTrue(p.test(MacMediaSource.SPOTIFY));
+		assertEquals(3, asked[0], "asked again once it is old");
 	}
 
 	@Test

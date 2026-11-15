@@ -51,6 +51,11 @@ public final class LegacyInput {
 			return Screen.hasControlDown();
 		}
 
+		// What Minecraft's own text boxes use: Cmd on a Mac, which Screen.hasControlDown() already gives
+		public boolean hasControlDownWithQuirk() {
+			return Screen.hasControlDown();
+		}
+
 		public boolean hasShiftDown() {
 			return Screen.hasShiftDown();
 		}

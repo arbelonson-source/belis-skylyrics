@@ -1169,7 +1169,7 @@ public final class LibraryScreen extends Screen {
 		}
 		if (typing) {
 			if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
-				edit(event.hasControlDown() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
+				edit(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 				return true;
 			}
 			if (event.isPaste()) {

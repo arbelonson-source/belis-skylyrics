@@ -58,6 +58,10 @@ stonecutter parameters {
 			replace("open.matches(event)", "open.matches(event.key(), event.scancode())")
 			replace("key.matches(event)", "key.matches(event.key(), event.scancode())")
 		}
+		// 1.21.9 and 1.21.10 have no hasControlDownWithQuirk: there hasControlDown() is already Cmd on a Mac (1.21.11 split them)
+		if (current.parsed >= "1.21.9" && current.parsed < "1.21.11") string(true) {
+			replace("hasControlDownWithQuirk()", "hasControlDown()")
+		}
 		// 1.21.5 and older draw the GUI with a 3D PoseStack and RenderType functions instead of 2D matrices and pipelines
 		if (current.parsed < "1.21.6") string(true) {
 			replace("import net.minecraft.client.renderer.RenderPipelines;", "import net.minecraft.client.renderer.RenderType;")
