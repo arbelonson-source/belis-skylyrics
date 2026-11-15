@@ -223,6 +223,7 @@ public final class WindowsMediaSource implements MediaSource {
 			w.flush();
 		} catch (IOException e) {
 			stop();
+			backOffIfEarly();
 			throw new IOException("The Windows media helper stopped");
 		}
 		long deadline = System.nanoTime() + replyTimeoutMs * 1_000_000;
@@ -231,11 +232,7 @@ public final class WindowsMediaSource implements MediaSource {
 			String line = left > 0 ? queue.poll(left, TimeUnit.NANOSECONDS) : null;
 			if (line == END) {
 				stop();
-				if (System.nanoTime() - startedAt < EARLY_EXIT_NS) {
-					// Starting it again straight away would most likely end the same way
-					startError = "The Windows media helper keeps stopping (see windows-media.log)";
-					retryAt = System.nanoTime() + RETRY_NS;
-				}
+				backOffIfEarly();
 				throw new IOException("The Windows media helper stopped");
 			}
 			if (line == null) {
@@ -264,7 +261,12 @@ public final class WindowsMediaSource implements MediaSource {
 		if (p != null && p.isAlive()) {
 			return;
 		}
+		boolean died = p != null;
 		stop();
+		if (died) {
+			// It said what was wrong and exited (the script does that when Windows' media controls fail for good)
+			backOffIfEarly();
+		}
 		if (System.nanoTime() < retryAt) {
 			throw new IOException(startError);
 		}
@@ -277,6 +279,19 @@ public final class WindowsMediaSource implements MediaSource {
 			LOG.warn("Couldn't read Windows' media controls: {}", startError);
 			throw new IOException(startError, e);
 		}
+	}
+
+	private void backOffIfEarly() {
+		if (shouldBackOff(false, startedAt, System.nanoTime())) {
+			// Starting it again straight away would most likely end the same way
+			startError = "The Windows media helper keeps stopping (see windows-media.log)";
+			retryAt = System.nanoTime() + RETRY_NS;
+		}
+	}
+
+	/** A helper that is gone soon after it started would most likely stop again, so wait before starting another. */
+	static boolean shouldBackOff(boolean alive, long startedAtNanos, long nowNanos) {
+		return !alive && nowNanos - startedAtNanos < EARLY_EXIT_NS;
 	}
 
 	private void start() throws IOException, InterruptedException {

@@ -93,6 +93,36 @@ class WindowsMediaSourceTest {
 		assertEquals(0, edge.track().lengthMs());
 	}
 
+	@Test
+	void backsOffWhenTheHelperIsGoneSoonAfterStarting() {
+		long s = 1_000_000_000L;
+		assertTrue(WindowsMediaSource.shouldBackOff(false, s, s + 2_000_000_000L), "died after 2 s");
+		assertFalse(WindowsMediaSource.shouldBackOff(false, s, s + 11_000_000_000L), "ran for a while first");
+		assertFalse(WindowsMediaSource.shouldBackOff(true, s, s + 2_000_000_000L), "still running");
+	}
+
+	/** A helper that answers "ok":false and exits at once must not be started again on every poll. */
+	@Test
+	@Timeout(60)
+	void doesNotRestartAHelperThatKeepsExiting() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String body = "printf '{\"ready\":true}\\n'; read line; printf '{\"seq\":1,\"ok\":false,\"error\":\"gone\"}\\n'; exit 2";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, 20_000, 5_000);
+		try {
+			assertThrows(IOException.class, source::poll);
+			for (int i = 0; i < 4; i++) {
+				assertThrows(IOException.class, source::poll);
+			}
+			assertEquals(1, starts[0], "started once, then waited");
+		} finally {
+			source.close();
+		}
+	}
+
 	/** Runs the real helper script against a made-up media manager (windows-media-fake.ps1). */
 	@Test
 	@Timeout(300)
