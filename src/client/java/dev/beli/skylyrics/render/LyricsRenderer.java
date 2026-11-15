@@ -1406,11 +1406,15 @@ public final class LyricsRenderer {
 
 	/** A row in display order: right-to-left runs (Hebrew, Arabic) reversed, with each character's logical index. */
 	record Display(int[] cps, int[] logical) {
-		/** The same few rows are drawn every frame, so their layout is kept instead of recomputed. Render thread only. */
-		private static final Map<String, Display> CACHE = new LinkedHashMap<>(64, 0.75f, true) {
+		/**
+		 * The same rows and words are drawn every frame, so their layout is kept instead of recomputed. Big enough for
+		 * the World cards, the sky rows and every word of the top bar's old and new line at once, since a cache that
+		 * cycles past its size misses every time. Render thread only.
+		 */
+		private static final Map<String, Display> CACHE = new LinkedHashMap<>(256, 0.75f, true) {
 			@Override
 			protected boolean removeEldestEntry(Map.Entry<String, Display> eldest) {
-				return size() > 64;
+				return size() > 256;
 			}
 		};
 
