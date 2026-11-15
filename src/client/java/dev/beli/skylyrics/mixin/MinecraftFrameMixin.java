@@ -13,8 +13,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Minecraft.class)
 abstract class MinecraftFrameMixin {
-	@Inject(method = "runTick", at = @At("HEAD"))
-	private void skylyrics$frame(boolean advanceGameTime, CallbackInfo ci) {
+	// Developer-only: optional (require = 0) and without the target's arguments, so a game version that changes this
+	// method only loses the burst command instead of failing to start
+	@Inject(method = "runTick", at = @At("HEAD"), require = 0)
+	private void skylyrics$frame(CallbackInfo ci) {
 		DevTestHook.frame((Minecraft) (Object) this);
 	}
 }
