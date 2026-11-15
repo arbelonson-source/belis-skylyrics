@@ -960,8 +960,8 @@ public final class LyricsRenderer {
 		}
 
 		float[] offsets(String row, Display d, boolean rtl) {
-			// The same row is laid out differently in a right-to-left line, so the line's direction is part of the key
-			return offsetCache.computeIfAbsent(rtl ? "\u202B" + row : row, r -> {
+			// The same row is laid out differently by line direction (and apart from the default Display.of(row)), so it is part of the key
+			return offsetCache.computeIfAbsent((rtl ? "\u202B" : "\u202A") + row, r -> {
 				float[] at = new float[d.cps.length + 1];
 				for (int v = 1; v <= d.cps.length; v++) {
 					at[v] = LyricsFont.width(font, base, new String(d.cps, 0, v));
@@ -1378,21 +1378,26 @@ public final class LyricsRenderer {
 		};
 
 		static Display of(String row) {
-			return CACHE.computeIfAbsent(row, r -> compute(r, false));
+			return CACHE.computeIfAbsent(row, r -> compute(r, null));
 		}
 
 		/**
 		 * A piece of a line that reads right to left, such as one word of it: its punctuation and numbers belong on the
-		 * line's side, which the piece alone (starting with Hebrew, say) would not tell, or a lone "5" would not.
+		 * line's side, which the piece alone (starting with Hebrew, say) would not tell, or a lone "5" would not. The same
+		 * goes for a left-to-right line: the comma of "hello שלום," belongs on the right of שלום.
 		 */
 		static Display of(String row, boolean rtl) {
-			return rtl ? CACHE.computeIfAbsent(RTL_KEY + row, r -> compute(row, true)) : of(row);
+			return rtl ? CACHE.computeIfAbsent(RTL_KEY + row, r -> compute(row, true))
+					: CACHE.computeIfAbsent(LTR_KEY + row, r -> compute(row, false));
 		}
 
 		/** Keeps a row drawn right to left apart from the same row drawn with the default direction in the cache. */
 		private static final String RTL_KEY = "\u202B\u0000";
+		/** Likewise for a row drawn left to right on purpose, apart from the default (first strong letter decides). */
+		private static final String LTR_KEY = "\u202A\u0000";
 
-		private static Display compute(String row, boolean rightBase) {
+		/** @param rightBase true for a right-to-left base, false for left-to-right, null for the row's first strong letter */
+		private static Display compute(String row, @Nullable Boolean rightBase) {
 			int[] cps = row.codePoints().toArray();
 			int n = cps.length;
 			int[] logical = new int[n];
@@ -1412,7 +1417,8 @@ public final class LyricsRenderer {
 			}
 			charToCp[row.length()] = n;
 			int[] shaped = joinArabic(row).codePoints().toArray();
-			Bidi bidi = new Bidi(row, rightBase ? Bidi.DIRECTION_RIGHT_TO_LEFT : Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
+			Bidi bidi = new Bidi(row, rightBase == null ? Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT
+					: rightBase ? Bidi.DIRECTION_RIGHT_TO_LEFT : Bidi.DIRECTION_LEFT_TO_RIGHT);
 			int runs = bidi.getRunCount();
 			byte[] levels = new byte[runs];
 			Integer[] order = new Integer[runs];

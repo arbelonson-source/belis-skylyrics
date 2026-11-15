@@ -88,8 +88,37 @@ class DisplayOrderTest {
 	}
 
 	@Test
-	void theLeftToRightDefaultIsKept() {
-		assertEquals(visual("שלום,"), visual("שלום,", false));
+	void theCommaOfAHebrewPieceSitsAtTheRightEndInALeftToRightLine() {
+		// In "hello שלום," the comma follows the word, so as drawn it is the rightmost character
+		assertEquals("םולש,", visual("שלום,", false));
+		assertEquals("םולש!", visual("שלום!", false));
+	}
+
+	@Test
+	void anEnglishPieceInALeftToRightLineIsUnchanged() {
+		assertEquals("hello", visual("hello", false));
+		assertEquals(visual("hello sky"), visual("hello sky", false));
+		assertArrayEquals(LyricsRenderer.Display.of("hello, sky").logical(), LyricsRenderer.Display.of("hello, sky", false).logical());
+	}
+
+	@Test
+	void aPureHebrewPieceInARightToLeftLineIsUnchanged() {
+		assertEquals("םולש", visual("שלום", true));
+		assertEquals(visual("שלום"), visual("שלום", true));
+		assertArrayEquals(LyricsRenderer.Display.of("שלום").logical(), LyricsRenderer.Display.of("שלום", true).logical());
+	}
+
+	@Test
+	void theDefaultOfAWholeLineStillFollowsItsFirstLetter() {
+		// No known direction: a bare Hebrew piece reads right to left, so its comma lands on the left
+		assertEquals(",םולש", visual("שלום,"));
+	}
+
+	@Test
+	void aLeftToRightAndADefaultRowDoNotShareACacheEntry() {
+		assertEquals(",םולש", visual("שלום,"));
+		assertEquals("םולש,", visual("שלום,", false));
+		assertEquals(",םולש", visual("שלום,"));
 	}
 
 	@Test
