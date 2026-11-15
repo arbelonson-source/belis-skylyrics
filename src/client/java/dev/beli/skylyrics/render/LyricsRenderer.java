@@ -932,8 +932,9 @@ public final class LyricsRenderer {
 			return wrapCache.computeIfAbsent(text, t -> wrap(font, base, t, wrapWidth));
 		}
 
-		float[] offsets(String row, Display d) {
-			return offsetCache.computeIfAbsent(row, r -> {
+		float[] offsets(String row, Display d, boolean rtl) {
+			// The same row is laid out differently in a right-to-left line, so the line's direction is part of the key
+			return offsetCache.computeIfAbsent(rtl ? "\u202B" + row : row, r -> {
 				float[] at = new float[d.cps.length + 1];
 				for (int v = 1; v <= d.cps.length; v++) {
 					at[v] = LyricsFont.width(font, base, new String(d.cps, 0, v));
@@ -1030,6 +1031,7 @@ public final class LyricsRenderer {
 			float since = (now - clock.changedAt()) / 1e9f;
 			int dark = depthDark(color, daylight), light = depthLight(color);
 			int words = arc.words().length;
+			boolean rtl = WorldWords.rightToLeft(text);
 			// The one word after those already sung, shown faintly ahead of its time
 			int nextWord = -1;
 			if (!leaving && timed) {
@@ -1071,7 +1073,7 @@ public final class LyricsRenderer {
 					float size = ahead > 0 ? Mth.lerp(e, NEXT_SCALE, 1) : 1;
 					canvas.push(cx, 0, size, 0);
 					int count = arc.words().length;
-					word(arc.words()[w], -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e),
+					word(arc.words()[w], rtl, -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e),
 							mix(toned(count < 2 ? 0 : w / (float) (count - 1)), 0xFFFFFF, CURRENT_WHITE * current),
 							dark, light, g.angle(), e > 0.004f);
 					canvas.pop();
@@ -1090,8 +1092,8 @@ public final class LyricsRenderer {
 			return WorldWords.toned(color, cfg.twoTone ? cfg.toneColor : -1, along);
 		}
 
-		private void word(String word, float x, float y, float alpha, int face, int dark, int light, float angle, boolean withDepth) {
-			Display d = Display.of(word);
+		private void word(String word, boolean rtl, float x, float y, float alpha, int face, int dark, int light, float angle, boolean withDepth) {
+			Display d = Display.of(word, rtl);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
 			if (cfg.glow > 0.01f) {
 				int copies = LyricsRenderer.this.light ? GLOW_LIGHT : GLOW_INNER;
@@ -1171,11 +1173,12 @@ public final class LyricsRenderer {
 			canvas.push(0, y, scale, 0);
 			float top = -rows.size() * ROW_H / 2;
 			int[] starts = rowStarts(rows);
+			boolean rtl = WorldWords.rightToLeft(text);
 			int wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
 				String row = rows.get(r);
 				int charIndex = starts[r];
-				Display d = Display.of(row);
+				Display d = Display.of(row, rtl);
 				int n = d.cps.length;
 				// How visible each character is: typewriter cuts the line off, words fade in one at a time
 				float[] reveal = new float[n];
@@ -1194,7 +1197,7 @@ public final class LyricsRenderer {
 					// Each word flares as it finishes fading in; other animations flare the whole line at once
 					flare[v] = Float.isNaN(flareT) ? 0 : pulse(flareT - wordStart - (byWord ? WORD_FADE * 0.6f : 0)) * highlight;
 				}
-				float[] at = offsets(row, d);
+				float[] at = offsets(row, d, rtl);
 				float[] grow = growing ? growth(row, d, charIndex, sungChars, highlight) : null;
 				if (grow != null) {
 					// A bigger word pushes its neighbours aside instead of covering them
