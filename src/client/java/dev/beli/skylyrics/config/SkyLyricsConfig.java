@@ -438,22 +438,102 @@ public final class SkyLyricsConfig {
 	}
 
 	private static SkyLyricsConfig load() {
+		Path file = file();
 		try {
-			if (Files.isRegularFile(file())) {
-				JsonObject json = JsonParser.parseString(Files.readString(file(), StandardCharsets.UTF_8)).getAsJsonObject();
-				SkyLyricsConfig loaded = GSON.fromJson(json, SkyLyricsConfig.class);
-				if (loaded != null) {
-					if (!json.has("barPing")) loaded.barPing = loaded.barStats;
-					if (!json.has("introSeen")) loaded.introSeen = true;
-					if (!json.has("worldFade")) loaded.worldFade = fadeFrom(json, loaded.worldFade);
-					loaded.fix();
-					return loaded;
+			if (Files.isRegularFile(file)) {
+				Parsed parsed = parse(Files.readString(file, StandardCharsets.UTF_8));
+				if (parsed.damaged()) {
+					keepCopy(file);
+					LOG.warn("Settings file had problems, kept a copy as skylyrics.json.bad. {}", parsed.describe());
 				}
+				return parsed.config();
 			}
-		} catch (Exception e) {
-			LOG.warn("Settings file was broken, using defaults: {}", e.toString());
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("Couldn't read the settings file, using defaults: {}", e.toString());
+			keepCopy(file);
 		}
 		return new SkyLyricsConfig();
+	}
+
+	/** Copies the settings file to {@code skylyrics.json.bad}, replacing an older copy, so a reset never costs the original. */
+	static void keepCopy(Path file) {
+		try {
+			Files.copy(file, file.resolveSibling(file.getFileName() + ".bad"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("Couldn't keep a copy of the damaged settings file: {}", e.toString());
+		}
+	}
+
+	/**
+	 * The result of reading a settings file: the settings, the names of the fields that couldn't be read (they keep their
+	 * defaults), and whether the whole file was unusable (not JSON, or not an object).
+	 */
+	record Parsed(SkyLyricsConfig config, java.util.List<String> badFields, boolean unreadable) {
+		boolean damaged() {
+			return unreadable || !badFields.isEmpty();
+		}
+
+		String describe() {
+			return unreadable ? "The file isn't valid settings JSON, using defaults." : "Reset to defaults: " + String.join(", ", badFields);
+		}
+	}
+
+	/** Gson quietly wraps or rounds 1e10 or 1.5 into an int field; a whole-number setting should get a whole number that fits, and a yes/no setting a real true or false. */
+	private static boolean wholeNumberFits(Class<?> type, com.google.gson.JsonElement value) {
+		if (type == boolean.class || type == Boolean.class) {
+			return value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean(); // Gson reads "yes" as false
+		}
+		boolean isInt = type == int.class || type == Integer.class;
+		boolean isLong = type == long.class || type == Long.class;
+		if (!(isInt || isLong) || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+			return true; // other types and wrong kinds are Gson's to judge
+		}
+		try {
+			var number = new java.math.BigDecimal(value.getAsString());
+			if (isInt) number.intValueExact(); else number.longValueExact();
+			return true;
+		} catch (ArithmeticException | NumberFormatException e) {
+			return false;
+		}
+	}
+
+	/** Reads settings from file text one field at a time, so one wrong value only resets that setting. Doesn't touch the disk. */
+	static Parsed parse(String text) {
+		SkyLyricsConfig config = new SkyLyricsConfig();
+		java.util.List<String> bad = new java.util.ArrayList<>();
+		JsonObject json;
+		try {
+			json = JsonParser.parseString(text).getAsJsonObject();
+		} catch (RuntimeException e) {
+			return new Parsed(config, bad, true);
+		}
+		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
+			int mods = field.getModifiers();
+			if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods) || field.isSynthetic()) {
+				continue;
+			}
+			var value = json.get(field.getName());
+			if (value == null || value.isJsonNull()) {
+				continue; // missing or null: keep the default (fix() fills any enum or list)
+			}
+			try {
+				if (!wholeNumberFits(field.getType(), value)) {
+					throw new NumberFormatException(value.toString());
+				}
+				Object read = GSON.fromJson(value, field.getGenericType());
+				if (read != null) {
+					field.setAccessible(true);
+					field.set(config, read);
+				}
+			} catch (Exception e) {
+				bad.add(field.getName());
+			}
+		}
+		if (!json.has("barPing")) config.barPing = config.barStats;
+		if (!json.has("introSeen")) config.introSeen = true;
+		if (!json.has("worldFade")) config.worldFade = fadeFrom(json, config.worldFade);
+		config.fix();
+		return new Parsed(config, bad, false);
 	}
 
 	/**

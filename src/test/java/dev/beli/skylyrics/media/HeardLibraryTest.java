@@ -238,4 +238,23 @@ class HeardLibraryTest {
 		assertNull(HeardLibrary.openableUri("https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC", List.of("file")));
 		assertEquals("spotify:track:abc", HeardLibrary.openableUri("spotify:track:abc", List.of("spotify")));
 	}
+
+	@Test
+	void aDamagedFileIsKeptAsBadAndBadEntriesAreSkippedOneByOne() throws IOException {
+		for (String damaged : new String[] {"{\"songs\": [{\"title\": \"A\"", "[1,2,3]", "{\"songs\": 5}"}) {
+			Files.writeString(file(), damaged);
+			assertTrue(HeardLibrary.read(file()).isEmpty());
+			assertEquals(damaged, Files.readString(dir.resolve("heard.json.bad")), damaged);
+			Files.delete(dir.resolve("heard.json.bad"));
+		}
+		Files.writeString(file(), "{}");
+		assertTrue(HeardLibrary.read(file()).isEmpty());
+		Files.writeString(file(), "{\"songs\": null}");
+		assertTrue(HeardLibrary.read(file()).isEmpty());
+		assertFalse(Files.exists(dir.resolve("heard.json.bad")));
+
+		Files.writeString(file(), "{\"songs\": [5, null, {\"title\": {\"x\": 1}}, {\"title\": \"Good\", \"artist\": \"Me\"}]}");
+		assertEquals(1, HeardLibrary.read(file()).size());
+		assertEquals("Good", HeardLibrary.read(file()).get(0).title());
+	}
 }

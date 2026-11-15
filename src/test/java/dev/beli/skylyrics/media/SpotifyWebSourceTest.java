@@ -197,4 +197,10 @@ class SpotifyWebSourceTest {
 			assertEquals("", source.problem());
 		}
 	}
+
+	@Test
+	void aRefreshIsOnlyKeptWhenNobodySignedInOrOutMeanwhile() {
+		assertTrue(SpotifyWebSource.keepRefresh(3, 3));
+		assertFalse(SpotifyWebSource.keepRefresh(3, 4));
+	}
 }
