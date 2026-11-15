@@ -15,11 +15,15 @@ final class FrameBudget {
 	/** Going slow again within this many seconds of coming back counts as the full effects' fault. */
 	static final float RELAPSE = 30;
 
+	/** A single frame this many times the smoothed one, and at least this many seconds, is a stall and is left out. */
+	static final float STALL_FACTOR = 4, STALL_MIN = 0.05f;
+
 	private float frame; // smoothed seconds per frame
 	private float timer;
 	private float wait = FIRST_WAIT;
 	private float sinceFull = Float.MAX_VALUE;
 	private boolean light;
+	private boolean skipped; // the last frame was left out as a one-off stall
 
 	/**
 	 * @param dt    seconds since the last frame
@@ -29,6 +33,13 @@ final class FrameBudget {
 		if (dt <= 0) {
 			return;
 		}
+		// One frame far slower than the rest is a stall (a reload, a shader switch, a chunk burst), not a slow game: leave
+		// it out. Two in a row are the new normal and count.
+		if (frame != 0 && dt > STALL_FACTOR * frame && dt > STALL_MIN && !skipped) {
+			skipped = true;
+			return;
+		}
+		skipped = false;
 		frame = frame == 0 ? dt : frame + (dt - frame) * Math.min(1, dt * 4);
 		float fps = 1 / frame;
 		if (!light) {
@@ -47,6 +58,20 @@ final class FrameBudget {
 				sinceFull = 0;
 			}
 		}
+	}
+
+	/**
+	 * Forgets everything a stall taught it: back to full effects, no slow time, no relapse doubling, a fresh average.
+	 * Called when resources finish reloading or the shaders switch, where the long frames say nothing about the game
+	 * (if it is really slow it goes light again after {@link #SLOW_FOR}).
+	 */
+	void forgive() {
+		frame = 0;
+		timer = 0;
+		wait = FIRST_WAIT;
+		sinceFull = Float.MAX_VALUE;
+		light = false;
+		skipped = false;
 	}
 
 	boolean light() {
