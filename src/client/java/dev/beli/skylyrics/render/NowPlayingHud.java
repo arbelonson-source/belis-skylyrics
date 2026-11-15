@@ -269,12 +269,17 @@ public final class NowPlayingHud {
 	 * as fit in the top third. The bar goes just below the last one instead of covering their names.
 	 */
 	static float topBelowBossBars(Minecraft mc, int guiHeight) {
+		return topBelowBossBars(bossBarCount(mc), guiHeight);
+	}
+
+	/** How many boss bars the game has (it draws only the first few that fit). */
+	static int bossBarCount(Minecraft mc) {
 		//? if >=26.2 {
 		/*int count = ((BossHealthOverlayAccessor) mc.gui.hud.getBossOverlay()).skylyrics$getEvents().size();
 		*///?} else {
 		int count = ((BossHealthOverlayAccessor) mc.gui.getBossOverlay()).skylyrics$getEvents().size();
 		//?}
-		return topBelowBossBars(count, guiHeight);
+		return count;
 	}
 
 	static float topBelowBossBars(int count, int guiHeight) {

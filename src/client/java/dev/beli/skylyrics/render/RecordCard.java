@@ -361,11 +361,32 @@ public final class RecordCard {
 	 * leaves the screen.
 	 */
 	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator) {
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, 0);
+	}
+
+	/**
+	 * How far down a top corner card has to start to clear the boss bars: the bars are 182 wide in the middle, so on a
+	 * narrow screen the card would reach under them. 0 when it doesn't, or for a bottom corner.
+	 */
+	static float bossClear(CardCorner corner, int guiW, int guiH, int bossBars) {
+		if (bossBars <= 0 || corner == CardCorner.BOTTOM_LEFT || corner == CardCorner.BOTTOM_RIGHT) {
+			return 0;
+		}
+		boolean reaches = corner == CardCorner.TOP_LEFT
+				? MARGIN + W > guiW / 2f - HOTBAR_HALF
+				: guiW - MARGIN - W < guiW / 2f + HOTBAR_HALF;
+		return reaches ? NowPlayingHud.topBelowBossBars(bossBars, guiH) : 0;
+	}
+
+	/** The full form: {@code bossClear} is the least a top card's top may be, from {@link #bossClear}. */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
+			float bossClear) {
 		float left = MARGIN, right = guiW - MARGIN - W;
 		float top = MARGIN, bottom = guiH - MARGIN - h;
 		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
 			top = effects + 2;
 		}
+		top = Math.max(top, bossClear);
 		// On a narrow screen a bottom corner would cover the hotbar or what sits beside it, so the card moves up above it
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
 		float reach = sideReach(onLeft, rightHanded, indicator);
@@ -390,7 +411,8 @@ public final class RecordCard {
 	private static float[] corner(Minecraft mc, CardCorner corner, int guiW, int guiH, int effects, float h) {
 		boolean rightHanded = mc.options.mainHand().get() == HumanoidArm.RIGHT;
 		boolean indicator = mc.options.attackIndicator().get() == AttackIndicatorStatus.HOTBAR;
-		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator);
+		int bars = NowPlayingHud.bossBarCount(mc);
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars));
 	}
 
 	/**
