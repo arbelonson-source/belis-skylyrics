@@ -51,4 +51,35 @@ class TopBarWordsTest {
 		assertArrayEquals(new float[] {30, 0, 23}, x, 0.001f);
 		assertEquals(23f, x[2], 0.001f);
 	}
+
+	private static List<String> texts(String line) {
+		return TopBarWords.split(line).stream().map(TopBarWords.Piece::text).toList();
+	}
+
+	@Test
+	void chineseLineIsSplitIntoCharacters() {
+		assertEquals(List.of("我", "爱", "你", "世", "界"), texts("我爱你世界"));
+	}
+
+	@Test
+	void japaneseKeepsMarksWithTheirCharacter() {
+		assertEquals(List.of("今", "日", "は。"), texts("今日は。"));
+	}
+
+	@Test
+	void spacedWordsAndChineseMix() {
+		assertEquals(List.of("hello", "你", "好", "world"), texts("hello 你好 world"));
+	}
+
+	@Test
+	void chineseCharactersSitAgainstEachOtherButWordsKeepTheirGap() {
+		List<TopBarWords.Piece> p = TopBarWords.split("hi 你好");
+		float[] x = TopBarWords.leftEdges(p, new float[] {10, 8, 8}, 3);
+		assertArrayEquals(new float[] {0, 13, 21}, x, 0.001f);
+	}
+
+	@Test
+	void plainLineIsUntouched() {
+		assertEquals(List.of("hello", "sky", "tonight"), texts("  hello   sky tonight "));
+	}
 }

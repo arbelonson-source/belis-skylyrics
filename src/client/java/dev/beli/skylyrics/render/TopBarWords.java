@@ -12,12 +12,29 @@ final class TopBarWords {
 	/** One piece of the line; {@code gap} is false when it joins the piece before it without a space. */
 	record Piece(String text, boolean gap) {}
 
-	/** The line's words, separated by spaces. */
+	/**
+	 * The line's words, separated by spaces. Chinese and Japanese, written without spaces, come as single
+	 * characters (with their marks), which sit against each other with no gap.
+	 */
 	static List<Piece> split(String text) {
 		List<Piece> out = new ArrayList<>();
 		for (String part : text.trim().split(" +")) {
-			if (!part.isEmpty()) {
+			if (part.isEmpty()) {
+				continue;
+			}
+			int[] cps = part.codePoints().toArray();
+			boolean cjk = false;
+			for (int cp : cps) {
+				cjk |= WorldWords.cjk(cp);
+			}
+			if (!cjk) {
 				out.add(new Piece(part, true));
+				continue;
+			}
+			boolean first = true;
+			for (int[] unit : WorldWords.cjkUnits(cps, 0, cps.length)) {
+				out.add(new Piece(new String(cps, unit[0], unit[1] - unit[0]), first));
+				first = false;
 			}
 		}
 		return out;
