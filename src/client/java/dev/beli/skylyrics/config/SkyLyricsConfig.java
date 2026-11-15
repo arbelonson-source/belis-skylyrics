@@ -674,10 +674,14 @@ public final class SkyLyricsConfig {
 		}
 	}
 
+	/** Fields that are the player's own data or state, not look/behaviour settings; "Reset all" leaves them alone. */
+	private static final java.util.Set<String> KEPT_ON_RESET = java.util.Set.of(
+			"introSeen", "updates", "spotifyClientId", "songOffsets", "recentSearches");
+
 	public void resetToDefaults() {
 		SkyLyricsConfig d = new SkyLyricsConfig();
 		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
-			if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+			if (java.lang.reflect.Modifier.isStatic(field.getModifiers()) || KEPT_ON_RESET.contains(field.getName())) {
 				continue;
 			}
 			try {
