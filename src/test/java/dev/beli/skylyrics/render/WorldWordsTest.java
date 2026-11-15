@@ -897,4 +897,39 @@ class WorldWordsTest {
 			assertTrue(chunks.get(pick)[1] - chunks.get(pick)[0] <= 14);
 		}
 	}
+
+	/**
+	 * A rewind lets every word go but keeps the song title up. The cards are put in by reflection: placing one for real
+	 * needs a camera and a font, which only exist in the running game.
+	 */
+	@Test
+	void rewindLetsWordsGoButKeepsTheTitle() throws Exception {
+		WorldWords words = new WorldWords();
+		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
+		var make = cardClass.getDeclaredConstructors()[0];
+		make.setAccessible(true);
+		var cardsField = WorldWords.class.getDeclaredField("cards");
+		cardsField.setAccessible(true);
+		var titleField = cardClass.getDeclaredField("title");
+		titleField.setAccessible(true);
+		var goneAt = cardClass.getDeclaredField("goneAt");
+		goneAt.setAccessible(true);
+		List<Object> cards = new ArrayList<>();
+		for (int i = 0; i < 4; i++) {
+			Object card = make.newInstance(LyricsRenderer.Display.of("WORD" + i), new float[] {1}, Vec3.ZERO, 0f, 0f, 0f, 1f, 0L);
+			titleField.setBoolean(card, i == 3);
+			cards.add(card);
+		}
+		@SuppressWarnings("unchecked")
+		List<Object> inside = (List<Object>) cardsField.get(words);
+		inside.addAll(cards);
+		words.rewind(5_000L);
+		for (Object card : cards) {
+			if (titleField.getBoolean(card)) {
+				assertEquals(-1L, goneAt.getLong(card), "the title stays up");
+			} else {
+				assertEquals(5_000L, goneAt.getLong(card), "a word starts leaving");
+			}
+		}
+	}
 }
