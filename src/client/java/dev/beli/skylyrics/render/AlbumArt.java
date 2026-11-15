@@ -282,6 +282,31 @@ public final class AlbumArt {
 	 * with raw spaces, "file://localhost/a", "file:/a", percent-encoded or raw unicode. Another host's file is not local.
 	 */
 	static @Nullable Path fileUrlPath(@Nullable String url) {
+		if (url == null) {
+			return null;
+		}
+		try {
+			// The strict way first: right for a Windows drive and for any well-formed address on every system
+			URI uri = URI.create(url);
+			if ("file".equalsIgnoreCase(uri.getScheme())) {
+				return Path.of(uri);
+			}
+		} catch (RuntimeException e) {
+			// raw spaces, "localhost" and other loose forms: decoded by hand below
+		}
+		String decoded = fileUrlString(url);
+		if (decoded == null) {
+			return null;
+		}
+		try {
+			return Path.of(decoded);
+		} catch (java.nio.file.InvalidPathException e) {
+			return null;
+		}
+	}
+
+	/** The decoded path text of a loose file address ("/home/a b/c.jpg", "C:/Users/c.jpg"), or null when it isn't a local file. */
+	static @Nullable String fileUrlString(@Nullable String url) {
 		if (url == null || url.length() < 6 || !url.regionMatches(true, 0, "file:", 0, 5)) {
 			return null;
 		}
@@ -316,11 +341,11 @@ public final class AlbumArt {
 		if (decoded.indexOf('\0') >= 0) {
 			return null;
 		}
-		try {
-			return Path.of(decoded);
-		} catch (java.nio.file.InvalidPathException e) {
-			return null;
+		// "/C:/Users/x": a Windows drive, without the slash in front
+		if (decoded.length() >= 3 && decoded.charAt(0) == '/' && Character.isLetter(decoded.charAt(1)) && decoded.charAt(1) < 128 && decoded.charAt(2) == ':') {
+			decoded = decoded.substring(1);
 		}
+		return decoded;
 	}
 
 	/** Decodes the bytes unless there are none (over the byte cap) or the picture header announces too many pixels. */

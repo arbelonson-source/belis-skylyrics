@@ -44,4 +44,22 @@ class AlbumArtFileUrlTest {
 		assertNull(AlbumArt.fileUrlPath(null));
 		assertNull(AlbumArt.fileUrlPath("file://host"));
 	}
+
+	@Test
+	void decodedTextForWindowsAndLooseForms() {
+		assertEquals("C:/Users/a b/cover.img", AlbumArt.fileUrlString("file:///C:/Users/a%20b/cover.img"));
+		assertEquals("C:/x.img", AlbumArt.fileUrlString("file:/C:/x.img"));
+		assertEquals("/home/u/My Music/c.jpg", AlbumArt.fileUrlString("file:///home/u/My Music/c.jpg"));
+		assertEquals("/home/u/c.jpg", AlbumArt.fileUrlString("file://localhost/home/u/c.jpg"));
+		assertNull(AlbumArt.fileUrlString("file://server/share/c.jpg"));
+	}
+
+	@Test
+	void aRealFileAddressRoundTripsOnWindows(@org.junit.jupiter.api.io.TempDir Path dir) throws Exception {
+		org.junit.jupiter.api.Assumptions.assumeTrue(System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows"), "Windows only");
+		Path file = java.nio.file.Files.writeString(dir.resolve("my cover-123.img"), "x");
+		Path back = AlbumArt.fileUrlPath(file.toUri().toString());
+		org.junit.jupiter.api.Assertions.assertNotNull(back);
+		org.junit.jupiter.api.Assertions.assertTrue(java.nio.file.Files.isRegularFile(back));
+	}
 }
