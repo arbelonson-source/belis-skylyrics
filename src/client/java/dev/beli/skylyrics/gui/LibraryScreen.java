@@ -51,6 +51,8 @@ public final class LibraryScreen extends Screen {
 	private static final float STAGGER = 0.03f;
 	private static final float POP = 0.35f;
 	private static final float TOAST_TIME = 3;
+	/** A page that failed in the middle of a list is tried again after this many seconds. */
+	private static final float RETRY_AFTER = 4;
 	/** How many of the following songs are queued after the one clicked. */
 	private static final int QUEUE = 50;
 
@@ -149,6 +151,7 @@ public final class LibraryScreen extends Screen {
 		String error = "";
 		float scroll;
 		float scrollTarget;
+		float retryAt;
 
 		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader) {
 			this.loader = loader;
@@ -177,6 +180,7 @@ public final class LibraryScreen extends Screen {
 				error = message(e.getCause());
 			}
 			pending = null;
+				retryAt = clock + RETRY_AFTER;
 			loaded = true;
 		}
 	}
@@ -328,7 +332,7 @@ public final class LibraryScreen extends Screen {
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
 				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
 			};
-			if (nearEnd && shelf.error.isEmpty()) {
+			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt)) {
 				shelf.more();
 			}
 			if (view() == SkyLyricsConfig.LibraryView.CAROUSEL && selected < 0 && !shelf.items.isEmpty()) {
@@ -1029,6 +1033,12 @@ public final class LibraryScreen extends Screen {
 			}
 			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
 				int hit = shelfHitAt(shelf, mx, my);
+			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
+					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) + 8)) <= 8) {
+				// The error line under the last card is a button too
+				shelf.more();
+				return true;
+			}
 				if (hit >= 0) {
 					selected = hit;
 					activate(shelf, hit);
