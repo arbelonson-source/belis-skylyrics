@@ -67,6 +67,36 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void positionFollowsPlaybackSpeed() {
+		// Reported 61 s in, 2 s ago, at 1.5x: 3 s of song have passed
+		assertEquals(64_000, WindowsMediaSource.position(61_000, 1_000_000, true, 200_000, 1_002_000, 1.5));
+		assertEquals(65_000, WindowsMediaSource.position(61_000, 1_000_000, true, 200_000, 1_002_000, 2.0));
+		// Paused: speed doesn't matter
+		assertEquals(61_000, WindowsMediaSource.position(61_000, 1_000_000, false, 200_000, 1_002_000, 2.0));
+		// Silly speeds count as normal
+		for (double silly : new double[] {0, -1, 4.5, 100, Double.NaN, Double.POSITIVE_INFINITY}) {
+			assertEquals(63_000, WindowsMediaSource.position(61_000, 1_000_000, true, 200_000, 1_002_000, silly), "rate " + silly);
+		}
+		assertEquals(4.0, WindowsMediaSource.saneRate(4.0));
+	}
+
+	@Test
+	void readsPlaybackSpeedFromPollAnswers() {
+		JsonObject reply = JsonParser.parseString("""
+				{"seq":3,"ok":true,"sessions":[
+				 {"id":"MSEdge","title":"Fast","status":"Playing","positionMs":10000,"startMs":0,"endMs":0,"updatedMs":1000,"rate":1.5},
+				 {"id":"Spotify.exe","title":"Plain","status":"Playing","positionMs":10000,"startMs":0,"endMs":0,"updatedMs":1000},
+				 {"id":"Chrome","title":"Odd","status":"Playing","positionMs":10000,"startMs":0,"endMs":0,"updatedMs":1000,"rate":"fast"}
+				]}""").getAsJsonObject();
+		List<WindowsMediaSource.Session> s = WindowsMediaSource.sessions(reply, 3000);
+		assertEquals(1.5, s.get(0).rate());
+		assertEquals(13_000, s.get(0).positionMs());
+		assertEquals(1.0, s.get(1).rate());
+		assertEquals(12_000, s.get(1).positionMs());
+		assertEquals(1.0, s.get(2).rate());
+	}
+
+	@Test
 	void readsPollAnswers() {
 		JsonObject reply = JsonParser.parseString("""
 				{"seq":3,"ok":true,"sessions":[

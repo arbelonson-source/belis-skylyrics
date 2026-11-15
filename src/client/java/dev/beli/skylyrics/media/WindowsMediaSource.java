@@ -100,7 +100,7 @@ public final class WindowsMediaSource implements MediaSource {
 	 *
 	 * @param index its place in the helper's list; browsers give every tab the same {@code id}, so this tells them apart
 	 */
-	record Session(int index, String id, Track track, long positionMs, boolean playing) {
+	record Session(int index, String id, Track track, long positionMs, boolean playing, double rate) {
 		String key() {
 			return id + "#" + index;
 		}
@@ -118,7 +118,7 @@ public final class WindowsMediaSource implements MediaSource {
 		}
 		current = chosen.key();
 		currentDisplayName = prettyName(chosen.track().player());
-		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), System.nanoTime());
+		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), System.nanoTime(), chosen.rate());
 	}
 
 	/** The players in a poll answer, with their positions moved on to {@code nowMs}. */
@@ -141,9 +141,10 @@ public final class WindowsMediaSource implements MediaSource {
 			boolean playing = "Playing".equalsIgnoreCase(string(o, "status"));
 			long start = number(o, "startMs");
 			long length = Math.max(0, number(o, "endMs") - start);
-			long position = position(number(o, "positionMs") - start, number(o, "updatedMs"), playing, length, nowMs);
+			double rate = rate(o);
+			long position = position(number(o, "positionMs") - start, number(o, "updatedMs"), playing, length, nowMs, rate);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
-			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing));
+			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing, rate));
 		}
 		return out;
 	}
@@ -153,14 +154,33 @@ public final class WindowsMediaSource implements MediaSource {
 	 * While playing, the song has moved on since.
 	 */
 	static long position(long positionMs, long updatedMs, boolean playing, long lengthMs, long nowMs) {
+		return position(positionMs, updatedMs, playing, lengthMs, nowMs, 1.0);
+	}
+
+	/** As above, for a player running at {@code rate} (1.5 = song time passes 1.5 times faster than the clock). */
+	static long position(long positionMs, long updatedMs, boolean playing, long lengthMs, long nowMs, double rate) {
 		long pos = positionMs;
 		if (playing && updatedMs > 0 && nowMs > updatedMs) {
-			pos += nowMs - updatedMs;
+			pos += (long) ((nowMs - updatedMs) * saneRate(rate));
 		}
 		if (lengthMs > 0) {
 			pos = Math.min(pos, lengthMs);
 		}
 		return Math.max(0, pos);
+	}
+
+	/** Speeds that make no sense (zero, negative, over 4x, not a number) count as normal speed. */
+	static double saneRate(double rate) {
+		return rate > 0 && rate <= 4 ? rate : 1.0;
+	}
+
+	private static double rate(JsonObject o) {
+		JsonElement e = o.get("rate");
+		try {
+			return e == null || !e.isJsonPrimitive() ? 1.0 : saneRate(e.getAsDouble());
+		} catch (NumberFormatException ex) {
+			return 1.0;
+		}
 	}
 
 	private static String coverUrl(String file) {

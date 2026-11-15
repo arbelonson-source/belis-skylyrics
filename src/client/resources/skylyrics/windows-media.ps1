@@ -93,6 +93,22 @@ function Unix([DateTimeOffset]$time) {
 	return $time.ToUnixTimeMilliseconds()
 }
 
+# Playback speed (1.0 normal, 1.5 for a 1.5x video); players that don't say get 1.0
+function Rate($info) {
+	$rate = 1.0
+	try {
+		if ($null -ne $info.PlaybackRate) {
+			$rate = [double]$info.PlaybackRate
+		}
+	} catch {
+		$rate = 1.0
+	}
+	if ([double]::IsNaN($rate) -or [double]::IsInfinity($rate) -or $rate -le 0) {
+		$rate = 1.0
+	}
+	return $rate.ToString('R', [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
 # Covers are saved as files the mod can open. Song key -> file. Players often switch the title a moment
 # before the cover, so a new song's cover is only read once it has been playing for a little while.
 $covers = @{}
@@ -216,12 +232,14 @@ function Poll {
 			$timeline = $session.GetTimelineProperties()
 			$id = [string]$session.SourceAppUserModelId
 			$cover = Cover $media ($id + '|' + $media.Artist + '|' + $media.Title)
+			$info = $session.GetPlaybackInfo()
 			$json = '{"index":' + $i +
 				',"id":' + (J $id) +
 				',"title":' + (J $media.Title) +
 				',"artist":' + (J $media.Artist) +
 				',"album":' + (J $media.AlbumTitle) +
-				',"status":' + (J ([string]$session.GetPlaybackInfo().PlaybackStatus)) +
+				',"status":' + (J ([string]$info.PlaybackStatus)) +
+				',"rate":' + (Rate $info) +
 				',"positionMs":' + (Ms $timeline.Position) +
 				',"startMs":' + (Ms $timeline.StartTime) +
 				',"endMs":' + (Ms $timeline.EndTime) +
