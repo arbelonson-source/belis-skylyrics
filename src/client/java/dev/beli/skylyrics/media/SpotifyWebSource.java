@@ -120,6 +120,7 @@ public final class SpotifyWebSource implements MediaSource {
 	private volatile @Nullable ServerSocket loginServer;
 	private volatile String problem = "";
 	private Snapshot last = Snapshot.NOTHING;
+	private final StaleGuard staleGuard = new StaleGuard();
 	private long nextPollNs;
 
 	public SpotifyWebSource(Supplier<String> clientId, Path loginFile) {
@@ -594,7 +595,7 @@ public final class SpotifyWebSource implements MediaSource {
 		// The position was read somewhere during the round trip; the middle is the best guess
 		long readAt = sent + (System.nanoTime() - sent) / 2;
 		switch (response.statusCode()) {
-			case 200 -> last = parse(response.body(), readAt);
+			case 200 -> last = staleGuard.apply(last, parse(response.body(), readAt));
 			case 204 -> last = Snapshot.NOTHING;
 			case 429 -> {
 				long wait = response.headers().firstValueAsLong("Retry-After").orElse(10);
@@ -635,6 +636,48 @@ public final class SpotifyWebSource implements MediaSource {
 			response = api(method, path, access(), json);
 		}
 		return response;
+	}
+
+	/**
+	 * Right after a pause, resume or seek, Spotify's {@code progress_ms} is often the old position. A reading that
+	 * would move the song back by under {@link #MAX_BEHIND_MS} within {@link #WINDOW_NS} of a play or pause change
+	 * keeps the position we expected instead, once; the change itself still shows. A real seek back is several
+	 * seconds and is not a play or pause change, so it always applies.
+	 *
+	 * <p>The response's {@code timestamp} could be used instead, but it is when Spotify's server took its reading,
+	 * not when the progress was true, and it has been seen to be wrong on exactly these stale answers.
+	 */
+	static final class StaleGuard {
+		static final long WINDOW_NS = 1_500_000_000L;
+		static final long MAX_BEHIND_MS = 2_000;
+
+		private long flipAt;
+		private boolean used;
+
+		Snapshot apply(Snapshot before, Snapshot reading) {
+			if (before.track().isNone() || reading.track().isNone() || !before.track().equals(reading.track())) {
+				flipAt = 0;
+				return reading;
+			}
+			if (reading.playing() != before.playing()) {
+				flipAt = reading.readAtNanos();
+				used = false;
+			}
+			if (flipAt == 0 || used || reading.readAtNanos() - flipAt > WINDOW_NS) {
+				return reading;
+			}
+			long expected = before.positionMs() + (before.playing() ? (reading.readAtNanos() - before.readAtNanos()) / 1_000_000 : 0);
+			long length = reading.track().lengthMs();
+			if (length > 0) {
+				expected = Math.min(expected, length);
+			}
+			long behind = expected - reading.positionMs();
+			if (behind > 0 && behind < MAX_BEHIND_MS) {
+				used = true;
+				return new Snapshot(reading.track(), expected, reading.playing(), reading.readAtNanos(), reading.rate());
+			}
+			return reading;
+		}
 	}
 
 	/** The answer of {@code /me/player/currently-playing}; an ad or a private session reads as nothing. */

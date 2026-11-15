@@ -210,4 +210,51 @@ class SpotifyWebSourceTest {
 		assertTrue(SpotifyWebSource.keepRefresh(3, 3));
 		assertFalse(SpotifyWebSource.keepRefresh(3, 4));
 	}
+
+	private static final long SEC = 1_000_000_000L;
+	private static final Track SONG = new Track("Song", "Made Up Band", "Album", 200_000, "", "Spotify");
+
+	private static Snapshot snap(long positionMs, boolean playing, long atSec) {
+		return new Snapshot(SONG, positionMs, playing, atSec * SEC);
+	}
+
+	@Test
+	void staleProgressRightAfterAPauseIsIgnoredOnce() {
+		SpotifyWebSource.StaleGuard guard = new SpotifyWebSource.StaleGuard();
+		Snapshot playing = snap(61_000, true, 100);
+		// Paused 1 s later; the song was at 62 s but Spotify still says 60.8 s
+		Snapshot paused = guard.apply(playing, snap(60_800, false, 101));
+		assertFalse(paused.playing(), "the pause itself shows");
+		assertEquals(62_000, paused.positionMs());
+		// The next reading is not shielded again
+		assertEquals(61_500, guard.apply(paused, snap(61_500, false, 102)).positionMs());
+	}
+
+	@Test
+	void staleProgressRightAfterAResumeIsIgnored() {
+		SpotifyWebSource.StaleGuard guard = new SpotifyWebSource.StaleGuard();
+		Snapshot paused = snap(60_000, false, 100);
+		Snapshot resumed = guard.apply(paused, snap(59_000, true, 104));
+		assertTrue(resumed.playing());
+		assertEquals(60_000, resumed.positionMs());
+	}
+
+	@Test
+	void aRealSeekBackStillApplies() {
+		SpotifyWebSource.StaleGuard guard = new SpotifyWebSource.StaleGuard();
+		Snapshot playing = snap(61_000, true, 100);
+		// A seek is not a play or pause change: applied at once, however small
+		assertEquals(40_000, guard.apply(playing, snap(40_000, true, 101)).positionMs());
+		assertEquals(60_500, guard.apply(playing, snap(60_500, true, 101)).positionMs());
+		// And a jump of several seconds with a pause at the same time is a seek too
+		assertEquals(30_000, guard.apply(playing, snap(30_000, false, 101)).positionMs());
+	}
+
+	@Test
+	void aStaleLookingReadingLongAfterAPauseIsBelieved() {
+		SpotifyWebSource.StaleGuard guard = new SpotifyWebSource.StaleGuard();
+		Snapshot paused = guard.apply(snap(61_000, true, 100), snap(61_000, false, 101));
+		// 4 s on (the idle poll), still paused: the user dragged the bar back a second
+		assertEquals(60_000, guard.apply(paused, snap(60_000, false, 105)).positionMs());
+	}
 }
