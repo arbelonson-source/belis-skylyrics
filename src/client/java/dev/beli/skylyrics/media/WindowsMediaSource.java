@@ -110,7 +110,7 @@ public final class WindowsMediaSource implements MediaSource {
 	public synchronized Snapshot poll() throws Exception {
 		List<Session> sessions = sessions(request("poll"), System.currentTimeMillis());
 		Session chosen = PlayerPicker.choose(sessions, Session::key, s -> s.track().player(), Session::playing,
-				preferredPlayer.get(), current);
+				preferredPlayer.get(), followKey(sessions, current));
 		currentSession = chosen;
 		if (chosen == null) {
 			current = null;
@@ -119,6 +119,30 @@ public final class WindowsMediaSource implements MediaSource {
 		current = chosen.key();
 		currentDisplayName = prettyName(chosen.track().player());
 		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), System.nanoTime(), chosen.rate());
+	}
+
+	/**
+	 * The key to keep following. When another player closes, the numbers after it shift and the followed player's
+	 * exact key is gone; then it is the same app (preferably the one playing) that we still mean.
+	 */
+	static @Nullable String followKey(List<Session> sessions, @Nullable String current) {
+		if (current == null) {
+			return null;
+		}
+		for (Session s : sessions) {
+			if (s.key().equals(current)) {
+				return current;
+			}
+		}
+		int hash = current.lastIndexOf('#');
+		String id = hash < 0 ? current : current.substring(0, hash);
+		Session same = null;
+		for (Session s : sessions) {
+			if (s.id().equals(id) && (same == null || s.playing() && !same.playing())) {
+				same = s;
+			}
+		}
+		return same == null ? current : same.key();
 	}
 
 	/** The players in a poll answer, with their positions moved on to {@code nowMs}. */

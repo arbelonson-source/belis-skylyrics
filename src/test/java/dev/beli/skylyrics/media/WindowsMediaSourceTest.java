@@ -108,6 +108,29 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void keepsFollowingTheSameAppWhenAnEarlierPlayerCloses() {
+		Track t = new Track("A", "", "", 0, "", "chrome");
+		// Followed Spotify#2; the player before it closed, so Spotify is #1 now and Edge (playing) is #0
+		List<WindowsMediaSource.Session> sessions = List.of(
+				new WindowsMediaSource.Session(0, "MSEdge", t, 0, true, 1.0),
+				new WindowsMediaSource.Session(1, "Spotify.exe", t, 0, true, 1.0));
+		assertEquals("Spotify.exe#1", WindowsMediaSource.followKey(sessions, "Spotify.exe#2"));
+		// The exact key is still there: unchanged
+		assertEquals("MSEdge#0", WindowsMediaSource.followKey(sessions, "MSEdge#0"));
+		// Two tabs of one app: prefer the one playing
+		List<WindowsMediaSource.Session> tabs = List.of(
+				new WindowsMediaSource.Session(0, "Chrome", t, 0, false, 1.0),
+				new WindowsMediaSource.Session(1, "Chrome", t, 0, true, 1.0));
+		assertEquals("Chrome#1", WindowsMediaSource.followKey(tabs, "Chrome#5"));
+		// The app is gone, or nothing followed yet
+		assertEquals("Gone.exe#0", WindowsMediaSource.followKey(sessions, "Gone.exe#0"));
+		assertEquals(null, WindowsMediaSource.followKey(sessions, null));
+		// And the picker then sticks with it, as it does for an exact key
+		assertEquals("Spotify.exe#1", PlayerPicker.choose(sessions, WindowsMediaSource.Session::key, s -> "x",
+				WindowsMediaSource.Session::playing, "", WindowsMediaSource.followKey(sessions, "Spotify.exe#2")).key());
+	}
+
+	@Test
 	void readsPollAnswers() {
 		JsonObject reply = JsonParser.parseString("""
 				{"seq":3,"ok":true,"sessions":[
