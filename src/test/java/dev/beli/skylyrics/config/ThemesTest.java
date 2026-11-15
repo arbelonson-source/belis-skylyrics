@@ -138,9 +138,9 @@ class ThemesTest {
 
 		Themes.apply(theme("retro"), cfg);
 		assertSame(theme("retro"), Themes.active(cfg));
-		cfg.shadow = false;
+		cfg.size = 1.7f;
 		assertNull(Themes.active(cfg));
-		cfg.shadow = true;
+		cfg.size = theme("retro").preview().size;
 		assertSame(theme("retro"), Themes.active(cfg));
 
 		cfg.distance = 20;
@@ -232,5 +232,18 @@ class ThemesTest {
 		Themes.apply(theme("neon"), cfg);
 		assertEquals(1f, cfg.size, 0f);
 		assertSame(theme("neon"), Themes.active(cfg));
+	}
+
+	@Test
+	void settingsNoThemeSetsDoNotMakeTheThemeCustom() {
+		for (Theme theme : Themes.ALL) {
+			SkyLyricsConfig cfg = new SkyLyricsConfig();
+			cfg.karaoke = false;
+			cfg.shadow = !cfg.shadow;
+			Themes.apply(theme, cfg);
+			assertSame(theme, Themes.active(cfg), theme.id());
+			cfg.glow = cfg.glow > 0.5f ? 0.1f : 0.95f;
+			assertNull(Themes.active(cfg), theme.id());
+		}
 	}
 }

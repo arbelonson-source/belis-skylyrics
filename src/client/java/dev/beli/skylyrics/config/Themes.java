@@ -246,7 +246,7 @@ public final class Themes {
 
 	static boolean sameLook(SkyLyricsConfig a, SkyLyricsConfig b) {
 		try {
-			for (Field f : FIELDS) {
+			for (Field f : THEMED) {
 				if (f.getName().equals("color") && a.colorMode != ColorMode.FIXED || f.getName().equals("glowColor") && !a.glowPick
 						|| f.getName().equals("toneColor") && !a.twoTone) {
 					continue;
