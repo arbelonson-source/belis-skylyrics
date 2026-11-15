@@ -939,4 +939,70 @@ class WorldWordsTest {
 			}
 		}
 	}
+
+	@Test
+	void aTitleIsNotAnnouncedWhileTheLyricsLoad() {
+		assertFalse(LyricsRenderer.titleCanShow(false, 0.9f), "the old song's words still fading out, new lyrics not in");
+		assertFalse(LyricsRenderer.titleCanShow(true, 0f), "lyrics in but nothing visible yet");
+		assertTrue(LyricsRenderer.titleCanShow(true, 0.5f));
+	}
+
+	@Test
+	void aLongTitleIsShrunkToFitTheView() {
+		float card = 0.06f * 1.7f, distance = WorldWords.TITLE_DISTANCE;
+		// 32 letters of about 5.5 text units each, at a big Size setting
+		float fitted = WorldWords.fitTitle(card, 176f, 2f, distance);
+		assertTrue(fitted < card);
+		float width = 176f * fitted * 2f;
+		assertEquals(WorldWords.TITLE_MAX_DEGREES, 2 * (float) Math.toDegrees(Math.atan(width / 2 / distance)), 0.5f);
+		assertEquals(card, WorldWords.fitTitle(card, 40f, 1f, distance), "a short title keeps its size");
+	}
+
+	@Test
+	void aLineAlreadyOverWhenItStartsSpawnsNothing() {
+		assertEquals(3, WorldWords.skipTo(0, 3, true, true), "no ghost words after a respawn in a line's tail");
+		assertEquals(0, WorldWords.skipTo(0, 0, true, false), "a line just starting spawns from the first piece");
+		int far = WorldWords.CATCH_UP + 5;
+		assertEquals(far - WorldWords.CATCH_UP, WorldWords.skipTo(0, far, true, false), "catch-up stays capped");
+		assertEquals(2, WorldWords.skipTo(2, 3, false, true), "a line already going on spawns its last piece");
+	}
+
+	/** A card out of reach (such as after a teleport) fades like any let-go card instead of blinking out. */
+	@Test
+	void aCardOutOfReachFadesInsteadOfVanishing() throws Exception {
+		WorldWords words = new WorldWords();
+		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
+		var make = cardClass.getDeclaredConstructors()[0];
+		make.setAccessible(true);
+		var cardsField = WorldWords.class.getDeclaredField("cards");
+		cardsField.setAccessible(true);
+		var goneAt = cardClass.getDeclaredField("goneAt");
+		goneAt.setAccessible(true);
+		Object far = make.newInstance(LyricsRenderer.Display.of("FAR"), new float[] {1}, new Vec3(100, 0, 0), 0f, 0f, 0f, 1f, 0L);
+		Object near = make.newInstance(LyricsRenderer.Display.of("NEAR"), new float[] {1}, new Vec3(5, 0, 0), 0f, 0f, 0f, 1f, 0L);
+		@SuppressWarnings("unchecked")
+		List<Object> inside = (List<Object>) cardsField.get(words);
+		inside.add(far);
+		inside.add(near);
+		words.expire(Vec3.ZERO, 1_000L);
+		assertEquals(2, inside.size(), "still there, fading");
+		assertEquals(1_000L, goneAt.getLong(far));
+		assertEquals(-1L, goneAt.getLong(near));
+		words.expire(Vec3.ZERO, 1_000L + 100_000_000_000L);
+		assertEquals(List.of(near), inside, "gone once the fade is over");
+	}
+
+	@Test
+	void aQueuedSwingIsForgottenWhenTheWordsAreClearedOrHidden() throws Exception {
+		WorldWords words = new WorldWords();
+		var swung = WorldWords.class.getDeclaredField("swung");
+		swung.setAccessible(true);
+		words.swing();
+		assertTrue(swung.getBoolean(words), "a swing is queued");
+		words.clear();
+		assertFalse(swung.getBoolean(words), "clearing forgets it");
+		words.swing();
+		words.dropSwing();
+		assertFalse(swung.getBoolean(words), "so does a frame that draws nothing");
+	}
 }

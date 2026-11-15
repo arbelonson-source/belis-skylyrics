@@ -24,6 +24,9 @@
 - A very long song title from a player or a lyrics site can no longer hold up the lyrics lookup.
 - A rare error in the lyrics drawing no longer crashes the game; the lyrics pause for a few seconds and the error goes to the log.
 - Works alongside other mods that change how fonts are uploaded on 1.21.1 and 1.21.4.
+- In the World layout the song title shows for its full time even when the lyrics take a moment to load, and a long title is shrunk to fit.
+- In the World layout, respawning or changing world during the end of a line no longer flashes its last words, and a word that is far away fades out instead of vanishing.
+- Hitting mobs while the World lyrics are hidden no longer knocks a word when they show again.
 
 ### Faster
 
