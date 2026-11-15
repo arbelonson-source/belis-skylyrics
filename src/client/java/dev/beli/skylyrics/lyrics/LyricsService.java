@@ -70,10 +70,10 @@ public final class LyricsService {
 	private final AtomicLong generation = new AtomicLong();
 
 	/** What the song, its lyrics and the state are right now. One object, so a reader never sees the new song with the old lyrics. */
-	private record Current(Track track, Lyrics lyrics, State state) {
+	public record Snapshot(Track track, Lyrics lyrics, State state) {
 	}
 
-	private volatile Current current = new Current(Track.NONE, Lyrics.NONE, State.IDLE);
+	private volatile Snapshot current = new Snapshot(Track.NONE, Lyrics.NONE, State.IDLE);
 	/** Test seam: runs just before a worker publishes its answer, after the work that takes time. */
 	volatile Runnable beforePublish = () -> { };
 	/** The fetch running or waiting (or the retry scheduled) for the current song. */
@@ -100,6 +100,18 @@ public final class LyricsService {
 		return RETRY_DELAYS_MS[Math.min(Math.max(failures, 1), RETRY_DELAYS_MS.length) - 1];
 	}
 
+	/** The song, its lyrics and the state as they are right now, read once so they belong together. */
+	public Snapshot snapshot() {
+		return current;
+	}
+
+	/** Dev test hook only: swaps the shown lyrics for the current song, keeping track and state. */
+	public void swapLyricsForTest(Lyrics l) {
+		synchronized (fetchLock) {
+			current = new Snapshot(current.track, l, current.state);
+		}
+	}
+
 	public Track track() {
 		return current.track;
 	}
@@ -115,23 +127,23 @@ public final class LyricsService {
 	/** Called when the song changes. */
 	public void load(Track newTrack) {
 		synchronized (fetchLock) {
-			Current now = current;
+			Snapshot now = current;
 			Track old = now.track;
 			if (!newTrack.isNone() && newTrack.sameSong(old) && newTrack.lengthMs() == old.lengthMs()) {
-				current = new Current(newTrack, now.lyrics, now.state); // only the cover changed; keep the lyrics (or the lookup) going
+				current = new Snapshot(newTrack, now.lyrics, now.state); // only the cover changed; keep the lyrics (or the lookup) going
 				return;
 			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
 			if (newTrack.isNone()) {
-				current = new Current(newTrack, Lyrics.NONE, State.IDLE);
+				current = new Snapshot(newTrack, Lyrics.NONE, State.IDLE);
 				return;
 			}
 			if (DemoSource.PLAYER.equals(newTrack.player())) {
-				current = new Current(newTrack, LrcParser.parseSynced(DemoSource.LYRICS), State.READY);
+				current = new Snapshot(newTrack, LrcParser.parseSynced(DemoSource.LYRICS), State.READY);
 				return;
 			}
-			current = new Current(newTrack, Lyrics.NONE, State.LOADING);
+			current = new Snapshot(newTrack, Lyrics.NONE, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
 		}
 	}
@@ -139,14 +151,14 @@ public final class LyricsService {
 	/** Forget the cached answer for this song and ask again. */
 	public void retry() {
 		synchronized (fetchLock) {
-			Current now = current;
+			Snapshot now = current;
 			Track t = now.track; // read under the lock: a load() in between can't leave us asking about the old song
 			if (t.isNone() || DemoSource.PLAYER.equals(t.player())) {
 				return;
 			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
-			current = new Current(t, now.lyrics, State.LOADING);
+			current = new Snapshot(t, now.lyrics, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(t, gen, true, 0));
 		}
 	}
@@ -246,7 +258,7 @@ public final class LyricsService {
 				if (generation.get() != gen) {
 					return; // a new song's load() came in meanwhile and owns pendingFetch now
 				}
-				current = new Current(current.track, current.lyrics, State.ERROR);
+				current = new Snapshot(current.track, current.lyrics, State.ERROR);
 				try {
 					pendingFetch = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
 				} catch (RejectedExecutionException ignored) {
@@ -308,7 +320,7 @@ public final class LyricsService {
 			if (generation.get() != gen) {
 				return false;
 			}
-			current = new Current(current.track, parsed, found(parsed) ? State.READY : State.NOT_FOUND);
+			current = new Snapshot(current.track, parsed, found(parsed) ? State.READY : State.NOT_FOUND);
 			return true;
 		}
 	}
@@ -318,7 +330,7 @@ public final class LyricsService {
 		beforePublish.run();
 		synchronized (fetchLock) {
 			if (generation.get() == gen) {
-				current = new Current(current.track, current.lyrics, State.ERROR);
+				current = new Snapshot(current.track, current.lyrics, State.ERROR);
 			}
 		}
 	}

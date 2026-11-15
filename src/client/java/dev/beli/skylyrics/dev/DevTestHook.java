@@ -246,13 +246,7 @@ public final class DevTestHook {
 		for (int i = 0, ms = 0; ms < DemoSource.TRACK.lengthMs(); i++, ms += 4000) {
 			lrc.append(String.format("[%02d:%02d.00]%s%n", ms / 60000, ms / 1000 % 60, parts[i % parts.length]));
 		}
-		try {
-			java.lang.reflect.Field field = LyricsService.class.getDeclaredField("lyrics");
-			field.setAccessible(true);
-			field.set(SkyLyricsClient.get().lyrics(), LrcParser.parseSynced(lrc.toString()));
-		} catch (ReflectiveOperationException e) {
-			throw new IllegalArgumentException("could not swap the lyrics", e);
-		}
+		swapLyrics(LrcParser.parseSynced(lrc.toString()));
 	}
 
 	/** "plain a | b | c": like "lines", but as lyrics without timing, spread over the demo song the way plain lyrics are. */
@@ -261,13 +255,7 @@ public final class DevTestHook {
 	}
 
 	private static void swapLyrics(dev.beli.skylyrics.lyrics.Lyrics lyrics) {
-		try {
-			java.lang.reflect.Field field = LyricsService.class.getDeclaredField("lyrics");
-			field.setAccessible(true);
-			field.set(SkyLyricsClient.get().lyrics(), lyrics);
-		} catch (ReflectiveOperationException e) {
-			throw new IllegalArgumentException("could not swap the lyrics", e);
-		}
+		SkyLyricsClient.get().lyrics().swapLyricsForTest(lyrics);
 	}
 
 	/** "set field value": changes one config field for this run (not saved). */

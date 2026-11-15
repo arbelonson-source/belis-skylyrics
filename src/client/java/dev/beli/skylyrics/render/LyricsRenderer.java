@@ -459,10 +459,11 @@ public final class LyricsRenderer {
 	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
 	private long takeLyrics(SkyLyricsConfig cfg) {
 		Track playing = tracker.track();
-		Track loaded = service.track();
+		LyricsService.Snapshot snap = service.snapshot();
+		Track loaded = snap.track();
 		// The tracker moves to a new song a moment before the lyrics are asked for: never show the old song's lines then
 		// (title and artist only: a late album alone doesn't reload the lyrics)
-		Lyrics current = loaded.title().equals(playing.title()) && loaded.artist().equals(playing.artist()) ? service.lyrics() : Lyrics.NONE;
+		Lyrics current = loaded.title().equals(playing.title()) && loaded.artist().equals(playing.artist()) ? snap.lyrics() : Lyrics.NONE;
 		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
 			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
 		}

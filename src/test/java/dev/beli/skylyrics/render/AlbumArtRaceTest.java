@@ -2,6 +2,8 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -12,6 +14,7 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.TimeUnit;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import org.junit.jupiter.api.Test;
 
 import dev.beli.skylyrics.media.Track;
@@ -66,7 +69,11 @@ class AlbumArtRaceTest {
 	}
 
 	private static Track song(String art) {
-		return new Track("T", "Nova Lane", "", 180_000, art, "spotify");
+		return song("T", art);
+	}
+
+	private static Track song(String title, String art) {
+		return new Track(title, "Nova Lane", "", 180_000, art, "spotify");
 	}
 
 	@Test
@@ -108,9 +115,44 @@ class AlbumArtRaceTest {
 	@Test
 	void theColourFallsBackAsSoonAsTheCoverChanges() {
 		AlbumArt art = new AlbumArt(new RecordingExecutor());
-		art.load(song("https://example.invalid/a.jpg"));
+		art.load(song("A", "https://example.invalid/a.jpg"));
 		art.color = 0x00FF00; // A's colour, picked from its cover
-		art.load(song("https://example.invalid/b.jpg"));
+		art.load(song("B", "https://example.invalid/b.jpg"));
 		assertEquals(AlbumArt.FALLBACK_COLOR, art.color(), "A's colour must not glow on B while B's cover loads");
+	}
+
+	@Test
+	void aCoverChangeOfTheSameSongKeepsTheColour() {
+		AlbumArt art = new AlbumArt(new RecordingExecutor());
+		art.load(song("A", "https://example.invalid/a-640.jpg"));
+		art.color = 0x00FF00;
+		art.load(song("A", "https://example.invalid/a-300.jpg")); // another image size, or the album arriving late
+		assertEquals(0x00FF00, art.color(), "no flash to the fallback for the same song");
+		art.load(song("A", ""));
+		assertEquals(AlbumArt.FALLBACK_COLOR, art.color(), "no cover at all falls back");
+	}
+
+	/** The real upload() starts with this step: a cover from a song we already left is closed and never uploaded. */
+	@Test
+	void aStaleCoverIsClosedAndNotTaken() {
+		AlbumArt art = new AlbumArt(new RecordingExecutor());
+		art.load(song("A", "file:///a.png"));
+		art.load(song("B", "file:///b.png"));
+		List<NativeImage> closed = new ArrayList<>();
+		art.closeStale = image -> {
+			closed.add(image);
+			image.close();
+		};
+		NativeImage late = new NativeImage(2, 2, false);
+		art.offer(late, 1); // a worker handing A's cover over after load(B)
+		assertNull(art.takeIfCurrent());
+		assertEquals(List.of(late), closed, "the stale image is closed");
+		assertFalse(art.hasTexture());
+		NativeImage mine = new NativeImage(2, 2, false);
+		art.offer(mine, 2);
+		AlbumArt.Pending taken = art.takeIfCurrent();
+		assertNotNull(taken);
+		assertEquals(2, taken.gen());
+		mine.close();
 	}
 }

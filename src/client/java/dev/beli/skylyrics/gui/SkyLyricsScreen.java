@@ -720,8 +720,9 @@ public final class SkyLyricsScreen extends Screen {
 		if (mod.tracker().track() == Track.NONE) {
 			return Tr.t("Waiting for a song");
 		}
-		Lyrics lyrics = mod.lyrics().lyrics();
-		return switch (mod.lyrics().state()) {
+		LyricsService.Snapshot snap = mod.lyrics().snapshot();
+		Lyrics lyrics = snap.lyrics();
+		return switch (snap.state()) {
 			case IDLE -> Tr.t("Waiting for a song");
 			case LOADING -> Tr.t("Looking for lyrics…");
 			case READY -> lyrics.instrumental() ? Tr.t("Instrumental, no words")

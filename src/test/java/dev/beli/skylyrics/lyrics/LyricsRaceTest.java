@@ -30,7 +30,6 @@ class LyricsRaceTest {
 	private final CountDownLatch atPublish = new CountDownLatch(1);
 	private final CountDownLatch go = new CountDownLatch(1);
 	private final AtomicBoolean first = new AtomicBoolean(true);
-	private final CountDownLatch bRunning = new CountDownLatch(1);
 	private LyricsService service;
 	/** 0: A is found; 1: A fails with a temporary error; 2: with a permanent one. */
 	private volatile int failA;
@@ -51,7 +50,6 @@ class LyricsRaceTest {
 				}
 				return new LrclibClient.Result(SYNCED, null, false);
 			}
-			bRunning.countDown();
 			new CountDownLatch(1).await(10, TimeUnit.SECONDS); // B never answers during the test; shutdown interrupts it
 			return LrclibClient.Result.NOT_FOUND;
 		};

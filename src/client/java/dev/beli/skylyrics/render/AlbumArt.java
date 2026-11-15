@@ -87,12 +87,15 @@ public final class AlbumArt {
 	 */
 	private final AtomicReference<@Nullable Pending> pending = new AtomicReference<>();
 	/** A decoded cover and the song change it belongs to. */
-	private record Pending(NativeImage image, long gen) {
+	record Pending(NativeImage image, long gen) {
 	}
 	/** The generation of the cover on the GPU now, -1 for none yet. */
 	private volatile long uploadedGen = -1;
 	private @Nullable DynamicTexture texture;
 	private String loadedUrl = "";
+	private String loadedSong = "";
+	/** Closes a cover that arrived for a song we already left; replaced in tests to see it happen. */
+	java.util.function.Consumer<NativeImage> closeStale = NativeImage::close;
 
 	/** Bright colour from the cover. Changes smoothly are handled by the caller. */
 	public int color() {
@@ -120,26 +123,35 @@ public final class AlbumArt {
 			return;
 		}
 		loadedUrl = url;
+		String song = track.title() + "\n" + track.artist();
+		boolean newSong = !song.equals(loadedSong);
+		loadedSong = song;
 		long gen;
 		synchronized (accept) {
 			gen = generation.incrementAndGet();
-			// The last song's colour must not glow on this one while its cover loads (or if it never does)
-			color = FALLBACK_COLOR;
+			// The last song's colour must not glow on this one while its cover loads (or if it never does). A cover that
+			// only changed for the same song (a late album, another image size) keeps the colour until the new one is in.
+			if (newSong || url.isEmpty()) {
+				color = FALLBACK_COLOR;
+			}
 			Future<?> previous = job;
 			job = null;
 			if (previous != null) {
 				previous.cancel(true); // a stalled download of the last cover must not hold up this one
 			}
+			// A cover that finished decoding for the song we just left must not be shown on this one
+			Pending stale = pending.getAndSet(null);
+			if (stale != null) {
+				stale.image().close();
+			}
+			if (!url.isEmpty()) {
+				job = executor.submit(task(url, gen)); // submit doesn't block, so job is set before any later load() looks
+			}
 		}
-		// A cover that finished decoding for the song we just left must not be shown on this one
-		Pending stale = pending.getAndSet(null);
-		if (stale != null) {
-			stale.image().close();
-		}
-		if (url.isEmpty()) {
-			return;
-		}
-		Future<?> started = executor.submit(() -> {
+	}
+
+	private Runnable task(String url, long gen) {
+		return () -> {
 			try {
 				BufferedImage image = read(url);
 				if (generation.get() != gen) {
@@ -178,29 +190,40 @@ public final class AlbumArt {
 				}
 			} catch (Exception | OutOfMemoryError e) {
 				LOG.debug("Couldn't load album art {}: {}", url, e.toString());
-				if (generation.get() == gen) {
-					color = FALLBACK_COLOR;
+				synchronized (accept) {
+					if (generation.get() == gen) {
+						color = FALLBACK_COLOR;
+					}
 				}
 			}
-		});
-		synchronized (accept) {
-			if (generation.get() == gen) {
-				job = started;
-			}
+		};
+	}
+
+	/** Takes the waiting cover; one from a song we already left is closed and dropped. */
+	@Nullable Pending takeIfCurrent() {
+		Pending taken = pending.getAndSet(null);
+		if (taken != null && !isCurrent(taken.gen(), generation.get())) {
+			closeStale.accept(taken.image());
+			return null;
+		}
+		return taken;
+	}
+
+	/** Test seam: hands over a decoded cover the way the worker does. */
+	void offer(NativeImage image, long gen) {
+		Pending old = pending.getAndSet(new Pending(image, gen));
+		if (old != null) {
+			old.image().close();
 		}
 	}
 
 	/** Moves a freshly loaded cover to the GPU. Render thread only. */
 	public void upload() {
-		Pending taken = pending.getAndSet(null);
+		Pending taken = takeIfCurrent();
 		if (taken == null) {
 			return;
 		}
 		NativeImage image = taken.image();
-		if (!isCurrent(taken.gen(), generation.get())) {
-			image.close(); // the song changed since the worker handed it over
-			return;
-		}
 		Minecraft mc = Minecraft.getInstance();
 		if (texture == null) {
 			texture = new DynamicTexture(() -> "SkyLyrics album art", image) {
