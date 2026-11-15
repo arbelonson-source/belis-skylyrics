@@ -94,7 +94,7 @@ final class WorldWords {
 	/** A card cut short to make room fades out over this many seconds. */
 	private static final float CUT = 0.3f;
 	/** After a jump in the song, at most this many of the skipped pieces are spawned (the latest ones). */
-	private static final int CATCH_UP = 2;
+	static final int CATCH_UP = 2;
 	/** Once its words are over, a card fades out over this many seconds by default (the setting). */
 	static final float FADE = 1.2f;
 	/** ...and in the first of these seconds it pales towards a soft white, by this much, so it fades into the sky like a ghost
@@ -783,7 +783,9 @@ final class WorldWords {
 	 */
 	void update(int index, @Nullable String text, float sungChars, boolean over, float fixedYaw, float fixedPitch, Camera camera,
 			@Nullable ClientLevel level, Font font, Style style, long now) {
+		boolean fresh = false;
 		if (index != line || text != null && !text.equals(lineRaw)) {
+			fresh = true;
 			line = index;
 			lineRaw = text;
 			lineText = text == null || !capitals ? text : capitals(text);
@@ -803,9 +805,7 @@ final class WorldWords {
 		while (due < lineChunks.size() && lineChunks.get(due)[0] <= sungChars) {
 			due++;
 		}
-		if (due - spawned > CATCH_UP) {
-			spawned = due - CATCH_UP;
-		}
+		spawned = skipTo(spawned, due, fresh, over);
 		for (; spawned < due; spawned++) {
 			if (!hold) {
 				letGo(now);
@@ -828,6 +828,17 @@ final class WorldWords {
 				it.remove();
 			}
 		}
+	}
+
+	/**
+	 * Which piece to spawn from: at most {@link #CATCH_UP} behind the {@code due} ones, and none at all for a line that
+	 * is already over as it (re)starts (after a respawn, a world change or a layout switch), which would only flash.
+	 */
+	static int skipTo(int spawned, int due, boolean fresh, boolean over) {
+		if (fresh && over) {
+			return Math.max(spawned, due);
+		}
+		return due - spawned > CATCH_UP ? due - CATCH_UP : spawned;
 	}
 
 	/**

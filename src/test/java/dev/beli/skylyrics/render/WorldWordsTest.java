@@ -950,4 +950,13 @@ class WorldWordsTest {
 		assertEquals(WorldWords.TITLE_MAX_DEGREES, 2 * (float) Math.toDegrees(Math.atan(width / 2 / distance)), 0.5f);
 		assertEquals(card, WorldWords.fitTitle(card, 40f, 1f, distance), "a short title keeps its size");
 	}
+
+	@Test
+	void aLineAlreadyOverWhenItStartsSpawnsNothing() {
+		assertEquals(3, WorldWords.skipTo(0, 3, true, true), "no ghost words after a respawn in a line's tail");
+		assertEquals(0, WorldWords.skipTo(0, 0, true, false), "a line just starting spawns from the first piece");
+		int far = WorldWords.CATCH_UP + 5;
+		assertEquals(far - WorldWords.CATCH_UP, WorldWords.skipTo(0, far, true, false), "catch-up stays capped");
+		assertEquals(2, WorldWords.skipTo(2, 3, false, true), "a line already going on spawns its last piece");
+	}
 }
