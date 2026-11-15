@@ -196,8 +196,8 @@
   "skylyrics.ui.instrumental_no_words": "אינסטרומנטלי, בלי מילים",
   "skylyrics.ui.found_with_timing": "נמצא, עם תזמון",
   "skylyrics.ui.found_without_timing": "נמצא, בלי תזמון",
-  "skylyrics.ui.no_lyrics_found_for_this_song": "לא נמצאו מילים לשיר",
-  "skylyrics.ui.couldn_t_reach_the_lyrics_sites_offline": "אין חיבור לאתרי המילים. אין רשת?",
+  "skylyrics.ui.no_lyrics_found_for_this_song_try_retry": "לא נמצאו מילים לשיר. נסה שוב.",
+  "skylyrics.ui.couldn_t_reach_the_lyrics_sites_check_your_inter": "אין חיבור לאתרי המילים. בדוק את האינטרנט ולחץ על נסה שוב.",
   "skylyrics.ui.not_set": "לא מוגדר",
   "skylyrics.ui.preview": "תצוגה",
   "skylyrics.ui.nothing_playing": "שום דבר לא מתנגן",
@@ -228,7 +228,7 @@
   "skylyrics.ui.instrumental": "♪  אינסטרומנטלי  ♪",
   "skylyrics.ui.finding_lyrics": "מחפש מילים…",
   "skylyrics.ui.no_lyrics": "אין מילים",
-  "skylyrics.ui.offline": "לא מחובר",
+  "skylyrics.ui.lyrics_sites_unreachable": "אתרי המילים לא זמינים",
   "skylyrics.ui.unknown_song": "שיר לא ידוע",
   "skylyrics.ui.night_sky": "שמי לילה",
   "skylyrics.ui.shows_at_night_with_music": "מופיע בלילה עם מוזיקה",
@@ -502,5 +502,11 @@
   "skylyrics.ui.one_word_in_each_line_is_drawn_bigger_than_the_r": "מילה אחת בכל שורה מצוירת גדולה יותר מהשאר",
   "skylyrics.ui.two_tone": "שני גוונים",
   "skylyrics.ui.each_line_fades_into_a_second_colour": "כל שורה עוברת בהדרגה לצבע שני",
-  "skylyrics.ui.second_colour": "צבע שני"
+  "skylyrics.ui.second_colour": "צבע שני",
+  "skylyrics.ui.couldn_t_read_your_music_player": "לא הצלחנו לקרוא את נגן המוזיקה",
+  "skylyrics.ui.couldn_t_start_windows_media_reading_check_that": "לא הצלחנו להפעיל את קריאת המדיה של Windows. ודא ש-Windows PowerShell מותקן ופתח את המשחק מחדש. (%s)",
+  "skylyrics.ui.windows_media_reading_took_too_long_to_start_reo": "קריאת המדיה של Windows מתעכבת. פתח את המשחק מחדש והמתן רגע.",
+  "skylyrics.ui.windows_media_reading_stopped_right_away_check_t": "קריאת המדיה של Windows נעצרה מיד. ודא ש-Windows PowerShell מותקן ופתח את המשחק מחדש.",
+  "skylyrics.ui.minecraft_runs_as_a_flatpak_and_can_t_see_your_m": "Minecraft רץ כ-Flatpak ולא רואה את נגני המוזיקה. אפשר זאת עם: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s",
+  "skylyrics.ui.can_t_reach_your_music_players_no_d_bus_session": "אין גישה לנגני המוזיקה (אין D-Bus session). הפעל את המשחק מתוך סשן שולחן העבודה."
 }

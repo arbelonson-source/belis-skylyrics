@@ -686,7 +686,7 @@ public final class NowPlayingHud {
 		String status = switch (service.state()) {
 			case LOADING -> Tr.t("finding lyrics…");
 			case NOT_FOUND -> Tr.t("no lyrics");
-			case ERROR -> Tr.t("offline");
+			case ERROR -> Tr.t("lyrics sites unreachable");
 			default -> "";
 		};
 		if (!status.isEmpty()) {

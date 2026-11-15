@@ -1,5 +1,8 @@
 package dev.beli.skylyrics.media;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -16,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 
+import dev.beli.skylyrics.Tr;
 import org.freedesktop.dbus.DBusPath;
 import org.freedesktop.dbus.annotations.DBusInterfaceName;
 import org.freedesktop.dbus.connections.impl.DBusConnection;
@@ -87,9 +91,32 @@ public final class MprisSource implements MediaSource {
 
 	private synchronized DBusConnection connection() throws Exception {
 		if (connection == null || !connection.isConnected()) {
-			connection = DBusConnectionBuilder.forSessionBus().withShared(false).build();
+			try {
+				connection = DBusConnectionBuilder.forSessionBus().withShared(false).build();
+			} catch (Exception e) {
+				throw new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+			}
 		}
 		return connection;
+	}
+
+	/** Whether the game runs inside a Flatpak sandbox, which hides the music players from it. */
+	static boolean inFlatpak(Map<String, String> env, boolean flatpakInfoExists) {
+		String id = env.get("FLATPAK_ID");
+		return (id != null && !id.isBlank()) || flatpakInfoExists;
+	}
+
+	/** The Flatpak app id, or a placeholder the player fills in when it isn't known. */
+	static String flatpakAppId(Map<String, String> env) {
+		String id = env.get("FLATPAK_ID");
+		return id == null || id.isBlank() ? "<app id>" : id.strip();
+	}
+
+	static String busFailureMessage(Map<String, String> env, boolean flatpakInfoExists) {
+		if (inFlatpak(env, flatpakInfoExists)) {
+			return Tr.t("Minecraft runs as a Flatpak and can't see your music players. Allow it with: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s", flatpakAppId(env));
+		}
+		return Tr.t("Can't reach your music players (no D-Bus session). Start the game from your desktop session.");
 	}
 
 	record Reading(String busName, Track track, long positionMs, boolean playing, String trackId, double rate) {

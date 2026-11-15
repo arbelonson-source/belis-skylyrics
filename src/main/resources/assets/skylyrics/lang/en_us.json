@@ -196,8 +196,8 @@
   "skylyrics.ui.instrumental_no_words": "Instrumental, no words",
   "skylyrics.ui.found_with_timing": "Found, with timing",
   "skylyrics.ui.found_without_timing": "Found, without timing",
-  "skylyrics.ui.no_lyrics_found_for_this_song": "No lyrics found for this song",
-  "skylyrics.ui.couldn_t_reach_the_lyrics_sites_offline": "Couldn't reach the lyrics sites. Offline?",
+  "skylyrics.ui.no_lyrics_found_for_this_song_try_retry": "No lyrics found for this song. Try Retry.",
+  "skylyrics.ui.couldn_t_reach_the_lyrics_sites_check_your_inter": "Couldn't reach the lyrics sites. Check your internet, then press Retry.",
   "skylyrics.ui.not_set": "not set",
   "skylyrics.ui.preview": "Preview",
   "skylyrics.ui.nothing_playing": "Nothing playing",
@@ -228,7 +228,7 @@
   "skylyrics.ui.instrumental": "♪  Instrumental  ♪",
   "skylyrics.ui.finding_lyrics": "finding lyrics…",
   "skylyrics.ui.no_lyrics": "no lyrics",
-  "skylyrics.ui.offline": "offline",
+  "skylyrics.ui.lyrics_sites_unreachable": "lyrics sites unreachable",
   "skylyrics.ui.unknown_song": "Unknown song",
   "skylyrics.ui.night_sky": "Night sky",
   "skylyrics.ui.shows_at_night_with_music": "Shows at night with music",
@@ -502,5 +502,11 @@
   "skylyrics.ui.one_word_in_each_line_is_drawn_bigger_than_the_r": "One word in each line is drawn bigger than the rest",
   "skylyrics.ui.two_tone": "Two-tone",
   "skylyrics.ui.each_line_fades_into_a_second_colour": "Each line fades into a second colour",
-  "skylyrics.ui.second_colour": "Second colour"
+  "skylyrics.ui.second_colour": "Second colour",
+  "skylyrics.ui.couldn_t_read_your_music_player": "Couldn't read your music player",
+  "skylyrics.ui.couldn_t_start_windows_media_reading_check_that": "Couldn't start Windows media reading. Check that Windows PowerShell is installed, then reopen the game. (%s)",
+  "skylyrics.ui.windows_media_reading_took_too_long_to_start_reo": "Windows media reading took too long to start. Reopen the game and give it a moment.",
+  "skylyrics.ui.windows_media_reading_stopped_right_away_check_t": "Windows media reading stopped right away. Check that Windows PowerShell is installed, then reopen the game.",
+  "skylyrics.ui.minecraft_runs_as_a_flatpak_and_can_t_see_your_m": "Minecraft runs as a Flatpak and can't see your music players. Allow it with: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s",
+  "skylyrics.ui.can_t_reach_your_music_players_no_d_bus_session": "Can't reach your music players (no D-Bus session). Start the game from your desktop session."
 }
