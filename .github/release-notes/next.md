@@ -3,6 +3,7 @@
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title, especially one with a bracket left open, no longer makes the lyrics lookup hang.
 - **Quick skips.** After a quick skip, a late lyrics retry for the old song can no longer get in the way of the new song's lyrics.
+- **Quick skips, again.** After a quick skip, the new song no longer shows the old song's lyrics or cover, and its cover isn't held up by the old one's slow download.
 - **Rare lyric files.** Lyrics with an hour in their time stamps, extra digits after the seconds, or wide brackets no longer lose those lines.
 - **Instrumental lines.** A line that is only "(Instrumental)" or "[music]" now counts as a pause instead of being shown as words.
 - **Effects after loading.** With Effects on Auto, reloading resources or switching shaders no longer leaves the lyrics in light mode for up to two minutes, and a single stutter no longer counts as a slow game.

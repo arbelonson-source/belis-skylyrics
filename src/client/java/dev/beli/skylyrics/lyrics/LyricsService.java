@@ -69,9 +69,13 @@ public final class LyricsService {
 	/** Bumped on every song change so a slow answer for the previous song is dropped. */
 	private final AtomicLong generation = new AtomicLong();
 
-	private volatile Track track = Track.NONE;
-	private volatile Lyrics lyrics = Lyrics.NONE;
-	private volatile State state = State.IDLE;
+	/** What the song, its lyrics and the state are right now. One object, so a reader never sees the new song with the old lyrics. */
+	private record Current(Track track, Lyrics lyrics, State state) {
+	}
+
+	private volatile Current current = new Current(Track.NONE, Lyrics.NONE, State.IDLE);
+	/** Test seam: runs just before a worker publishes its answer, after the work that takes time. */
+	volatile Runnable beforePublish = () -> { };
 	/** The fetch running or waiting (or the retry scheduled) for the current song. */
 	private volatile Future<?> pendingFetch;
 	/**
@@ -97,53 +101,52 @@ public final class LyricsService {
 	}
 
 	public Track track() {
-		return track;
+		return current.track;
 	}
 
 	public Lyrics lyrics() {
-		return lyrics;
+		return current.lyrics;
 	}
 
 	public State state() {
-		return state;
+		return current.state;
 	}
 
 	/** Called when the song changes. */
 	public void load(Track newTrack) {
-		Track old = track;
-		if (!newTrack.isNone() && newTrack.sameSong(old) && newTrack.lengthMs() == old.lengthMs()) {
-			track = newTrack; // only the cover changed; keep the lyrics (or the lookup) going
-			return;
-		}
 		synchronized (fetchLock) {
+			Current now = current;
+			Track old = now.track;
+			if (!newTrack.isNone() && newTrack.sameSong(old) && newTrack.lengthMs() == old.lengthMs()) {
+				current = new Current(newTrack, now.lyrics, now.state); // only the cover changed; keep the lyrics (or the lookup) going
+				return;
+			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
-			track = newTrack;
-			lyrics = Lyrics.NONE;
 			if (newTrack.isNone()) {
-				state = State.IDLE;
+				current = new Current(newTrack, Lyrics.NONE, State.IDLE);
 				return;
 			}
 			if (DemoSource.PLAYER.equals(newTrack.player())) {
-				lyrics = LrcParser.parseSynced(DemoSource.LYRICS);
-				state = State.READY;
+				current = new Current(newTrack, LrcParser.parseSynced(DemoSource.LYRICS), State.READY);
 				return;
 			}
-			state = State.LOADING;
+			current = new Current(newTrack, Lyrics.NONE, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
 		}
 	}
 
 	/** Forget the cached answer for this song and ask again. */
 	public void retry() {
-		Track t = track;
-		if (t.isNone() || DemoSource.PLAYER.equals(t.player())) {
-			return;
-		}
 		synchronized (fetchLock) {
+			Current now = current;
+			Track t = now.track; // read under the lock: a load() in between can't leave us asking about the old song
+			if (t.isNone() || DemoSource.PLAYER.equals(t.player())) {
+				return;
+			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
-			state = State.LOADING;
+			current = new Current(t, now.lyrics, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(t, gen, true, 0));
 		}
 	}
@@ -214,7 +217,9 @@ public final class LyricsService {
 			if (failures > 0) {
 				LOG.info("Got lyrics for {} after {} failed tries", t.key(), failures);
 			}
-			apply(t, result);
+			if (!apply(t, gen, result)) {
+				return;
+			}
 			if (unchecked != null) {
 				recheckLater(t, gen, file, unchecked);
 			}
@@ -224,9 +229,9 @@ public final class LyricsService {
 			if (generation.get() != gen) {
 				return;
 			}
-			state = State.ERROR;
 			if (!temporary(e)) {
 				LOG.warn("Couldn't get lyrics for {}: {}", t.key(), e.toString());
+				setError(gen);
 				return;
 			}
 			// Keep trying while the song plays; never saved to the cache, so it isn't "no lyrics"
@@ -236,10 +241,12 @@ public final class LyricsService {
 			} else {
 				LOG.debug("Still no lyrics for {} ({}), try {} in {} ms", t.key(), e.toString(), failures + 2, delay);
 			}
+			beforePublish.run();
 			synchronized (fetchLock) {
 				if (generation.get() != gen) {
 					return; // a new song's load() came in meanwhile and owns pendingFetch now
 				}
+				current = new Current(current.track, current.lyrics, State.ERROR);
 				try {
 					pendingFetch = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
 				} catch (RejectedExecutionException ignored) {
@@ -282,9 +289,7 @@ public final class LyricsService {
 			// The same lyrics again (most songs) aren't applied again, which would start the shown line over
 			if (!same && found(parse(result, t.lengthMs()))) {
 				writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis(), CACHE_VERSION));
-				if (generation.get() == gen) {
-					apply(t, result);
-				}
+				apply(t, gen, result);
 			} else {
 				writeCache(file, new CacheEntry(old.synced, old.plain, old.instrumental, old.savedAt, CACHE_VERSION));
 			}
@@ -295,9 +300,27 @@ public final class LyricsService {
 		}
 	}
 
-	private void apply(Track t, LrclibClient.Result result) {
-		lyrics = parse(result, t.lengthMs());
-		state = found(lyrics) ? State.READY : State.NOT_FOUND;
+	/** Parses first (that takes time), then publishes only if this song is still the current one. @return false if it was dropped */
+	private boolean apply(Track t, long gen, LrclibClient.Result result) {
+		Lyrics parsed = parse(result, t.lengthMs());
+		beforePublish.run();
+		synchronized (fetchLock) {
+			if (generation.get() != gen) {
+				return false;
+			}
+			current = new Current(current.track, parsed, found(parsed) ? State.READY : State.NOT_FOUND);
+			return true;
+		}
+	}
+
+	/** A failure that won't be retried: shows the error for this song, unless the song has changed meanwhile. */
+	private void setError(long gen) {
+		beforePublish.run();
+		synchronized (fetchLock) {
+			if (generation.get() == gen) {
+				current = new Current(current.track, current.lyrics, State.ERROR);
+			}
+		}
 	}
 
 	/** What the shown lyrics will be for a result: synced first, then plain, then the instrumental flag. */
@@ -378,5 +401,11 @@ public final class LyricsService {
 
 	public void shutdown() {
 		executor.shutdownNow();
+	}
+
+	/** For tests: shuts down and waits for the running task to finish. */
+	boolean shutdownAndWait(long timeout, TimeUnit unit) throws InterruptedException {
+		executor.shutdownNow();
+		return executor.awaitTermination(timeout, unit);
 	}
 }
