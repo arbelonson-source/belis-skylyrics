@@ -8,10 +8,9 @@ import dev.beli.skylyrics.Tr;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
+import dev.beli.skylyrics.util.SafeFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -103,11 +102,23 @@ public final class HeardLibrary implements Library {
 		return t;
 	});
 
+	/** True when the file exists but couldn't be read at start: nothing is written over it this session. */
+	private volatile boolean readFailed;
+	private final SafeFile.Reader reader;
+	private volatile boolean blockedLogged;
+
 	public HeardLibrary(Path file, BooleanSupplier enabled, Opener opener) {
+		this(file, enabled, opener, SafeFile::readText);
+	}
+
+	HeardLibrary(Path file, BooleanSupplier enabled, Opener opener, SafeFile.Reader reader) {
 		this.file = file;
 		this.enabled = enabled;
 		this.opener = opener;
-		songs.addAll(read(file));
+		this.reader = reader;
+		Loaded loaded = load(file, reader, SafeFile.READ_TRIES, SafeFile.READ_PAUSE_MS);
+		songs.addAll(loaded.songs());
+		this.readFailed = loaded.failed();
 	}
 
 	public boolean enabled() {
@@ -182,7 +193,51 @@ public final class HeardLibrary implements Library {
 
 	// ---- file ----
 
+	/**
+	 * Looks once more at a file that couldn't be read at start. When it reads now, its songs are merged with the ones
+	 * recorded since (newest first, no repeats, up to the cap) and writing is fine again. False while it is still unreadable.
+	 */
+	private boolean mergeFile() {
+		List<Entry> old = new ArrayList<>();
+		try {
+			String text = SafeFile.readText(file, reader, 1, 0);
+			if (!text.isBlank()) {
+				readSongs(text, old);
+			}
+		} catch (java.nio.file.NoSuchFileException | java.nio.charset.CharacterCodingException e) {
+			old.clear(); // gone or damaged: nothing worth protecting
+		} catch (IOException e) {
+			if (!blockedLogged) {
+				blockedLogged = true;
+				LOG.warn("Recently heard songs not saved: {} still can't be read ({})", file, e.toString());
+			}
+			return false;
+		} catch (RuntimeException e) {
+			old.clear();
+			keepCopy(file);
+		}
+		synchronized (lock) {
+			java.util.Set<String> seen = new java.util.HashSet<>();
+			for (Entry e : songs) {
+				seen.add(e.key());
+			}
+			for (Entry e : old) {
+				if (seen.add(e.key())) {
+					songs.add(e);
+				}
+			}
+			while (songs.size() > CAP) {
+				songs.removeLast();
+			}
+		}
+		readFailed = false;
+		return true;
+	}
+
 	private void save() {
+		if (readFailed && !mergeFile()) {
+			return; // the file couldn't be read at start and still can't: writing now would replace the old history
+		}
 		List<Entry> copy = snapshot();
 		try {
 			writer.execute(() -> write(file, copy));
@@ -193,17 +248,17 @@ public final class HeardLibrary implements Library {
 
 	/** Writes a temporary file and moves it over the real one, so a crash never leaves half a file. */
 	static void write(Path file, List<Entry> entries) {
+		write(file, entries, Files::move);
+	}
+
+	static void write(Path file, List<Entry> entries, SafeFile.Mover mover) {
 		try {
 			Path dir = file.toAbsolutePath().getParent();
 			Files.createDirectories(dir);
 			Path tmp = Files.createTempFile(dir, "heard", ".tmp");
 			try {
 				Files.writeString(tmp, toJson(entries), StandardCharsets.UTF_8);
-				try {
-					Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-				} catch (AtomicMoveNotSupportedException e) {
-					Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
-				}
+				SafeFile.replace(tmp, file, mover, SafeFile.TRIES, SafeFile.PAUSE_MS);
 			} finally {
 				Files.deleteIfExists(tmp);
 			}
@@ -235,32 +290,61 @@ public final class HeardLibrary implements Library {
 	 * {@code heard.json.bad}, so the next saved song doesn't wipe the history it still holds.
 	 */
 	static List<Entry> read(Path file) {
+		return load(file, SafeFile::readText, SafeFile.READ_TRIES, SafeFile.READ_PAUSE_MS).songs();
+	}
+
+	/** What reading the file gave, and whether it couldn't be read at all (as opposed to missing, empty or damaged). */
+	record Loaded(List<Entry> songs, boolean failed) {
+	}
+
+	static Loaded load(Path file, SafeFile.Reader reader, int tries, long pauseMs) {
+		return load(file, reader, tries, pauseMs, Files::isReadable);
+	}
+
+	static Loaded load(Path file, SafeFile.Reader reader, int tries, long pauseMs, java.util.function.Predicate<Path> readable) {
 		List<Entry> out = new ArrayList<>();
+		if (!Files.isRegularFile(file)) {
+			return new Loaded(out, false);
+		}
+		String text;
 		try {
-			if (!Files.isRegularFile(file)) {
-				return out;
-			}
-			String text = Files.readString(file, StandardCharsets.UTF_8);
-			if (text.isBlank()) {
-				return out;
-			}
-			try {
-				readSongs(text, out);
-			} catch (RuntimeException e) {
-				out.clear();
-				LOG.warn("The recently heard file is damaged, starting empty (kept a copy as heard.json.bad): {}", e.toString());
-				keepCopy(file);
-			}
+			text = SafeFile.readText(file, reader, tries, pauseMs);
+		} catch (java.nio.file.NoSuchFileException e) {
+			return new Loaded(out, false);
+		} catch (java.nio.charset.CharacterCodingException e) {
+			LOG.warn("The recently heard file isn't valid text, starting empty (kept a copy as heard.json.bad): {}", e.toString());
+			keepCopy(file);
+			return new Loaded(out, false);
 		} catch (IOException e) {
-			LOG.warn("Couldn't read the recently heard file, starting empty: {}", e.toString());
+			if (!readable.test(file)) {
+				// Not readable by permissions (a sharing lock leaves it readable): it will never read, so move it aside and start a new one.
+				try {
+					Path moved = SafeFile.moveAside(file);
+					LOG.warn("The recently heard file {} can't be read (permissions), so it was moved to {} and a new one will be started.", file, moved);
+					return new Loaded(out, false);
+				} catch (IOException | RuntimeException moveError) {
+					LOG.warn("The recently heard file {} can't be read and couldn't be moved aside: {}", file, moveError.toString());
+				}
+			}
+			LOG.warn("Couldn't read {}; recently heard songs won't be saved this session. Check the file's permissions or whether another program has it open: {}", file, e.toString());
+			return new Loaded(out, true);
+		}
+		if (text.isBlank()) {
+			return new Loaded(out, false);
+		}
+		try {
+			readSongs(text, out);
+		} catch (RuntimeException e) {
+			out.clear();
+			LOG.warn("The recently heard file is damaged, starting empty (kept a copy as heard.json.bad): {}", e.toString());
 			keepCopy(file);
 		}
-		return out;
+		return new Loaded(out, false);
 	}
 
 	private static void keepCopy(Path file) {
 		try {
-			Files.copy(file, file.resolveSibling(file.getFileName() + ".bad"), StandardCopyOption.REPLACE_EXISTING);
+			SafeFile.keepBad(file);
 		} catch (IOException | RuntimeException e) {
 			LOG.warn("Couldn't keep a copy of the damaged recently heard file: {}", e.toString());
 		}

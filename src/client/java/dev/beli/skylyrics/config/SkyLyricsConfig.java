@@ -442,28 +442,63 @@ public final class SkyLyricsConfig {
 		return instance;
 	}
 
+	/** Set when the settings file exists but couldn't be read: save() then leaves it alone, so the player's real settings aren't overwritten by defaults. */
+	transient boolean saveBlocked;
+	transient boolean blockedLogged;
+	transient dev.beli.skylyrics.util.SafeFile.Reader reader;
+
 	private static SkyLyricsConfig load() {
 		Path file = file();
+		SkyLyricsConfig cfg = load(file, dev.beli.skylyrics.util.SafeFile::readText);
+		if (cfg.saveBlocked) {
+			rereadSoon(cfg, file, REREAD_DELAYS_MS);
+		}
+		return cfg;
+	}
+
+	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader) {
+		return load(file, reader, dev.beli.skylyrics.util.SafeFile.READ_TRIES, dev.beli.skylyrics.util.SafeFile.READ_PAUSE_MS);
+	}
+
+	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader, int tries, long pauseMs) {
+		if (!Files.isRegularFile(file)) {
+			return new SkyLyricsConfig();
+		}
+		String text;
 		try {
-			if (Files.isRegularFile(file)) {
-				Parsed parsed = parse(Files.readString(file, StandardCharsets.UTF_8));
-				if (parsed.damaged()) {
-					keepCopy(file);
-					LOG.warn("Settings file had problems, kept a copy as skylyrics.json.bad. {}", parsed.describe());
-				}
-				return parsed.config();
+			text = dev.beli.skylyrics.util.SafeFile.readText(file, reader, tries, pauseMs);
+		} catch (java.nio.file.NoSuchFileException e) {
+			return new SkyLyricsConfig(); // gone since the check: no file
+		} catch (java.nio.charset.CharacterCodingException e) {
+			keepCopy(file); // not valid UTF-8: damaged, same as a file that isn't JSON
+			LOG.warn("Settings file isn't valid text, kept a copy as skylyrics.json.bad and using defaults: {}", e.toString());
+			return new SkyLyricsConfig();
+		} catch (IOException e) {
+			// Locked just now (antivirus, OneDrive) or not allowed. The file itself may be fine: use defaults for now but never write over it.
+			LOG.warn("Couldn't read {}; your settings won't be saved this session. Check the file's permissions or whether another program has it open: {}", file, e.toString());
+			SkyLyricsConfig blocked = new SkyLyricsConfig();
+			blocked.saveBlocked = true;
+			blocked.reader = reader;
+			return blocked;
+		}
+		try {
+			Parsed parsed = parse(text);
+			if (parsed.damaged()) {
+				keepCopy(file);
+				LOG.warn("Settings file had problems, kept a copy as skylyrics.json.bad. {}", parsed.describe());
 			}
-		} catch (IOException | RuntimeException e) {
+			return parsed.config();
+		} catch (RuntimeException e) {
 			LOG.warn("Couldn't read the settings file, using defaults: {}", e.toString());
 			keepCopy(file);
 		}
 		return new SkyLyricsConfig();
 	}
 
-	/** Copies the settings file to {@code skylyrics.json.bad}, replacing an older copy, so a reset never costs the original. */
+	/** Copies the settings file to {@code skylyrics.json.bad}, so a reset never costs the original (a smaller file doesn't replace a bigger older copy). */
 	static void keepCopy(Path file) {
 		try {
-			Files.copy(file, file.resolveSibling(file.getFileName() + ".bad"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			dev.beli.skylyrics.util.SafeFile.keepBad(file);
 		} catch (IOException | RuntimeException e) {
 			LOG.warn("Couldn't keep a copy of the damaged settings file: {}", e.toString());
 		}
@@ -708,13 +743,126 @@ public final class SkyLyricsConfig {
 	}
 
 	public void save() {
+		save(file());
+	}
+
+	void save(Path file) {
+		synchronized (this) {
+			if (saveBlocked && !reread(file)) {
+				return; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
+			}
+		}
 		try {
-			Files.createDirectories(file().getParent());
-			Path tmp = file().resolveSibling("skylyrics.json.tmp");
+			Files.createDirectories(file.getParent());
+			Path tmp = file.resolveSibling("skylyrics.json.tmp");
 			Files.writeString(tmp, GSON.toJson(this), StandardCharsets.UTF_8);
-			dev.beli.skylyrics.util.SafeFile.replace(tmp, file());
+			dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 		} catch (IOException e) {
 			LOG.warn("Couldn't save settings: {}", e.toString());
+		}
+	}
+
+	/** True when writing is fine now: the file is gone or damaged, so there is nothing to protect. False while it is still unreadable, and when it was just loaded (the file wins). */
+	private boolean reread(Path file) {
+		String text;
+		try {
+			text = dev.beli.skylyrics.util.SafeFile.readText(file, reader, 1, 0);
+		} catch (java.nio.file.NoSuchFileException e) {
+			saveBlocked = false;
+			return true;
+		} catch (java.nio.charset.CharacterCodingException e) {
+			keepCopy(file);
+			saveBlocked = false;
+			return true;
+		} catch (IOException e) {
+			if (!blockedLogged) {
+				blockedLogged = true;
+				LOG.warn("Settings not saved: {} still can't be read ({})", file, e.toString());
+			}
+			return false;
+		}
+		adopt(file, text);
+		return false;
+	}
+
+	/** The file reads again: its settings become the live ones (the file wins; what was set meanwhile is lost) and saving is allowed. */
+	private void adopt(Path file, String text) {
+		Parsed parsed = parse(text);
+		if (parsed.damaged()) {
+			keepCopy(file);
+		}
+		copyFrom(parsed.config());
+		saveBlocked = false;
+		LOG.info("The settings file could be read again and was loaded.");
+	}
+
+	private void copyFrom(SkyLyricsConfig other) {
+		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
+			int mods = field.getModifiers();
+			if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods) || field.isSynthetic()) {
+				continue;
+			}
+			try {
+				field.setAccessible(true);
+				field.set(this, field.get(other));
+			} catch (IllegalAccessException e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
+	/** Runs a task on the game's main thread; a seam so tests needn't start Minecraft. */
+	static java.util.function.Consumer<Runnable> mainThread = task -> net.minecraft.client.Minecraft.getInstance().execute(task);
+
+	/** Waits before each later try at a file that was locked at start. The read is on a helper thread; the loaded settings are applied on the main thread. */
+	static final long[] REREAD_DELAYS_MS = {2_000, 10_000, 60_000};
+
+	/** Whether the file is readable by permissions (a Windows sharing lock doesn't change that); a seam for tests. */
+	static java.util.function.Predicate<Path> readable = Files::isReadable;
+
+	static Thread rereadSoon(SkyLyricsConfig blocked, Path file, long[] delaysMs) {
+		Thread t = new Thread(() -> {
+			for (long delay : delaysMs) {
+				try {
+					Thread.sleep(delay);
+				} catch (InterruptedException e) {
+					return;
+				}
+				try {
+					String text = dev.beli.skylyrics.util.SafeFile.readText(file, blocked.reader, 1, 0);
+					mainThread.accept(() -> {
+						synchronized (blocked) {
+							if (blocked.saveBlocked) {
+								blocked.adopt(file, text);
+							}
+						}
+					});
+					return;
+				} catch (IOException e) {
+					// still locked: next delay
+				}
+			}
+			blocked.giveUpOnUnreadable(file);
+		}, "SkyLyrics settings reread");
+		t.setDaemon(true);
+		t.start();
+		return t;
+	}
+
+	/**
+	 * After the last re-read failed: a file that isn't readable by permissions (left owned by root, say) will never read, so
+	 * move it aside and let saving start a new one. A sharing lock leaves the file readable and stays blocked.
+	 */
+	private synchronized void giveUpOnUnreadable(Path file) {
+		if (!saveBlocked || readable.test(file)) {
+			return;
+		}
+		try {
+			Path moved = dev.beli.skylyrics.util.SafeFile.moveAside(file);
+			saveBlocked = false;
+			LOG.warn("The settings file {} can't be read (permissions), so it was moved to {} and your settings will be saved to a new one.", file, moved);
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("The settings file {} can't be read and couldn't be moved aside, so settings stay unsaved this session: {}", file, e.toString());
 		}
 	}
 
@@ -725,7 +873,7 @@ public final class SkyLyricsConfig {
 	public void resetToDefaults() {
 		SkyLyricsConfig d = new SkyLyricsConfig();
 		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
-			if (java.lang.reflect.Modifier.isStatic(field.getModifiers()) || KEPT_ON_RESET.contains(field.getName())) {
+			if (java.lang.reflect.Modifier.isStatic(field.getModifiers()) || java.lang.reflect.Modifier.isTransient(field.getModifiers()) || KEPT_ON_RESET.contains(field.getName())) {
 				continue;
 			}
 			try {
