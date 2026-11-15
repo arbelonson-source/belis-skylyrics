@@ -73,6 +73,8 @@ public final class LibraryScreen extends Screen {
 	private boolean typing;
 	private long typedAt;
 	private boolean searchDirty;
+	/** Set when a pressed Space already did something; the typed space that follows it must not start a search. */
+	private boolean swallowSpace;
 
 	private int selected = -1;
 	/** Which not-signed-in button the keyboard is on: -1 none, 0 Open Music tab, 1 Try made-up songs. */
@@ -1169,6 +1171,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private boolean handleKey(KeyEvent event) {
+		swallowSpace = false;
 		if (event.isEscape()) {
 			if (typing) {
 				typing = false;
@@ -1235,10 +1238,12 @@ public final class LibraryScreen extends Screen {
 		}
 		if (shelf.items.isEmpty() && !shelf.error.isEmpty() && (event.isConfirmation() || !typing && event.key() == InputConstants.KEY_SPACE)) {
 			shelf.more();
+			swallowSpace = event.key() == InputConstants.KEY_SPACE;
 			return true;
 		}
 		if ((event.isConfirmation() || event.key() == InputConstants.KEY_SPACE && LibraryKeys.spacePlays(typing, selected, shelf.items.size()))
 				&& selected >= 0) {
+			swallowSpace = event.key() == InputConstants.KEY_SPACE;
 			activate(shelf, selected);
 			return true;
 		}
@@ -1282,8 +1287,9 @@ public final class LibraryScreen extends Screen {
 			return false;
 		}
 		Shelf now = shelf();
-		if (event.codepoint() == ' ' && now != null && LibraryKeys.spacePlays(typing, selected, now.items.size())) {
-			// Space already played the chosen song; don't also start a search with a space in it
+		if (event.codepoint() == ' ' && (swallowSpace || now != null && LibraryKeys.spacePlays(typing, selected, now.items.size()))) {
+			// Space already played or opened the chosen card; don't also start a search with a space in it
+			swallowSpace = false;
 			return true;
 		}
 		if (!typing) {
