@@ -57,6 +57,65 @@ final class ArcLayout {
 	record Group(int from, int to, float x, float y, float angle, float scale, float[] wordX) {
 	}
 
+	/**
+	 * How far off the line's middle (as a share of the distance to the line) a group may be and still be drawn. Past about
+	 * 68 degrees from the line's centre a row is under half a degree tall, so it can't be read from any view.
+	 */
+	static final float REACH_TAN = 2.5f;
+
+	/**
+	 * How far from the block's middle, in the layout's own units, a group is still drawn. A giant line has hundreds of
+	 * rows, and only the ones near the middle can be seen. {@code unitTan} is the tangent of the angle one layout unit
+	 * covers seen from the camera (the line's size at its distance, divided by its row height, times the arc size).
+	 */
+	static float reach(float unitTan) {
+		return REACH_TAN / Math.max(1e-6f, unitTan);
+	}
+
+	/** Whether a group is close enough to the view's middle (the block's middle moved by {@code focus}) to be worth drawing. */
+	static boolean worthDrawing(Group g, float reach, float focus) {
+		return Math.abs(g.y() - focus) - HALF_HEIGHT * MAX_SCALE * 2 <= reach;
+	}
+
+	/** A block taller than this (units, about nine rows) can't sit in view whole, so it scrolls to follow the words being sung. */
+	static final float TALL = 9 * ROW_PITCH;
+	/** The scroll averages this many groups either side of the current one, so it glides instead of hopping with each group's own step. */
+	private static final int FOCUS_SPAN = 5;
+
+	/**
+	 * How far down the block's middle should sit so the words being sung stay in view: 0 for a normal line, and for a tall
+	 * one the average height of the groups around the one holding word {@code word}. Words come out from the top, so
+	 * without this a line of hundreds of words would be sung above the view, with only its middle in front of you.
+	 */
+	static float focus(List<Group> groups, int word) {
+		if (groups.size() < 2) {
+			return 0;
+		}
+		float top = Float.MAX_VALUE, bottom = -Float.MAX_VALUE;
+		for (Group g : groups) {
+			top = Math.min(top, g.y());
+			bottom = Math.max(bottom, g.y());
+		}
+		if (bottom - top <= TALL) {
+			return 0;
+		}
+		int lo = 0, hi = groups.size() - 1;
+		while (lo < hi) { // the last group starting at or before the word
+			int mid = (lo + hi + 1) >>> 1;
+			if (groups.get(mid).from() <= word) {
+				lo = mid;
+			} else {
+				hi = mid - 1;
+			}
+		}
+		int from = Math.max(0, lo - FOCUS_SPAN), to = Math.min(groups.size() - 1, lo + FOCUS_SPAN);
+		float sum = 0;
+		for (int i = from; i <= to; i++) {
+			sum += groups.get(i).y();
+		}
+		return sum / (to - from + 1);
+	}
+
 	/** A seed that stays the same for a line and differs between lines. */
 	static long seed(int index, String text) {
 		return mix(text.hashCode() * 0x9E3779B97F4A7C15L + index);

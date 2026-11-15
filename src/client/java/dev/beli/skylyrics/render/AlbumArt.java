@@ -272,6 +272,8 @@ public final class AlbumArt {
 	 * The local path a file cover address points to, or null when it isn't one. Players write these loosely: "file:///a b/c.jpg"
 	 * with raw spaces, "file://localhost/a", "file:/a", percent-encoded or raw unicode. Another host's file is not local.
 	 */
+	private static final java.util.regex.Pattern DRIVE = java.util.regex.Pattern.compile("^[A-Za-z]:$");
+
 	static @Nullable Path fileUrlPath(@Nullable String url) {
 		if (url == null) {
 			return null;
@@ -281,6 +283,15 @@ public final class AlbumArt {
 			URI uri = URI.create(url);
 			if ("file".equalsIgnoreCase(uri.getScheme())) {
 				String authority = uri.getRawAuthority();
+				if (authority != null && DRIVE.matcher(authority).matches()) {
+					// "file://C:/x.jpg": some players write the drive where the host goes; it is a path, not a computer
+					String text = fileUrlString(url);
+					try {
+						return text == null ? null : safe(Path.of(text));
+					} catch (java.nio.file.InvalidPathException e) {
+						return null;
+					}
+				}
 				if (authority != null && !authority.isEmpty() && !authority.equalsIgnoreCase("localhost")) {
 					return null; // another computer: on Windows that is a network share, which would send login details to it
 				}
@@ -328,10 +339,13 @@ public final class AlbumArt {
 				return null;
 			}
 			String host = rest.substring(2, slash);
-			if (!host.isEmpty() && !host.equalsIgnoreCase("localhost")) {
+			if (DRIVE.matcher(host).matches()) {
+				rest = "/" + host + rest.substring(slash); // "file://C:/x.jpg" is the path "C:/x.jpg"
+			} else if (host.isEmpty() || host.equalsIgnoreCase("localhost")) {
+				rest = rest.substring(slash);
+			} else {
 				return null;
 			}
-			rest = rest.substring(slash);
 		}
 		if (!rest.startsWith("/")) {
 			return null;

@@ -1285,9 +1285,27 @@ public final class LyricsRenderer {
 				}
 			}
 
+			// A giant line has hundreds of rows, nearly all far outside the view: leave those out
+			float angular = (cfg.placement == Placement.SKY ? 3.4f : 2.6f) * cfg.size;
+			float reach = ArcLayout.reach(ARC_SIZE * (float) Math.tan(angular * DEG) / ROW_H);
 			canvas.push(0, -ARC_LEAVE_RISE * easeOutCubic(leave), ARC_SIZE, 0);
+			// A line of hundreds of words is many rows tall and comes out from its top row: scroll it to the words being sung
+			int sungWord = 0;
+			if (leaving) {
+				sungWord = words - 1;
+			} else if (timed) {
+				for (int w = 0; w < words && wordAt(arc, w, start, end) <= sungAt; w++) {
+					sungWord = w;
+				}
+			} else {
+				sungWord = Math.min(words - 1, (int) (since / WORD_STAGGER));
+			}
+			float focus = ArcLayout.focus(arc.groups(), sungWord);
 			for (ArcLayout.Group g : arc.groups()) {
-				canvas.push(g.x(), g.y(), g.scale(), g.angle());
+				if (!ArcLayout.worthDrawing(g, reach, focus)) {
+					continue;
+				}
+				canvas.push(g.x(), g.y() - focus, g.scale(), g.angle());
 				for (int w = g.from(); w < g.to(); w++) {
 					float e = 1, current = 0, ahead = 0;
 					if (!leaving && timed) {

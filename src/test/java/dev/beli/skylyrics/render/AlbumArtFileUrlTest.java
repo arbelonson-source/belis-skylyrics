@@ -56,6 +56,21 @@ class AlbumArtFileUrlTest {
 	}
 
 	@Test
+	void aDriveWhereTheHostGoesIsAPathNotAComputer() {
+		assertEquals("C:/Users/a b/c.jpg", AlbumArt.fileUrlString("file://C:/Users/a%20b/c.jpg"));
+		assertEquals("d:/x.jpg", AlbumArt.fileUrlString("file://d:/x.jpg"));
+		assertEquals("C:/Users/a b/c.jpg", AlbumArt.fileUrlString("file://C:/Users/a b/c.jpg"));
+		if (java.io.File.separatorChar == '\\') {
+			assertEquals(Path.of("C:/Users/a b/c.jpg"), AlbumArt.fileUrlPath("file://C:/Users/a%20b/c.jpg"));
+		} else {
+			assertNull(AlbumArt.fileUrlPath("file://C:/Users/a%20b/c.jpg"), "no drives here, and never read as a host");
+		}
+		for (String url : new String[] {"file://CC:/x.jpg", "file://C:\\x.jpg", "file://evil/C:/x.jpg"}) {
+			assertNull(AlbumArt.fileUrlString(url), url);
+		}
+	}
+
+	@Test
 	void aRealFileAddressRoundTripsOnWindows(@org.junit.jupiter.api.io.TempDir Path dir) throws Exception {
 		org.junit.jupiter.api.Assumptions.assumeTrue(System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows"), "Windows only");
 		Path file = java.nio.file.Files.writeString(dir.resolve("my cover-123.img"), "x");

@@ -108,6 +108,9 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	private static final int CAP_PANELS = 6, CAP_RINGS = 6, PEAK_STEPS = 10;
 	private static float propAngle;
 	private static long propLast;
+	/** The flower crown's and the note ring's turn so far, and when each was last stepped; kept as angles so a change of Distortion Effects never makes them jump. */
+	private static float flowerAngle, noteAngle;
+	private static long flowerLast, noteLast;
 
 	/** One plain white patch; on 26.3 the hat's colours are painted from it so they still darken at night. */
 	private static final Identifier WHITE = SkyLyricsClient.id("textures/misc/white.png");
@@ -235,7 +238,10 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 						}
 					}
 					case FLOWER_CROWN -> {
-						float spin = seconds() * FLOWER_SPIN * still;
+						long nowF = System.nanoTime();
+						flowerAngle = spinTurn(flowerAngle, flowerLast == 0 ? 0 : (nowF - flowerLast) / 1e9f, FLOWER_SPIN, still);
+						flowerLast = nowF;
+						float spin = flowerAngle;
 						// With Glow with the lyrics on, the flowers open a little wider as each new line starts
 						float pop = 1 + FLOWER_POP * (bright - REST) / FLARE;
 						int pale = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.45f);
@@ -243,6 +249,10 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 					}
 					case MUSIC_NOTES -> {
 						float t = seconds();
+						long nowN = System.nanoTime();
+						noteAngle = spinTurn(noteAngle, noteLast == 0 ? 0 : (nowN - noteLast) / 1e9f, NOTE_ORBIT, still);
+						noteLast = nowN;
+						float orbit = noteAngle;
 						// With Glow with the lyrics on, the notes swell a little as each new line starts
 						float pop = 1 + NOTE_POP * (bright - REST) / FLARE;
 						for (int i = 0; i < NOTES; i++) {
@@ -251,7 +261,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 							pose.pushPose();
 							try {
 								pose.translate(0, NOTE_Y + still * NOTE_BOB * Mth.sin(t * NOTE_BOB_SPEED + phase * 2), 0);
-								pose.mulPose(Axis.YP.rotation(t * NOTE_ORBIT * still + phase));
+								pose.mulPose(Axis.YP.rotation(orbit + phase));
 								pose.translate(0, 0, NOTE_RADIUS);
 								pose.mulPose(Axis.ZP.rotation(still * NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
 								pose.scale(pop, pop, pop);
@@ -534,6 +544,14 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	static float propellerTurn(float angle, float dt, float since) {
 		float speed = Float.isNaN(since) ? PROP_SPIN : PROP_SPIN * (1 + PROP_BOOST * (brightness(since) - REST) / FLARE);
 		return (angle + speed * Mth.clamp(dt, 0, 0.1f)) % Mth.TWO_PI;
+	}
+
+	/**
+	 * Where a steadily turning thing has got to after {@code dt} seconds at {@code speed} radians a second, scaled by the
+	 * motion setting {@code still}. Adding up small steps means a change of the setting only changes the speed, never the angle.
+	 */
+	static float spinTurn(float angle, float dt, float speed, float still) {
+		return (angle + speed * still * Mth.clamp(dt, 0, 0.1f)) % Mth.TWO_PI;
 	}
 
 	/** A dome of panels in turn dark and the lyrics colour, a glowing band round its foot, a peak over the face and a gold mast. */
