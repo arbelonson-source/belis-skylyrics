@@ -1285,8 +1285,14 @@ public final class LyricsRenderer {
 				}
 			}
 
+			// A giant line has hundreds of rows, nearly all far outside the view: leave those out
+			float angular = (cfg.placement == Placement.SKY ? 3.4f : 2.6f) * cfg.size;
+			float reach = ArcLayout.reach(ARC_SIZE * (float) Math.tan(angular * DEG) / ROW_H);
 			canvas.push(0, -ARC_LEAVE_RISE * easeOutCubic(leave), ARC_SIZE, 0);
 			for (ArcLayout.Group g : arc.groups()) {
+				if (!ArcLayout.worthDrawing(g, reach)) {
+					continue;
+				}
 				canvas.push(g.x(), g.y(), g.scale(), g.angle());
 				for (int w = g.from(); w < g.to(); w++) {
 					float e = 1, current = 0, ahead = 0;

@@ -57,6 +57,26 @@ final class ArcLayout {
 	record Group(int from, int to, float x, float y, float angle, float scale, float[] wordX) {
 	}
 
+	/**
+	 * How far off the line's middle (as a share of the distance to the line) a group may be and still be drawn. Past about
+	 * 68 degrees from the line's centre a row is under half a degree tall, so it can't be read from any view.
+	 */
+	static final float REACH_TAN = 2.5f;
+
+	/**
+	 * How far from the block's middle, in the layout's own units, a group is still drawn. A giant line has hundreds of
+	 * rows, and only the ones near the middle can be seen. {@code unitTan} is the tangent of the angle one layout unit
+	 * covers seen from the camera (the line's size at its distance, divided by its row height, times the arc size).
+	 */
+	static float reach(float unitTan) {
+		return REACH_TAN / Math.max(1e-6f, unitTan);
+	}
+
+	/** Whether a group centred {@code y} units from the block's middle is close enough to be worth drawing (a margin for tall groups). */
+	static boolean worthDrawing(Group g, float reach) {
+		return Math.abs(g.y()) - HALF_HEIGHT * MAX_SCALE * 2 <= reach;
+	}
+
 	/** A seed that stays the same for a line and differs between lines. */
 	static long seed(int index, String text) {
 		return mix(text.hashCode() * 0x9E3779B97F4A7C15L + index);
