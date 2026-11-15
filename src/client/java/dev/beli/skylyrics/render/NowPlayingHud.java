@@ -569,8 +569,7 @@ public final class NowPlayingHud {
 		float[] widths = new float[n];
 		boolean rtl = TopBarWords.baseRtl(text);
 		for (int i = 0; i < n; i++) {
-			// Measured as drawn: the word reordered with the line's direction
-			widths[i] = LyricsFont.width(font, style, TopBarWords.shown(parts.get(i).text(), rtl)) * scale;
+			widths[i] = wordWidth(font, style, parts.get(i).text(), rtl) * scale;
 		}
 		// Placed as they are seen (a Hebrew word in an English line, numbers in a Hebrew one), then measured from
 		// the start edge: the left for a left-to-right line, the right for a right-to-left one
@@ -596,6 +595,17 @@ public final class NowPlayingHud {
 		g.pose().scale(scale, scale);
 		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
 		g.pose().popMatrix();
+	}
+
+	/**
+	 * How wide one word is as {@link #word} draws it. A word left to the game is measured after the game joins its
+	 * letters, since joined Arabic letters are narrower than the same letters standing alone.
+	 */
+	private static float wordWidth(Font font, Style style, String text, boolean lineRtl) {
+		if (TopBarWords.vanilla(text)) {
+			return font.getSplitter().stringWidth(Language.getInstance().getVisualOrder(FormattedText.of(text, style)));
+		}
+		return LyricsFont.width(font, style, TopBarWords.shown(text, lineRtl));
 	}
 
 	/**
