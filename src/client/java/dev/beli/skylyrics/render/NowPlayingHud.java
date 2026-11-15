@@ -184,6 +184,8 @@ public final class NowPlayingHud {
 		//?}
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
+				// The debug screen (F3) fills the top corners and the bar would be drawn over its text; Minecraft.getDebugOverlay exists in every version
+				&& !mc.getDebugOverlay().showDebugScreen()
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
 				//? if >=26.2 {
 				/*&& !(mc.gui.screen() instanceof SkyLyricsScreen settings && settings.coversTopBar());
