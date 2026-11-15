@@ -8,7 +8,7 @@ The **Music** tab in the settings (press **J**) is the best place to start. It s
 
 Go through these in order:
 
-1. **Is the mod turned on?** At the top of the settings screen there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
+1. **Is the mod turned on?** At the bottom left of the settings screen, under the list of tabs, there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
 2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to N, E, S or W (north, east, south or west). Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
 3. **Are they hidden on purpose?** On the **Display** tab check **Hide with F1** (pressing F1 hides them along with the rest of the screen), **Hide in menus** (hidden while chat or any menu is open) and **Hide when paused** (hidden while the music is paused).
 4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen).
@@ -171,6 +171,7 @@ Everything is inside your Minecraft folder:
 | Settings | `config/skylyrics.json` |
 | Saved lyrics | `.cache/skylyrics/` |
 | Recently heard list | `.cache/skylyrics/heard.json` |
+| Spotify Web sign-in | `.cache/skylyrics/spotify-login.json` |
 
 Your Minecraft folder is:
 
@@ -181,7 +182,7 @@ Your Minecraft folder is:
 
 To start over with all settings, use **Reset all** at the bottom of the settings screen (click it twice). It keeps your finished intro tour, your update choice, your Spotify app id (Client ID), your per-song timings and your recent searches. Or close Minecraft and delete `skylyrics.json`.
 
-Deleting the `skylyrics` cache folder is safe. The mod just looks up the lyrics again next time. Your per-song timing fixes are kept in the settings file, not in the cache.
+Deleting the `skylyrics` cache folder is safe, but it holds more than lyrics. The mod looks up the lyrics and covers again next time, the **Recently heard** list starts empty, and you are signed out of Spotify Web. Your per-song timing fixes are kept in the settings file, not in the cache.
 
 ## My settings went back to default, or the Recently heard list is empty
 
@@ -189,7 +190,7 @@ If the settings file has a value the mod can't read (a typo, or a value from ano
 
 The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others.
 
-To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. Only the newest copy is kept: the next damaged file replaces it.
+To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`, and an older `.bad` is replaced only by a file at least as big, so a smaller or empty file can't overwrite a better copy. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
 
 ## Still stuck?
 
