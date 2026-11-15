@@ -210,4 +210,20 @@ class SpotifyWebSourceTest {
 		assertTrue(SpotifyWebSource.keepRefresh(3, 3));
 		assertFalse(SpotifyWebSource.keepRefresh(3, 4));
 	}
+
+	@Test
+	void aRetryAfterFromAnyCallHoldsThePoller(@TempDir Path dir) {
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		long now = System.nanoTime();
+		assertTrue(source.pollDue(now + 1));
+		source.holdOff("30");
+		assertFalse(source.pollDue(now + 20_000_000_000L));
+		assertTrue(source.pollDue(now + 31_000_000_000L));
+		// A shorter ask later never shortens the hold
+		source.holdOff("2");
+		assertFalse(source.pollDue(now + 20_000_000_000L));
+		// A date instead of seconds is 10 s, not a crash
+		source.holdOff("Wed, 21 Oct 2026 07:28:00 GMT");
+		assertFalse(source.pollDue(now + 20_000_000_000L));
+	}
 }
