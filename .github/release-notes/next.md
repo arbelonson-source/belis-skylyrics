@@ -71,7 +71,9 @@
 - **Song library.** A negative scroll position in the recently heard list can no longer cause an error.
 - **Hide Lightning Flashes.** Turning on **Hide Lightning Flashes** in Minecraft's Accessibility settings now also turns off the lyrics' flashes: the glow pulse, the crosshair flash, the hat flare, the sky pulse and the World words' white flash when they appear.
 - **At most three flashes a second.** When lines come very quickly, the glow, crosshair, hat and sky flashes no longer restart for every line: they start at most three times a second. Normal songs look the same.
-- **Distortion Effects.** Minecraft's **Distortion Effects** setting now also calms the lyrics' motion: at 0 the line pop, the World words' sway, knock and arrival bounce, and the hat's wobble and spin stay still, and in between they are smaller.
+- **Distortion Effects.** Minecraft's **Distortion Effects** setting now also calms the lyrics' motion: at 0 the line pop, the World words' sway, knock and arrival bounce, and the hat's wobble and spin and the spinning record in the top bar and on the **Record card** stay still, and in between they are smaller.
+- **Very long lyric lines.** A very long line, such as plain lyrics that arrive as one line or a long Chinese or Japanese line, no longer freezes the game in the Arc layout or makes it stutter in the World layout.
+- **Safer downloads.** A cover address that points at a shared folder on another computer is never opened (on Windows that could have sent your login details to that computer). A cover link from the internet can no longer redirect the game to this computer or your home network; links your music player gives directly still work, so covers from a music server on your own network keep showing. Replies from the lyrics sites are limited in size and time, a lyrics file with a long run of odd characters can no longer slow the lyrics down, and odd data from the NetEase backup no longer makes a song's lyrics search fail for good.
 
 ### Faster
 
