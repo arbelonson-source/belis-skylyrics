@@ -104,16 +104,26 @@ class LrclibClientTest {
 
 	@Test
 	void emptyOkReplyIsATemporaryErrorNotNoLyrics() {
-		for (String body : new String[] {"", "  \n", "nope", "null", "42"}) {
+		// The client's own complaint, so a connection failure (also an IOException) can't pass for it
+		for (String body : new String[] {"", "  \n"}) {
 			getCode = 200;
 			getBody = body;
 			asked.clear();
-			assertThrows(IOException.class, () -> client.find(TRACK), "get body '" + body + "'");
+			IOException e = assertThrows(IOException.class, () -> client.find(TRACK), "get body '" + body + "'");
+			assertEquals("LRCLIB sent an empty reply", e.getMessage());
+		}
+		for (String body : new String[] {"nope", "null", "42"}) {
+			getCode = 200;
+			getBody = body;
+			asked.clear();
+			IOException e = assertThrows(IOException.class, () -> client.find(TRACK), "get body '" + body + "'");
+			assertTrue(e.getMessage().startsWith("LRCLIB sent a reply that isn't"), e.getMessage());
 		}
 		getCode = 404;
 		for (String body : new String[] {"", "<html>log in</html>", "true"}) {
 			searchBody = body;
-			assertThrows(java.io.IOException.class, () -> client.find(TRACK), "search body '" + body + "'");
+			IOException e = assertThrows(IOException.class, () -> client.find(TRACK), "search body '" + body + "'");
+			assertTrue(e.getMessage().startsWith("LRCLIB sent a"), "search body '" + body + "': " + e.getMessage());
 		}
 	}
 
