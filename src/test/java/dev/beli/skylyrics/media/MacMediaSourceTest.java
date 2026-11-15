@@ -116,6 +116,29 @@ class MacMediaSourceTest {
 	}
 
 	@Test
+	void aMissingFieldStillLeavesTheRestOfTheReading() {
+		// A local file or podcast has no cover link; the script now sends it empty instead of failing the whole reading
+		MacMediaSource.Reading r = MacMediaSource.parse("Spotify\tplaying\t215000\t61.25\tSong One\tMade Up Band\t\t\n").players().getFirst();
+		assertEquals("Song One", r.track().title());
+		assertEquals("Made Up Band", r.track().artist());
+		assertEquals("", r.track().artUrl());
+		assertEquals(215_000, r.track().lengthMs());
+		// No duration or position either: still a song, with unknown length
+		r = MacMediaSource.parse("Music\tplaying\t\t\tSong Two\t\t\t\n").players().getFirst();
+		assertEquals("Song Two", r.track().title());
+		assertEquals(0, r.track().lengthMs());
+	}
+
+	/** Every field the read scripts return is fetched inside its own try, so one missing field can't lose the reading. */
+	@Test
+	void everyFieldIsReadOnItsOwn() {
+		for (String script : new String[] {MacMediaSource.SPOTIFY.readScript(), MacMediaSource.MUSIC.readScript()}) {
+			String returned = script.lines().filter(l -> l.strip().startsWith("return {s,")).findFirst().orElseThrow();
+			assertFalse(returned.contains(" of t"), "a field is read straight in the return list: " + returned);
+		}
+	}
+
+	@Test
 	void numbersTheMacWay() {
 		assertEquals(12.5, MacMediaSource.number("12.5"));
 		assertEquals(12.5, MacMediaSource.number("12,5"), "many languages write a decimal comma");

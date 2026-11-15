@@ -115,16 +115,125 @@ function Rate($info) {
 }
 
 # Covers are saved as files the mod can open. Song key -> file. Players often switch the title a moment
-# before the cover, so a new song's cover is only read once it has been playing for a little while.
+# before the cover, so a new song's cover is only read once it has been playing for a little while, and
+# read once more a few seconds later in case the first one was still the previous song's.
+# The mod waits only 4 s for an answer, so cover work gets a small total budget per poll and every step of it
+# has a time limit: a cover that hangs is given up on, never waited for.
 $covers = @{}
 $coverOrder = New-Object System.Collections.Generic.Queue[string]
 $coverCount = 0
 $firstSeen = @{}
 $coverTries = @{}
+$coverChecked = @{}
+$retired = New-Object System.Collections.Generic.Queue[string]
+$coverBudgetMs = 1000
+# What the last poll said about each player (the JSON), and which of those were only carried over
+$lastGood = @{}
+$lastStale = @{}
+
+# Deletes a cover file, but only one inside the covers folder this script owns
+function Remove-Cover([string]$path) {
+	if (-not $path -or -not $CoverDir) {
+		return
+	}
+	try {
+		$root = [System.IO.Path]::GetFullPath($CoverDir).TrimEnd([char[]]'\/')
+		$full = [System.IO.Path]::GetFullPath($path)
+		if ($full.StartsWith($root + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+			Remove-Item -LiteralPath $full -ErrorAction SilentlyContinue
+		}
+	} catch {
+		# Not ours, or already gone
+	}
+}
+
+# Saves the player's current thumbnail to a new file and returns its path; '' if there is none or it failed;
+# $null if this poll's cover time is used up (not a failure). Never waits more than what is left of the budget.
+function Read-Cover($media) {
+	$left = [int]$script:coverBudgetMs
+	if ($left -lt 150) {
+		return $null
+	}
+	$watch = [System.Diagnostics.Stopwatch]::StartNew()
+	$path = ''
+	$hung = $false
+	$source = $null
+	$file = $null
+	try {
+		$stream = Await ($media.Thumbnail.OpenReadAsync()) $StreamType ([Math]::Min(500, $left))
+		$script:coverCount++
+		$path = Join-Path $CoverDir ('cover-' + $PID + '-' + $script:coverCount + '.img')
+		if ($stream -is [System.IO.Stream]) {
+			$source = $stream # the tests' stand-in; Windows gives a Windows stream that needs converting
+		} else {
+			$source = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream)
+		}
+		$file = [System.IO.File]::Create($path)
+		$copy = $source.CopyToAsync($file)
+		$rest = [int][Math]::Max(100, $left - $watch.ElapsedMilliseconds)
+		if (-not $copy.Wait($rest)) {
+			$hung = $true
+			throw 'The cover took too long to copy'
+		}
+		$file.Dispose()
+		$file = $null
+		$source.Dispose()
+		$source = $null
+		if ((Get-Item -LiteralPath $path).Length -eq 0) {
+			Remove-Cover $path
+			$path = ''
+		}
+	} catch {
+		if (-not $hung) {
+			# A copy that hangs is left alone: closing a stream that is being read can hang too
+			try { if ($null -ne $file) { $file.Dispose() } } catch { }
+			try { if ($null -ne $source) { $source.Dispose() } } catch { }
+		}
+		Remove-Cover $path
+		$path = ''
+	}
+	$script:coverBudgetMs = [int]$script:coverBudgetMs - [int]$watch.ElapsedMilliseconds
+	return $path
+}
+
+function Same-Cover([string]$a, [string]$b) {
+	try {
+		$x = [System.IO.File]::ReadAllBytes($a)
+		$y = [System.IO.File]::ReadAllBytes($b)
+		if ($x.Length -ne $y.Length) {
+			return $false
+		}
+		$sha = [System.Security.Cryptography.SHA256]::Create()
+		return ([BitConverter]::ToString($sha.ComputeHash($x)) -eq [BitConverter]::ToString($sha.ComputeHash($y)))
+	} catch {
+		return $false
+	}
+}
 
 function Cover($media, [string]$key) {
 	if ($covers.ContainsKey($key)) {
-		return $covers[$key]
+		$known = [string]$covers[$key]
+		# The first read can catch the previous song's cover; look once more a few seconds in
+		if ($known -and -not $coverChecked.ContainsKey($key) -and $firstSeen.ContainsKey($key) -and $null -ne $media.Thumbnail -and
+			($firstSeen[$key].AddMilliseconds(5000) -lt [DateTime]::UtcNow)) {
+			$again = Read-Cover $media
+			if ($null -ne $again) {
+				$coverChecked[$key] = $true
+				if ($again) {
+					if (Same-Cover $known $again) {
+						Remove-Cover $again
+					} else {
+						$covers[$key] = $again
+						$retired.Enqueue($known) # the mod may still be reading it; deleted a little later
+						while ($retired.Count -gt 6) {
+							Remove-Cover ($retired.Dequeue())
+						}
+						return $again
+					}
+				}
+			}
+		}
+		return $known
 	}
 	if ($null -eq $media.Thumbnail -or -not $CoverDir) {
 		return '' # browsers often add the cover a moment after the title
@@ -140,25 +249,9 @@ function Cover($media, [string]$key) {
 	if (($now - $firstSeen[$key]).TotalMilliseconds -lt 1500) {
 		return ''
 	}
-	$path = ''
-	try {
-		$stream = Await ($media.Thumbnail.OpenReadAsync()) $StreamType
-		$script:coverCount++
-		$path = Join-Path $CoverDir ('cover-' + $PID + '-' + $script:coverCount + '.img')
-		$source = [System.IO.WindowsRuntimeStreamExtensions]::AsStreamForRead($stream)
-		$file = [System.IO.File]::Create($path)
-		try {
-			$source.CopyTo($file)
-		} finally {
-			$file.Dispose()
-			$source.Dispose()
-		}
-		if ((Get-Item -LiteralPath $path).Length -eq 0) {
-			Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue
-			$path = ''
-		}
-	} catch {
-		$path = ''
+	$path = Read-Cover $media
+	if ($null -eq $path) {
+		return '' # no time left in this poll; the next one tries
 	}
 	if (-not $path) {
 		# Try again on the next polls; give up on this song after a few tries
@@ -172,14 +265,25 @@ function Cover($media, [string]$key) {
 	$coverOrder.Enqueue($key)
 	while ($coverOrder.Count -gt 6) {
 		$old = $coverOrder.Dequeue()
-		if ($covers[$old]) {
-			Remove-Item -LiteralPath $covers[$old] -ErrorAction SilentlyContinue
-		}
+		Remove-Cover ([string]$covers[$old])
 		$covers.Remove($old)
+		$coverChecked.Remove($old)
 	}
 	if ($covers.Count -gt 200) {
-		$covers.Clear() # only songs without covers pile up here; files are capped above
-		$coverOrder.Clear()
+		# Only songs without a cover pile up here; forget those, and delete the files of any others it forgets
+		foreach ($k in @($covers.Keys)) {
+			if (-not $covers[$k]) {
+				$covers.Remove($k)
+			}
+		}
+		if ($covers.Count -gt 200) {
+			foreach ($k in @($covers.Keys)) {
+				Remove-Cover ([string]$covers[$k])
+			}
+			$covers.Clear()
+			$coverOrder.Clear()
+			$coverChecked.Clear()
+		}
 	}
 	return $path
 }
@@ -204,6 +308,7 @@ function Sessions {
 }
 
 function Poll {
+	$script:coverBudgetMs = 1000
 	$sessions = Sessions
 	# Ask every player at once and wait for all of them together, so one slow player can't hold up the rest
 	$tasks = New-Object 'System.Threading.Tasks.Task[]' $sessions.Count
@@ -223,8 +328,25 @@ function Poll {
 		}
 	}
 	$items = New-Object System.Collections.Generic.List[string]
+	$newGood = @{}
+	$newStale = @{}
 	for ($i = 0; $i -lt $sessions.Count; $i++) {
 		$task = $tasks[$i]
+		$key = ''
+		try {
+			$key = [string]$sessions[$i].SourceAppUserModelId + '#' + $i
+		} catch {
+			# A player that went away while we asked
+		}
+		if ($null -ne $task -and -not $task.IsCompleted) {
+			# Still waiting for this player: show its last good reading, but for one poll only
+			if ($key -and $lastGood.ContainsKey($key) -and -not $lastStale.ContainsKey($key)) {
+				$items.Add([string]$lastGood[$key])
+				$newGood[$key] = $lastGood[$key]
+				$newStale[$key] = $true
+			}
+			continue
+		}
 		if ($null -eq $task -or [string]$task.Status -ne 'RanToCompletion') {
 			continue
 		}
@@ -251,14 +373,18 @@ function Poll {
 				',"updatedMs":' + (Unix $timeline.LastUpdatedTime) +
 				',"cover":' + (J $cover) + '}'
 			$items.Add($json)
+			$newGood[$key] = $json
 		} catch {
 			# A player that closed while we asked, or one that doesn't fill everything in
 		}
 	}
+	$script:lastGood = $newGood
+	$script:lastStale = $newStale
 	Reply ('"ok":true,"sessions":[' + ($items -join ',') + ']')
 }
 
-# The player at INDEX if it is still the same app; else that app's playing (or first) player; else Windows' pick
+# The player at INDEX if it is still the same app; else that app's playing (or first) player; else nobody.
+# Never another app: a pause or skip must not land on whatever else happens to be playing.
 function Find([int]$index, [string]$id) {
 	$sessions = Sessions
 	if ($index -ge 0 -and $index -lt $sessions.Count -and $sessions[$index].SourceAppUserModelId -eq $id) {
@@ -273,13 +399,13 @@ function Find([int]$index, [string]$id) {
 	if ($same.Count -gt 0) {
 		return $same[0]
 	}
-	return $Manager.GetCurrentSession()
+	return $null
 }
 
 function Control([string]$action, [int]$index, [string]$id, [long]$ms) {
 	$session = Find $index $id
 	if ($null -eq $session) {
-		Fail 'Nothing is playing'
+		Fail 'That player is not there any more'
 		return
 	}
 	if ($action -eq 'toggle') {

@@ -105,7 +105,7 @@ public final class MacMediaSource implements MediaSource {
 			"	return v",
 			"end clean");
 
-	/** Spotify: duration in milliseconds, position in seconds. */
+	/** Spotify: duration in milliseconds, position in seconds. Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives. */
 	private static final String SPOTIFY_READ = """
 			tell application "Spotify"
 				set p to player state
@@ -117,7 +117,31 @@ public final class MacMediaSource implements MediaSource {
 					return {"stopped"}
 				end if
 				set t to current track
-				return {s, duration of t, player position, name of t, artist of t, album of t, artwork url of t}
+				set d to ""
+				set pos to ""
+				set n to ""
+				set ar to ""
+				set al to ""
+				set art to ""
+				try
+					set d to duration of t
+				end try
+				try
+					set pos to player position
+				end try
+				try
+					set n to name of t
+				end try
+				try
+					set ar to artist of t
+				end try
+				try
+					set al to album of t
+				end try
+				try
+					set art to artwork url of t
+				end try
+				return {s, d, pos, n, ar, al, art}
 			end tell""";
 
 	/** Music: duration and position in seconds; streams may have neither. No cover link, only image data. */
@@ -140,7 +164,19 @@ public final class MacMediaSource implements MediaSource {
 				try
 					set pos to player position
 				end try
-				return {s, d, pos, name of t, artist of t, album of t, ""}
+				set n to ""
+				set ar to ""
+				set al to ""
+				try
+					set n to name of t
+				end try
+				try
+					set ar to artist of t
+				end try
+				try
+					set al to album of t
+				end try
+				return {s, d, pos, n, ar, al, ""}
 			end tell""";
 
 	/** An app we can ask. {@code name} is the app's own name, as AppleScript and System Settings use it. */
