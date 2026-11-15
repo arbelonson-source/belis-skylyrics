@@ -74,6 +74,11 @@ public final class LyricsService {
 	private volatile State state = State.IDLE;
 	/** The fetch running or waiting (or the retry scheduled) for the current song. */
 	private volatile Future<?> pendingFetch;
+	/**
+	 * Held while the generation changes together with {@link #pendingFetch}, and while a fetch that checked its
+	 * generation sets {@link #pendingFetch}: a late retry or re-check can't take it over from the next song's fetch.
+	 */
+	private final Object fetchLock = new Object();
 
 	public LyricsService(LyricsSource client, Path cacheDir) {
 		this(client, cacheDir, LyricsService::retryDelayMs);
@@ -110,21 +115,23 @@ public final class LyricsService {
 			track = newTrack; // only the cover changed; keep the lyrics (or the lookup) going
 			return;
 		}
-		long gen = generation.incrementAndGet();
-		cancelRetry();
-		track = newTrack;
-		lyrics = Lyrics.NONE;
-		if (newTrack.isNone()) {
-			state = State.IDLE;
-			return;
+		synchronized (fetchLock) {
+			long gen = generation.incrementAndGet();
+			cancelRetry();
+			track = newTrack;
+			lyrics = Lyrics.NONE;
+			if (newTrack.isNone()) {
+				state = State.IDLE;
+				return;
+			}
+			if (DemoSource.PLAYER.equals(newTrack.player())) {
+				lyrics = LrcParser.parseSynced(DemoSource.LYRICS);
+				state = State.READY;
+				return;
+			}
+			state = State.LOADING;
+			pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
 		}
-		if (DemoSource.PLAYER.equals(newTrack.player())) {
-			lyrics = LrcParser.parseSynced(DemoSource.LYRICS);
-			state = State.READY;
-			return;
-		}
-		state = State.LOADING;
-		pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
 	}
 
 	/** Forget the cached answer for this song and ask again. */
@@ -133,10 +140,12 @@ public final class LyricsService {
 		if (t.isNone() || DemoSource.PLAYER.equals(t.player())) {
 			return;
 		}
-		long gen = generation.incrementAndGet();
-		cancelRetry();
-		state = State.LOADING;
-		pendingFetch = executor.submit(() -> fetch(t, gen, true, 0));
+		synchronized (fetchLock) {
+			long gen = generation.incrementAndGet();
+			cancelRetry();
+			state = State.LOADING;
+			pendingFetch = executor.submit(() -> fetch(t, gen, true, 0));
+		}
 	}
 
 	/**
@@ -227,19 +236,29 @@ public final class LyricsService {
 			} else {
 				LOG.debug("Still no lyrics for {} ({}), try {} in {} ms", t.key(), e.toString(), failures + 2, delay);
 			}
-			try {
-				pendingFetch = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
-			} catch (RejectedExecutionException ignored) {
-				// shutting down
+			synchronized (fetchLock) {
+				if (generation.get() != gen) {
+					return; // a new song's load() came in meanwhile and owns pendingFetch now
+				}
+				try {
+					pendingFetch = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
+				} catch (RejectedExecutionException ignored) {
+					// shutting down
+				}
 			}
 		}
 	}
 
 	private void recheckLater(Track t, long gen, Path file, CacheEntry old) {
-		try {
-			pendingFetch = executor.submit(() -> recheck(t, gen, file, old));
-		} catch (RejectedExecutionException ignored) {
-			// shutting down
+		synchronized (fetchLock) {
+			if (generation.get() != gen) {
+				return; // a new song's load() came in meanwhile and owns pendingFetch now
+			}
+			try {
+				pendingFetch = executor.submit(() -> recheck(t, gen, file, old));
+			} catch (RejectedExecutionException ignored) {
+				// shutting down
+			}
 		}
 	}
 
