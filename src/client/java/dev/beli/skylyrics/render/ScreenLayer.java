@@ -34,6 +34,8 @@ public final class ScreenLayer {
 	private static long frames;
 	private static long shadersAskedFrame = -1, shadersAskedAt;
 	private static boolean shadersAnswer;
+	/** Set when the shader answer changed since {@link #takeShaderFlip} last asked. */
+	private static boolean shaderFlipped;
 	/** Longest a shader answer is kept even when no world frame comes (a menu): short enough that a toggle shows at once. */
 	private static final long SHADERS_KEEP_NS = 50_000_000L;
 
@@ -148,6 +150,13 @@ public final class ScreenLayer {
 		return captured && frustum.testSphere(centre.x, centre.y, centre.z, radius);
 	}
 
+	/** Whether shaders were switched on or off since the last call; the switch stalls the game for a moment. */
+	static boolean takeShaderFlip() {
+		boolean flipped = shaderFlipped;
+		shaderFlipped = false;
+		return flipped;
+	}
+
 	/** Asks Iris through its public API, without needing Iris to build or run. */
 	static boolean shadersOn() {
 		// Asked up to three times a frame, and each ask is a reflective call: answer once per world frame
@@ -155,7 +164,11 @@ public final class ScreenLayer {
 		if (answerKept(shadersAskedFrame, frames, shadersAskedAt, now)) {
 			return shadersAnswer;
 		}
-		shadersAnswer = askIris();
+		boolean answer = askIris();
+		if (shadersAskedFrame != -1 && answer != shadersAnswer) {
+			shaderFlipped = true;
+		}
+		shadersAnswer = answer;
 		shadersAskedFrame = frames;
 		shadersAskedAt = now;
 		return shadersAnswer;

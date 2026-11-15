@@ -750,7 +750,7 @@ public final class SkyLyricsScreen extends Screen {
 		px = (width - pw) / 2;
 		py = (height - ph) / 2 + Math.round((1 - openAnim) * 8);
 		viewX = px + SIDEBAR_W + 12;
-		viewW = pw - SIDEBAR_W - 24;
+		viewW = Math.max(1, pw - SIDEBAR_W - 24);
 		viewY = py + HEADER_H;
 		viewH = ph - HEADER_H - FOOTER_H;
 

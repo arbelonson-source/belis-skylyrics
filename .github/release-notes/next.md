@@ -5,6 +5,7 @@
 - **Quick skips.** After a quick skip, a late lyrics retry for the old song can no longer get in the way of the new song's lyrics.
 - **Rare lyric files.** Lyrics with an hour in their time stamps, extra digits after the seconds, or wide brackets no longer lose those lines.
 - **Instrumental lines.** A line that is only "(Instrumental)" or "[music]" now counts as a pause instead of being shown as words.
+- **Effects after loading.** With Effects on Auto, reloading resources or switching shaders no longer leaves the lyrics in light mode for up to two minutes, and a single stutter no longer counts as a slow game.
 - **NetEase lyrics.** A song whose lyrics mention "纯音乐" (Chinese for "instrumental") no longer loses them; only NetEase's own "instrumental" placeholder counts.
 - **Lyrics on time on a Mac.** On a Mac, lyrics no longer run a little late.
 - **Steady timing on Windows.** On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
