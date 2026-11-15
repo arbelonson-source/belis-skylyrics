@@ -86,6 +86,8 @@ public final class LyricsRenderer {
 	}
 	/** In the WORLD layout, a line's last words stay this long after it's over before they fade too. */
 	private static final long WORLD_LINGER_MS = 450;
+	/** How far back the song time must drop between two frames to count as a seek back, well above position noise. */
+	static final long SEEK_BACK_MS = 1500;
 	private static final float ROW_H = 10f;
 	/** Title screen: rows of height the lyrics need, the size limits, and the wrap width (in text pixels). */
 	private static final float MENU_ROWS = 3.6f * ROW_H, MENU_MAX_SCALE = 1.5f, MENU_MIN_SCALE = 0.55f, MENU_WRAP = 260;
@@ -160,6 +162,8 @@ public final class LyricsRenderer {
 	private float wrapCacheProbe;
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
+	/** The song time the World words were last updated at, to notice a jump back; MIN_VALUE when they weren't. */
+	private long worldTime = Long.MIN_VALUE;
 
 	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
 	public void onLeaveWorld() {
@@ -317,6 +321,7 @@ public final class LyricsRenderer {
 			return;
 		}
 		worldWords.clear();
+		worldTime = Long.MIN_VALUE;
 		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental()) {
 			return;
 		}
@@ -532,6 +537,10 @@ public final class LyricsRenderer {
 				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), fixedYaw, fixedPitch, camera, mc.font, style, now);
 			}
 		}
+		if (jumpedBack(worldTime, time)) {
+			worldWords.rewind(now);
+		}
+		worldTime = time;
 		if (!dead) {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
@@ -590,6 +599,16 @@ public final class LyricsRenderer {
 	/** Whether a line's slot ended a moment ago, so its last words can leave (also for the last line, which has no next one). */
 	static boolean lineOver(Lyrics lyrics, int index, long time) {
 		return time - LEAD_MS > lyrics.lineEnd(index) + WORLD_LINGER_MS;
+	}
+
+	/**
+	 * Whether the song time jumped back far enough to be a seek or a restart. The reported position carries some noise
+	 * (the tracker alone lets 350 ms pass as jitter), so only a drop past {@link #SEEK_BACK_MS} counts; a pause (the same
+	 * time again), a line change and a forward jump never do. {@code previousMs} is {@link Long#MIN_VALUE} when there is
+	 * no earlier frame.
+	 */
+	static boolean jumpedBack(long previousMs, long timeMs) {
+		return previousMs != Long.MIN_VALUE && previousMs - timeMs > SEEK_BACK_MS;
 	}
 
 	private boolean sungLine(int index) {
