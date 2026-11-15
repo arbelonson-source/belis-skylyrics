@@ -25,7 +25,56 @@ public final class SafeFile {
 		void move(Path from, Path to, CopyOption... options) throws IOException;
 	}
 
+	/** Reads a file's text; a seam so tests can make the read fail. */
+	@FunctionalInterface
+	public interface Reader {
+		String read(Path file) throws IOException;
+	}
+
+	/** Tries when reading a file at start-up, and the pause between them (a lock often lets go within a moment). */
+	public static final int READ_TRIES = 3;
+	public static final long READ_PAUSE_MS = 150;
+
 	private SafeFile() {
+	}
+
+	/** Reads a text file, trying again a few times when it can't be read (a lock on Windows). Throws the last error; a file that isn't valid UTF-8 or is missing throws at once. */
+	public static String readText(Path file) throws IOException {
+		return readText(file, f -> Files.readString(f, java.nio.charset.StandardCharsets.UTF_8), READ_TRIES, READ_PAUSE_MS);
+	}
+
+	public static String readText(Path file, Reader reader, int tries, long pauseMs) throws IOException {
+		IOException last = null;
+		for (int i = 0; i < tries; i++) {
+			try {
+				return reader.read(file);
+			} catch (java.nio.charset.CharacterCodingException | java.nio.file.NoSuchFileException e) {
+				throw e; // not a lock: the file is damaged (not UTF-8) or gone, trying again changes nothing
+			} catch (IOException e) {
+				last = e;
+				if (i + 1 < tries && pauseMs > 0) {
+					try {
+						Thread.sleep(pauseMs);
+					} catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+				}
+			}
+		}
+		throw last != null ? last : new IOException("Couldn't read " + file);
+	}
+
+	/**
+	 * Copies a damaged file to {@code <name>.bad} so a reset never costs the original. An older copy is replaced only
+	 * by a file at least as big, so an empty or cut-off file can't overwrite a better copy.
+	 */
+	public static void keepBad(Path file) throws IOException {
+		Path bad = file.resolveSibling(file.getFileName() + ".bad");
+		if (Files.isRegularFile(bad) && Files.size(file) < Files.size(bad)) {
+			return;
+		}
+		Files.copy(file, bad, StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	/** Replaces target with tmp. If it can't be done, tmp is deleted and the last error is thrown. */

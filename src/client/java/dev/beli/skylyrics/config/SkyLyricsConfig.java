@@ -442,28 +442,58 @@ public final class SkyLyricsConfig {
 		return instance;
 	}
 
+	/** Set when the settings file exists but couldn't be read: save() then leaves it alone, so the player's real settings aren't overwritten by defaults. */
+	transient boolean saveBlocked;
+	private transient boolean blockedLogged;
+	private transient dev.beli.skylyrics.util.SafeFile.Reader reader;
+
 	private static SkyLyricsConfig load() {
-		Path file = file();
+		return load(file(), dev.beli.skylyrics.util.SafeFile::readText);
+	}
+
+	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader) {
+		return load(file, reader, dev.beli.skylyrics.util.SafeFile.READ_TRIES, dev.beli.skylyrics.util.SafeFile.READ_PAUSE_MS);
+	}
+
+	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader, int tries, long pauseMs) {
+		if (!Files.isRegularFile(file)) {
+			return new SkyLyricsConfig();
+		}
+		String text;
 		try {
-			if (Files.isRegularFile(file)) {
-				Parsed parsed = parse(Files.readString(file, StandardCharsets.UTF_8));
-				if (parsed.damaged()) {
-					keepCopy(file);
-					LOG.warn("Settings file had problems, kept a copy as skylyrics.json.bad. {}", parsed.describe());
-				}
-				return parsed.config();
+			text = dev.beli.skylyrics.util.SafeFile.readText(file, reader, tries, pauseMs);
+		} catch (java.nio.file.NoSuchFileException e) {
+			return new SkyLyricsConfig(); // gone since the check: no file
+		} catch (java.nio.charset.CharacterCodingException e) {
+			keepCopy(file); // not valid UTF-8: damaged, same as a file that isn't JSON
+			LOG.warn("Settings file isn't valid text, kept a copy as skylyrics.json.bad and using defaults: {}", e.toString());
+			return new SkyLyricsConfig();
+		} catch (IOException e) {
+			// Locked just now (antivirus, OneDrive) or not allowed. The file itself may be fine: use defaults for now but never write over it.
+			LOG.warn("Couldn't read {}; your settings won't be saved this session. Check the file's permissions or whether another program has it open: {}", file, e.toString());
+			SkyLyricsConfig blocked = new SkyLyricsConfig();
+			blocked.saveBlocked = true;
+			blocked.reader = reader;
+			return blocked;
+		}
+		try {
+			Parsed parsed = parse(text);
+			if (parsed.damaged()) {
+				keepCopy(file);
+				LOG.warn("Settings file had problems, kept a copy as skylyrics.json.bad. {}", parsed.describe());
 			}
-		} catch (IOException | RuntimeException e) {
+			return parsed.config();
+		} catch (RuntimeException e) {
 			LOG.warn("Couldn't read the settings file, using defaults: {}", e.toString());
 			keepCopy(file);
 		}
 		return new SkyLyricsConfig();
 	}
 
-	/** Copies the settings file to {@code skylyrics.json.bad}, replacing an older copy, so a reset never costs the original. */
+	/** Copies the settings file to {@code skylyrics.json.bad}, so a reset never costs the original (a smaller file doesn't replace a bigger older copy). */
 	static void keepCopy(Path file) {
 		try {
-			Files.copy(file, file.resolveSibling(file.getFileName() + ".bad"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			dev.beli.skylyrics.util.SafeFile.keepBad(file);
 		} catch (IOException | RuntimeException e) {
 			LOG.warn("Couldn't keep a copy of the damaged settings file: {}", e.toString());
 		}
@@ -708,13 +738,39 @@ public final class SkyLyricsConfig {
 	}
 
 	public void save() {
+		save(file());
+	}
+
+	void save(Path file) {
+		if (saveBlocked) {
+			// The file couldn't be read at start; writing now would replace the player's settings with defaults. Look once more:
+			// if it reads now, the lock is gone and what the player chose since wins.
+			try {
+				dev.beli.skylyrics.util.SafeFile.readText(file, reader, 1, 0);
+			} catch (java.nio.file.NoSuchFileException | java.nio.charset.CharacterCodingException e) {
+				keepCopyIfPresent(file); // gone or damaged: nothing worth protecting
+			} catch (IOException e) {
+				if (!blockedLogged) {
+					blockedLogged = true;
+					LOG.warn("Settings not saved: {} still can't be read ({})", file, e.toString());
+				}
+				return;
+			}
+			saveBlocked = false;
+		}
 		try {
-			Files.createDirectories(file().getParent());
-			Path tmp = file().resolveSibling("skylyrics.json.tmp");
+			Files.createDirectories(file.getParent());
+			Path tmp = file.resolveSibling("skylyrics.json.tmp");
 			Files.writeString(tmp, GSON.toJson(this), StandardCharsets.UTF_8);
-			dev.beli.skylyrics.util.SafeFile.replace(tmp, file());
+			dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 		} catch (IOException e) {
 			LOG.warn("Couldn't save settings: {}", e.toString());
+		}
+	}
+
+	private static void keepCopyIfPresent(Path file) {
+		if (Files.isRegularFile(file)) {
+			keepCopy(file);
 		}
 	}
 
@@ -725,7 +781,7 @@ public final class SkyLyricsConfig {
 	public void resetToDefaults() {
 		SkyLyricsConfig d = new SkyLyricsConfig();
 		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
-			if (java.lang.reflect.Modifier.isStatic(field.getModifiers()) || KEPT_ON_RESET.contains(field.getName())) {
+			if (java.lang.reflect.Modifier.isStatic(field.getModifiers()) || java.lang.reflect.Modifier.isTransient(field.getModifiers()) || KEPT_ON_RESET.contains(field.getName())) {
 				continue;
 			}
 			try {

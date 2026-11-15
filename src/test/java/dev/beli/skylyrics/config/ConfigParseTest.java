@@ -103,4 +103,95 @@ class ConfigParseTest {
 		assertFalse(map.containsKey("k199"));
 		assertTrue(map.containsKey("k200") && map.containsKey("k699"));
 	}
+
+	@Test
+	void unreadableFileIsRetriedThenLeftAloneInsteadOfOverwrittenWithDefaults() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		String real = "{\"glow\": 0.4, \"introSeen\": true}";
+		Files.writeString(file, real);
+		int[] calls = {0};
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			calls[0]++;
+			throw new java.io.IOException("locked");
+		}, 3, 0);
+		assertEquals(3, calls[0]);
+		assertEquals(new SkyLyricsConfig().glow, c.glow, 1e-6f);
+		c.save(file);
+		assertEquals(real, Files.readString(file));
+		assertFalse(Files.exists(dir.resolve("skylyrics.json.bad")));
+		// "Reset all" must not unblock it
+		c.resetToDefaults();
+		c.save(file);
+		assertEquals(real, Files.readString(file));
+	}
+
+	@Test
+	void aLockThatLetsGoOnTheSecondTryLoadsTheRealSettings() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Files.writeString(file, "{\"glow\": 0.4}");
+		int[] calls = {0};
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			if (++calls[0] < 2) throw new java.io.IOException("locked");
+			return Files.readString(f);
+		}, 3, 0);
+		assertEquals(0.4f, c.glow, 1e-6f);
+		c.glow = 0.5f;
+		c.save(file);
+		assertTrue(Files.readString(file).contains("0.5"));
+	}
+
+	@Test
+	void anEmptyDamagedFileDoesNotReplaceABetterBadCopy() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Path bad = dir.resolve("skylyrics.json.bad");
+		Files.writeString(bad, "{\"glow\": 0.4, \"songOffsets\": {");
+		Files.writeString(file, "");
+		SkyLyricsConfig.keepCopy(file);
+		assertEquals("{\"glow\": 0.4, \"songOffsets\": {", Files.readString(bad));
+		Files.writeString(file, "{");
+		SkyLyricsConfig.keepCopy(file);
+		assertEquals("{\"glow\": 0.4, \"songOffsets\": {", Files.readString(bad));
+	}
+
+	@Test
+	void bytesThatAreNotTextCountAsDamageNotALock() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Files.write(file, new byte[] {(byte) 0xC3, 0x28});
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, dev.beli.skylyrics.util.SafeFile::readText, 3, 0);
+		assertFalse(c.saveBlocked);
+		assertTrue(Files.exists(dir.resolve("skylyrics.json.bad")));
+		c.glow = 0.5f;
+		c.save(file);
+		assertTrue(Files.readString(file).contains("0.5"));
+	}
+
+	@Test
+	void aFileThatVanishesBetweenCheckAndReadIsJustNoFile() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Files.writeString(file, "{}");
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			throw new java.nio.file.NoSuchFileException(f.toString());
+		}, 3, 0);
+		assertFalse(c.saveBlocked);
+	}
+
+	@Test
+	void aBlockedSaveWritesOnceTheFileReadsAgain() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		String real = "{\"glow\": 0.4}";
+		Files.writeString(file, real);
+		boolean[] locked = {true};
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			if (locked[0]) throw new java.io.IOException("locked");
+			return Files.readString(f);
+		}, 3, 0);
+		assertTrue(c.saveBlocked);
+		c.glow = 0.9f;
+		c.save(file);
+		assertEquals(real, Files.readString(file));
+		locked[0] = false;
+		c.save(file);
+		assertFalse(c.saveBlocked);
+		assertTrue(Files.readString(file).contains("0.9"));
+	}
 }

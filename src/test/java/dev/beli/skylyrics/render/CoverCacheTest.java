@@ -144,4 +144,14 @@ class CoverCacheTest {
 		assertEquals(java.util.Set.of("f0", "f1"), java.util.Arrays.stream(tmp.toFile().list()).collect(java.util.stream.Collectors.toSet()));
 		CoverCache.tidy(null, 2);
 	}
+
+	@Test
+	void aFailedWriteLeavesNoPartFileBehind(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws IOException {
+		CoverCache.store(dir, dir.resolve("a.img"), png(8, 8), (to, bytes) -> {
+			throw new IOException("disk full");
+		});
+		try (var files = java.nio.file.Files.list(dir)) {
+			assertEquals(0, files.count());
+		}
+	}
 }

@@ -257,4 +257,70 @@ class HeardLibraryTest {
 		assertEquals(1, HeardLibrary.read(file()).size());
 		assertEquals("Good", HeardLibrary.read(file()).get(0).title());
 	}
+
+	@Test
+	void anUnreadableFileIsRetriedAndNeverOverwrittenThisSession() throws IOException {
+		String real = HeardLibrary.toJson(List.of(new HeardLibrary.Entry("Old", "A", "B", 1000, "", "uri:old", "mpv")));
+		Files.writeString(file(), real);
+		int[] calls = {0};
+		HeardLibrary lib = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, f -> {
+			calls[0]++;
+			throw new IOException("locked");
+		});
+		made.add(lib);
+		assertTrue(calls[0] >= 3);
+		lib.record(song("New", "X"));
+		lib.flush();
+		assertEquals(real, Files.readString(file()));
+	}
+
+	@Test
+	void damagedFileDoesNotReplaceABetterBadCopyWithAnEmptyOne() throws IOException {
+		Path bad = dir.resolve("heard.json.bad");
+		Files.writeString(bad, "{\"songs\": [{\"title\": \"Kept\"");
+		Files.writeString(file(), "{");
+		assertTrue(HeardLibrary.read(file()).isEmpty());
+		assertEquals("{\"songs\": [{\"title\": \"Kept\"", Files.readString(bad));
+	}
+
+	@Test
+	void writeRetriesWhenTheTargetIsBrieflyLocked() throws IOException {
+		int[] calls = {0};
+		HeardLibrary.write(file(), List.of(new HeardLibrary.Entry("T", "A", "B", 1, "", "u", "mpv")), (from, to, opts) -> {
+			if (++calls[0] == 1) throw new IOException("locked");
+			Files.move(from, to, opts);
+		});
+		assertEquals(1, HeardLibrary.read(file()).size());
+		try (Stream<Path> s = Files.list(dir)) {
+			assertTrue(s.noneMatch(p -> p.getFileName().toString().endsWith(".tmp")));
+		}
+	}
+
+	@Test
+	void bytesThatAreNotTextCountAsDamageNotALock() throws IOException {
+		Files.write(file(), new byte[] {(byte) 0xC3, 0x28});
+		HeardLibrary lib = make(file(), () -> true, HeardLibrary.NO_OPENER);
+		assertTrue(Files.exists(dir.resolve("heard.json.bad")));
+		lib.record(song("New", "X"));
+		lib.flush();
+		assertEquals(1, HeardLibrary.read(file()).size());
+	}
+
+	@Test
+	void aBlockedLibrarySavesOnceTheFileReadsAgain() throws IOException {
+		Files.writeString(file(), "{\"songs\": []}");
+		boolean[] locked = {true};
+		HeardLibrary lib = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, f -> {
+			if (locked[0]) throw new IOException("locked");
+			return Files.readString(f);
+		});
+		made.add(lib);
+		lib.record(song("One", "X"));
+		lib.flush();
+		assertTrue(HeardLibrary.read(file()).isEmpty());
+		locked[0] = false;
+		lib.record(song("Two", "X"));
+		lib.flush();
+		assertEquals(2, HeardLibrary.read(file()).size());
+	}
 }

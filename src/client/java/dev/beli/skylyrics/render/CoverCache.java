@@ -140,7 +140,7 @@ public final class CoverCache {
 				Cover old = waiting.pollLast();
 				if (old != null) {
 					old.dropped = true;
-					covers.remove(old.url);
+					covers.remove(old.url, old);
 				}
 			}
 			trim();
@@ -337,13 +337,32 @@ public final class CoverCache {
 
 	/** Keeps a downloaded cover on disk for next time; a full or locked disk only costs the next download. */
 	static void store(Path dir, Path file, byte[] bytes) {
+		store(dir, file, bytes, Files::write);
+	}
+
+	/** The write itself, so tests can make it fail. */
+	interface Writer {
+		void write(Path to, byte[] bytes) throws java.io.IOException;
+	}
+
+	static void store(Path dir, Path file, byte[] bytes, Writer writer) {
+		Path temp = null;
 		try {
 			Files.createDirectories(dir);
-			Path temp = Files.createTempFile(dir, "cover", ".part");
-			Files.write(temp, bytes);
+			temp = Files.createTempFile(dir, "cover", ".part");
+			writer.write(temp, bytes);
 			dev.beli.skylyrics.util.SafeFile.replace(temp, file);
+			temp = null; // moved
 		} catch (java.io.IOException | RuntimeException e) {
 			LOG.debug("Could not cache cover {}", file, e);
+		} finally {
+			if (temp != null) {
+				try {
+					Files.deleteIfExists(temp);
+				} catch (java.io.IOException | RuntimeException ignored) {
+					// the next tidy-up of the folder takes it
+				}
+			}
 		}
 	}
 

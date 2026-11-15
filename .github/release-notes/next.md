@@ -14,7 +14,7 @@
 - **Song library.** Songs in a long list show up right away as you scroll, and can't be clicked before they appear. If more of a list fails to load, the library tries again a few times by itself; in the grid view you can also click the error line. Spotify playlists with local files or podcasts no longer repeat songs or stop loading partway.
 - **Library keys.** Pressing Space on a playlist opens it without jumping to search. Pressing Enter after changing the search no longer plays a song from the old results.
 - **Open song library key.** With Iris installed, an **Open song library** key you set to K (the same key as Iris's shader switch) is moved back to N only once, not on every start.
-- **Album covers.** A cover shows even when it can't be saved for next time, and a damaged saved cover is fetched again. A cover that stalls while downloading is cut off instead of blocking the next song's cover. A cover the game can't read no longer leaves the last song's colour.
+- **Album covers.** A cover shows even when it can't be saved for next time, and a damaged saved cover is fetched again. A cover that stalls while downloading is cut off instead of blocking the next song's cover. A cover the game can't read no longer leaves the last song's colour. A cover that fails to save no longer leaves a stray file behind, and a cover scrolled past can no longer cause a second download of a newer one.
 - **Bottom bar.** The bottom bar sits above the held item's name. A bigger **Bar size** grows upward instead of off the screen.
 - **Big bars fit.** A big **Bar size** on a narrow screen now fits: the bar shrinks and, if needed, hides the stats and then the clock.
 - **Bar and F3.** A bar at the top hides while the debug screen (F3) is showing.
@@ -34,6 +34,7 @@
 - **Intro tour.** The intro tour fits small windows and big GUI scales. It no longer opens over a screen that replaced the title screen, and its last page says the keys work in a world.
 - **Reset all.** **Reset all** keeps your intro tour done, your update choice, your Spotify app id, your per-song timings and your recent searches.
 - **Hand-edited settings file.** A blank or very long recent search in the settings file no longer breaks the song library, and a hand-typed player name like "Spotify-Web" now picks that player.
+- **Settings kept when Windows locks the file.** If Windows, an antivirus or OneDrive briefly holds your settings or recently heard file at start, the mod now tries again and, if it still can't read it, leaves the file alone instead of saving defaults over your settings. A damaged file's backup copy is no longer replaced by an empty one, and the recently heard file is saved the same careful way as the settings.
 - **Settings scroll.** **Open Music tab** in the song library now takes you down to the Spotify card every time. Settings tabs also keep their place after you visit a shorter tab.
 
 ### Faster
