@@ -58,6 +58,8 @@ public final class SkyEffects {
 	private static final int RIBBONS = 3;
 	/** Where the sparkles sit on 26.2 and later, in front of every cloud and curtain (see {@link #nearestLayer}). */
 	static final float SPARKLE_FRONT = 0.78f;
+	/** Where the shooting stars sit on 26.2 and later: in front of the sparkles too, as they burn up in the air. */
+	static final float METEOR_FRONT = 0.76f;
 	private static final int SEGMENTS = 80;
 	private static final int BLOBS = 7;
 	private static final int SLICES = 24;
@@ -771,6 +773,12 @@ public final class SkyEffects {
 	/** Each shooting star is one tapered quad: a bright head and a tail that fades to nothing. */
 	private void meteors(PoseStack.Pose pose, VertexConsumer vc) {
 		float r = radius * 0.95f;
+		// Their width follows the distance, so it is worked out here and they look as big wherever they sit
+		float w = r * 0.003f;
+		//? if >=26.2 {
+		/*// The added-light pipeline writes depth here, so a nearer cloud or curtain would cut a streak: put them in front of all
+		r = radius * METEOR_FRONT;
+		*///?}
 		int clear = argb(meteorColor, 0);
 		for (int i = 0; i < METEORS; i++) {
 			float age = meteorAge[i];
@@ -785,7 +793,6 @@ public final class SkyEffects {
 			basis(meteorYaw[i] + ca * tail * stretch, meteorElev[i] + sa * tail, r);
 			float tx = bx, ty = by, tz = bz;
 			basis(meteorYaw[i] + ca * head * stretch, meteorElev[i] + sa * head, r);
-			float w = r * 0.003f;
 			int c = argb(meteorColor, alpha);
 			at(vc, pose, -sa * w, ca * w, c);
 			at(vc, pose, ca * w * 2.5f, sa * w * 2.5f, c);
