@@ -444,8 +444,8 @@ public final class SkyLyricsConfig {
 
 	/** Set when the settings file exists but couldn't be read: save() then leaves it alone, so the player's real settings aren't overwritten by defaults. */
 	transient boolean saveBlocked;
-	private transient boolean blockedLogged;
-	private transient dev.beli.skylyrics.util.SafeFile.Reader reader;
+	transient boolean blockedLogged;
+	transient dev.beli.skylyrics.util.SafeFile.Reader reader;
 
 	private static SkyLyricsConfig load() {
 		return load(file(), dev.beli.skylyrics.util.SafeFile::readText);
