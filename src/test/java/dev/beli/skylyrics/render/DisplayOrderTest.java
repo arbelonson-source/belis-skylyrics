@@ -61,4 +61,33 @@ class DisplayOrderTest {
 		assertEquals(visual("مرحبا"), visual("مَرحبا"));
 		assertArrayEquals(new int[] {5, 4, 3, 2, 0}, LyricsRenderer.Display.of("مَرحبا").logical());
 	}
+
+	private static String visual(String row, boolean rtl) {
+		LyricsRenderer.Display d = LyricsRenderer.Display.of(row, rtl);
+		return new String(d.cps(), 0, d.cps().length);
+	}
+
+	@Test
+	void punctuationStaysAtTheRightEndOfAHebrewWordInARightToLeftLine() {
+		// A comma after the word is on its left as drawn (reading left to right), a "!" before it is at the far right
+		assertEquals(",םולש", visual("שלום,", true));
+		assertEquals("םולש!", visual("!שלום", true));
+	}
+
+	@Test
+	void aNumberAfterHebrewWordsStaysOnTheLeftInARightToLeftLine() {
+		assertEquals("5 ינא", visual("אני 5", true));
+	}
+
+	@Test
+	void aPieceStartingWithLatinLettersKeepsTheRightToLeftLineBase() {
+		// "hello" first would make the piece read left to right on its own; in a Hebrew line it sits at the right
+		assertEquals("םולש hello", visual("hello שלום", true));
+		assertEquals(",םולש hello", visual("hello שלום,", true));
+	}
+
+	@Test
+	void theLeftToRightDefaultIsKept() {
+		assertEquals(visual("שלום,"), visual("שלום,", false));
+	}
 }

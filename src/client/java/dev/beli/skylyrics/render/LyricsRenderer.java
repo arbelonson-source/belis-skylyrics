@@ -1332,10 +1332,21 @@ public final class LyricsRenderer {
 		};
 
 		static Display of(String row) {
-			return CACHE.computeIfAbsent(row, Display::compute);
+			return CACHE.computeIfAbsent(row, r -> compute(r, false));
 		}
 
-		private static Display compute(String row) {
+		/**
+		 * A piece of a line that reads right to left, such as one word of it: its punctuation and numbers belong on the
+		 * line's side, which the piece alone (starting with Hebrew, say) would not tell, or a lone "5" would not.
+		 */
+		static Display of(String row, boolean rtl) {
+			return rtl ? CACHE.computeIfAbsent(RTL_KEY + row, r -> compute(row, true)) : of(row);
+		}
+
+		/** Keeps a row drawn right to left apart from the same row drawn with the default direction in the cache. */
+		private static final String RTL_KEY = "\u202B\u0000";
+
+		private static Display compute(String row, boolean rightBase) {
 			int[] cps = row.codePoints().toArray();
 			int n = cps.length;
 			int[] logical = new int[n];
@@ -1355,7 +1366,7 @@ public final class LyricsRenderer {
 			}
 			charToCp[row.length()] = n;
 			int[] shaped = joinArabic(row).codePoints().toArray();
-			Bidi bidi = new Bidi(row, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
+			Bidi bidi = new Bidi(row, rightBase ? Bidi.DIRECTION_RIGHT_TO_LEFT : Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
 			int runs = bidi.getRunCount();
 			byte[] levels = new byte[runs];
 			Integer[] order = new Integer[runs];

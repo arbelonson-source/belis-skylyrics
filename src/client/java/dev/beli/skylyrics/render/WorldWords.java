@@ -958,7 +958,7 @@ final class WorldWords {
 	private void spawn(int[] chunk, float[] centre, Camera camera, @Nullable ClientLevel level, Font font, Style style,
 			long now) {
 		String piece = new String(lineText.codePoints().toArray(), chunk[0], chunk[1] - chunk[0]);
-		Display d = Display.of(piece);
+		Display d = Display.of(piece, lineRtl);
 		float[] at = widths(d, font, style);
 		int letters = 0;
 		for (int cp : d.cps()) {
