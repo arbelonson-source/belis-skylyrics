@@ -80,7 +80,7 @@ public final class MprisSource implements MediaSource {
 
 	public MprisSource(Supplier<String> preferredPlayer) {
 		this.preferredPlayer = preferredPlayer;
-		this.flatpak = () -> inFlatpak(System.getenv(), Files.exists(Path.of("/.flatpak-info")));
+		this.flatpak = () -> hidesPlayers(System.getenv(), flatpakInfo());
 		this.reader = new Reader() {
 			@Override
 			public List<String> names() throws Exception {
@@ -155,6 +155,58 @@ public final class MprisSource implements MediaSource {
 		return (address == null ? DBusConnectionBuilder.forSessionBus() : DBusConnectionBuilder.forAddress(address)).withShared(false);
 	}
 
+	private static @Nullable String flatpakInfoText;
+	private static boolean flatpakInfoRead;
+
+	/** The text of /.flatpak-info (read once), or null outside a Flatpak or when it can't be read. */
+	private static synchronized @Nullable String flatpakInfo() {
+		if (!flatpakInfoRead) {
+			flatpakInfoRead = true;
+			try {
+				flatpakInfoText = Files.readString(Path.of("/.flatpak-info"));
+			} catch (Exception e) {
+				flatpakInfoText = null;
+			}
+		}
+		return flatpakInfoText;
+	}
+
+	/**
+	 * Whether an empty player list should be blamed on the Flatpak sandbox: it is a Flatpak, and its permissions give
+	 * neither the whole session bus nor talking to the MPRIS names. {@code info} is the text of /.flatpak-info, null
+	 * when it is missing (then nothing is said).
+	 */
+	static boolean hidesPlayers(Map<String, String> env, @Nullable String info) {
+		if (info == null) {
+			return false;
+		}
+		String section = "";
+		for (String raw : info.split("\\R")) {
+			String line = raw.strip();
+			if (line.startsWith("[") && line.endsWith("]")) {
+				section = line.substring(1, line.length() - 1);
+				continue;
+			}
+			int eq = line.indexOf('=');
+			if (eq < 0) {
+				continue;
+			}
+			String key = line.substring(0, eq).strip();
+			String value = line.substring(eq + 1).strip();
+			if (section.equals("Context") && key.equals("sockets")) {
+				for (String socket : value.split(";")) {
+					if (socket.strip().equals("session-bus")) {
+						return false;
+					}
+				}
+			} else if (section.equals("Session Bus Policy") && key.startsWith("org.mpris.MediaPlayer2")
+					&& (value.equals("talk") || value.equals("own"))) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	/** Whether the game runs inside a Flatpak sandbox, which hides the music players from it. */
 	static boolean inFlatpak(Map<String, String> env, boolean flatpakInfoExists) {
 		String id = env.get("FLATPAK_ID");
@@ -221,7 +273,7 @@ public final class MprisSource implements MediaSource {
 		// In a Flatpak the bus connects but the sandbox hides every player: say so instead of "nothing playing"
 		if (names.isEmpty() && flatpak.getAsBoolean()) {
 			if (++noPlayerPolls >= HIDDEN_POLLS) {
-				throw new IOException(busFailureMessage(System.getenv(), true));
+				throw new IOException(Tr.t("If music is playing and nothing shows: Minecraft runs as a Flatpak and may not see your music players. Allow it with: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s", flatpakAppId(System.getenv())));
 			}
 		} else {
 			noPlayerPolls = 0;
@@ -346,10 +398,17 @@ public final class MprisSource implements MediaSource {
 		return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId, rate);
 	}
 
-	/** The player's id from its bus name: "firefox.instance_1_42" -> "firefox", "io.bassi.Amberol" stays whole. */
+	/**
+	 * The player's id from its bus name: a trailing ".instance..." goes ("firefox.instance_1_42" -> "firefox"); then
+	 * a name with one dot after the prefix is cut there as always ("kdeconnect.mpris_000001" -> "kdeconnect"), and a
+	 * real reverse-DNS name with two or more dots stays whole ("io.bassi.Amberol").
+	 */
 	static String playerId(String busName) {
 		String id = busName.startsWith(PREFIX) ? busName.substring(PREFIX.length()) : busName;
-		return id.replaceFirst("\\.instance[_0-9]*$", "");
+		id = id.replaceFirst("\\.instance[_0-9]*$", "");
+		long dots = id.chars().filter(c -> c == '.').count();
+		int first = id.indexOf('.');
+		return dots == 1 && first > 0 ? id.substring(0, first) : id;
 	}
 
 	static String prettyName(String player) {

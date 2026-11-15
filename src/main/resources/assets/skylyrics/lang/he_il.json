@@ -508,6 +508,7 @@
   "skylyrics.ui.the_windows_music_reader_took_too_long_to_start": "קורא המוזיקה של Windows לא התחיל בזמן. הפעילו מחדש את המשחק והמתינו רגע.",
   "skylyrics.ui.the_windows_music_reader_stopped_right_away_chec": "קורא המוזיקה של Windows נעצר מיד. ודאו ש-Windows PowerShell מותקן והפעילו מחדש את המשחק.",
   "skylyrics.ui.minecraft_runs_as_a_flatpak_and_can_t_see_your_m": "Minecraft רץ כ-Flatpak ולא רואה את נגני המוזיקה. כדי לאפשר זאת, הריצו: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s",
+  "skylyrics.ui.if_music_is_playing_and_nothing_shows_minecraft": "אם מתנגנת מוזיקה ושום דבר לא מוצג: Minecraft רץ כ-Flatpak ויתכן שהוא לא רואה את נגני המוזיקה. כדי לאפשר זאת, הריצו: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s",
   "skylyrics.ui.can_t_reach_your_music_players_no_d_bus_session": "אין גישה לנגני המוזיקה (אין סשן D-Bus). הפעילו את המשחק ישירות משולחן העבודה.",
   "skylyrics.ui.the_windows_music_reader_keeps_stopping_see_wind": "קורא המוזיקה של Windows ממשיך להיעצר (פרטים ב-windows-media.log)",
   "skylyrics.ui.the_windows_music_reader_stopped": "קורא המוזיקה של Windows נעצר",

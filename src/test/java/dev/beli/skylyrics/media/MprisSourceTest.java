@@ -3,6 +3,7 @@ package dev.beli.skylyrics.media;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -230,6 +231,8 @@ class MprisSourceTest {
 		assertEquals("spotify", MprisSource.playerId("org.mpris.MediaPlayer2.spotify"));
 		assertEquals("spotifyd", MprisSource.playerId("org.mpris.MediaPlayer2.spotifyd"));
 		assertEquals("vlc", MprisSource.playerId("org.mpris.MediaPlayer2.vlc"));
+		assertEquals("kdeconnect", MprisSource.playerId("org.mpris.MediaPlayer2.kdeconnect.mpris_000001"));
+		assertEquals("plasma-browser-integration", MprisSource.playerId("org.mpris.MediaPlayer2.plasma-browser-integration"));
 		assertEquals("mpv", MprisSource.playerId("org.mpris.MediaPlayer2.mpv"));
 	}
 
@@ -242,6 +245,8 @@ class MprisSourceTest {
 		assertEquals("Spotifyd", MprisSource.prettyName("spotifyd"));
 		assertEquals("VLC", MprisSource.prettyName("vlc"));
 		assertEquals("mpv", MprisSource.prettyName("mpv"));
+		assertEquals("Kdeconnect", MprisSource.prettyName(MprisSource.playerId("org.mpris.MediaPlayer2.kdeconnect.mpris_000001")));
+		assertEquals("Amberol", MprisSource.prettyName(MprisSource.playerId("org.mpris.MediaPlayer2.io.bassi.Amberol")));
 	}
 
 	@Test
@@ -260,5 +265,20 @@ class MprisSourceTest {
 		assertEquals(0L, MprisSource.positionMicros(Map.of(), () -> {
 			throw new IllegalStateException("no such property");
 		}));
+	}
+
+	private static final String SANDBOX = "[Application]\nname=org.prismlauncher.PrismLauncher\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;\n";
+
+	@Test
+	void theFlatpakHintIsOnlyForASandboxThatCannotTalkToPlayers() {
+		assertTrue(MprisSource.hidesPlayers(Map.of(), SANDBOX));
+		assertTrue(MprisSource.hidesPlayers(Map.of(), SANDBOX + "\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\norg.mpris.MediaPlayer2.spotify=none\n"));
+		// the whole session bus
+		assertFalse(MprisSource.hidesPlayers(Map.of(), SANDBOX.replace("sockets=x11;", "sockets=x11;session-bus;")));
+		// talking to the players' names
+		assertFalse(MprisSource.hidesPlayers(Map.of(), SANDBOX + "\n[Session Bus Policy]\norg.mpris.MediaPlayer2.*=talk\n"));
+		assertFalse(MprisSource.hidesPlayers(Map.of(), SANDBOX + "\n[Session Bus Policy]\norg.mpris.MediaPlayer2.vlc=own\n"));
+		// no /.flatpak-info: nothing is said
+		assertFalse(MprisSource.hidesPlayers(Map.of(), null));
 	}
 }
