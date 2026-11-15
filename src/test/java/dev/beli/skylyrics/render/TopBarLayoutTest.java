@@ -102,4 +102,17 @@ class TopBarLayoutTest {
 		assertEquals(0.25f, TopBarLayout.progress(2_500, 10_000), 1e-6f);
 		assertEquals(1, TopBarLayout.progress(12_000, 10_000));
 	}
+
+	@Test
+	void aBiggerBarFitsInItsOwnScaledUnits() {
+		// At 150% the bar is drawn 1.5 times wider, so its pill may only be as wide as the screen allows after that
+		TopBarLayout.Fit big = TopBarLayout.fit(320, 1.5f, 0, 0);
+		assertTrue(big.pill() * 1.5f <= 320 - 2 * TopBarLayout.EDGE + 0.01f, "pill " + big.pill());
+		assertTrue(big.pill() < TopBarLayout.fit(320, 1f, 0, 0).pill());
+	}
+
+	@Test
+	void sizeOneChangesNothing() {
+		assertEquals(TopBarLayout.fit(320, 30, 45), TopBarLayout.fit(320, 1f, 30, 45));
+	}
 }

@@ -47,6 +47,11 @@ final class TopBarLayout {
 
 	private TopBarLayout() {}
 
+	/** {@link #fit} for a bar drawn {@code size} times bigger: everything is measured in the bar's own, scaled units. */
+	static Fit fit(float guiWidth, float size, float clockW, float statsW) {
+		return fit(guiWidth / size, clockW, statsW);
+	}
+
 	/** What fits: the pill's widest size, and whether the clock (left) and the stats (right) are shown. */
 	record Fit(float pill, boolean clock, boolean stats) {}
 

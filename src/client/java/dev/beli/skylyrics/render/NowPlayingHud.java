@@ -222,7 +222,7 @@ public final class NowPlayingHud {
 		String clock = cfg.barClock ? clock() : "";
 		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, clockStyle, clock) * clockScale;
 		float statsW = statsWidth(cfg, font, style, textScale);
-		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), clockW, statsW);
+		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), cfg.barSize, clockW, statsW);
 
 		float target = TopBarLayout.pillFor(contentWidth(font, style, textScale, next), fit.pill());
 		if (width < 0) {
