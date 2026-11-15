@@ -136,7 +136,7 @@ public final class DevTestHook {
 		}
 		long now = System.nanoTime();
 		if (burstWaiting) {
-			float since = SkyLyricsClient.get().renderer().secondsSinceLineChange();
+			float since = SkyLyricsClient.get().renderer().secondsSinceFlashStart();
 			boolean changed = BurstPlan.lineChanged(lastSince, since);
 			lastSince = since;
 			if (!changed) {

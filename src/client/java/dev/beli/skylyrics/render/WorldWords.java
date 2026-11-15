@@ -1840,6 +1840,9 @@ final class WorldWords {
 			swung = false;
 			knockAt(eye, look, now);
 		}
+		// Minecraft's Distortion Effects scale the motion and Hide Lightning Flashes takes the word flashes out
+		float still = Calm.motion();
+		boolean noFlash = Calm.hideFlashes();
 		Card sung = null;
 		for (Card c : cards) {
 			if (c.goneAt < 0 && c.cutAt < 0 && !c.title) {
@@ -1867,18 +1870,19 @@ final class WorldWords {
 			}
 			float x = (float) (c.pos.x + c.slid.x - eye.x), z = (float) (c.pos.z + c.slid.z - eye.z);
 			float sway = swayAngle(age, c.born);
-			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + leftUp(c, now, 0) + tilt * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
-			float hit = c.hitAt < 0 ? -1 : (now - c.hitAt) / 1e9f, spin = 0, squash = 1, shove = knockOut(hit);
+			float rocking = tilt * still, flashing = Calm.flash(noFlash, 1);
+			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + leftUp(c, now, 0) + rocking * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
+			float hit = c.hitAt < 0 ? -1 : (now - c.hitAt) / 1e9f, spin = 0, squash = 1, shove = knockOut(hit) * still;
 			if (shove > 0) {
 				x += (float) c.knock.x * shove;
 				y += (float) c.knock.y * shove;
 				z += (float) c.knock.z * shove;
-				spin = c.spin * knockWobble(hit);
-				squash = 1 + KNOCK_SQUASH * knockWobble(hit * 1.6f);
+				spin = c.spin * knockWobble(hit) * still;
+				squash = 1 + KNOCK_SQUASH * knockWobble(hit * 1.6f) * still;
 			}
 			int n = c.display.cps().length;
 			// A flowing line's words don't pop: each one glides into its place in the sentence, whole, as it fades up
-			float enter = arrival == WorldArrival.ZOOM ? zoomIn(age) : popping && !flow ? pop(age) : 1;
+			float enter = Calm.around(arrival == WorldArrival.ZOOM ? zoomIn(age) : popping && !flow ? pop(age) : 1, 1, still);
 			float replaced = i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1;
 			float since = c == sung || c.title ? -1 : replaced >= 0 ? replaced : c.goneAt >= 0 ? gone : -1;
 			float grow = c.size * scale * enter * settled(since)
@@ -1903,20 +1907,20 @@ final class WorldWords {
 			int shown = shownLetters(c.display.logical(), flow || !popping, age);
 			float typed = arrival == WorldArrival.TYPE ? age : -1;
 			int own = c.title ? rgb : toned(rgb, toneRgb, c.along);
-			int colour = c.goneAt < 0 ? mix(own, 0xFFFFFF, flash(age))
+			int colour = c.goneAt < 0 ? mix(own, 0xFFFFFF, flash(age) * flashing)
 					: paled(keptColour(c, own), gone);
 			if (shove > 0) {
-				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit));
+				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit) * flashing);
 			}
 			float blown = blownBack(leave, gone, fade, c.rtl);
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
-					.rotateZ((c.lean + tilt * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * fell + spin
+					.rotateZ((c.lean + rocking * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * still * fell + spin
 					- BLOW_TIP * blown / BLOW) * DEG));
 			pose.scale(grow, -grow, grow);
 			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blown,
-					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) : 0);
+					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) * still : 0);
 			if (!soft) {
 				// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 				float shade = a * shadowOpacity(day) * wane;

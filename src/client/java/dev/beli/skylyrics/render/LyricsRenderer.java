@@ -896,7 +896,7 @@ public final class LyricsRenderer {
 				if (p < 1 && clock.previous() != Integer.MIN_VALUE) {
 					arrangement(draw, cfg, clock.previous(), time, 0, visibility * Math.max(0, 1 - p * 2.5f), 1, now);
 				}
-				float pop = 0.8f + 0.2f * easeOutBack(p);
+				float pop = Calm.around(0.8f + 0.2f * easeOutBack(p), 1, Calm.motion());
 				arrangement(draw, cfg, index, time, 0, visibility * Math.min(1, p * 2f), pop, now);
 			}
 			case TYPEWRITER -> arrangement(draw, cfg, index, time, 0, visibility, 1, now);
@@ -1008,7 +1008,9 @@ public final class LyricsRenderer {
 					wordsT = since - 0.06f; // a beat after the old line starts fading
 				}
 				if (cfg.pulse) {
-					flareT = Float.isNaN(wordsT) ? since : wordsT;
+					// The flash follows the flash clock (at most three starts a second) and is left out when flashes are hidden
+					float flash = Calm.flashSince(Calm.hideFlashes(), clock.flashSince(now));
+					flareT = cfg.animation == Animation.WORDS ? flash - 0.06f : flash;
 				}
 			}
 			// The line being sung goes when it has been over for a while; the lines around it stay as they are
@@ -2106,7 +2108,12 @@ public final class LyricsRenderer {
 
 	/** Seconds since the lyrics last moved to a new line, for things that flare up with them. */
 	public float secondsSinceLineChange() {
-		return clock.secondsSince(System.nanoTime());
+		return Calm.flashSince(Calm.hideFlashes(), clock.flashSince(System.nanoTime()));
+	}
+
+	/** Like {@link #secondsSinceLineChange} but whatever the accessibility options say: when a flash would start (test hook). */
+	public float secondsSinceFlashStart() {
+		return clock.flashSince(System.nanoTime());
 	}
 
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {

@@ -69,6 +69,9 @@
 - **Stopped players.** On Linux, a player that is stopped (not just paused) but still remembers its last song (Rhythmbox, VLC) no longer keeps that song in the bar.
 - **More pauses in the lyrics.** Lines that are only a note emoji, "♪ instrumental ♪", "(Intro)", "(Outro)" or "(Solo)" count as pauses, and a line starting with a part tag such as "[Chorus] words" no longer shows the tag.
 - **Song library.** A negative scroll position in the recently heard list can no longer cause an error.
+- **Hide Lightning Flashes.** Turning on **Hide Lightning Flashes** in Minecraft's Accessibility settings now also turns off the lyrics' flashes: the glow pulse, the crosshair flash, the hat flare, the sky pulse and the World words' white flash when they appear.
+- **At most three flashes a second.** When lines come very quickly, the glow, crosshair, hat and sky flashes no longer restart for every line: they start at most three times a second. Normal songs look the same.
+- **Distortion Effects.** Minecraft's **Distortion Effects** setting now also calms the lyrics' motion: at 0 the line pop, the World words' sway, knock and arrival bounce, and the hat's wobble and spin stay still, and in between they are smaller.
 
 ### Faster
 

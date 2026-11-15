@@ -168,6 +168,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		*///?}
 			return;
 		}
+		float still = Calm.motion(); // Minecraft's Distortion Effects
 		Guard.run("hat", () -> {
 			float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 			int rgb = lyrics.color();
@@ -225,7 +226,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 							pose.pushPose();
 							try {
 								pose.translate(side * ANTENNA_X, HEAD_TOP, 0);
-								float wobble = ANTENNA_WOBBLE * Mth.sin(t * ANTENNA_WOBBLE_SPEED + side);
+								float wobble = still * ANTENNA_WOBBLE * Mth.sin(t * ANTENNA_WOBBLE_SPEED + side);
 								pose.mulPose(Axis.ZP.rotationDegrees(side * ANTENNA_LEAN + wobble));
 								out.submitCustomGeometry(pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
 							} finally {
@@ -234,7 +235,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 						}
 					}
 					case FLOWER_CROWN -> {
-						float spin = seconds() * FLOWER_SPIN;
+						float spin = seconds() * FLOWER_SPIN * still;
 						// With Glow with the lyrics on, the flowers open a little wider as each new line starts
 						float pop = 1 + FLOWER_POP * (bright - REST) / FLARE;
 						int pale = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.45f);
@@ -249,10 +250,10 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 							float phase = i * Mth.TWO_PI / NOTES;
 							pose.pushPose();
 							try {
-								pose.translate(0, NOTE_Y + NOTE_BOB * Mth.sin(t * NOTE_BOB_SPEED + phase * 2), 0);
-								pose.mulPose(Axis.YP.rotation(t * NOTE_ORBIT + phase));
+								pose.translate(0, NOTE_Y + still * NOTE_BOB * Mth.sin(t * NOTE_BOB_SPEED + phase * 2), 0);
+								pose.mulPose(Axis.YP.rotation(t * NOTE_ORBIT * still + phase));
 								pose.translate(0, 0, NOTE_RADIUS);
-								pose.mulPose(Axis.ZP.rotation(NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
+								pose.mulPose(Axis.ZP.rotation(still * NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
 								pose.scale(pop, pop, pop);
 								out.submitCustomGeometry(pose, paint(), (p, vc) -> note(p, vc, pair, glow));
 							} finally {
@@ -262,7 +263,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 					}
 					case PROPELLER_CAP -> {
 						long now = System.nanoTime();
-						propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f,
+						propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f * still,
 								cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 						propLast = now;
 						out.submitCustomGeometry(pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
