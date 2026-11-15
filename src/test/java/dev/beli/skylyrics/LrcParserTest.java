@@ -177,4 +177,19 @@ class LrcParserTest {
 		// "[mm:ss:xx]" is what some files use; no test in the repo uses hh:mm:ss, so that reading stays unsupported
 		assertEquals(62_030, LrcParser.parseSynced("[01:02:03]x").lines().getFirst().timeMs());
 	}
+
+	@Test
+	void aTimestampInTheMiddleOfALineIsNotShown() {
+		Lyrics l = LrcParser.parseSynced("[00:12.00]Hello [00:14.00]world\n[00:20]a [00:21] b");
+		assertEquals(2, l.lines().size());
+		assertEquals(12000, l.get(0).timeMs());
+		assertEquals("Hello world", l.get(0).text());
+		assertEquals("a b", l.get(1).text());
+	}
+
+	@Test
+	void wordStampsAndOtherBracketsInsideALineStayHandled() {
+		Lyrics l = LrcParser.parseSynced("[00:12.00]<00:12.34>Hello <00:13.00>[x2] world [Chorus]");
+		assertEquals("Hello [x2] world [Chorus]", l.get(0).text());
+	}
 }
