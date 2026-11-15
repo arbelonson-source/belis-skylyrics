@@ -2,13 +2,18 @@ package dev.beli.skylyrics.media;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -43,6 +48,12 @@ public final class MacMediaSource implements MediaSource {
 	/** After osascript is missing or keeps failing, wait before trying again. */
 	private static final long RETRY_NS = 15_000_000_000L;
 	private static final int MAX_FAILS = 3;
+	/**
+	 * How long "is the app open" is remembered. Walking every process is the costly part of a poll. A wrong answer
+	 * is harmless: an app that quit meanwhile is skipped by the script's own {@code running of application} check
+	 * (which never launches anything), and one that just opened is noticed a moment later.
+	 */
+	private static final long RUNNING_TTL_NS = 3_000_000_000L;
 	/** Every read starts a process; the tracker's smooth clock fills the gaps, so about once a second is plenty. */
 	private static final long MIN_POLL_NS = 900_000_000L;
 	/** errAEEventNotPermitted / errAEEventWouldRequireUserConsent: Automation permission was refused. */
@@ -179,6 +190,8 @@ public final class MacMediaSource implements MediaSource {
 	private long pendingSince;
 	private volatile int fails;
 	private volatile long retryAt;
+	/** Apps macOS refused to let us control, and when to ask again. */
+	private final Map<App, Long> deniedUntil = new ConcurrentHashMap<>();
 	private String retryError = "";
 	private Answer last = Answer.EMPTY;
 	private long lastAt;
@@ -187,7 +200,7 @@ public final class MacMediaSource implements MediaSource {
 	private volatile String currentDisplayName = "";
 
 	public MacMediaSource(Supplier<String> preferredPlayer) {
-		this(preferredPlayer, MacMediaSource::startProcess, MIN_POLL_NS, MacMediaSource::isRunning);
+		this(preferredPlayer, MacMediaSource::startProcess, MIN_POLL_NS, cached(MacMediaSource::isRunning, System::nanoTime, RUNNING_TTL_NS));
 	}
 
 	/** @param minPollNs how long a reading is reused for; tests use 0 */
@@ -202,6 +215,28 @@ public final class MacMediaSource implements MediaSource {
 		this.running = running;
 	}
 
+	/** Remembers {@code inner}'s answer for each app for {@code ttlNs}. */
+	static Predicate<App> cached(Predicate<App> inner, LongSupplier nanos, long ttlNs) {
+		Map<App, Boolean> answers = new HashMap<>();
+		Map<App, Long> at = new HashMap<>();
+		return app -> {
+			synchronized (answers) {
+				long now = nanos.getAsLong();
+				Long when = at.get(app);
+				if (when == null || now - when >= ttlNs) {
+					answers.put(app, inner.test(app));
+					at.put(app, now);
+				}
+				return answers.get(app);
+			}
+		};
+	}
+
+	/** Whether this answer means macOS refused the Automation permission. */
+	static boolean isDenied(int code) {
+		return code == NOT_ALLOWED || code == NEEDS_CONSENT;
+	}
+
 	/** Looks for the app's program among this user's processes; needs no permission and opens nothing. */
 	static boolean isRunning(App app) {
 		String program = "/" + app.name() + ".app/Contents/MacOS/" + app.name();
@@ -212,20 +247,35 @@ public final class MacMediaSource implements MediaSource {
 	public synchronized Snapshot poll() throws Exception {
 		if (!haveLast || System.nanoTime() - lastAt >= minPollNs) {
 			List<String> args = new ArrayList<>();
+			List<Failure> denied = new ArrayList<>();
+			long now = System.nanoTime();
 			for (App app : APPS) {
-				if (running.test(app)) {
+				Long until = deniedUntil.get(app);
+				if (until != null && now < until) {
+					// macOS said no a moment ago and osascript exits normally with that answer, so nothing else
+					// would slow us down: leave the app alone until the retry time
+					denied.add(new Failure(app, NOT_ALLOWED, ""));
+				} else if (running.test(app)) {
 					args.add(app.name());
 					args.add(app.readScript());
 				}
 			}
 			boolean late = pending != null;
 			if (args.isEmpty() && !late) {
-				last = Answer.EMPTY; // neither app is open: nothing to ask, no osascript to start
+				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied); // nothing to ask, no osascript to start
 				lastAt = System.nanoTime();
 				haveLast = true;
 			} else {
 				String out = osascript(args, true);
-				last = parse(out);
+				Answer answer = parse(out);
+				List<Failure> failures = new ArrayList<>(answer.failures());
+				for (Failure f : answer.failures()) {
+					if (isDenied(f.code())) {
+						deniedUntil.put(f.app(), System.nanoTime() + RETRY_NS);
+					}
+				}
+				failures.addAll(denied);
+				last = new Answer(answer.players(), failures);
 				lastAt = System.nanoTime();
 				haveLast = !late; // a late answer may be old: read again next time
 			}
@@ -235,7 +285,7 @@ public final class MacMediaSource implements MediaSource {
 		if (chosen == null) {
 			current = null;
 			for (Failure f : last.failures()) {
-				if (f.code() == NOT_ALLOWED || f.code() == NEEDS_CONSENT) {
+				if (isDenied(f.code())) {
 					throw new IOException(Tr.t("Allow Minecraft to control %s in System Settings → Privacy & Security → Automation", f.app().name()));
 				}
 			}
@@ -303,7 +353,8 @@ public final class MacMediaSource implements MediaSource {
 
 	/** A field without stray control characters (the script already turned tabs and line breaks into spaces). */
 	private static String field(String[] f, int i) {
-		return i < f.length ? f[i].replaceAll("\\p{Cntrl}", "").strip() : "";
+		// Composed form, so accents typed as letter + combining mark (old Music libraries) match LRCLIB and the caches
+		return i < f.length ? Normalizer.normalize(f[i].replaceAll("\\p{Cntrl}", "").strip(), Normalizer.Form.NFC) : "";
 	}
 
 	/** AppleScript writes numbers the Mac's way: "12.5", "12,5" in many languages, "1.0E+9" when big. */
@@ -476,6 +527,7 @@ public final class MacMediaSource implements MediaSource {
 		}
 		retryAt = 0;
 		fails = 0;
+		deniedUntil.clear();
 		haveLast = false;
 	}
 }

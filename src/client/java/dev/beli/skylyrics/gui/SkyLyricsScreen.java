@@ -1458,14 +1458,14 @@ public final class SkyLyricsScreen extends Screen {
 				typing = false;
 				moveFocus(event.isUp() || event.hasShiftDown() ? -1 : 1);
 			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
-				editSearch(event.hasControlDown() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
+				editSearch(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 			} else if (event.isPaste()) {
 				editSearch(query + minecraft.keyboardHandler.getClipboard().replaceAll("\\s+", " "));
 			}
 			// Letters come in through charTyped; the rest must not close the screen or change a setting
 			return true;
 		}
-		if (event.key() == InputConstants.KEY_F && event.hasControlDown()) {
+		if (event.key() == InputConstants.KEY_F && event.hasControlDownWithQuirk()) {
 			typing = true;
 			afterKeyboardAction();
 			return true;
