@@ -198,7 +198,7 @@ class ThemesTest {
 	@Test
 	void settingsNoThemeSetsSurviveEveryTheme() {
 		java.util.List<String> themed = Themes.themed();
-		for (String name : new String[] { "karaoke", "shadow", "twoTone", "roundFont", "toneColor" }) {
+		for (String name : new String[] { "karaoke", "shadow", "twoTone", "toneColor" }) {
 			assertFalse(themed.contains(name), name);
 		}
 		for (Theme theme : Themes.ALL) {
@@ -206,13 +206,11 @@ class ThemesTest {
 			cfg.karaoke = !cfg.karaoke;
 			cfg.shadow = !cfg.shadow;
 			cfg.twoTone = !cfg.twoTone;
-			cfg.roundFont = !cfg.roundFont;
 			cfg.toneColor = 0x123456;
 			Themes.apply(theme, cfg);
 			assertEquals(!new SkyLyricsConfig().karaoke, cfg.karaoke, theme.id());
 			assertEquals(!new SkyLyricsConfig().shadow, cfg.shadow, theme.id());
 			assertEquals(!new SkyLyricsConfig().twoTone, cfg.twoTone, theme.id());
-			assertEquals(!new SkyLyricsConfig().roundFont, cfg.roundFont, theme.id());
 			assertEquals(0x123456, cfg.toneColor, theme.id());
 		}
 	}
@@ -244,6 +242,23 @@ class ThemesTest {
 			assertSame(theme, Themes.active(cfg), theme.id());
 			cfg.glow = cfg.glow > 0.5f ? 0.1f : 0.95f;
 			assertNull(Themes.active(cfg), theme.id());
+		}
+	}
+
+	@Test
+	void everyThemeStatesItsWholeFontChoice() {
+		assertTrue(Themes.themed().contains("roundFont"));
+		for (Theme theme : Themes.ALL) {
+			SkyLyricsConfig cfg = new SkyLyricsConfig();
+			cfg.roundFont = true;
+			Themes.apply(theme, cfg);
+			SkyLyricsConfig look = theme.preview();
+			// the fields that pick the font in LyricsFont
+			assertEquals(look.smoothFont, cfg.smoothFont, theme.id());
+			assertEquals(look.scriptFont, cfg.scriptFont, theme.id());
+			assertEquals(look.boldFont, cfg.boldFont, theme.id());
+			assertEquals(look.roundFont, cfg.roundFont, theme.id());
+			assertFalse(cfg.roundFont, theme.id());
 		}
 	}
 }
