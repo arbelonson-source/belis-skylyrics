@@ -23,6 +23,8 @@
 - **Clicks on 26.3.** On Minecraft 26.3, a click outside the game window no longer counts as a click inside it.
 - **Spotify asks less.** With the lyrics off and no settings or library open, the mod asks Spotify for the song only every 15 seconds. When Spotify says it is busy or keeps failing, the mod waits longer before asking again.
 - **Spotify 403.** A Spotify app that doesn't know your account now tells you to add it under User Management on the Spotify dashboard, instead of "error 403".
+- **Spotify signed out.** If Spotify keeps refusing your sign-in, the mod asks you to sign in again, instead of showing "error 401", and waits longer between tries.
+- **Hat errors.** A rare error while drawing a hat no longer crashes the game.
 - **No crash from a drawing error.** A rare error in the mod's drawing no longer crashes the game. Only the part that failed (lyrics, sky, bar, card or crosshair) pauses for 5 seconds, and the error goes to the log.
 - **Font mods.** Fixes a clash with other font mods on Minecraft 1.21.1 and 1.21.4.
 - **Intro tour.** The intro tour fits small windows and big GUI scales. It no longer opens over another mod's screen, and its last page says the keys work in a world.

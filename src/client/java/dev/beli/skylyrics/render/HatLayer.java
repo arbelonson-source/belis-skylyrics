@@ -6,6 +6,7 @@ import com.mojang.math.Axis;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
+import dev.beli.skylyrics.util.Guard;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.player.PlayerModel;
 //? if <1.21.9 {
@@ -157,111 +158,128 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			float limbSwingAmount, float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
 		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
 	*///?}
-		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		Minecraft mc = Minecraft.getInstance();
-		//? if >=1.21.2 {
-		if (cfg.hat == Hat.NONE || state.isInvisible || mc.player == null || state.id != mc.player.getId()) {
-		//?} else {
-		/*if (cfg.hat == Hat.NONE || player.isInvisible() || mc.player == null || player.getId() != mc.player.getId()) {
-		*///?}
-			return;
-		}
-		float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
-		int rgb = lyrics.color();
-		int glow = 0xFF000000 | LyricsRenderer.mix(rgb, 0xFFFFFF, 0.55f * bright);
-		pose.pushPose();
-		//? if >=1.21.9 {
-		getParentModel().root().translateAndRotate(pose);
-		getParentModel().translateToHead(pose);
-		//?} else {
-		/*getParentModel().getHead().translateAndRotate(pose);
-		*///?}
-		//? if >=1.21.2 {
-		float scale = hatScale(headCovered(state.headEquipment.isEmpty(), state.headItem.isEmpty(), state.wornHeadType != null));
-		//?} else {
-		/*float scale = hatScale(!player.getItemBySlot(EquipmentSlot.HEAD).isEmpty());
-		*///?}
-		if (scale != 1f) {
-			pose.translate(0, HEAD_CENTER, 0);
-			pose.scale(scale, scale, scale);
-			pose.translate(0, -HEAD_CENTER, 0);
-		}
-		switch (cfg.hat) {
-			case HALO -> {
-				pose.translate(0, HEAD_TOP - HALO_LIFT, 0);
-				out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, HALO_RADIUS, HALO_TUBE, 0, glow, FULL_BRIGHT));
-				int shine = Math.round(150 * bright) << 24 | rgb;
-				out.submitCustomGeometry(pose, RenderTypes.lightning(), (p, vc) -> shine(p, vc, HALO_RADIUS, HALO_SHINE, shine));
+		Guard.run("hat", () -> {
+			SkyLyricsConfig cfg = SkyLyricsConfig.get();
+			Minecraft mc = Minecraft.getInstance();
+			//? if >=1.21.2 {
+			if (cfg.hat == Hat.NONE || state.isInvisible || mc.player == null || state.id != mc.player.getId()) {
+			//?} else {
+			/*if (cfg.hat == Hat.NONE || player.isInvisible() || mc.player == null || player.getId() != mc.player.getId()) {
+			*///?}
+				return;
 			}
-			case HEADPHONES -> {
-				out.submitCustomGeometry(pose, paint(), (p, vc) -> headphones(p, vc, light, glow));
-				for (int side = -1; side <= 1; side += 2) {
-					pose.pushPose();
-					pose.translate(side * (CUP_OUT + 0.003f), CUP_Y, 0);
-					pose.mulPose(Axis.ZP.rotationDegrees(90));
-					out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, 0.065f, 0.011f, 0, glow, FULL_BRIGHT));
-					pose.popPose();
+			float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
+			int rgb = lyrics.color();
+			int glow = 0xFF000000 | LyricsRenderer.mix(rgb, 0xFFFFFF, 0.55f * bright);
+			pose.pushPose();
+			try {
+				//? if >=1.21.9 {
+				getParentModel().root().translateAndRotate(pose);
+				getParentModel().translateToHead(pose);
+				//?} else {
+				/*getParentModel().getHead().translateAndRotate(pose);
+				*///?}
+				//? if >=1.21.2 {
+				float scale = hatScale(headCovered(state.headEquipment.isEmpty(), state.headItem.isEmpty(), state.wornHeadType != null));
+				//?} else {
+				/*float scale = hatScale(!player.getItemBySlot(EquipmentSlot.HEAD).isEmpty());
+				*///?}
+				if (scale != 1f) {
+					pose.translate(0, HEAD_CENTER, 0);
+					pose.scale(scale, scale, scale);
+					pose.translate(0, -HEAD_CENTER, 0);
 				}
-			}
-			case CONICAL -> out.submitCustomGeometry(pose, paint(), (p, vc) -> conical(p, vc, light, glow));
-			case CROWN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> crown(p, vc, light, glow));
-			case CAT_EARS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
-			case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
-			case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
-			case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
-			case SHADES -> out.submitCustomGeometry(pose, paint(), (p, vc) -> shades(p, vc, light, glow));
-			case ANTENNAE -> {
-				float t = seconds();
-				// With Glow with the lyrics on, the balls swell a little as each new line starts
-				float pop = 1 + ANTENNA_POP * (bright - REST) / FLARE;
-				for (int side = -1; side <= 1; side += 2) {
-					pose.pushPose();
-					pose.translate(side * ANTENNA_X, HEAD_TOP, 0);
-					float wobble = ANTENNA_WOBBLE * Mth.sin(t * ANTENNA_WOBBLE_SPEED + side);
-					pose.mulPose(Axis.ZP.rotationDegrees(side * ANTENNA_LEAN + wobble));
-					out.submitCustomGeometry(pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
-					pose.popPose();
+				switch (cfg.hat) {
+					case HALO -> {
+						pose.translate(0, HEAD_TOP - HALO_LIFT, 0);
+						out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, HALO_RADIUS, HALO_TUBE, 0, glow, FULL_BRIGHT));
+						int shine = Math.round(150 * bright) << 24 | rgb;
+						out.submitCustomGeometry(pose, RenderTypes.lightning(), (p, vc) -> shine(p, vc, HALO_RADIUS, HALO_SHINE, shine));
+					}
+					case HEADPHONES -> {
+						out.submitCustomGeometry(pose, paint(), (p, vc) -> headphones(p, vc, light, glow));
+						for (int side = -1; side <= 1; side += 2) {
+							pose.pushPose();
+							try {
+								pose.translate(side * (CUP_OUT + 0.003f), CUP_Y, 0);
+								pose.mulPose(Axis.ZP.rotationDegrees(90));
+								out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, 0.065f, 0.011f, 0, glow, FULL_BRIGHT));
+							} finally {
+								pose.popPose();
+							}
+						}
+					}
+					case CONICAL -> out.submitCustomGeometry(pose, paint(), (p, vc) -> conical(p, vc, light, glow));
+					case CROWN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> crown(p, vc, light, glow));
+					case CAT_EARS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
+					case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
+					case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
+					case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
+					case SHADES -> out.submitCustomGeometry(pose, paint(), (p, vc) -> shades(p, vc, light, glow));
+					case ANTENNAE -> {
+						float t = seconds();
+						// With Glow with the lyrics on, the balls swell a little as each new line starts
+						float pop = 1 + ANTENNA_POP * (bright - REST) / FLARE;
+						for (int side = -1; side <= 1; side += 2) {
+							pose.pushPose();
+							try {
+								pose.translate(side * ANTENNA_X, HEAD_TOP, 0);
+								float wobble = ANTENNA_WOBBLE * Mth.sin(t * ANTENNA_WOBBLE_SPEED + side);
+								pose.mulPose(Axis.ZP.rotationDegrees(side * ANTENNA_LEAN + wobble));
+								out.submitCustomGeometry(pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
+							} finally {
+								pose.popPose();
+							}
+						}
+					}
+					case FLOWER_CROWN -> {
+						float spin = seconds() * FLOWER_SPIN;
+						// With Glow with the lyrics on, the flowers open a little wider as each new line starts
+						float pop = 1 + FLOWER_POP * (bright - REST) / FLARE;
+						int pale = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.45f);
+						out.submitCustomGeometry(pose, paint(), (p, vc) -> flowerCrown(p, vc, light, glow, pale, spin, pop));
+					}
+					case MUSIC_NOTES -> {
+						float t = seconds();
+						// With Glow with the lyrics on, the notes swell a little as each new line starts
+						float pop = 1 + NOTE_POP * (bright - REST) / FLARE;
+						for (int i = 0; i < NOTES; i++) {
+							boolean pair = i % 2 == 1;
+							float phase = i * Mth.TWO_PI / NOTES;
+							pose.pushPose();
+							try {
+								pose.translate(0, NOTE_Y + NOTE_BOB * Mth.sin(t * NOTE_BOB_SPEED + phase * 2), 0);
+								pose.mulPose(Axis.YP.rotation(t * NOTE_ORBIT + phase));
+								pose.translate(0, 0, NOTE_RADIUS);
+								pose.mulPose(Axis.ZP.rotation(NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
+								pose.scale(pop, pop, pop);
+								out.submitCustomGeometry(pose, paint(), (p, vc) -> note(p, vc, pair, glow));
+							} finally {
+								pose.popPose();
+							}
+						}
+					}
+					case PROPELLER_CAP -> {
+						long now = System.nanoTime();
+						propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f,
+								cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
+						propLast = now;
+						out.submitCustomGeometry(pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
+						pose.pushPose();
+						try {
+							pose.translate(0, CAP_Y - CAP_HEIGHT - MAST, 0);
+							pose.mulPose(Axis.YP.rotation(propAngle));
+							out.submitCustomGeometry(pose, paint(), (p, vc) -> blades(p, vc, light, glow));
+						} finally {
+							pose.popPose();
+						}
+					}
+					case NONE -> { }
 				}
-			}
-			case FLOWER_CROWN -> {
-				float spin = seconds() * FLOWER_SPIN;
-				// With Glow with the lyrics on, the flowers open a little wider as each new line starts
-				float pop = 1 + FLOWER_POP * (bright - REST) / FLARE;
-				int pale = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.45f);
-				out.submitCustomGeometry(pose, paint(), (p, vc) -> flowerCrown(p, vc, light, glow, pale, spin, pop));
-			}
-			case MUSIC_NOTES -> {
-				float t = seconds();
-				// With Glow with the lyrics on, the notes swell a little as each new line starts
-				float pop = 1 + NOTE_POP * (bright - REST) / FLARE;
-				for (int i = 0; i < NOTES; i++) {
-					boolean pair = i % 2 == 1;
-					float phase = i * Mth.TWO_PI / NOTES;
-					pose.pushPose();
-					pose.translate(0, NOTE_Y + NOTE_BOB * Mth.sin(t * NOTE_BOB_SPEED + phase * 2), 0);
-					pose.mulPose(Axis.YP.rotation(t * NOTE_ORBIT + phase));
-					pose.translate(0, 0, NOTE_RADIUS);
-					pose.mulPose(Axis.ZP.rotation(NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
-					pose.scale(pop, pop, pop);
-					out.submitCustomGeometry(pose, paint(), (p, vc) -> note(p, vc, pair, glow));
-					pose.popPose();
-				}
-			}
-			case PROPELLER_CAP -> {
-				long now = System.nanoTime();
-				propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f,
-						cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
-				propLast = now;
-				out.submitCustomGeometry(pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
-				pose.pushPose();
-				pose.translate(0, CAP_Y - CAP_HEIGHT - MAST, 0);
-				pose.mulPose(Axis.YP.rotation(propAngle));
-				out.submitCustomGeometry(pose, paint(), (p, vc) -> blades(p, vc, light, glow));
+			} finally {
 				pose.popPose();
 			}
-			case NONE -> { }
-		}
-		pose.popPose();
+		});
 	}
 
 	/**
