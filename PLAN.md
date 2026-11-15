@@ -7,6 +7,7 @@ Owner's request: free recreation of the paid "Neon Lyrics" mod, tasteful config 
 photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS).
 
 ## Rules for whoever picks this up (incl. the cron loop)
+- Record the PID when you start a background job (`cmd & echo $!`) and stop only that PID; never pkill, killall or pkill -f (2026-11-14 22:30 a name-matched kill took down every Gradle build on the PC, and `pkill -f` also matches its own shell).
 - Build: `JAVA_HOME=/usr/lib/jvm/java-25-openjdk ./gradlew build` builds and tests every Minecraft version
   (Loom needs Java 25 to run; the 1.21.11 jar targets Java 21, the 26.x jars Java 25). `:26.2:build` builds one.
 - Run the game with ONE version: `./gradlew :1.21.11:runProductionClient` (or `:26.1.2:`, `:26.2:`, `:26.3:`).
