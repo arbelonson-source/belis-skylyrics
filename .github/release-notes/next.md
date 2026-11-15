@@ -10,3 +10,6 @@
 - Pressing Enter after changing the search no longer plays a song from the old results.
 - The album cover is called the same everywhere in the settings and help pages.
 - With Hat pulse off, the propeller cap turns at its calm speed instead of a faster one.
+- In the World layout the song title shows for its full time even when the lyrics take a moment to load, and a long title is shrunk to fit.
+- In the World layout, respawning or changing world during the end of a line no longer flashes its last words, and a word that is far away fades out instead of vanishing.
+- Hitting mobs while the World lyrics are hidden no longer knocks a word when they show again.
