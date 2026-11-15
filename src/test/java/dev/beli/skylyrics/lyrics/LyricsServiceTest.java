@@ -310,6 +310,162 @@ class LyricsServiceTest {
 		assertTrue(service.lyrics().lines().get(0).text().contains("Main version"), "still the backup's lyrics");
 	}
 
+	/** Saves a found answer for the song the way 0.7.8 did: the same file, but without a version. */
+	private Path saveOldVersionFile(Track t, LrclibClient.Result saved) throws Exception {
+		service.shutdown();
+		service = new LyricsService(x -> saved, cache);
+		service.load(t);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		Path file;
+		try (var files = Files.list(cache)) {
+			file = files.filter(f -> f.toString().endsWith(".json")).findFirst().orElseThrow();
+		}
+		String json = Files.readString(file);
+		assertTrue(json.contains(",\"v\":2"), json);
+		Files.writeString(file, json.replace(",\"v\":2", ""));
+		service.shutdown();
+		return file;
+	}
+
+	private static final Track OLD_SONG = track("Song One", 200_000);
+	private static final LrclibClient.Result STANDIN = new LrclibClient.Result(null, "Backup version", false);
+	private static final LrclibClient.Result BETTER = new LrclibClient.Result("[00:01.00]Main version", null, false);
+
+	@Test
+	void newFilesCarryTheVersion() throws Exception {
+		service.shutdown();
+		service = new LyricsService(x -> BETTER, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		try (var files = Files.list(cache)) {
+			assertTrue(Files.readString(files.filter(f -> f.toString().endsWith(".json")).findFirst().orElseThrow()).contains("\"v\":2"));
+		}
+	}
+
+	@Test
+	void versionlessLyricsAreShownThenReplacedWhenTheMainSiteHasBetter() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return BETTER;
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		waitFor(() -> service.lyrics().lines().get(0).text().contains("Main version"));
+		assertEquals(1, asks.get());
+		assertTrue(Files.readString(file).contains("Main version"));
+		assertTrue(Files.readString(file).contains("\"v\":2"));
+	}
+
+	@Test
+	void versionlessLyricsAreKeptAndStampedWhenTheMainSiteHasNothing() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return asks.get() == 1 ? LrclibClient.Result.NOT_FOUND : BETTER;
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		waitFor(() -> readFile(file).contains("\"v\":2"));
+		assertTrue(readFile(file).contains("Backup version"));
+		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+		// stamped, so the next play doesn't ask again
+		service.load(track("Other", 100_000));
+		waitFor(() -> asks.get() == 2); // the other song's own lookup
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		Thread.sleep(200);
+		assertEquals(2, asks.get(), "the second play comes from the file without asking");
+		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+	}
+
+	@Test
+	void versionlessLyricsStayAsTheyAreWhenTheMainSiteAnswersWithAnotherStandIn() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
+		String before = readFile(file);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return BETTER.asStopgap(); // the main site is down again
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> asks.get() == 1);
+		Thread.sleep(300);
+		assertEquals(before, readFile(file), "not stamped, so a later play asks again");
+		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+	}
+
+	@Test
+	void versionlessLyricsThatAreTheSameAreStampedButNotShownAgain() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, BETTER);
+		service = new LyricsService(x -> BETTER, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		Lyrics shown = service.lyrics();
+		waitFor(() -> readFile(file).contains("\"v\":2"));
+		Thread.sleep(100);
+		assertTrue(shown == service.lyrics(), "the same lyrics were applied again");
+	}
+
+	@Test
+	void versionlessLyricsStayAsTheyAreWhenTheMainSiteFails() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
+		String before = readFile(file);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			throw new LrclibClient.StatusException(503);
+		}, cache, attempt -> 30);
+		service.load(OLD_SONG);
+		waitFor(() -> asks.get() == 1);
+		Thread.sleep(300);
+		assertEquals(1, asks.get(), "no retry loop");
+		assertEquals(before, readFile(file));
+		assertEquals(LyricsService.State.READY, service.state());
+		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+	}
+
+	@Test
+	void aSongSkippedBeforeTheCheckReturnsIsNotShown() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
+		CountDownLatch asked = new CountDownLatch(1);
+		CountDownLatch go = new CountDownLatch(1);
+		service = new LyricsService(t -> {
+			if (!t.title().equals("Song One")) {
+				return LrclibClient.Result.NOT_FOUND;
+			}
+			asked.countDown();
+			while (true) { // ignores the skip's interrupt, as a request that was already answered would
+				try {
+					go.await();
+					break;
+				} catch (InterruptedException ignored) {
+					// keep waiting
+				}
+			}
+			return BETTER;
+		}, cache);
+		service.load(OLD_SONG);
+		assertTrue(asked.await(10, TimeUnit.SECONDS));
+		service.load(track("Song Two", 100_000));
+		go.countDown();
+		waitFor(() -> readFile(file).contains("Main version"));
+		Thread.sleep(200);
+		assertEquals("Song Two", service.track().title());
+		assertTrue(service.lyrics().isEmpty(), "the skipped song's lyrics must not show");
+		assertEquals(LyricsService.State.NOT_FOUND, service.state());
+	}
+
+	private static String readFile(Path f) {
+		try {
+			return Files.readString(f);
+		} catch (IOException e) {
+			return "";
+		}
+	}
+
 	@Test
 	void realNotFoundIsSavedAndNotRetried() throws InterruptedException, IOException {
 		fastRetries();

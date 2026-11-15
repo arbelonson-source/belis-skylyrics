@@ -42,6 +42,8 @@ public final class LyricsService {
 	private static final long[] RETRY_DELAYS_MS = {2_000, 5_000, 10_000, 20_000, 30_000, 45_000, 60_000};
 	/** Songs kept on disk (a few KB each); past this the ones not played for longest go. */
 	private static final int DISK_FILES = 3000;
+	/** The version written into new cache files. */
+	private static final int CACHE_VERSION = 2;
 	/** Only our own lyrics files; the folder also holds the Spotify login. */
 	private static final Pattern CACHE_NAME = Pattern.compile("[0-9a-f]{24}\\.json(\\.tmp)?");
 
@@ -49,7 +51,11 @@ public final class LyricsService {
 		IDLE, LOADING, READY, NOT_FOUND, ERROR
 	}
 
-	private record CacheEntry(String synced, String plain, boolean instrumental, long savedAt) {
+	/**
+	 * @param v which version wrote the file; 0 (missing) for 0.7.8 and older, which also saved the backup site's
+	 *          stand-ins, so those can't be told apart from a real answer
+	 */
+	private record CacheEntry(String synced, String plain, boolean instrumental, long savedAt, int v) {
 	}
 
 	private final LyricsSource client;
@@ -178,15 +184,19 @@ public final class LyricsService {
 		try {
 			CacheEntry cached = skipCache ? null : readCache(file);
 			LrclibClient.Result result;
+			CacheEntry unchecked = null; // a found answer saved by an older version, to ask the main site about once more
 			if (cached != null && keepCached(parse(new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental), t.lengthMs()),
 					cached.savedAt, System.currentTimeMillis())) {
 				result = new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental);
 				file.toFile().setLastModified(System.currentTimeMillis()); // played again, so kept longer
+				if (cached.v < CACHE_VERSION && found(parse(result, t.lengthMs()))) {
+					unchecked = cached;
+				}
 			} else {
 				result = client.find(t);
 				// A stand-in from the backup (main site was down) isn't saved, so the next play asks the main site again
 				if (!result.stopgap()) {
-					writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis()));
+					writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis(), CACHE_VERSION));
 				}
 			}
 			if (generation.get() != gen) {
@@ -196,6 +206,9 @@ public final class LyricsService {
 				LOG.info("Got lyrics for {} after {} failed tries", t.key(), failures);
 			}
 			apply(t, result);
+			if (unchecked != null) {
+				recheckLater(t, gen, file, unchecked);
+			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		} catch (Exception e) {
@@ -219,6 +232,47 @@ public final class LyricsService {
 			} catch (RejectedExecutionException ignored) {
 				// shutting down
 			}
+		}
+	}
+
+	private void recheckLater(Track t, long gen, Path file, CacheEntry old) {
+		try {
+			pendingFetch = executor.submit(() -> recheck(t, gen, file, old));
+		} catch (RejectedExecutionException ignored) {
+			// shutting down
+		}
+	}
+
+	/**
+	 * Asks the main site once more about a song saved by an older version, whose lyrics may have been the backup's
+	 * stand-in. Other lyrics replace the file (and the shown lyrics, if the song is still playing); nothing, or the same
+	 * lyrics, keeps the old ones and stamps the file so it isn't asked again. Another stand-in means the main site is down
+	 * again, so that, like a failure, leaves the file as it is and the next play tries again.
+	 */
+	private void recheck(Track t, long gen, Path file, CacheEntry old) {
+		if (generation.get() != gen) {
+			return;
+		}
+		try {
+			LrclibClient.Result result = client.find(t);
+			if (result.stopgap()) {
+				return;
+			}
+			boolean same = java.util.Objects.equals(result.synced(), old.synced) && java.util.Objects.equals(result.plain(), old.plain)
+					&& result.instrumental() == old.instrumental;
+			// The same lyrics again (most songs) aren't applied again, which would start the shown line over
+			if (!same && found(parse(result, t.lengthMs()))) {
+				writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis(), CACHE_VERSION));
+				if (generation.get() == gen) {
+					apply(t, result);
+				}
+			} else {
+				writeCache(file, new CacheEntry(old.synced, old.plain, old.instrumental, old.savedAt, CACHE_VERSION));
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} catch (Exception e) {
+			LOG.debug("Couldn't check the saved lyrics for {} again: {}", t.key(), e.toString());
 		}
 	}
 
