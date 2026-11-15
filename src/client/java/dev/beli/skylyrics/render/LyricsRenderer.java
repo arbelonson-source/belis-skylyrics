@@ -995,21 +995,9 @@ public final class LyricsRenderer {
 
 		/** Cuts a line into words and places them for the arc layout. */
 		ArcText arcText(int index, String text) {
-			List<String> words = new ArrayList<>();
-			List<Integer> first = new ArrayList<>();
+			ArcWords split = arcWords(text);
+			List<String> words = split.words();
 			int[] cps = text.codePoints().toArray();
-			for (int i = 0; i < cps.length; ) {
-				if (cps[i] == ' ') {
-					i++;
-					continue;
-				}
-				int start = i;
-				while (i < cps.length && cps[i] != ' ') {
-					i++;
-				}
-				words.add(new String(cps, start, i - start));
-				first.add(start);
-			}
 			int n = words.size();
 			float[] widths = new float[n];
 			boolean[] pause = new boolean[n];
@@ -1018,13 +1006,13 @@ public final class LyricsRenderer {
 				String word = words.get(w);
 				widths[w] = LyricsFont.width(font, base, word);
 				pause[w] = ",.;:!?…".indexOf(word.charAt(word.length() - 1)) >= 0;
-				firstChar[w] = first.get(w);
+				firstChar[w] = split.first()[w];
 			}
 			boolean rtl = Bidi.requiresBidi(text.toCharArray(), 0, text.length())
 					&& !new Bidi(text, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
 			float space = LyricsFont.width(font, base, " ");
-			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause), space,
-					ArcLayout.seed(index, text), rtl);
+			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause, split.tight()), space,
+					ArcLayout.seed(index, text), rtl, split.tight());
 			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups);
 		}
 
@@ -1541,6 +1529,53 @@ public final class LyricsRenderer {
 		int[] rank = wordRanks(row);
 		boolean any = row.chars().anyMatch(c -> c != ' ');
 		return any ? rank[rank.length - 1] + 1 : 0;
+	}
+
+	/** A line cut into arc words: each word's text, where it starts (code points), and whether it runs straight into the next. */
+	record ArcWords(List<String> words, int[] first, boolean[] tight) {}
+
+	/**
+	 * Cuts a line into the words the arc layout places. Words are split at spaces; a stretch with Chinese or Japanese
+	 * in it is cut into single characters (see {@link WorldWords#cjkUnits}) that sit side by side with no gap, so a
+	 * long line can wrap into rows and its characters come in one at a time. Other lines are cut exactly at spaces.
+	 */
+	static ArcWords arcWords(String text) {
+		List<String> words = new ArrayList<>();
+		List<Integer> first = new ArrayList<>();
+		List<Boolean> tight = new ArrayList<>();
+		int[] cps = text.codePoints().toArray();
+		for (int i = 0; i < cps.length; ) {
+			if (cps[i] == ' ') {
+				i++;
+				continue;
+			}
+			int start = i;
+			while (i < cps.length && cps[i] != ' ') {
+				i++;
+			}
+			boolean cjk = false;
+			for (int k = start; k < i && !cjk; k++) {
+				cjk = WorldWords.cjk(cps[k]);
+			}
+			if (!cjk) {
+				words.add(new String(cps, start, i - start));
+				first.add(start);
+				tight.add(false);
+				continue;
+			}
+			List<int[]> units = WorldWords.cjkUnits(cps, start, i);
+			for (int u = 0; u < units.size(); u++) {
+				int[] unit = units.get(u);
+				words.add(new String(cps, unit[0], unit[1] - unit[0]));
+				first.add(unit[0]);
+				tight.add(u + 1 < units.size());
+			}
+		}
+		boolean[] tightArr = new boolean[tight.size()];
+		for (int k = 0; k < tightArr.length; k++) {
+			tightArr[k] = tight.get(k);
+		}
+		return new ArcWords(words, first.stream().mapToInt(Integer::intValue).toArray(), tightArr);
 	}
 
 	static List<String> wrap(Font font, Style style, String text, float maxWidth) {
