@@ -233,6 +233,8 @@ public final class LyricsRenderer {
 		float side;
 		/** How far above the middle height it was placed, in degrees (within the above-range). */
 		float up;
+		/** Whether it was placed by a compass direction or the view lock, not where you were looking. */
+		boolean fixed;
 		long placed;
 		long lostSince = -1;
 	}
@@ -736,15 +738,17 @@ public final class LyricsRenderer {
 		if (!key.equals(arcKey)) {
 			arcKey = key;
 			for (ArcAnchor each : arcAnchors.values()) {
-				aim(each, cfg, camera, lock, fixed);
-				each.lostSince = -1;
+				// A line placed where you were looking keeps that spot while you stay in Follow or Floating; only the rest is aimed again
+				if (fixed || each.fixed) {
+					aim(each, cfg, camera, lock, fixed);
+					each.lostSince = -1;
+				}
 			}
 		}
 		ArcAnchor anchor = arcAnchors.get(index);
 		if (anchor != null && !fixed && follow) {
-			// Only Floating keeps its height to your view; in the sky the height is the setting, so looking up or down doesn't lose it
-			boolean tooHigh = cfg.placement == Placement.FLOATING && Math.abs(anchor.pitch - camera.xRot()) > ARC_LOST_PITCH;
-			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW || tooHigh) {
+			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW
+					|| Math.abs(anchor.pitch - camera.xRot()) > ARC_LOST_PITCH) {
 				if (anchor.lostSince < 0) {
 					anchor.lostSince = now;
 				} else if (now - anchor.lostSince > ARC_LOST_NS) {
@@ -776,14 +780,15 @@ public final class LyricsRenderer {
 
 	/** Puts the anchor where its side and height say, for the settings and the view right now. */
 	private static void aim(ArcAnchor anchor, SkyLyricsConfig cfg, Camera camera, @Nullable float[] lock, boolean fixed) {
-		float lift = anchor.up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2;
+		anchor.fixed = fixed;
 		if (fixed) {
 			float[] at = ViewLock.target(lock, cfg.direction, camera.yRot(), cfg.height);
 			anchor.yaw = at[0] + anchor.side;
-			anchor.pitch = at[1] - lift;
+			anchor.pitch = at[1] - (anchor.up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
 		} else {
+			// Where you look, a little above it
 			anchor.yaw = camera.yRot() + anchor.side;
-			anchor.pitch = Mth.clamp(followPitch(cfg.placement == Placement.FLOATING, camera.xRot(), cfg.height) - lift, -85, 85);
+			anchor.pitch = Mth.clamp(camera.xRot() - anchor.up, -85, 85);
 		}
 	}
 
@@ -796,8 +801,7 @@ public final class LyricsRenderer {
 
 	/**
 	 * The pitch the Lines layout sits at when it follows your view: the Height setting as an angle above the horizon
-	 * in the sky, and floating a little below your view (half the Height, at most 15 degrees). The arc lines centre on it too, so
-	 * switching layouts keeps the lyrics at the same height.
+	 * in the sky, and floating a little below your view (half the Height, at most 15 degrees).
 	 */
 	static float followPitch(boolean floating, float camPitch, float height) {
 		return floating ? Mth.clamp(camPitch - Math.min(height, 30) * 0.5f, -85, 85) : -height;

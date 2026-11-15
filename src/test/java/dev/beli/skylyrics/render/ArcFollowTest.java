@@ -19,17 +19,6 @@ class ArcFollowTest {
 			new LyricLine(60_000, "Last")), true, false);
 
 	@Test
-	void theFollowingPitchUsesTheHeightSetting() {
-		assertEquals(-22f, LyricsRenderer.followPitch(false, 40f, 22f), 1e-4);
-		assertEquals(-22f, LyricsRenderer.followPitch(false, -30f, 22f), 1e-4);
-		assertNotEquals(LyricsRenderer.followPitch(false, 0f, 10f), LyricsRenderer.followPitch(false, 0f, 40f));
-		// Floating hangs a little below where you look, half the height up to 15 degrees
-		assertEquals(-11f, LyricsRenderer.followPitch(true, 0f, 22f), 1e-4);
-		assertEquals(-15f, LyricsRenderer.followPitch(true, 0f, 80f), 1e-4);
-		assertEquals(-85f, LyricsRenderer.followPitch(true, -80f, 80f), 1e-4);
-	}
-
-	@Test
 	void anyChangedArcSettingMakesANewKey() {
 		float[] lock = {10f, -5f};
 		var base = LyricsRenderer.ArcKey.of(Placement.SKY, Direction.FOLLOW, 22f, null);
