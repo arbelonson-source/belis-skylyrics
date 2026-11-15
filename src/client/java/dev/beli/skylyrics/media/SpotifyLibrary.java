@@ -225,7 +225,7 @@ public final class SpotifyLibrary implements Library {
 				count = child(p, "tracks");
 			}
 			int songs = count == null ? 0 : (int) number(count, "total");
-			out.add(new LibraryPlaylist(id, orEmpty(string(p, "uri")), orEmpty(string(p, "name")), bestImage(array(p, "images")), songs, mine || shared));
+			out.add(new LibraryPlaylist(id, orEmpty(string(p, "uri")), plain(string(p, "name")), bestImage(array(p, "images")), songs, mine || shared));
 		}
 		return new Page<>(List.copyOf(out), (int) number(json, "total"), (int) number(json, "offset"));
 	}
@@ -260,14 +260,19 @@ public final class SpotifyLibrary implements Library {
 		for (JsonObject artist : objects(array(song, "artists"))) {
 			String name = string(artist, "name");
 			if (name != null) {
-				names.add(name);
+				names.add(Track.stripCodes(name));
 			}
 		}
 		JsonObject album = child(song, "album");
-		return new LibraryItem(id, uri, orEmpty(string(song, "name")), String.join(", ", names),
-				album == null ? "" : orEmpty(string(album, "name")),
+		return new LibraryItem(id, uri, plain(string(song, "name")), String.join(", ", names),
+				album == null ? "" : plain(string(album, "name")),
 				album == null ? "" : bestImage(array(album, "images")),
 				number(song, "duration_ms"), context);
+	}
+
+	/** A name for the list on screen: never null, and without the section-sign codes Minecraft would read as styling. */
+	static String plain(@Nullable String name) {
+		return Track.stripCodes(orEmpty(name));
 	}
 
 	private static List<JsonObject> objects(@Nullable JsonArray array) {

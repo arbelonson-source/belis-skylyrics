@@ -35,6 +35,18 @@ class SpotifyLibraryTest {
 	}
 
 	@Test
+	void sectionSignCodesInNamesNeverReachTheList() {
+		String body = "{\"tracks\":{\"total\":1,\"offset\":0,\"items\":[{\"id\":\"z\",\"uri\":\"spotify:track:z\",\"name\":\"\u00a7cRed \u00a7lSong\","
+				+ "\"artists\":[{\"name\":\"\u00a74Band\"}],\"album\":{\"name\":\"\u00a7kAlbum\",\"images\":[]}}]}}";
+		LibraryItem item = SpotifyLibrary.parseSearch(body).items().getFirst();
+		assertEquals("Red Song", item.title());
+		assertEquals("Band", item.artists());
+		assertEquals("Album", item.album());
+		String lists = "{\"total\":1,\"offset\":0,\"items\":[{\"id\":\"p\",\"uri\":\"spotify:playlist:p\",\"name\":\"\u00a7aMix\u00a7r\",\"owner\":{\"id\":\"me\"}}]}";
+		assertEquals("Mix", SpotifyLibrary.parsePlaylists(lists, "me").items().getFirst().name());
+	}
+
+	@Test
 	void theLastPageHasNoNext() {
 		String body = "{\"tracks\":{\"total\":12,\"offset\":10,\"items\":[" + song("a1", "x") + "," + song("a2", "y") + "]}}";
 		assertEquals(-1, SpotifyLibrary.parseSearch(body).next());
