@@ -208,8 +208,46 @@ public final class CoverCache {
 			cover.color = AlbumArt.pickColor(image);
 			cover.image = AlbumArt.shrink(image, SIZE, CORNER);
 			ready.add(cover);
-		} catch (Exception e) {
+		} catch (Exception | OutOfMemoryError e) {
 			LOG.debug("Couldn't load cover {}: {}", cover.url, e.toString());
+		}
+	}
+
+	/** The biggest cover body taken, and the biggest picture decoded; real covers are 300-640 px and well under 1 MB. */
+	private static final int MAX_BYTES = 8 * 1024 * 1024;
+	private static final int MAX_SIDE = 4096;
+
+	/** False when the announced length is over the limit; -1 (not announced) passes and is capped while reading. */
+	static boolean acceptable(long contentLength) {
+		return contentLength <= MAX_BYTES;
+	}
+
+	/** Reads at most max bytes; null when the stream has more than that. */
+	static byte @Nullable [] readCapped(java.io.InputStream in, int max) throws java.io.IOException {
+		byte[] bytes = in.readNBytes(max + 1);
+		return bytes.length > max ? null : bytes;
+	}
+
+	static boolean sizeOk(int width, int height) {
+		return width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE;
+	}
+
+	/** Checks the picture size from its header, before anything is decoded. */
+	static boolean dimensionsOk(byte[] bytes) {
+		try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+			Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
+			if (!readers.hasNext()) {
+				return false;
+			}
+			javax.imageio.ImageReader reader = readers.next();
+			try {
+				reader.setInput(in, true, true);
+				return sizeOk(reader.getWidth(0), reader.getHeight(0));
+			} finally {
+				reader.dispose();
+			}
+		} catch (java.io.IOException | RuntimeException e) {
+			return false;
 		}
 	}
 
@@ -223,11 +261,17 @@ public final class CoverCache {
 			}
 		}
 		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
-		HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
-		if (response.statusCode() / 100 != 2) {
+		HttpResponse<java.io.InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+		byte[] bytes;
+		try (java.io.InputStream body = response.body()) {
+			if (response.statusCode() / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
+				return null;
+			}
+			bytes = readCapped(body, MAX_BYTES);
+		}
+		if (bytes == null || !dimensionsOk(bytes)) {
 			return null;
 		}
-		byte[] bytes = response.body();
 		BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
 		if (image != null) {
 			Files.createDirectories(dir);
