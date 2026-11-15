@@ -101,4 +101,14 @@ class TopBarWordsTest {
 		assertEquals("םולש", TopBarWords.shown("שלום", true));
 		assertEquals("םולש", TopBarWords.shown("שלום", false));
 	}
+
+	@Test
+	void anArabicWordWithAVowelMarkIsLeftToTheGame() {
+		assertTrue(TopBarWords.vanilla("مَرحبا"));
+		assertEquals("مَرحبا", TopBarWords.shown("مَرحبا", true));
+		assertEquals("مَرحبا،", TopBarWords.shown("مَرحبا،", false));
+		assertFalse(TopBarWords.vanilla("مرحبا"));
+		assertFalse(TopBarWords.vanilla("שלום,"));
+		assertFalse(TopBarWords.vanilla("hello"));
+	}
 }

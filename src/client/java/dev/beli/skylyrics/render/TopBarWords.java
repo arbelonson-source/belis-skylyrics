@@ -46,10 +46,21 @@ final class TopBarWords {
 	}
 
 	/**
+	 * Whether the word is left to the game's own text path: Arabic with vowel marks (harakat), which the game stacks on
+	 * their letter and {@code Display} would drop.
+	 */
+	static boolean vanilla(String word) {
+		return word.codePoints().anyMatch(cp -> cp >= 0x0600 && cp <= 0x08FF && Character.getType(cp) == Character.NON_SPACING_MARK);
+	}
+
+	/**
 	 * One word as it is drawn from left to right: reordered with the line's own direction rather than the word's first
 	 * letter, so the comma of "שלום," sits on the right in an English line and on the left in a Hebrew one. Arabic is joined.
 	 */
 	static String shown(String word, boolean lineRtl) {
+		if (vanilla(word)) {
+			return word;
+		}
 		int[] cps = LyricsRenderer.Display.of(word, lineRtl).cps();
 		return new String(cps, 0, cps.length);
 	}

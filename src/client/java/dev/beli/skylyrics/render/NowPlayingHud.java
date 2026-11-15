@@ -603,6 +603,11 @@ public final class NowPlayingHud {
 	 * right (the game's own ordering would pick the word's direction from its first letter).
 	 */
 	private static void word(GuiGraphics g, Font font, Style style, String text, boolean lineRtl, float x, float midY, float scale, int color) {
+		if (TopBarWords.vanilla(text)) {
+			// Arabic with vowel marks: the game's own path, as before
+			text(g, font, style, text, x, midY, scale, color);
+			return;
+		}
 		String shown = TopBarWords.shown(text, lineRtl);
 		FormattedCharSequence seq = sink -> {
 			for (int i = 0, v = 0; i < shown.length(); v++) {
