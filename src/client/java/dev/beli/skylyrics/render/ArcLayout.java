@@ -41,6 +41,9 @@ final class ArcLayout {
 	/** Half the height of a lower-case word, for centring the block. */
 	private static final float HALF_HEIGHT = 4f;
 
+	/** Above this many steps (rows x words squared) the exact search is skipped for a plain fill; about 15 ms of work. */
+	private static final long MAX_DP_STEPS = 5_000_000L;
+
 	private static final int SALT_GROUP = 1, SALT_SIZE = 2, SALT_KIND = 3, SALT_ROLL = 4, SALT_STEP = 5, SALT_FLIP = 6;
 
 	private ArcLayout() {
@@ -96,12 +99,22 @@ final class ArcLayout {
 		if (k == 1) {
 			return new int[] {0};
 		}
+		// Row widths from prefix sums, so one candidate row costs O(1) instead of re-adding its words
+		double[] sum = new double[n + 1];
+		int[] gaps = new int[n + 1];
+		for (int i = 0; i < n; i++) {
+			sum[i + 1] = sum[i] + widths[i];
+			gaps[i + 1] = gaps[i] + (tight == null || !tight[i] ? 1 : 0);
+		}
+		if ((long) k * n * n > MAX_DP_STEPS) {
+			return fill(sum, gaps, n);
+		}
 		if (k == 2) {
 			// The usual case: try every cut, and let one after a comma win when it's nearly as even
 			int bestCut = 1;
 			float bestScore = Float.MAX_VALUE;
 			for (int c = 1; c < n; c++) {
-				float score = Math.max(width(widths, tight, 0, c, GAP), width(widths, tight, c, n, GAP)) * (pause[c - 1] ? PAUSE_BONUS : 1);
+				float score = Math.max(span(sum, gaps, 0, c), span(sum, gaps, c, n)) * (pause[c - 1] ? PAUSE_BONUS : 1);
 				if (score < bestScore) {
 					bestScore = score;
 					bestCut = c;
@@ -122,7 +135,7 @@ final class ArcLayout {
 					if (best[r - 1][j] == Float.MAX_VALUE) {
 						continue;
 					}
-					float w = width(widths, tight, j, i, GAP);
+					float w = span(sum, gaps, j, i);
 					float worst = Math.max(best[r - 1][j], w);
 					if (worst < best[r][i]) {
 						best[r][i] = worst;
@@ -137,6 +150,32 @@ final class ArcLayout {
 			i = cut[r][i];
 		}
 		return starts;
+	}
+
+	/** {@link #width(float[], boolean[], int, int, float)} with {@link #GAP} from prefix sums of the widths and the gaps. */
+	private static float span(double[] sum, int[] gaps, int from, int to) {
+		return (float) (sum[to] - sum[from] + GAP * (gaps[to - 1] - gaps[from]));
+	}
+
+	/**
+	 * Cheap cut for a line too long for the exact search: each row takes words until the next one would pass
+	 * {@link #ROW_WIDTH} (a row has at least one word). Linear in the number of words.
+	 */
+	private static int[] fill(double[] sum, int[] gaps, int n) {
+		int[] starts = new int[Math.min(n, (int) (Math.ceil(span(sum, gaps, 0, n) / ROW_WIDTH) * 2) + 2)];
+		int rows = 0;
+		for (int from = 0; from < n; ) {
+			if (rows == starts.length) {
+				starts = Arrays.copyOf(starts, rows * 2);
+			}
+			starts[rows++] = from;
+			int to = from + 1;
+			while (to < n && span(sum, gaps, from, to + 1) <= ROW_WIDTH) {
+				to++;
+			}
+			from = to;
+		}
+		return Arrays.copyOf(starts, rows);
 	}
 
 	/** Width of words {@code from..to-1} side by side with {@code gap} between them. */
