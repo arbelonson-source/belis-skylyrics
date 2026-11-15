@@ -37,15 +37,19 @@ public final class SpotifyLibrary implements Library {
 	private static final long MAX_WAIT_S = 30;
 
 	/** A slice of a longer list; {@code total} is how many there are altogether. */
-	public record Page<T>(List<T> items, int total, int offset) {
+	public record Page<T>(List<T> items, int total, int offset, int raw) {
+		public Page(List<T> items, int total, int offset) {
+			this(items, total, offset, items.size());
+		}
+
 		public static <T> Page<T> empty() {
 			return new Page<>(List.of(), 0, 0);
 		}
 
-		/** Where the next slice starts, or -1 when this was the last one. */
+		/** Where the next slice starts, or -1 when this was the last one. {@code raw} counts every entry Spotify sent, kept or dropped. */
 		public int next() {
-			int next = offset + items.size();
-			return items.isEmpty() || next >= total ? -1 : next;
+			int next = offset + raw;
+			return raw == 0 || next >= total ? -1 : next;
 		}
 	}
 
@@ -241,8 +245,8 @@ public final class SpotifyLibrary implements Library {
 			}
 		}
 		int total = (int) number(list, "total");
-		// Skipped entries (podcasts, local files) still count towards the total, so paging stays right
-		return new Page<>(List.copyOf(out), total, (int) number(list, "offset"));
+		// Skipped entries (podcasts, local files) still count towards Spotify's offset, so paging goes by the raw count
+		return new Page<>(List.copyOf(out), total, (int) number(list, "offset"), entries == null ? 0 : entries.size());
 	}
 
 	/** A playable song, or null for podcasts, local files and gaps. */

@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -92,5 +93,39 @@ class CoverCacheTest {
 		ByteArrayOutputStream ok = new ByteArrayOutputStream();
 		ImageIO.write(new BufferedImage(40, 40, BufferedImage.TYPE_INT_RGB), "png", ok);
 		assertEquals(40, AlbumArt.decode(ok.toByteArray()).getWidth());
+	}
+
+	@Test
+	void aCoverThatCannotBeCachedStillCountsAsDownloaded(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		java.nio.file.Path notAFolder = tmp.resolve("blocked");
+		java.nio.file.Files.writeString(notAFolder, "x");
+		assertDoesNotThrow(() -> CoverCache.store(notAFolder, notAFolder.resolve("a.img"), png(8, 8)));
+		java.nio.file.Path ok = tmp.resolve("covers");
+		CoverCache.store(ok, ok.resolve("b.img"), png(8, 8));
+		assertTrue(java.nio.file.Files.isRegularFile(ok.resolve("b.img")));
+	}
+
+	@Test
+	void aDamagedCachedCoverIsRemovedSoItDownloadsAgain(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		byte[] whole = png(16, 16);
+		java.nio.file.Path file = tmp.resolve("c.img");
+		java.nio.file.Files.write(file, whole);
+		assertEquals(16, CoverCache.readCached(file).getWidth());
+		java.nio.file.Files.write(file, java.util.Arrays.copyOf(whole, whole.length / 2));
+		assertNull(CoverCache.readCached(file));
+		assertFalse(java.nio.file.Files.exists(file));
+		assertNull(CoverCache.readCached(file));
+	}
+
+	@Test
+	void tidyingKeepsTheNewestFiles(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		for (int i = 0; i < 5; i++) {
+			java.nio.file.Path p = tmp.resolve("f" + i);
+			java.nio.file.Files.writeString(p, "x");
+			p.toFile().setLastModified(1_000_000L * (5 - i));
+		}
+		CoverCache.tidy(tmp.toFile().listFiles(), 2);
+		assertEquals(java.util.Set.of("f0", "f1"), java.util.Arrays.stream(tmp.toFile().list()).collect(java.util.stream.Collectors.toSet()));
+		CoverCache.tidy(null, 2);
 	}
 }

@@ -286,12 +286,9 @@ public final class CoverCache {
 
 	private @Nullable BufferedImage read(String url) throws Exception {
 		Path file = dir.resolve(fileName(url));
-		if (Files.isRegularFile(file)) {
-			BufferedImage image = ImageIO.read(file.toFile());
-			if (image != null) {
-				file.toFile().setLastModified(System.currentTimeMillis());
-				return image;
-			}
+		BufferedImage cached = readCached(file);
+		if (cached != null) {
+			return cached;
 		}
 		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
 		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
@@ -307,22 +304,57 @@ public final class CoverCache {
 		}
 		BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
 		if (image != null) {
-			Files.createDirectories(dir);
-			Path temp = Files.createTempFile(dir, "cover", ".part");
-			Files.write(temp, bytes);
-			dev.beli.skylyrics.util.SafeFile.replace(temp, file);
+			store(dir, file, bytes);
 		}
 		return image;
 	}
 
+	/** The cover saved earlier, or null when there is none or the file is damaged (which is then removed so it downloads again). */
+	static @Nullable BufferedImage readCached(Path file) {
+		if (!Files.isRegularFile(file)) {
+			return null;
+		}
+		try {
+			BufferedImage image = ImageIO.read(file.toFile());
+			if (image != null) {
+				file.toFile().setLastModified(System.currentTimeMillis());
+				return image;
+			}
+		} catch (java.io.IOException | RuntimeException e) {
+			LOG.debug("Cached cover {} is damaged", file, e);
+		}
+		file.toFile().delete();
+		return null;
+	}
+
+	/** Keeps a downloaded cover on disk for next time; a full or locked disk only costs the next download. */
+	static void store(Path dir, Path file, byte[] bytes) {
+		try {
+			Files.createDirectories(dir);
+			Path temp = Files.createTempFile(dir, "cover", ".part");
+			Files.write(temp, bytes);
+			dev.beli.skylyrics.util.SafeFile.replace(temp, file);
+		} catch (java.io.IOException | RuntimeException e) {
+			LOG.debug("Could not cache cover {}", file, e);
+		}
+	}
+
 	/** Keeps the folder from growing forever: removes the covers not seen for the longest. */
 	private void tidyDisk() {
-		File[] files = dir.toFile().listFiles();
-		if (files == null || files.length <= DISK_FILES) {
+		tidy(dir.toFile().listFiles(), DISK_FILES);
+	}
+
+	/** Deletes the oldest files beyond {@code keep}. Times are read once up front: other threads touch them while we sort. */
+	static void tidy(File @Nullable [] files, int keep) {
+		if (files == null || files.length <= keep) {
 			return;
 		}
-		Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-		for (int i = 0; i < files.length - DISK_FILES; i++) {
+		Map<File, Long> times = new java.util.HashMap<>();
+		for (File f : files) {
+			times.put(f, f.lastModified());
+		}
+		Arrays.sort(files, Comparator.comparingLong(times::get));
+		for (int i = 0; i < files.length - keep; i++) {
 			files[i].delete();
 		}
 	}

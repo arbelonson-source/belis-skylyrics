@@ -51,6 +51,8 @@ public final class LibraryScreen extends Screen {
 	private static final float STAGGER = 0.03f;
 	private static final float POP = 0.35f;
 	private static final float TOAST_TIME = 3;
+	/** A page that failed in the middle of a list is tried again after this many seconds. */
+	private static final float RETRY_AFTER = 4;
 	/** How many of the following songs are queued after the one clicked. */
 	private static final int QUEUE = 50;
 
@@ -71,6 +73,8 @@ public final class LibraryScreen extends Screen {
 	private boolean typing;
 	private long typedAt;
 	private boolean searchDirty;
+	/** Set when a pressed Space already did something; the typed space that follows it must not start a search. */
+	private boolean swallowSpace;
 
 	private int selected = -1;
 	/** Which not-signed-in button the keyboard is on: -1 none, 0 Open Music tab, 1 Try made-up songs. */
@@ -147,6 +151,7 @@ public final class LibraryScreen extends Screen {
 		int next;
 		boolean loaded;
 		String error = "";
+		float retryAt;
 		float scroll;
 		float scrollTarget;
 
@@ -167,15 +172,15 @@ public final class LibraryScreen extends Screen {
 			}
 			try {
 				Page<?> page = pending.join();
-				float start = Math.max(clock, born.isEmpty() ? 0 : born.getLast());
 				for (int i = 0; i < page.items().size(); i++) {
 					items.add(page.items().get(i));
-					born.add(start + i * STAGGER);
+					born.add(LibraryGrid.revealAt(clock, i, STAGGER));
 					lift.add(0f);
 				}
 				next = page.next();
 			} catch (CompletionException e) {
 				error = message(e.getCause());
+				retryAt = clock + RETRY_AFTER;
 			}
 			pending = null;
 			loaded = true;
@@ -329,7 +334,7 @@ public final class LibraryScreen extends Screen {
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
 				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
 			};
-			if (nearEnd && shelf.error.isEmpty()) {
+			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt)) {
 				shelf.more();
 			}
 			if (view() == SkyLyricsConfig.LibraryView.CAROUSEL && selected < 0 && !shelf.items.isEmpty()) {
@@ -886,6 +891,10 @@ public final class LibraryScreen extends Screen {
 		if (library == null || index < 0 || index >= shelf.items.size()) {
 			return;
 		}
+		if (clock <= shelf.born.get(index)) {
+			// Not on screen yet, so not clickable either
+			return;
+		}
 		selected = index;
 		Object entry = shelf.items.get(index);
 		if (entry instanceof LibraryPlaylist list) {
@@ -1024,6 +1033,12 @@ public final class LibraryScreen extends Screen {
 				shelf.more();
 				return true;
 			}
+			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
+					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) + 8)) <= 8) {
+				// The error line under the last card is a button too
+				shelf.more();
+				return true;
+			}
 			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
 				int hit = shelfHitAt(shelf, mx, my);
 				if (hit >= 0) {
@@ -1156,6 +1171,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private boolean handleKey(KeyEvent event) {
+		swallowSpace = false;
 		if (event.isEscape()) {
 			if (typing) {
 				typing = false;
@@ -1222,10 +1238,12 @@ public final class LibraryScreen extends Screen {
 		}
 		if (shelf.items.isEmpty() && !shelf.error.isEmpty() && (event.isConfirmation() || !typing && event.key() == InputConstants.KEY_SPACE)) {
 			shelf.more();
+			swallowSpace = event.key() == InputConstants.KEY_SPACE;
 			return true;
 		}
 		if ((event.isConfirmation() || event.key() == InputConstants.KEY_SPACE && LibraryKeys.spacePlays(typing, selected, shelf.items.size()))
 				&& selected >= 0) {
+			swallowSpace = event.key() == InputConstants.KEY_SPACE;
 			activate(shelf, selected);
 			return true;
 		}
@@ -1269,8 +1287,9 @@ public final class LibraryScreen extends Screen {
 			return false;
 		}
 		Shelf now = shelf();
-		if (event.codepoint() == ' ' && now != null && LibraryKeys.spacePlays(typing, selected, now.items.size())) {
-			// Space already played the chosen song; don't also start a search with a space in it
+		if (event.codepoint() == ' ' && (swallowSpace || now != null && LibraryKeys.spacePlays(typing, selected, now.items.size()))) {
+			// Space already played or opened the chosen card; don't also start a search with a space in it
+			swallowSpace = false;
 			return true;
 		}
 		if (!typing) {
@@ -1285,6 +1304,7 @@ public final class LibraryScreen extends Screen {
 
 	private void edit(String text) {
 		query = dev.beli.skylyrics.util.TextCut.limit(text, 80);
+		selected = -1;
 		typedAt = System.nanoTime();
 		searchDirty = true;
 	}

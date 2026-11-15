@@ -78,4 +78,11 @@ class LibraryGridTest {
 			}
 		}
 	}
+
+	@Test
+	void aLongPageDoesNotKeepItsTailHidden() {
+		assertEquals(10f, LibraryGrid.revealAt(10f, 0, 0.03f), 1e-4);
+		assertEquals(10.09f, LibraryGrid.revealAt(10f, 3, 0.03f), 1e-4);
+		assertEquals(10f + LibraryGrid.STAGGER_COVERS * 0.03f, LibraryGrid.revealAt(10f, 500, 0.03f), 1e-4);
+	}
 }

@@ -36,6 +36,14 @@ final class LibraryGrid {
 		return next < 0 || next >= count ? selected : next;
 	}
 
+	/** Covers of one page pop in one after another, but only the first few; a long page must not keep its tail hidden for seconds. */
+	static final int STAGGER_COVERS = 12;
+
+	/** When card {@code index} of a freshly loaded page starts showing, given the clock now. */
+	static float revealAt(float clock, int index, float stagger) {
+		return clock + Math.min(index, STAGGER_COVERS) * stagger;
+	}
+
 	/** Eases 0..1 to 0..1, overshooting a little near the end, so covers pop in. */
 	static float popIn(float t) {
 		if (t <= 0) {
