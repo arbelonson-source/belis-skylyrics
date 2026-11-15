@@ -69,14 +69,24 @@ class FrameBudgetTest {
 	void oneLongStallDoesNotGoLight() {
 		FrameBudget budget = new FrameBudget();
 		run(budget, 90, 5, UNCAPPED);
-		for (int i = 0; i < 20; i++) { // a reload or world join: single capped frames among smooth ones
+		for (int i = 0; i < 20; i++) { // a reload or a chunk burst: a single capped frame now and then among smooth ones
 			budget.update(0.1f, UNCAPPED);
-			for (int j = 0; j < 10; j++) {
-				budget.update(1 / 90f, UNCAPPED);
-			}
+			budget.update(1 / 90f, UNCAPPED);
+			assertEquals(90, budget.fps(), 5, "the stall is left out of the average");
+			run(budget, 90, 1, UNCAPPED);
 			assertFalse(budget.light());
 		}
-		assertEquals(90, budget.fps(), 5);
+	}
+
+	@Test
+	void stallsEveryOtherFrameAreASlowGame() {
+		FrameBudget budget = new FrameBudget();
+		run(budget, 90, 5, UNCAPPED);
+		for (int i = 0; i < 30; i++) { // 3.3 s of a game that hangs every second frame: about 18 frames a second
+			budget.update(1 / 90f, UNCAPPED);
+			budget.update(0.1f, UNCAPPED);
+		}
+		assertTrue(budget.light());
 	}
 
 	@Test

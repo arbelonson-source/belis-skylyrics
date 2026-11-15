@@ -17,13 +17,15 @@ final class FrameBudget {
 
 	/** A single frame this many times the smoothed one, and at least this many seconds, is a stall and is left out. */
 	static final float STALL_FACTOR = 4, STALL_MIN = 0.05f;
+	/** Stalls are left out only this many seconds of counted frames apart: ones that keep coming are a slow game. */
+	static final float STALL_APART = 0.5f;
 
 	private float frame; // smoothed seconds per frame
 	private float timer;
 	private float wait = FIRST_WAIT;
 	private float sinceFull = Float.MAX_VALUE;
 	private boolean light;
-	private boolean skipped; // the last frame was left out as a one-off stall
+	private float sinceStall = Float.MAX_VALUE; // seconds of counted frames since the last one left out as a stall
 
 	/**
 	 * @param dt    seconds since the last frame
@@ -34,12 +36,12 @@ final class FrameBudget {
 			return;
 		}
 		// One frame far slower than the rest is a stall (a reload, a shader switch, a chunk burst), not a slow game: leave
-		// it out. Two in a row are the new normal and count.
-		if (frame != 0 && dt > STALL_FACTOR * frame && dt > STALL_MIN && !skipped) {
-			skipped = true;
+		// it out. Two in a row, or stalls that keep coming (every other frame), are the new normal and count.
+		if (frame != 0 && dt > STALL_FACTOR * frame && dt > STALL_MIN && sinceStall >= STALL_APART) {
+			sinceStall = 0;
 			return;
 		}
-		skipped = false;
+		sinceStall = Math.min(Float.MAX_VALUE, sinceStall + dt);
 		frame = frame == 0 ? dt : frame + (dt - frame) * Math.min(1, dt * 4);
 		float fps = 1 / frame;
 		if (!light) {
@@ -71,7 +73,7 @@ final class FrameBudget {
 		wait = FIRST_WAIT;
 		sinceFull = Float.MAX_VALUE;
 		light = false;
-		skipped = false;
+		sinceStall = Float.MAX_VALUE;
 	}
 
 	boolean light() {
