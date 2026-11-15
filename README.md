@@ -19,7 +19,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - The lyrics stay visible in caves and under roofs (**Show underground too**, on the **Display** tab, on at first), instead of vanishing behind the rock.
 - Words fade in one by one and light up as they are sung. Five other line animations are included, plus an optional glow pulse on each new line.
 - A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own, and the cover can spin slowly like a record.
-- An optional **Record card** sits in a corner of your choice: a spinning vinyl with the album cover in the middle, the song title and artist, and a progress line with the time played and the song length, with the line being sung on a strip underneath. It keeps clear of your hotbar and your potion effect icons.
+- An optional **Record card** sits in a corner of your choice: a spinning vinyl with the album cover in the middle, the song title and artist, and a progress line with the time played and the song length, with the line being sung on a strip underneath. **Card lines** can show the line before and the line after it too, dimmed. It keeps clear of your hotbar, your off-hand slot and your potion effect icons.
 - The word being sung can grow a little in the sky (optional).
 - Five letter styles for the sky lyrics: Bold, Smooth, Round, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
 - A soft periwinkle colour at first, with more soft colours to pick from. It can also take its colour from the album cover, follow the time of day (warm at sunrise and sunset, lilac at night), change with each new line, or use rainbow. **Two-tone** makes each line fade from your colour into a second one. The glow around the letters can have its own colour.
@@ -30,7 +30,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first. Without Spotify, it shows a **Recently heard** list of the songs you have played lately instead (clicking one to play it again works on Linux).
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The smooth letters stay smooth with shader packs on. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
-- A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu.
+- A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu. You can use it with the keyboard alone (Tab or the arrow keys to move, Enter to press, Ctrl+Tab for the next tab, Ctrl+F to search), and it speaks through the Narrator.
 - A demo mode with a built-in song, so you can try it without any music playing.
 - Hebrew and Arabic lyrics are written from the right, with Arabic letters joined properly.
 - A short welcome tour the first time you start the game helps you pick a layout, a look and your music.

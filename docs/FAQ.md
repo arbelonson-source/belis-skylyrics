@@ -88,6 +88,10 @@ Yes. Turn on **View lock** under **Lyrics → Position**. The lyrics are pinned 
 
 Press **J** in game. If you have [Mod Menu](https://modrinth.com/mod/modmenu), you can also open them from the mod list: find Beli's SkyLyrics and click the settings button. Changes show right away on the lyrics behind the screen. The **Preview** button hides the settings for a moment so you can see the whole sky (click or press any key to come back). The **Music** tab also has previous, play/pause and next buttons, and you can click the progress bar to jump in the song.
 
+## Can I use the settings with the keyboard?
+
+Yes, you don't need the mouse. **Tab** or **Up** and **Down** move through the settings, **Left** and **Right** change a value, **Enter** presses a button, and **Page Up** and **Page Down** scroll. **Ctrl+Tab** goes to the next tab and **Ctrl+F** starts a search. The Narrator reads out what you are on: the name, the kind of control, its value and where it sits among the choices.
+
 ## Can I change the keys?
 
 Yes. In Minecraft go to **Options → Controls → Key Binds** and scroll to **Beli's SkyLyrics**. Only **Open settings** (J) and **Open song library** (N) have a key at first. These have no key until you pick one:
@@ -109,7 +113,7 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 - **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (with Lines: Words, Fade, Rise, Pop, Type or Slide), how World words arrive (Pop, Drop, Zoom, Fade or Type, letter by letter) and leave (Shrink, Float, Blow, Sink or Dissolve), the pulse when a new line starts, capital letters, and **View lock** (under **Position**).
 - **Look tab:** your own colour (a soft periwinkle at first), the album cover's colour, **Time of day**, **Each line** (a new neon colour with every line) or rainbow; **Two-tone**, where each line fades into a second colour you pick; the letter style (Bold, Smooth, Round, Handwritten or Minecraft); **Depth** for a solid 3D edge on the letters; glow (a deeper shade of the letters' colour, or one you pick), shadow and opacity; **Soft edges** for World words with only a glow and no dark outline; the night sky (Off, Aurora, Nebula, Synthwave, Eclipse, Aurora + nebula, Moonlight, Galaxy, Comet or Random) with its strength; and **Constellations**, star patterns joined by thin lines.
-- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, hide them in the Nether, the End, underwater or in caves, keep them visible underground (**Show underground too**), turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, and **Lyric line** shows the line being sung under the record.
+- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, hide them in the Nether, the End, underwater or in caves, keep them visible underground (**Show underground too**), turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, **Lyric line** shows the line being sung under the record, and **Card lines** (with Lyric line on) can show the line before and the line after it too.
 
 ## Is the mod in Hebrew?
 
@@ -125,7 +129,7 @@ No. It only runs on your own computer (client side). It works in single player a
 
 ## Where are my settings saved?
 
-In a file called `skylyrics.json` in the `config` folder of your Minecraft folder. Saved lyrics are in `.cache/skylyrics` in the same Minecraft folder. See "Where the files are" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+In a file called `skylyrics.json` in the `config` folder of your Minecraft folder. Saved lyrics and the **Recently heard** list are in `.cache/skylyrics` in the same Minecraft folder. See "Where the files are" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 ## Is this the Neon Lyrics mod?
 
