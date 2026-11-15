@@ -131,18 +131,27 @@ final class Controls {
 		/** Least room a row leaves its label before the control drops to a line of its own. */
 		static final int MIN_LABEL = 48;
 
+		/** Least room a row leaves its description (when it has one) before the control drops to a line of its own. */
+		static final int MIN_DESC = 96;
+
 		/**
-		 * Whether a control {@code controlW} wide in a row {@code rowW} wide leaves too little room for its label
-		 * (at most {@link #MIN_LABEL} wide, or less for a short label), so it goes on a second line.
+		 * Whether a control {@code controlW} wide in a row {@code rowW} wide leaves too little room for the text beside
+		 * it, so it goes on a second line. The text is the label, and the description when there is one
+		 * ({@code descW} is 0 without): the room must reach the wider of the two, but at most {@link #MIN_LABEL} for
+		 * a lone label or {@link #MIN_DESC} when there is a description.
 		 */
-		static boolean stacks(int rowW, int controlW, int labelW) {
-			return rowW > 0 && controlW > 0 && rowW - 28 - controlW < Math.min(labelW, MIN_LABEL);
+		static boolean stacks(int rowW, int controlW, int labelW, int descW) {
+			int need = Math.min(Math.max(labelW, descW), descW > 0 ? MIN_DESC : MIN_LABEL);
+			return rowW > 0 && controlW > 0 && rowW - 28 - controlW < need;
 		}
 
 		/** The control sits under the label, not beside it. */
 		final boolean stacked() {
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
-			return font != null && stacks(w, controlWidth(font), font.width(label));
+			if (font == null) {
+				return false;
+			}
+			return stacks(w, controlWidth(font), font.width(label), desc == null ? 0 : font.width(desc.get()));
 		}
 
 		boolean hovered(Frame f) {
