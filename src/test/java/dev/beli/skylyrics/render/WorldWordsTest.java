@@ -1069,7 +1069,16 @@ class WorldWordsTest {
 		});
 		assertEquals(advance.applyAsDouble(new String(huge, 0, huge.length)), wide[huge.length], 1e-1);
 		assertTrue(measured[0] <= 2L * huge.length, "measured " + measured[0] + " letters");
-		// A formatting code keeps the whole-prefix way, since it changes the letters after it
+		// A formatting code doesn't bring the quadratic way back on a long line
+		int[] hostile = huge.clone();
+		hostile[5_000] = '\u00a7';
+		long[] spent = {0};
+		WorldWords.prefixWidths(hostile, t -> {
+			spent[0] += t.length();
+			return advance.applyAsDouble(t);
+		});
+		assertTrue(spent[0] <= 2L * hostile.length, "measured " + spent[0] + " letters");
+		// Short lines with a code stay exact
 		int[] coded = "\u00a7cred".codePoints().toArray();
 		long[] calls = {0};
 		WorldWords.prefixWidths(coded, t -> {

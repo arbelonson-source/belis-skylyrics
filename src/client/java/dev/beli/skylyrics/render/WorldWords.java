@@ -1043,14 +1043,11 @@ final class WorldWords {
 	/** The widths behind {@link #widths}, with the measuring of a piece of text passed in. */
 	static float[] prefixWidths(int[] cps, java.util.function.ToDoubleFunction<String> measure) {
 		float[] at = new float[cps.length + 1];
-		boolean codes = false;
-		for (int cp : cps) {
-			codes |= cp == '\u00a7';
-		}
 		for (int v = 1; v <= cps.length; v++) {
 			// Each letter has its own advance, so a prefix is the sum of its letters; only a formatting code ('§')
-			// changes the next letter's look, so those lines (and short ones) measure every prefix whole.
-			at[v] = codes || cps.length <= WHOLE_PREFIXES
+			// changes the next letter's look, so short lines measure every prefix whole; a long line (lyrics are
+			// untrusted text) always adds up, which may be slightly off on an absurdly long formatted one.
+			at[v] = cps.length <= WHOLE_PREFIXES
 					? (float) measure.applyAsDouble(new String(cps, 0, v))
 					: at[v - 1] + (float) measure.applyAsDouble(new String(cps, v - 1, 1));
 		}
