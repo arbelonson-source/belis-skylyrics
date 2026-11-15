@@ -21,8 +21,9 @@ Go through these in order:
      3. If your internet is fine, one of the sites may be down or busy, and the other doesn't have this song. The mod keeps trying while the song plays, and doesn't remember the song as "no lyrics", so the lyrics usually appear by themselves once a site is back. Try again in a few minutes, or play another song.
      4. A school, work or antivirus network can block one of the sites. Try another network, or allow `lrclib.net` and `music.163.com`.
      5. On hotel or café Wi-Fi you often have to log in first, and until you do, the lyrics site gets an empty page or a redirect instead of lyrics. The mod counts that as a failed try, not as "no lyrics", so the song isn't remembered as having none. Log in to the Wi-Fi, then press **Retry** or play the song again, and the lyrics come back.
-   - **Instrumental, no words**: the song has no lyrics.
-   - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** is on (it is at first). Then the lines are spread evenly over the song.
+   - **Instrumental, no words**: the song has no lyrics. A song whose lyrics are only music notes shows as instrumental too.
+   - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** (Music tab) is on (it is at first). Then the lines are spread evenly over the song.
+   - **A line shows as "line / translation"**: some lyrics files give a line and its translation (or romanization) the same time, so the mod shows both together. That is how the file is made.
 
 ## The lyrics are for the wrong song
 
@@ -91,13 +92,17 @@ If this shows the title and artist of your song, the mod can see it too. If `pla
 
 **mpv** needs the mpv-mpris plugin before it shows up.
 
-**Prism Launcher from Flatpak.** If you run Minecraft through the Flatpak version of Prism Launcher, the launcher is kept in a sandbox that can't see your music players. Music tab Status then says "No music playing" or "Can't reach music players" even though music is playing. Allowing it to talk to music players should fix it. In a terminal, type:
+**A music player that stopped answering.** If one player is stuck (a frozen browser tab, say), the mod no longer waits for it: it goes on with the players that answer, and the lyrics and the other players keep working. If the song you want isn't followed, pause or close the stuck one, or set **Player** on the Music tab to the app you want.
+
+**Playback speed.** If you play a podcast or video faster or slower (1.5x, 2x), the lyrics keep time with it on Linux players and on Windows players that report their speed.
+
+**Minecraft from a Flatpak (Prism Launcher, for one).** If you run Minecraft through a Flatpak, such as the Flatpak version of Prism Launcher, it is kept in a sandbox that can't see your music players. Music tab Status then says "No music playing" or "Can't reach music players" even though music is playing, and the message names the command to use. Allowing it to talk to music players should fix it. For Prism Launcher, in a terminal, type:
 
 ```
 flatpak override --user --talk-name=org.mpris.MediaPlayer2.* org.prismlauncher.PrismLauncher
 ```
 
-Then close Prism Launcher completely and open it again. If you prefer a window to a terminal, the Flatseal app can do the same: pick Prism Launcher, and under **Session Bus → Talks** add `org.mpris.MediaPlayer2.*`.
+For another Flatpak, put its own app id at the end instead of `org.prismlauncher.PrismLauncher` (the message in the game shows it). Then close the launcher completely and open it again. If you prefer a window to a terminal, the Flatseal app can do the same: pick Prism Launcher, and under **Session Bus → Talks** add `org.mpris.MediaPlayer2.*`.
 
 ### On macOS
 
@@ -139,11 +144,13 @@ In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). I
 
 ## Lyrics trail behind when I turn (Exordium)
 
-Exordium redraws the HUD less often than the game draws frames, and the lyrics are drawn as part of the HUD, so they can lag behind your camera. Turn off Exordium's HUD buffering and they follow smoothly again.
+Exordium redraws the HUD less often than the game draws frames, and the lyrics are drawn as part of the HUD, so they can lag behind your camera. Turn off Exordium's HUD buffering (in Exordium's own settings) and they follow smoothly again. The game log says the same when Exordium is installed.
 
 ## The mod says a new version is out, but won't install it
 
-On Windows, if your user folder or your Minecraft folder has accented or non-English letters in its name (like `C:\Users\José`), the mod can't swap in the new version by itself, so it just tells you a new one is out. Download the new jar for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases), put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.
+On Windows, if the folder your game lives in has accented or non-English letters in its path (like `C:\Users\José\AppData\Roaming\.minecraft`), the mod can't swap in the new version by itself, so it only tells you a new one is out. Download the new jar for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases), put it in your `mods` folder and delete the old SkyLyrics jar. If only your user folder has such letters and the game lives somewhere else (on `D:\Games`, say), the update installs itself as usual. You can also set **About → Updates** to **Tell me** if you only want the notice.
+
+Other reasons for the notice: the download failed (a slow connection, say), or it wasn't accepted. The mod only uses a download from its own GitHub releases, only if it is Beli's SkyLyrics in the version it expected, and refuses one over 20 MB. If you launch with a launcher that links the `mods` or instance folder to somewhere else, updates still work.
 
 ## Settings or Spotify sign-in not saved on Windows
 

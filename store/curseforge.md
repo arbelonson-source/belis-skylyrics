@@ -20,10 +20,10 @@ When uploading each file:
 
 | Field | Value |
 | --- | --- |
-| Game version | 1.21.11 |
+| Game version | the one the jar is for: 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8 (one jar), 1.21.9 and 1.21.10 (one jar), 1.21.11, 26.1 (26.1 to 26.1.2, one jar), 26.2 or 26.3 |
 | Mod loader | Fabric |
 | Environment | Client |
-| Java | 21 |
+| Java | 21 for Minecraft 1.21.x, 25 for 26.x |
 
 Relations to add:
 
@@ -57,12 +57,14 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 - **Lyrics in the sky**, in time with the song, in three layouts: **Arc** (the line being sung on a gentle curve), **Lines** (with the previous and next lines) or **World** (each word appears in the world around you as it's sung)
 - **Word-by-word animation**, or Fade, Rise, Pop and Type, plus a karaoke fill and a small pulse on each new line
 - **Top bar** with the album cover, the song name and the line being sung, a clock on its left and your frames per second and ping on its right
-- **Four letter styles**: Bold, Smooth, Handwritten and the Minecraft font, with an optional **Depth** edge that makes the letters look 3D
+- **Five letter styles**: Bold, Smooth, Round, Handwritten and the Minecraft font, with an optional **Depth** edge that makes the letters look 3D
 - **Colours**: a soft periwinkle to start with, other colours you pick, the album cover's colour, or rainbow, with adjustable glow, shadow and opacity
 - **Stays bright with shaders**: lyrics can be drawn on top of the finished picture, so shader packs, clouds, rain and fog don't dim them
-- **Night skies**: an aurora, a nebula, a synthwave sky with a striped retro sun, or an eclipse behind the lyrics at night, plus optional constellations
+- **Night skies**: an aurora, a nebula, a synthwave sky with a striped retro sun, an eclipse, moonlight, a spiral galaxy or a comet behind the lyrics at night, plus optional constellations
 - **Per-song timing**: nudge a song's lyrics earlier or later, and the fix is remembered for that song
 - **Music controls**: play, pause and skip from the settings screen or with keys you choose
+- **Pinning and more**: **View lock** keeps the lyrics where you looked, **Show underground too** keeps them visible in caves, an optional **Record card** shows the song with the lines around the one being sung, and a **Recently heard** list in the song library works without Spotify.
+- **Settings with the keyboard** and the Narrator: Tab or the arrow keys, Enter or Space, Page Up and Page Down, Ctrl+Tab, Ctrl+F.
 - **English and Hebrew** settings screen, following your Minecraft language
 - **Demo song** with made-up lyrics, for trying the settings without music
 - Works with Sodium, Iris and shader packs
@@ -72,15 +74,15 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 
 ## Requirements
 
-- Minecraft 1.21.11 with Fabric Loader 0.17.0 or newer
+- Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3, with Fabric Loader 0.17.0 or newer
 - Fabric API
-- Java 21 or newer (the Minecraft launcher already includes it)
+- Java 21 or newer for Minecraft 1.21.x, Java 25 for 26.x (the Minecraft launcher already includes it)
 - Linux, or Windows 10 or 11, with a music player that shows up in your media controls; or macOS with the Spotify or Music app
 - Optional: Mod Menu, to open the settings from the mod list
 
 ## How to install
 
-1. Install Fabric for Minecraft 1.21.11. The CurseForge app or Prism Launcher can set this up when you make a new profile.
+1. Install Fabric for your Minecraft version. The CurseForge app or Prism Launcher can set this up when you make a new profile.
 2. Add **Fabric API** and **Beli's SkyLyrics** to the profile.
 3. Start the game and play a song in Spotify, a browser tab or any other music app.
 4. Press **J** in game to open the settings.
@@ -96,7 +98,7 @@ Windows 10 and 11: yes, it reads the media controls that pop up when you press a
 On Windows: anything that shows up in the media panel when you press a media key, such as Spotify, Chrome, Edge, Firefox and other browsers, Media Player and Apple Music (VLC and mpv don't show up there). On Linux: anything that shows up in your desktop's media controls: Spotify (including the Flatpak version), Firefox, Chrome and other browsers (so YouTube, YouTube Music and SoundCloud in a tab), VLC, Rhythmbox, Elisa and most other music apps. mpv works with the mpv-mpris plugin. On macOS: the Spotify and Music apps, while they are open. You can choose which player to follow in the Music tab.
 
 **Where do the lyrics come from?**
-From LRCLIB (lrclib.net), a free, volunteer-run lyrics database. When LRCLIB is down or doesn't have a song, the mod asks NetEase Cloud Music (music.163.com) instead. No account needed for either. If neither has a song, the mod can't show lyrics for it. Lyrics it finds are saved on your computer, so songs it has seen before work offline.
+From LRCLIB (lrclib.net), a free, volunteer-run lyrics database. When LRCLIB is down or doesn't have a song, the mod asks NetEase Cloud Music (music.163.com) instead. No account needed for either. If neither has a song, the mod can't show lyrics for it. Lyrics with no timing are spread evenly over the song, and a line with its translation shows as "line / translation". Lyrics it finds are saved on your computer, so songs it has seen before work offline.
 
 **Does it work with shaders?**
 Yes. Shader packs can darken the sky, so the mod can draw the lyrics on top of everything to keep them bright. On **Auto** it does this whenever a shader pack is on. If they still look dim, set **Look → Draw on top** to **Always**.
