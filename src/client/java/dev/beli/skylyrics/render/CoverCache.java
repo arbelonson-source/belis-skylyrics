@@ -341,12 +341,20 @@ public final class CoverCache {
 
 	/** Keeps the folder from growing forever: removes the covers not seen for the longest. */
 	private void tidyDisk() {
-		File[] files = dir.toFile().listFiles();
-		if (files == null || files.length <= DISK_FILES) {
+		tidy(dir.toFile().listFiles(), DISK_FILES);
+	}
+
+	/** Deletes the oldest files beyond {@code keep}. Times are read once up front: other threads touch them while we sort. */
+	static void tidy(File @Nullable [] files, int keep) {
+		if (files == null || files.length <= keep) {
 			return;
 		}
-		Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-		for (int i = 0; i < files.length - DISK_FILES; i++) {
+		Map<File, Long> times = new java.util.HashMap<>();
+		for (File f : files) {
+			times.put(f, f.lastModified());
+		}
+		Arrays.sort(files, Comparator.comparingLong(times::get));
+		for (int i = 0; i < files.length - keep; i++) {
 			files[i].delete();
 		}
 	}

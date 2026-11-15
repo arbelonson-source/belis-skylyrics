@@ -116,4 +116,16 @@ class CoverCacheTest {
 		assertFalse(java.nio.file.Files.exists(file));
 		assertNull(CoverCache.readCached(file));
 	}
+
+	@Test
+	void tidyingKeepsTheNewestFiles(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		for (int i = 0; i < 5; i++) {
+			java.nio.file.Path p = tmp.resolve("f" + i);
+			java.nio.file.Files.writeString(p, "x");
+			p.toFile().setLastModified(1_000_000L * (5 - i));
+		}
+		CoverCache.tidy(tmp.toFile().listFiles(), 2);
+		assertEquals(java.util.Set.of("f0", "f1"), java.util.Arrays.stream(tmp.toFile().list()).collect(java.util.stream.Collectors.toSet()));
+		CoverCache.tidy(null, 2);
+	}
 }
