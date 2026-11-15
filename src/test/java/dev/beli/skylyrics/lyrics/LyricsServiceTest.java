@@ -432,8 +432,13 @@ class LyricsServiceTest {
 		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
 		CountDownLatch asked = new CountDownLatch(1);
 		CountDownLatch go = new CountDownLatch(1);
+		CountDownLatch songTwoAsked = new CountDownLatch(1);
+		CountDownLatch songTwoGo = new CountDownLatch(1);
 		service = new LyricsService(t -> {
 			if (!t.title().equals("Song One")) {
+				// Song Two's own lookup waits too, so nothing else can reset the lyrics while the stale check lands
+				songTwoAsked.countDown();
+				songTwoGo.await();
 				return LrclibClient.Result.NOT_FOUND;
 			}
 			asked.countDown();
@@ -452,8 +457,14 @@ class LyricsServiceTest {
 		service.load(track("Song Two", 100_000));
 		go.countDown();
 		waitFor(() -> readFile(file).contains("Main version"));
+		// the single worker is now stuck in Song Two's lookup, so only the stale check could have changed the lyrics
+		assertTrue(songTwoAsked.await(10, TimeUnit.SECONDS));
 		Thread.sleep(200);
 		assertEquals("Song Two", service.track().title());
+		assertTrue(service.lyrics().isEmpty(), "the skipped song's lyrics must not show while Song Two is still loading");
+		assertFalse(service.state() == LyricsService.State.READY);
+		songTwoGo.countDown();
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
 		assertTrue(service.lyrics().isEmpty(), "the skipped song's lyrics must not show");
 		assertEquals(LyricsService.State.NOT_FOUND, service.state());
 	}
