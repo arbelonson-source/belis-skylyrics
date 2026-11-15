@@ -160,7 +160,13 @@ public final class LyricsRenderer {
 	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
 	public void onLeaveWorld() {
 		wordsLevel = null;
+		announced = null;
 		WorldWords.forgetPlayers();
+	}
+
+	/** You joined a world: its first song title floats up again. A dimension change within a world doesn't count. */
+	public void onJoinWorld() {
+		announced = null;
 	}
 
 	/** You swung at something; a World word under the crosshair gets knocked. */
@@ -490,7 +496,6 @@ public final class LyricsRenderer {
 		if (mc.level != wordsLevel) {
 			wordsLevel = mc.level;
 			worldWords.clear();
-			announced = null;
 		}
 		// While you're dead the words drop away and nothing new comes; after respawning they start over
 		boolean dead = cfg.worldDeath && mc.player != null && mc.player.isDeadOrDying();
