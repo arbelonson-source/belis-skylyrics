@@ -36,6 +36,7 @@
 - **Reset all.** **Reset all** keeps your intro tour done, your update choice, your Spotify app id, your per-song timings and your recent searches.
 - **Hand-edited settings file.** A blank or very long recent search in the settings file no longer breaks the song library, and a hand-typed player name like "Spotify-Web" now picks that player.
 - **Settings scroll.** **Open Music tab** in the song library now takes you down to the Spotify card every time. Settings tabs also keep their place after you visit a shorter tab.
+- **Settings text and sliders.** The **Timing** and **This song** sliders now reach 5 seconds either way, and a sky **Strength** of 0 in the settings file now shows as 10%, where the slider starts. Settings search also finds English words in a Hebrew game, and pasted search text is cleaned up like typed text. A few English and Hebrew texts say what they mean (the previous line, **Preview**, **Aurora**).
 
 ### Faster
 
