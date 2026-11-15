@@ -30,7 +30,7 @@ import dev.beli.skylyrics.media.DemoSource;
  * Write commands, one per line, to {@code skylyrics-test.txt} in the game folder; the file is read
  * once and deleted. Commands: {@code look <yaw> <pitch>}, {@code gui [tab]}, {@code preview},
  * {@code close}, {@code press <button text>}, {@code hud on|off}, {@code view <0-2>} (first person, behind, in front),
- * {@code lines <a | b | c>} (test lines in place of the demo song's), {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
+ * {@code lines <a | b | c>} (test lines in place of the demo song's), {@code plain <a | b | c>} (the same as lyrics without timing), {@code cmd <server command>}, {@code guiscale <n>} (0 = auto), {@code lang <code>},
  * {@code shot <name>} (saves the game frame alone to {@code screenshots/<name>.png}, without anything
  * the desktop draws on top), {@code uncap} (no frame limit, vsync or idle slowdown), {@code fps [seconds]} (logs the frame
  * rate over that long), {@code key <NAME> [ctrl] [shift] [alt]} (a key press and release on the open screen, plus the
@@ -246,6 +246,21 @@ public final class DevTestHook {
 			java.lang.reflect.Field field = LyricsService.class.getDeclaredField("lyrics");
 			field.setAccessible(true);
 			field.set(SkyLyricsClient.get().lyrics(), LrcParser.parseSynced(lrc.toString()));
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalArgumentException("could not swap the lyrics", e);
+		}
+	}
+
+	/** "plain a | b | c": like "lines", but as lyrics without timing, spread over the demo song the way plain lyrics are. */
+	private static void plain(String arg) {
+		swapLyrics(LrcParser.parsePlain(String.join("\n", arg.split("\\s*\\|\\s*")), DemoSource.TRACK.lengthMs()));
+	}
+
+	private static void swapLyrics(dev.beli.skylyrics.lyrics.Lyrics lyrics) {
+		try {
+			java.lang.reflect.Field field = LyricsService.class.getDeclaredField("lyrics");
+			field.setAccessible(true);
+			field.set(SkyLyricsClient.get().lyrics(), lyrics);
 		} catch (ReflectiveOperationException e) {
 			throw new IllegalArgumentException("could not swap the lyrics", e);
 		}
@@ -489,6 +504,7 @@ public final class DevTestHook {
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
 				case "lines" -> lines(client, arg);
+			case "plain" -> plain(arg);
 				case "uncap" -> {
 					client.options.enableVsync().set(false);
 					client.options.framerateLimit().set(260);
