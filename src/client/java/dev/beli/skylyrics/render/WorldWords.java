@@ -322,6 +322,18 @@ final class WorldWords {
 		newLyrics();
 	}
 
+	/**
+	 * The song jumped back (a seek back, a restart, a loop): every word up is from a line that hasn't been sung yet at
+	 * the new spot, so they all leave the usual way, and the line now being sung places its words again as it goes.
+	 */
+	void rewind(long now) {
+		letGo(now);
+		spawned = 0;
+		sentence = null;
+		last = null;
+		recent[0] = recent[1] = -1;
+	}
+
 	/** Starts over for new lyrics, keeping a song title that's up. */
 	void newLyrics() {
 		cards.removeIf(c -> !c.title);
