@@ -420,19 +420,14 @@ public final class SkyEffects {
 			targetPitch = Mth.clamp(camera.xRot() - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;
 		} else if (cfg.direction == Direction.FOLLOW) {
-			float diff = Mth.wrapDegrees(camYaw - anchorYaw);
-			if (Math.abs(diff) > 38) {
-				following = true;
-			} else if (Math.abs(diff) < 4) {
-				following = false;
-			}
+			following = FollowAnchor.following(following, cfg.lazyFollow, camYaw - anchorYaw);
 			targetYaw = following ? camYaw : anchorYaw;
-			speed = 2.2f;
+			speed = FollowAnchor.speed(cfg.lazyFollow);
 		} else {
 			targetYaw = cfg.direction.yaw;
 			speed = 3f;
 		}
-		float k = dt == 0 ? 1 : 1 - (float) Math.exp(-dt * speed);
+		float k = dt == 0 || Float.isInfinite(speed) ? 1 : 1 - (float) Math.exp(-dt * speed);
 		anchorYaw += Mth.wrapDegrees(targetYaw - anchorYaw) * k;
 		anchorPitch += (targetPitch - anchorPitch) * k;
 	}

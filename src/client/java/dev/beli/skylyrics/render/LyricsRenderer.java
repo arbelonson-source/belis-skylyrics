@@ -1860,15 +1860,10 @@ public final class LyricsRenderer {
 			speed = 3f;
 		} else if (cfg.direction == SkyLyricsConfig.Direction.FOLLOW) {
 			// Right where you look; lazy follow stays put while you look around a bit and catches up when you turn away
-			float diff = Mth.wrapDegrees(camYaw - anchorYaw);
-			if (!cfg.lazyFollow || Math.abs(diff) > 38) {
-				following = true;
-			} else if (Math.abs(diff) < 4) {
-				following = false;
-			}
+			following = FollowAnchor.following(following, cfg.lazyFollow, camYaw - anchorYaw);
 			targetYaw = following ? camYaw : anchorYaw;
 			targetPitch = -cfg.height;
-			speed = cfg.lazyFollow ? 2.2f : Float.POSITIVE_INFINITY;
+			speed = FollowAnchor.speed(cfg.lazyFollow);
 		} else {
 			targetYaw = cfg.direction.yaw;
 			targetPitch = -cfg.height;

@@ -1,0 +1,37 @@
+package dev.beli.skylyrics.render;
+
+import net.minecraft.util.Mth;
+
+/**
+ * The Follow rule shared by the lyrics and the sky effects that gather round them, so the two can't drift apart:
+ * with Lazy follow off the anchor snaps to where you look; with it on, it stays put until you turn far away and then
+ * catches up until you are nearly facing it again.
+ */
+final class FollowAnchor {
+	static final float LAZY_START = 38f;
+	static final float LAZY_STOP = 4f;
+	static final float LAZY_SPEED = 2.2f;
+
+	private FollowAnchor() {
+	}
+
+	/** Whether the anchor is chasing the camera this frame, given whether it was and the yaw gap in degrees. */
+	static boolean following(boolean was, boolean lazy, float yawGap) {
+		if (!lazy) {
+			return true;
+		}
+		float gap = Math.abs(Mth.wrapDegrees(yawGap));
+		if (gap > LAZY_START) {
+			return true;
+		}
+		if (gap < LAZY_STOP) {
+			return false;
+		}
+		return was;
+	}
+
+	/** How fast the anchor moves per second; infinite means snap. */
+	static float speed(boolean lazy) {
+		return lazy ? LAZY_SPEED : Float.POSITIVE_INFINITY;
+	}
+}
