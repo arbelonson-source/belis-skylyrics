@@ -486,9 +486,9 @@ public final class SkyLyricsScreen extends Screen {
 			}
 			return tracker.track() == Track.NONE ? Tr.t("No music playing") : Tr.t("Following %s", tracker.sourceName());
 		});
-		// On a Mac the error usually says what to allow in System Settings, too long for the Status line
-		Row connectionHelp = new Paragraph(() -> tracker.error().replaceFirst("^IOException: ", ""))
-				.when(() -> SkyLyricsClient.mac() && !cfg.demoMode && !tracker.connected() && !tracker.error().isEmpty());
+		// The error often says what to allow or install, too long for the Status line
+		Row connectionHelp = new Paragraph(() -> tracker.error())
+				.when(() -> !cfg.demoMode && !tracker.connected() && !tracker.error().isEmpty());
 		Row timing = new Slider(Tr.t("Timing"), Tr.t("Late? Move right. Early? Left"), -3000, 3000, 50,
 				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds);
 		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -3000, 3000, 50,
@@ -724,8 +724,8 @@ public final class SkyLyricsScreen extends Screen {
 			case LOADING -> Tr.t("Looking for lyrics…");
 			case READY -> lyrics.instrumental() ? Tr.t("Instrumental, no words")
 					: lyrics.synced() ? Tr.t("Found, with timing") : Tr.t("Found, without timing");
-			case NOT_FOUND -> Tr.t("No lyrics found for this song");
-			case ERROR -> Tr.t("Couldn't reach the lyrics sites. Offline?");
+			case NOT_FOUND -> Tr.t("No lyrics found for this song. Try Retry.");
+			case ERROR -> Tr.t("Couldn't reach the lyrics sites. Check your internet, then press Retry.");
 		};
 	}
 

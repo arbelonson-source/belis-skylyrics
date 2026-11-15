@@ -6,6 +6,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
+import dev.beli.skylyrics.Tr;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +59,11 @@ public final class MediaTracker {
 		return (old.lengthMs() <= 0 && fresh.lengthMs() > 0) || (old.artUrl().isEmpty() && !fresh.artUrl().isEmpty());
 	}
 
+	/** What a player sees for a failed read: the message alone, never the Java class name. */
+	static String errorText(@Nullable String message, String fallback) {
+		return message == null || message.isBlank() ? fallback : message.strip();
+	}
+
 	private void pollOnce() {
 		MediaSource source = source();
 		Snapshot fresh;
@@ -67,7 +74,7 @@ public final class MediaTracker {
 			loggedError = false;
 		} catch (Throwable e) {
 			connected = false;
-			error = e.getClass().getSimpleName() + (e.getMessage() == null ? "" : ": " + e.getMessage());
+			error = errorText(e.getMessage(), Tr.t("Couldn't read your music player"));
 			if (!loggedError) {
 				LOG.warn("Couldn't read the music player: {}", error);
 				loggedError = true;
