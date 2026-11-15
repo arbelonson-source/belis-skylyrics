@@ -10,3 +10,5 @@
 - Pressing Enter after changing the search no longer plays a song from the old results.
 - The album cover is called the same everywhere in the settings and help pages.
 - With Hat pulse off, the propeller cap turns at its calm speed instead of a faster one.
+- A rare error in the lyrics drawing no longer crashes the game; the lyrics pause for a few seconds and the error goes to the log.
+- Works alongside other mods that change how fonts are uploaded on 1.21.1 and 1.21.4.
