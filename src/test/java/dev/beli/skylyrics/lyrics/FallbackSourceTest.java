@@ -126,4 +126,24 @@ class FallbackSourceTest {
 		assertThrows(IOException.class, () -> source.find(TRACK));
 		assertEquals(1, mainAsked.get());
 	}
+
+	@Test
+	void mainIsAskedWhenTheClockReadsNegative() throws Exception {
+		// System.nanoTime() may be negative, and a main source that never failed must not look skipped
+		now.set(-5_000_000);
+		fallback(t -> MAIN, t -> BACKUP).find(TRACK);
+		assertEquals(1, mainAsked.get());
+	}
+
+	@Test
+	void skipEndsOnANegativeClockToo() throws Exception {
+		now.set(-5_000_000);
+		FallbackSource source = fallback(down(502), t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+		now.addAndGet(FallbackSource.SKIP_MAIN_MS + 1);
+		source.find(TRACK);
+		assertEquals(2, mainAsked.get());
+	}
 }
