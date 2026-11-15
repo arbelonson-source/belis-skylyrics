@@ -2,6 +2,7 @@ package dev.beli.skylyrics.mixin;
 
 import java.util.List;
 import java.util.Set;
+import dev.beli.skylyrics.dev.TestHookSwitch;
 import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -11,6 +12,10 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 public final class SkyLyricsMixinPlugin implements IMixinConfigPlugin {
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+		// The per-frame hook for the dev test screen is only needed when the test hook is on
+		if (mixinClassName.endsWith(".MinecraftFrameMixin")) {
+			return TestHookSwitch.enabled();
+		}
 		// ImmediatelyFast changes the very same page-size numbers for every font
 		return !mixinClassName.endsWith(".FontPageMixin") || !FabricLoader.getInstance().isModLoaded("immediatelyfast");
 	}

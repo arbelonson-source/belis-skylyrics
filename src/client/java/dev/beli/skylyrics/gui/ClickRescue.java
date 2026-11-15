@@ -93,7 +93,8 @@ final class ClickRescue {
 
 	private static boolean leftDown() {
 		//? if >=26.3 {
-		/*return (SDLMouse.nSDL_GetMouseState(0, 0) & SDLMouse.SDL_BUTTON_LMASK) != 0;
+		/*// SDL reports the button for the whole desktop, so a click outside the window must not be replayed
+		return Minecraft.getInstance().isWindowActive() && (SDLMouse.nSDL_GetMouseState(0, 0) & SDLMouse.SDL_BUTTON_LMASK) != 0;
 		*///?} else if >=1.21.9 {
 		return GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().handle(), GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
 		//?} else {

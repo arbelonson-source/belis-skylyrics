@@ -50,6 +50,7 @@ import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.TitleCleaner;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.util.Guard;
 import dev.beli.skylyrics.util.TextCut;
 
 /**
@@ -269,7 +270,7 @@ public final class LyricsRenderer {
 	public void renderEarly(WorldRenderContext context) {
 	//?}
 		if (ScreenLayer.shadersOn() || LATE_SUBMITS_LOST) {
-			render(context);
+			guardedRender(context);
 		}
 	}
 
@@ -279,7 +280,44 @@ public final class LyricsRenderer {
 	public void renderLate(WorldRenderContext context) {
 	//?}
 		if (!ScreenLayer.shadersOn() && !LATE_SUBMITS_LOST) {
-			render(context);
+			guardedRender(context);
+		}
+	}
+
+	//? if >=26.1 {
+	/*private void guardedRender(LevelRenderContext context) {
+		Guard.run("lyrics in the world", () -> {
+			PoseStack.Pose mark = context.poseStack().last();
+			try {
+				render(context);
+			} catch (RuntimeException | LinkageError e) {
+				unwindTo(context.poseStack(), mark);
+				throw e;
+			}
+		});
+	}
+	*///?} else {
+	private void guardedRender(WorldRenderContext context) {
+		Guard.run("lyrics in the world", () -> {
+			PoseStack.Pose mark = context.matrices().last();
+			try {
+				render(context);
+			} catch (RuntimeException | LinkageError e) {
+				unwindTo(context.matrices(), mark);
+				throw e;
+			}
+		});
+	}
+	//?}
+
+	/** Pops what a failed draw left pushed on the game's pose stack, back to the pose it had on the way in. */
+	static void unwindTo(PoseStack pose, PoseStack.Pose mark) {
+		//? if >=1.21.5 {
+		while (pose.last() != mark && !pose.isEmpty()) {
+		//?} else {
+		/*while (pose.last() != mark && !pose.clear()) { // before 1.21.5 clear() says whether only the base pose is left
+		*///?}
+			pose.popPose();
 		}
 	}
 
@@ -450,6 +488,10 @@ public final class LyricsRenderer {
 	 * ({@code top}) and the copyright text ({@code bottom}), sized to fit it.
 	 */
 	public void renderMenu(GuiGraphics g, float top, float bottom) {
+		Guard.run("lyrics on the title screen", () -> drawMenu(g, top, bottom));
+	}
+
+	private void drawMenu(GuiGraphics g, float top, float bottom) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -466,10 +508,14 @@ public final class LyricsRenderer {
 		wrapAt(mc, cfg, MENU_WRAP);
 		Draw draw = new Draw(new ScreenCanvas(g, mc.font), mc.font, cfg, rgb(), MENU_WRAP);
 		g.pose().pushMatrix();
-		g.pose().translate(g.guiWidth() / 2f, (top + bottom) / 2f);
-		g.pose().scale(scale, scale);
-		drawContent(draw, cfg, time, now);
-		g.pose().popMatrix();
+		try {
+			g.pose().translate(g.guiWidth() / 2f, (top + bottom) / 2f);
+			g.pose().scale(scale, scale);
+			drawContent(draw, cfg, time, now);
+		} finally {
+			draw.canvas.unwind();
+			g.pose().popMatrix();
+		}
 	}
 
 	private static Spot spot(float yaw, float pitch, float distance, @Nullable ArcShot arc) {
@@ -687,6 +733,10 @@ public final class LyricsRenderer {
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
 	public void renderHud(GuiGraphics g, DeltaTracker delta) {
+		Guard.run("lyrics on the HUD", () -> drawHud(g, delta));
+	}
+
+	private void drawHud(GuiGraphics g, DeltaTracker delta) {
 		Pending frame = pending;
 		pending = null;
 		if (frame == null) {
@@ -705,10 +755,14 @@ public final class LyricsRenderer {
 			}
 			float size = frame.scale() * at.z;
 			g.pose().pushMatrix();
-			g.pose().translate(at.x, at.y);
-			g.pose().scale(size, size);
-			drawSpot(draw, spot, cfg, frame.time(), frame.now());
-			g.pose().popMatrix();
+			try {
+				g.pose().translate(at.x, at.y);
+				g.pose().scale(size, size);
+				drawSpot(draw, spot, cfg, frame.time(), frame.now());
+			} finally {
+				draw.canvas.unwind();
+				g.pose().popMatrix();
+			}
 		}
 	}
 
@@ -908,6 +962,10 @@ public final class LyricsRenderer {
 
 		void pop();
 
+		/** Pops whatever a failed draw left pushed, so the pose is back where it was. */
+		default void unwind() {
+		}
+
 		/**
 		 * Copies with a higher {@code behind} sit a hair further back than the real text (0), so glow and depth
 		 * layers never flicker through it in the world.
@@ -949,9 +1007,22 @@ public final class LyricsRenderer {
 		}
 	}
 
-	private record ScreenCanvas(GuiGraphics g, Font font) implements Canvas {
+	private record ScreenCanvas(GuiGraphics g, Font font, int[] depth) implements Canvas {
+		ScreenCanvas(GuiGraphics g, Font font) {
+			this(g, font, new int[1]);
+		}
+
+		@Override
+		public void unwind() {
+			while (depth[0] > 0) {
+				depth[0]--;
+				g.pose().popMatrix();
+			}
+		}
+
 		@Override
 		public void push(float x, float y, float scale, float angle) {
+			depth[0]++;
 			g.pose().pushMatrix();
 			g.pose().translate(x, y);
 			if (angle != 0) {
@@ -962,15 +1033,19 @@ public final class LyricsRenderer {
 
 		@Override
 		public void pop() {
+			depth[0]--;
 			g.pose().popMatrix();
 		}
 
 		@Override
 		public void letters(float x, float y, FormattedCharSequence seq, boolean shadow, int argb, int behind) {
 			g.pose().pushMatrix();
-			g.pose().translate(x, y);
-			g.drawString(font, seq, 0, 0, argb, shadow);
-			g.pose().popMatrix();
+			try {
+				g.pose().translate(x, y);
+				g.drawString(font, seq, 0, 0, argb, shadow);
+			} finally {
+				g.pose().popMatrix();
+			}
 		}
 	}
 

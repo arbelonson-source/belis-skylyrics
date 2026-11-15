@@ -3,13 +3,13 @@ package dev.beli.skylyrics.mixin;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import dev.beli.skylyrics.render.RgbaGlyph;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -62,12 +62,12 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 		int width = mask.getWidth();
 		int height = mask.getHeight();
 		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, width, height, false);
+		skylyrics$uploading = picture; // from here on the wrapper below frees it, even if the loop throws
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 				picture.setPixel(x, y, (mask.getLuminanceOrAlpha(x, y) & 0xFF) * 0x01010101);
 			}
 		}
-		skylyrics$uploading = picture;
 		return picture;
 	}
 
@@ -90,21 +90,21 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 	}
 	//?} else if >=1.21.2 {
 	/*// 1.21.4 uploads the mask by calling upload on the image itself, so the call is swapped instead of its argument
-	@Redirect(method = "upload", at = @At(value = "INVOKE",
+	@WrapOperation(method = "upload", at = @At(value = "INVOKE",
 			target = "Lcom/mojang/blaze3d/platform/NativeImage;upload(IIIIIIIZ)V"))
 	private void skylyrics$toPicture(NativeImage mask, int level, int x, int y, int skipX, int skipY, int width,
-			int height, boolean autoClose) {
+			int height, boolean autoClose, Operation<Void> original) {
 		if (!skylyrics$picture) {
-			mask.upload(level, x, y, skipX, skipY, width, height, autoClose);
+			original.call(mask, level, x, y, skipX, skipY, width, height, autoClose);
 			return;
 		}
 		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, mask.getWidth(), mask.getHeight(), false);
-		for (int py = 0; py < mask.getHeight(); py++) {
-			for (int px = 0; px < mask.getWidth(); px++) {
-				picture.setPixel(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
-			}
-		}
 		try {
+			for (int py = 0; py < mask.getHeight(); py++) {
+				for (int px = 0; px < mask.getWidth(); px++) {
+					picture.setPixel(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
+				}
+			}
 			picture.upload(level, x, y, skipX, skipY, width, height, true);
 		} catch (RuntimeException | Error e) {
 			picture.close(); // closing twice is harmless, so this is safe even if upload already closed it
@@ -117,21 +117,21 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 	*///?} else {
 	/*// 1.21.1 uploads the mask the same way, with blur and close flags instead of the 1.21.4 close flag; our pictures also
 	// ask for smooth scaling and clamped edges here, since each upload sets them
-	@Redirect(method = "upload", at = @At(value = "INVOKE",
+	@WrapOperation(method = "upload", at = @At(value = "INVOKE",
 			target = "Lcom/mojang/blaze3d/platform/NativeImage;upload(IIIIIIIZZ)V"))
 	private void skylyrics$toPicture(NativeImage mask, int level, int x, int y, int skipX, int skipY, int width,
-			int height, boolean blur, boolean autoClose) {
+			int height, boolean blur, boolean autoClose, Operation<Void> original) {
 		if (!skylyrics$picture) {
-			mask.upload(level, x, y, skipX, skipY, width, height, blur, autoClose);
+			original.call(mask, level, x, y, skipX, skipY, width, height, blur, autoClose);
 			return;
 		}
 		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, mask.getWidth(), mask.getHeight(), false);
-		for (int py = 0; py < mask.getHeight(); py++) {
-			for (int px = 0; px < mask.getWidth(); px++) {
-				picture.setPixelRGBA(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
-			}
-		}
 		try {
+			for (int py = 0; py < mask.getHeight(); py++) {
+				for (int px = 0; px < mask.getWidth(); px++) {
+					picture.setPixelRGBA(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
+				}
+			}
 			picture.upload(level, x, y, skipX, skipY, width, height, true, true, false, true);
 		} catch (RuntimeException | Error e) {
 			picture.close(); // closing twice is harmless, so this is safe even if upload already closed it

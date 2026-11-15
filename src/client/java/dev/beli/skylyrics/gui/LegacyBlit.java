@@ -23,8 +23,11 @@ public final class LegacyBlit {
 		RenderSystem.defaultBlendFunc();
 		RenderSystem.setShaderColor((argb >> 16 & 0xFF) / 255f, (argb >> 8 & 0xFF) / 255f, (argb & 0xFF) / 255f,
 				(argb >>> 24) / 255f);
-		g.blit(texture, x, y, width, height, u, v, regionWidth, regionHeight, textureWidth, textureHeight);
-		RenderSystem.setShaderColor(1, 1, 1, 1);
+		try {
+			g.blit(texture, x, y, width, height, u, v, regionWidth, regionHeight, textureWidth, textureHeight);
+		} finally {
+			RenderSystem.setShaderColor(1, 1, 1, 1);
+		}
 	}
 }
 *///?}

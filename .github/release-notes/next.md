@@ -22,6 +22,8 @@
 - "Set up Spotify" scrolls to the Spotify card even when the settings screen has just opened, and tabs keep their scroll after you visit a shorter one.
 - When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist.
 - A very long song title from a player or a lyrics site can no longer hold up the lyrics lookup.
+- A rare error in the lyrics drawing no longer crashes the game; the lyrics pause for a few seconds and the error goes to the log.
+- Works alongside other mods that change how fonts are uploaded on 1.21.1 and 1.21.4.
 
 ### Faster
 

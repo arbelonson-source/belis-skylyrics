@@ -199,7 +199,7 @@ public final class DevTestHook {
 
 	/** On in the dev game, and in runProductionClient, which sets -Dskylyrics.testHook=true. */
 	public static boolean enabled() {
-		return FabricLoader.getInstance().isDevelopmentEnvironment() || Boolean.getBoolean("skylyrics.testHook");
+		return TestHookSwitch.enabled();
 	}
 
 	public void tick(Minecraft client) {

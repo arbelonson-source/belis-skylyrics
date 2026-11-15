@@ -49,6 +49,7 @@ import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.mixin.BossHealthOverlayAccessor;
+import dev.beli.skylyrics.util.Guard;
 
 /**
  * The bar at the top of the screen: a dark capsule, sized to its text and centred, with the round cover, the line
@@ -167,6 +168,10 @@ public final class NowPlayingHud {
 	}
 
 	public void render(GuiGraphics g, DeltaTracker delta) {
+		Guard.run("now-playing bar", () -> draw(g, delta));
+	}
+
+	private void draw(GuiGraphics g, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -249,19 +254,22 @@ public final class NowPlayingHud {
 
 		float barSize = cfg.barSize;
 		g.pose().pushMatrix();
-		float pivotY = TopBarLayout.pivotY(cfg.barPosition == BarPosition.BOTTOM, y);
-		g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * pivotY);
-		g.pose().scale(barSize, barSize);
-		drawPill(g, mc, x, y, now, dt);
-		float midY = y + PILL_H / 2f;
-		if (fit.clock()) {
-			text(g, font, clockStyle, clock, x - CLOCK_GAP - clockW, midY, clockScale, fade(alpha, CLOCK));
+		try {
+			float pivotY = TopBarLayout.pivotY(cfg.barPosition == BarPosition.BOTTOM, y);
+			g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * pivotY);
+			g.pose().scale(barSize, barSize);
+			drawPill(g, mc, x, y, now, dt);
+			float midY = y + PILL_H / 2f;
+			if (fit.clock()) {
+				text(g, font, clockStyle, clock, x - CLOCK_GAP - clockW, midY, clockScale, fade(alpha, CLOCK));
+			}
+			if (fit.stats()) {
+				drawStats(g, mc, font, style, textScale, x + width + STATS_GAP, midY);
+			}
+			drawText(g, font, style, textScale, x, midY, now, dt);
+		} finally {
+			g.pose().popMatrix();
 		}
-		if (fit.stats()) {
-			drawStats(g, mc, font, style, textScale, x + width + STATS_GAP, midY);
-		}
-		drawText(g, font, style, textScale, x, midY, now, dt);
-		g.pose().popMatrix();
 	}
 
 	/**
@@ -324,77 +332,83 @@ public final class NowPlayingHud {
 		float swap = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
 		float dim = old == null ? 1 : 1 - 0.35f * Mth.sin(swap * Mth.PI);
 
-		g.pose().pushMatrix();
-		g.pose().scale(1 / s, 1 / s);
-		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(width * s), ph = Math.round(PILL_H * s);
-		float b = Math.max(1, Math.round(BORDER_W * s));
-		roundRect(g, px, py, pw, ph, ph / 2, ARGB.color(Math.round(a * 255), BORDER));
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, ph / 2 - b,
-				ARGB.color(Math.round(a * FILL_ALPHA * cfg.barBackground), FILL));
+		g.pose().pushMatrix();
+		try {
+			g.pose().scale(1 / s, 1 / s);
+			float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(width * s), ph = Math.round(PILL_H * s);
+			float b = Math.max(1, Math.round(BORDER_W * s));
+			roundRect(g, px, py, pw, ph, ph / 2, ARGB.color(Math.round(a * 255), BORDER));
+			roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, ph / 2 - b,
+					ARGB.color(Math.round(a * FILL_ALPHA * cfg.barBackground), FILL));
 
-		int artPx = Math.round(ART * s);
-		int artX = Math.round(px + ART_INSET * s), artY = Math.round(py + (ph - artPx) / 2);
-		spinSpeed = cfg.barSpin ? TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt) : 0;
-		spin = cfg.barSpin ? (spin + spinSpeed * SPIN_TURNS * Mth.TWO_PI * dt) % Mth.TWO_PI : 0;
-		if (cfg.barArt && art.hasTexture()) {
-			float cx = artX + artPx / 2f, cy = artY + artPx / 2f;
-			g.pose().pushMatrix();
-			g.pose().translate(cx, cy);
-			g.pose().rotate(spin);
-			g.pose().translate(-cx, -cy);
-			// The texture is already cut round (AlbumArt)
-			g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, artX, artY, 0, 0, artPx, artPx,
-					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a * dim));
+			int artPx = Math.round(ART * s);
+			int artX = Math.round(px + ART_INSET * s), artY = Math.round(py + (ph - artPx) / 2);
+			spinSpeed = cfg.barSpin ? TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt) : 0;
+			spin = cfg.barSpin ? (spin + spinSpeed * SPIN_TURNS * Mth.TWO_PI * dt) % Mth.TWO_PI : 0;
+			if (cfg.barArt && art.hasTexture()) {
+				float cx = artX + artPx / 2f, cy = artY + artPx / 2f;
+				g.pose().pushMatrix();
+				g.pose().translate(cx, cy);
+				g.pose().rotate(spin);
+				g.pose().translate(-cx, -cy);
+				// The texture is already cut round (AlbumArt)
+				g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, artX, artY, 0, 0, artPx, artPx,
+						AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(a * dim));
+				g.pose().popMatrix();
+				if (cfg.barSpin) {
+					// A record's middle: a dark hole with a thin bright rim
+					float hole = Math.max(3, Math.round(artPx * SPIN_HOLE)), rim = Math.max(1, Math.round(s / 2));
+					roundRect(g, cx - hole / 2 - rim, cy - hole / 2 - rim, hole + 2 * rim, hole + 2 * rim, hole / 2 + rim,
+							ARGB.color(Math.round(a * dim * 150), 0xFFFFFF));
+					roundRect(g, cx - hole / 2, cy - hole / 2, hole, hole, hole / 2, ARGB.color(Math.round(a * 255), FILL));
+				}
+			} else if (cfg.barArt) {
+				roundRect(g, artX, artY, artPx, artPx, artPx / 2f, ARGB.color(Math.round(a * dim * 255), NO_ART));
+			}
+
+			// Equaliser: four bars that hop to new heights while the music plays and rest when it's paused
+			float barW = BAR_W * s, barGap = BAR_GAP * s;
+			float eqX = px + pw - (EQ_INSET + EQ_W) * s;
+			for (int i = 0; i < eq.length; i++) {
+				float target = 0;
+				if (tracker.playing()) {
+					// Each bar changes on its own beat, a quarter step after the one before
+					long n = (long) (now / 1e9 * EQ_STEPS_PER_S + i * 0.25f);
+					target = 0.15f + 0.85f * hash01(n * 31 + i * 7919);
+				}
+				eq[i] += (target - eq[i]) * Math.min(1, dt * 16);
+				float bh = Math.round(Math.max(barW, (EQ_MIN + (EQ_MAX - EQ_MIN) * eq[i]) * s));
+				if (cfg.barEqualiser) {
+					roundRect(g, Math.round(eqX + i * (barW + barGap)), Math.round(py + (ph - bh) / 2), barW, bh, barW / 2,
+							ARGB.color(Math.round(a * dim * 255), accent(cfg)));
+				}
+			}
+
+			// Song progress: a thin line under the words that fills as the song plays
+			Track track = tracker.track();
+			float done = track == null ? -1 : TopBarLayout.progress(tracker.positionMs(), track.lengthMs());
+			if (cfg.barProgress && done >= 0) {
+				float lx = Math.round((x + ART_INSET + ART + TEXT_GAP) * s);
+				float lw = Math.round(TopBarLayout.textRoom(width) * s);
+				float lh = Math.max(1, Math.round(PROGRESS_H * s)), ly = Math.round(py + ph - PROGRESS_UP * s);
+				roundRect(g, lx, ly, lw, lh, lh / 2, ARGB.color(Math.round(a * PROGRESS_TRACK * 255), accent(cfg)));
+				roundRect(g, lx, ly, Math.max(lh, Math.round(lw * done)), lh, lh / 2,
+						ARGB.color(Math.round(a * 255), accent(cfg)));
+			}
+		} finally {
 			g.pose().popMatrix();
-			if (cfg.barSpin) {
-				// A record's middle: a dark hole with a thin bright rim
-				float hole = Math.max(3, Math.round(artPx * SPIN_HOLE)), rim = Math.max(1, Math.round(s / 2));
-				roundRect(g, cx - hole / 2 - rim, cy - hole / 2 - rim, hole + 2 * rim, hole + 2 * rim, hole / 2 + rim,
-						ARGB.color(Math.round(a * dim * 150), 0xFFFFFF));
-				roundRect(g, cx - hole / 2, cy - hole / 2, hole, hole, hole / 2, ARGB.color(Math.round(a * 255), FILL));
-			}
-		} else if (cfg.barArt) {
-			roundRect(g, artX, artY, artPx, artPx, artPx / 2f, ARGB.color(Math.round(a * dim * 255), NO_ART));
 		}
-
-		// Equaliser: four bars that hop to new heights while the music plays and rest when it's paused
-		float barW = BAR_W * s, barGap = BAR_GAP * s;
-		float eqX = px + pw - (EQ_INSET + EQ_W) * s;
-		for (int i = 0; i < eq.length; i++) {
-			float target = 0;
-			if (tracker.playing()) {
-				// Each bar changes on its own beat, a quarter step after the one before
-				long n = (long) (now / 1e9 * EQ_STEPS_PER_S + i * 0.25f);
-				target = 0.15f + 0.85f * hash01(n * 31 + i * 7919);
-			}
-			eq[i] += (target - eq[i]) * Math.min(1, dt * 16);
-			float bh = Math.round(Math.max(barW, (EQ_MIN + (EQ_MAX - EQ_MIN) * eq[i]) * s));
-			if (cfg.barEqualiser) {
-				roundRect(g, Math.round(eqX + i * (barW + barGap)), Math.round(py + (ph - bh) / 2), barW, bh, barW / 2,
-						ARGB.color(Math.round(a * dim * 255), accent(cfg)));
-			}
-		}
-
-		// Song progress: a thin line under the words that fills as the song plays
-		Track track = tracker.track();
-		float done = track == null ? -1 : TopBarLayout.progress(tracker.positionMs(), track.lengthMs());
-		if (cfg.barProgress && done >= 0) {
-			float lx = Math.round((x + ART_INSET + ART + TEXT_GAP) * s);
-			float lw = Math.round(TopBarLayout.textRoom(width) * s);
-			float lh = Math.max(1, Math.round(PROGRESS_H * s)), ly = Math.round(py + ph - PROGRESS_UP * s);
-			roundRect(g, lx, ly, lw, lh, lh / 2, ARGB.color(Math.round(a * PROGRESS_TRACK * 255), accent(cfg)));
-			roundRect(g, lx, ly, Math.max(lh, Math.round(lw * done)), lh, lh / 2,
-					ARGB.color(Math.round(a * 255), accent(cfg)));
-		}
-		g.pose().popMatrix();
 		if (cfg.barArt && !art.hasTexture()) {
 			Font font = mc.font;
 			g.pose().pushMatrix();
-			g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
-			g.pose().scale(0.85f, 0.85f);
-			g.drawCenteredString(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
-			g.pose().popMatrix();
+			try {
+				g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
+				g.pose().scale(0.85f, 0.85f);
+				g.drawCenteredString(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
+			} finally {
+				g.pose().popMatrix();
+			}
 		}
 	}
 
@@ -433,15 +447,18 @@ public final class NowPlayingHud {
 		}
 		float s = (float) mc.getWindow().getGuiScale();
 		g.pose().pushMatrix();
-		g.pose().scale(1 / s, 1 / s);
-		float barW = Math.round(BAR_W * s), pitch = (BAR_W + BAR_GAP) * s;
-		float bottom = Math.round((midY + SIGNAL_BOTTOM) * s);
-		for (int i = 0; i < SIGNAL_H.length; i++) {
-			float h = Math.max(barW, Math.round(SIGNAL_H[i] * s));
-			int color = i < lit ? accent(cfg) : SIGNAL_OFF;
-			roundRect(g, Math.round(x * s + i * pitch), bottom - h, barW, h, barW / 2, ARGB.color(Math.round(a * 255), color));
+		try {
+			g.pose().scale(1 / s, 1 / s);
+			float barW = Math.round(BAR_W * s), pitch = (BAR_W + BAR_GAP) * s;
+			float bottom = Math.round((midY + SIGNAL_BOTTOM) * s);
+			for (int i = 0; i < SIGNAL_H.length; i++) {
+				float h = Math.max(barW, Math.round(SIGNAL_H[i] * s));
+				int color = i < lit ? accent(cfg) : SIGNAL_OFF;
+				roundRect(g, Math.round(x * s + i * pitch), bottom - h, barW, h, barW / 2, ARGB.color(Math.round(a * 255), color));
+			}
+		} finally {
+			g.pose().popMatrix();
 		}
-		g.pose().popMatrix();
 	}
 
 	/** The line or the song's name; the old one fades out where the new one fades in. */
@@ -453,15 +470,18 @@ public final class NowPlayingHud {
 		// Words past the room stop where the highlight would, a little before the equaliser
 		int clipRight = Math.round(tx + room);
 		g.enableScissor(clipLeft, Math.round(midY - PILL_H / 2f) + 1, clipRight, Math.round(midY + PILL_H / 2f) - 1);
-		if (old != null && p < 1) {
-			drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
-		} else {
-			old = null;
+		try {
+			if (old != null && p < 1) {
+				drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
+			} else {
+				old = null;
+			}
+			if (content != null) {
+				drawContent(g, font, style, scale, content, tx, midY, room, alpha * (old == null ? 1 : p), true, dt);
+			}
+		} finally {
+			g.disableScissor();
 		}
-		if (content != null) {
-			drawContent(g, font, style, scale, content, tx, midY, room, alpha * (old == null ? 1 : p), true, dt);
-		}
-		g.disableScissor();
 	}
 
 	private void drawContent(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
@@ -626,13 +646,16 @@ public final class NowPlayingHud {
 	/** Draws text with its middle at {@code midY}, scaled about its left end. */
 	private static void text(GuiGraphics g, Font font, Style style, String text, float x, float midY, float scale, int color) {
 		g.pose().pushMatrix();
-		g.pose().translate(x, midY);
-		g.pose().scale(scale, scale);
-		if (BarProbe.on()) {
-			BarProbe.wordPose(g);
+		try {
+			g.pose().translate(x, midY);
+			g.pose().scale(scale, scale);
+			if (BarProbe.on()) {
+				BarProbe.wordPose(g);
+			}
+			g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
+		} finally {
+			g.pose().popMatrix();
 		}
-		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
-		g.pose().popMatrix();
 	}
 
 	/**
@@ -658,13 +681,16 @@ public final class NowPlayingHud {
 		}
 		FormattedCharSequence seq = wordSeq(text, lineRtl, style);
 		g.pose().pushMatrix();
-		g.pose().translate(x, midY);
-		g.pose().scale(scale, scale);
-		if (BarProbe.on()) {
-			BarProbe.wordPose(g);
+		try {
+			g.pose().translate(x, midY);
+			g.pose().scale(scale, scale);
+			if (BarProbe.on()) {
+				BarProbe.wordPose(g);
+			}
+			g.drawString(font, seq, 0, -4, color, false);
+		} finally {
+			g.pose().popMatrix();
 		}
-		g.drawString(font, seq, 0, -4, color, false);
-		g.pose().popMatrix();
 	}
 
 	/** What {@link #word} draws for one word, also what the dev probe measures. */
@@ -852,12 +878,15 @@ public final class NowPlayingHud {
 		float s = (float) Minecraft.getInstance().getWindow().getGuiScale();
 		String before = BarProbe.on() ? BarProbe.pose(g) : null;
 		g.pose().pushMatrix();
-		g.pose().scale(1 / s, 1 / s);
-		if (before != null) {
-			BarProbe.box(x, w, before, BarProbe.pose(g));
+		try {
+			g.pose().scale(1 / s, 1 / s);
+			if (before != null) {
+				BarProbe.box(x, w, before, BarProbe.pose(g));
+			}
+			roundRect(g, x * s, y * s, w * s, h * s, r * s, color);
+		} finally {
+			g.pose().popMatrix();
 		}
-		roundRect(g, x * s, y * s, w * s, h * s, r * s, color);
-		g.pose().popMatrix();
 	}
 
 	/** A rounded rectangle in the current pose's units, with smooth curves. */
