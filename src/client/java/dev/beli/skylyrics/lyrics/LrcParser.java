@@ -170,7 +170,7 @@ public final class LrcParser {
 	}
 
 	static String tidy(String text) {
-		return SPACES.matcher(CONTROL.matcher(INVISIBLE.matcher(text).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
+		return SPACES.matcher(CONTROL.matcher(INVISIBLE.matcher(dev.beli.skylyrics.media.Track.stripCodes(text)).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
 	}
 
 	/** At most this many different lines share one stamp as one line: an original, its romanization and a translation. */

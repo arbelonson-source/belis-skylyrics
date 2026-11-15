@@ -21,6 +21,7 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		if (s == null) {
 			return "";
 		}
+		s = stripCodes(s);
 		StringBuilder b = new StringBuilder(s.length());
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
@@ -30,6 +31,31 @@ public record Track(String title, String artist, String album, long lengthMs, St
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
 		}
 		return b.toString().replaceAll("[\\s\\p{Z}]+", " ").strip();
+	}
+
+	/**
+	 * Minecraft reads a section sign and the character after it as a formatting code (colour, bold, flickering "obfuscated"),
+	 * so both go; a section sign at the very end goes too. Text from players and lyric sites must never carry them to the screen.
+	 */
+	public static String stripCodes(String s) {
+		int at = s.indexOf('\u00A7');
+		if (at < 0) {
+			return s;
+		}
+		StringBuilder b = new StringBuilder(s.length());
+		int i = 0;
+		while (i < s.length()) {
+			int cp = s.codePointAt(i);
+			i += Character.charCount(cp);
+			if (cp == 0xA7) {
+				if (i < s.length()) {
+					i += Character.charCount(s.codePointAt(i));
+				}
+			} else {
+				b.appendCodePoint(cp);
+			}
+		}
+		return b.toString();
 	}
 
 	public static final Track NONE = new Track("", "", "", 0, "", "");
