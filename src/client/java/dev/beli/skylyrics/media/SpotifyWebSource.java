@@ -37,6 +37,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import dev.beli.skylyrics.Tr;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -127,6 +128,8 @@ public final class SpotifyWebSource implements MediaSource {
 	private long askedNs = System.nanoTime();
 	private int failures;
 	private long failDelayNs;
+	/** Quick re-asks still to make after Spotify answered empty right after a song (an ad, a device hand-off, a track change). */
+	private int recheck;
 	/** Set to ask again right away (a control was used, or the sign-in changed). */
 	private volatile boolean pollNow = true;
 	/** Whether anything on screen shows the song; when not, the poll slows right down. */
@@ -519,10 +522,22 @@ public final class SpotifyWebSource implements MediaSource {
 			// The network call happens with the main lock free, so signing out or quitting never waits for it
 			JsonObject result = null;
 			boolean refused = false;
+			String @Nullable [] adopted = null;
 			try {
 				result = token(form("grant_type", "refresh_token", "refresh_token", refresh, "client_id", id));
 			} catch (Refused e) {
-				refused = true;
+				// A second game copy sharing this folder may have renewed the token and saved the new one: try that
+				// once before calling it a sign-out (which would also delete the file the other copy just wrote)
+				adopted = otherLogin(id, refresh);
+				if (adopted == null) {
+					refused = true;
+				} else {
+					try {
+						result = token(form("grant_type", "refresh_token", "refresh_token", adopted[0], "client_id", id));
+					} catch (Refused e2) {
+						refused = true;
+					}
+				}
 			}
 			synchronized (this) {
 				if (!keepRefresh(started, signInGeneration)) {
@@ -533,10 +548,31 @@ public final class SpotifyWebSource implements MediaSource {
 					problem = Tr.t("Spotify signed you out, sign in again");
 					throw new IOException(problem);
 				}
+				if (adopted != null) {
+					refreshToken = adopted[0];
+					tokenClient = id;
+					grantedScopes = adopted[1];
+				}
 				accept(id, result);
 				return accessToken;
 			}
 		}
+	}
+
+	/** The refresh token and scopes in the saved login when it is for this Client ID and differs from {@code used}, else null. */
+	private String @Nullable [] otherLogin(String id, String used) {
+		try {
+			if (Files.exists(loginFile)) {
+				JsonObject json = object(Files.readString(loginFile, StandardCharsets.UTF_8));
+				String saved = json == null ? null : string(json, "refreshToken");
+				if (saved != null && !saved.equals(used) && id.equals(string(json, "clientId"))) {
+					return new String[] {saved, orEmpty(string(json, "scopes"))};
+				}
+			}
+		} catch (IOException e) {
+			LOG.warn("Couldn't read the Spotify sign-in: {}", e.toString());
+		}
+		return null;
 	}
 
 	private void load() {
@@ -606,6 +642,9 @@ public final class SpotifyWebSource implements MediaSource {
 		holdOff(response.headers().firstValue("Retry-After").orElse(null));
 	}
 
+	/** How many quick asks follow an empty answer that came right after a song, before the idle pace takes over. */
+	static final int RECHECK_POLLS = 3;
+
 	/** Notes that Spotify is being asked at {@code now}. */
 	void settle(long now) {
 		pollNow = false;
@@ -620,7 +659,7 @@ public final class SpotifyWebSource implements MediaSource {
 		if (pollNow) {
 			return true;
 		}
-		long wait = failures > 0 ? failDelayNs : SpotifyPace.intervalNs(last.playing(), looking);
+		long wait = failures > 0 ? failDelayNs : SpotifyPace.intervalNs(last.playing() || recheck > 0, looking);
 		return now - askedNs >= wait;
 	}
 
@@ -664,6 +703,7 @@ public final class SpotifyWebSource implements MediaSource {
 	private Snapshot ask() throws IOException, InterruptedException {
 		String token = access();
 		long sent = System.nanoTime();
+		Snapshot before = last;
 		HttpResponse<String> response = api("GET", "/me/player/currently-playing?additional_types=episode", token);
 		if (response.statusCode() == 401) {
 			synchronized (this) {
@@ -682,6 +722,13 @@ public final class SpotifyWebSource implements MediaSource {
 				return last;
 			}
 			default -> throw new BadStatus(response.statusCode());
+		}
+		if (!last.track().isNone()) {
+			recheck = 0;
+		} else if (!before.track().isNone()) {
+			recheck = RECHECK_POLLS;
+		} else if (recheck > 0) {
+			recheck--;
 		}
 		return last;
 	}
@@ -766,7 +813,8 @@ public final class SpotifyWebSource implements MediaSource {
 	static Snapshot parse(String body, long readAtNanos) {
 		JsonObject json = object(body);
 		JsonObject item = json == null ? null : child(json, "item");
-		if (item == null) {
+		String type = json == null ? null : string(json, "currently_playing_type");
+		if (item == null || "ad".equals(type) || "unknown".equals(type)) {
 			return Snapshot.NOTHING;
 		}
 		String title = orEmpty(string(item, "name"));
@@ -795,8 +843,9 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		long length = number(item, "duration_ms");
 		long position = Math.max(0, Math.min(number(json, "progress_ms"), length > 0 ? length : Long.MAX_VALUE));
-		boolean playing = json.has("is_playing") && json.get("is_playing").getAsBoolean();
-		Track track = TitleCleaner.clean(new Track(title, artist, album, length, bestImage(images), "Spotify"));
+		// A missing or null is_playing reads as paused
+		boolean playing = json.get("is_playing") instanceof JsonPrimitive p && p.isBoolean() && p.getAsBoolean();
+		Track track = TitleCleaner.clean(new Track(title, artist, album, length, bestImage(images), "Spotify", orEmpty(string(item, "uri"))));
 		return new Snapshot(track, position, playing, readAtNanos);
 	}
 
