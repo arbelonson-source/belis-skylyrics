@@ -131,4 +131,14 @@ class HatLayerTest {
 		assertTrue(HatLayer.ANTENNA_X + HatLayer.ANTENNA_STALK < 0.25f, "the stalks start on the head, not beside it");
 		assertTrue(HatLayer.ANTENNA_LENGTH > 2 * HatLayer.ANTENNA_BALL, "the balls sit well above the head");
 	}
+
+	@Test
+	void everyHatMotionFitsTheClockLoopSoNothingJumpsWhenItWraps() {
+		float[] speeds = {HatLayer.NOTE_ORBIT, HatLayer.NOTE_BOB_SPEED, HatLayer.NOTE_SWAY_SPEED, HatLayer.ANTENNA_WOBBLE_SPEED,
+				HatLayer.FLOWER_SPIN};
+		for (float speed : speeds) {
+			double turns = speed * HatLayer.NOTE_LOOP / (2 * Math.PI);
+			org.junit.jupiter.api.Assertions.assertEquals(Math.rint(turns), turns, 1e-3, "speed " + speed);
+		}
+	}
 }

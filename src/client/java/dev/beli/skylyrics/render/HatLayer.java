@@ -64,7 +64,9 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	static final float TOP_HAT_BRIM_Y = HEAD_TOP - 0.035f, TOP_HAT_HEIGHT = 0.38f, TOP_HAT_RADIUS = 0.27f, TOP_HAT_BRIM = 0.43f;
 	private static final int SILK = 0xFF3A3A4A;
 	static final float ANTENNA_X = 0.12f, ANTENNA_LENGTH = 0.36f, ANTENNA_STALK = 0.011f, ANTENNA_BALL = 0.045f;
-	private static final float ANTENNA_LEAN = 14, ANTENNA_WOBBLE = 6, ANTENNA_WOBBLE_SPEED = 3.1f, ANTENNA_POP = 0.35f;
+	private static final float ANTENNA_LEAN = 14, ANTENNA_WOBBLE = 6, ANTENNA_POP = 0.35f;
+	/** A whole number of wobbles fits in {@link #NOTE_LOOP}, or the antennae would jump each time the clock wraps. */
+	static final float ANTENNA_WOBBLE_SPEED = 3.0f;
 	/** Each horn starts inside the head's outer layer and curls from leaning out to just past straight up. */
 	static final float HORN_X = 0.14f, HORN_BASE = HEAD_TOP - 0.01f, HORN_Z = -0.06f, HORN_LENGTH = 0.3f, HORN_RADIUS = 0.06f;
 	private static final float HORN_LEAN = 40, HORN_CURL = 105;
@@ -83,7 +85,8 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	static final float FLOWER_Y = HEAD_TOP - 0.045f, FLOWER_VINE = 0.27f, FLOWER_RADIUS = 0.29f, FLOWER_LIFT = 0.015f;
 	static final float PETAL_IN = 0.01f, PETAL_OUT = 0.05f, PETAL_NARROW = 0.006f, PETAL_WIDE = 0.019f, FLOWER_HEART = 0.013f;
 	private static final int FLOWERS = 8, PETALS = 5;
-	private static final float FLOWER_TILT = 35, FLOWER_SPIN = 0.4f, FLOWER_POP = 0.25f, LEAF = 0.075f, LEAF_WIDE = 0.018f;
+	private static final float FLOWER_TILT = 35, FLOWER_POP = 0.25f, LEAF = 0.075f, LEAF_WIDE = 0.018f;
+	static final float FLOWER_SPIN = 0.4f;
 	private static final int LEAF_LIGHT = 0xFF7DA34A;
 	/** The propeller cap's dome sits just above a skin's hat layer, wide enough to cover the top of the head. */
 	static final float CAP_Y = HEAD_TOP - 0.035f, CAP_RADIUS = 0.31f, CAP_HEIGHT = 0.15f, PEAK = 0.16f, PEAK_DIP = 0.03f;
