@@ -35,4 +35,11 @@ class VisibilityTest {
 		// End: no sky light, no ceiling
 		assertFalse(Visibility.canBeUnderground(false, false));
 	}
+
+	@Test
+	void divingDeepIsNotACave() {
+		assertFalse(Visibility.underground(false, 2, true));
+		assertFalse(Visibility.underground(true, 2, true));
+		assertTrue(Visibility.underground(false, 2, false));
+	}
 }
