@@ -46,6 +46,9 @@ public final class CrosshairShape {
 	 * @param since seconds since the lyrics moved to a new line
 	 */
 	public static int flash(int rgb, float since) {
+		if (Float.isNaN(since)) {
+			return rgb;
+		}
 		float k = FLASH * LyricsRenderer.pulse(since);
 		if (k <= 0) {
 			return rgb;

@@ -1051,4 +1051,31 @@ class WorldWordsTest {
 		words.dropSwing();
 		assertFalse(swung.getBoolean(words), "so does a frame that draws nothing");
 	}
+
+	@Test
+	void prefixWidthsAreLinearOnLongLinesAndSameOnNormalOnes() {
+		java.util.function.ToDoubleFunction<String> advance = t -> t.codePoints().mapToDouble(c -> 3 + c % 5).sum();
+		int[] normal = "Hello, wide world of words".codePoints().toArray();
+		float[] at = WorldWords.prefixWidths(normal, advance);
+		for (int v = 0; v <= normal.length; v++) {
+			assertEquals(advance.applyAsDouble(new String(normal, 0, v)), at[v], 1e-3);
+		}
+		int[] huge = new int[10_000];
+		java.util.Arrays.fill(huge, 'a');
+		long[] measured = {0};
+		float[] wide = WorldWords.prefixWidths(huge, t -> {
+			measured[0] += t.length();
+			return advance.applyAsDouble(t);
+		});
+		assertEquals(advance.applyAsDouble(new String(huge, 0, huge.length)), wide[huge.length], 1e-1);
+		assertTrue(measured[0] <= 2L * huge.length, "measured " + measured[0] + " letters");
+		// A formatting code keeps the whole-prefix way, since it changes the letters after it
+		int[] coded = "\u00a7cred".codePoints().toArray();
+		long[] calls = {0};
+		WorldWords.prefixWidths(coded, t -> {
+			calls[0] += t.length();
+			return 1;
+		});
+		assertEquals(1 + 2 + 3 + 4 + 5, calls[0]);
+	}
 }

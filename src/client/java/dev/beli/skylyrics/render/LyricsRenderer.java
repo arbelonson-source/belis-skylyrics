@@ -1623,7 +1623,7 @@ public final class LyricsRenderer {
 
 	/** A quick swell and a slower fade, {@code t} seconds after a line starts. */
 	static float pulse(float t) {
-		if (t < 0 || t >= PULSE_RISE + PULSE_FALL) {
+		if (Float.isNaN(t) || t < 0 || t >= PULSE_RISE + PULSE_FALL) {
 			return 0;
 		}
 		if (t < PULSE_RISE) {

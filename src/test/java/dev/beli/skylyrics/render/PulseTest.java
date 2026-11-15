@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 class PulseTest {
 	@Test
 	void restsBeforeAndAfter() {
+		assertEquals(0, LyricsRenderer.pulse(Float.NaN));
 		assertEquals(0, LyricsRenderer.pulse(-0.1f));
 		assertEquals(0, LyricsRenderer.pulse(0));
 		assertEquals(0, LyricsRenderer.pulse(2));

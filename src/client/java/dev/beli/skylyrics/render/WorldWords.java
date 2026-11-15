@@ -1037,12 +1037,28 @@ final class WorldWords {
 
 	/** How far along each letter of a card starts, in text units, and its whole width last. */
 	private static float[] widths(Display d, Font font, Style style) {
-		float[] at = new float[d.cps().length + 1];
-		for (int v = 1; v <= d.cps().length; v++) {
-			at[v] = LyricsFont.width(font, style, new String(d.cps(), 0, v));
+		return prefixWidths(d.cps(), text -> LyricsFont.width(font, style, text));
+	}
+
+	/** The widths behind {@link #widths}, with the measuring of a piece of text passed in. */
+	static float[] prefixWidths(int[] cps, java.util.function.ToDoubleFunction<String> measure) {
+		float[] at = new float[cps.length + 1];
+		boolean codes = false;
+		for (int cp : cps) {
+			codes |= cp == '\u00a7';
+		}
+		for (int v = 1; v <= cps.length; v++) {
+			// Each letter has its own advance, so a prefix is the sum of its letters; only a formatting code ('§')
+			// changes the next letter's look, so those lines (and short ones) measure every prefix whole.
+			at[v] = codes || cps.length <= WHOLE_PREFIXES
+					? (float) measure.applyAsDouble(new String(cps, 0, v))
+					: at[v - 1] + (float) measure.applyAsDouble(new String(cps, v - 1, 1));
 		}
 		return at;
 	}
+
+	/** Lines up to this many letters measure every prefix whole, exactly as the game would; longer ones add up letters. */
+	private static final int WHOLE_PREFIXES = 400;
 
 	/**
 	 * Yaw and pitch new words gather round: where you look, or with a fixed direction that way, a little above the
