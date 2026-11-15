@@ -1160,6 +1160,9 @@ public final class LyricsRenderer {
 				return;
 			}
 			List<String> rows = rows(text);
+			if (rows.isEmpty()) {
+				return; // only a line of nothing but spaces wraps to no rows
+			}
 			int[] starts = rowStarts(text, rows);
 			int last = rows.size() - 1;
 			// Counted through the last row, so the break spaces are part of what has to be sung
