@@ -1170,9 +1170,11 @@ public final class LyricsRenderer {
 
 			canvas.push(0, y, scale, 0);
 			float top = -rows.size() * ROW_H / 2;
-			int charIndex = 0, wordIndex = 0;
+			int[] starts = rowStarts(rows);
+			int wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
 				String row = rows.get(r);
+				int charIndex = starts[r];
 				Display d = Display.of(row);
 				int n = d.cps.length;
 				// How visible each character is: typewriter cuts the line off, words fade in one at a time
@@ -1283,11 +1285,24 @@ public final class LyricsRenderer {
 					}
 					from = to;
 				}
-				charIndex += n;
 				wordIndex += wordCount(row);
 			}
 			canvas.pop();
 		}
+	}
+
+	/**
+	 * Where each wrapped row starts, counted in the line's own code points (the unit of how far it has been sung). Not the
+	 * rows' drawn lengths: shaping merges lam-alef and drops marks, so those run shorter and would put later rows ahead.
+	 */
+	static int[] rowStarts(List<String> rows) {
+		int[] starts = new int[rows.size()];
+		int at = 0;
+		for (int r = 0; r < starts.length; r++) {
+			starts[r] = at;
+			at += rows.get(r).codePointCount(0, rows.get(r).length());
+		}
+		return starts;
 	}
 
 	private static final float WORD_STAGGER = 0.07f;

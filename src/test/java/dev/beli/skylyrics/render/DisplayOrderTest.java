@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -89,5 +90,15 @@ class DisplayOrderTest {
 	@Test
 	void theLeftToRightDefaultIsKept() {
 		assertEquals(visual("שלום,"), visual("שלום,", false));
+	}
+
+	@Test
+	void wrappedArabicRowsStartWhereTheTextDoes() {
+		// Lam-alef is one drawn letter but two letters of the line, so row two starts after row one's two letters
+		java.util.List<String> rows = java.util.List.of("سلام لا", "كلام");
+		int[] starts = LyricsRenderer.rowStarts(rows);
+		assertEquals(0, starts[0]);
+		assertEquals(7, starts[1]);
+		assertTrue(LyricsRenderer.Display.of(rows.get(0)).cps().length < 7);
 	}
 }
