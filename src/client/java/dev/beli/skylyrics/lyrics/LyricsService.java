@@ -294,8 +294,9 @@ public final class LyricsService {
 
 	/**
 	 * Asks the main site once more about a song saved by an older version, whose lyrics may have been the backup's
-	 * stand-in. Other lyrics replace the file (and the shown lyrics, if the song is still playing); nothing, or the same
-	 * lyrics, keeps the old ones and stamps the file so it isn't asked again. Another stand-in means the main site is down
+	 * stand-in. Other lyrics replace the file (and the shown lyrics, if the song is still playing); the same lyrics keep the
+	 * old ones and stamp the file so it isn't asked again. Nothing found keeps the shown lyrics for this play and deletes
+	 * the file, so the next play looks the song up fresh. Another stand-in means the main site is down
 	 * again, so that, like a failure, leaves the file as it is and the next play tries again.
 	 */
 	private void recheck(Track t, long gen, Path file, CacheEntry old) {
@@ -308,13 +309,13 @@ public final class LyricsService {
 				return;
 			}
 			if (!found(parse(result, t.lengthMs()))) {
-				// A real "no lyrics" from the main site: what v0.8.0 and older saved came from looser matching
+				// A real "no lyrics" from the main site: what v0.8.0 and older saved came from looser matching.
+				// The lyrics shown now stay for this play (they may well be fine); the file goes, so the next play asks fresh.
 				try {
 					Files.deleteIfExists(file);
 				} catch (IOException e) {
 					LOG.debug("Couldn't delete the old lyrics file {}: {}", file, e.toString());
 				}
-				apply(t, gen, LrclibClient.Result.NOT_FOUND);
 				return;
 			}
 			boolean same = java.util.Objects.equals(result.synced(), old.synced) && java.util.Objects.equals(result.plain(), old.plain)
