@@ -34,6 +34,7 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 
 import dev.beli.skylyrics.Tr;
@@ -529,9 +530,9 @@ public final class NowPlayingHud {
 			int color = live && w.sung() ? sung : upcoming;
 			float wx = rtl ? start - w.x() - w.w() : start + w.x();
 			//? if >=26.1 {
-			/*text(g, font, style, w.drawString(), wx, midY, scale, color);
+			/*word(g, font, style, w.drawString(), rtl, wx, midY, scale, color);
 			*///?} else {
-			text(g, font, style, w.text(), wx, midY, scale, color);
+			word(g, font, style, w.text(), rtl, wx, midY, scale, color);
 			//?}
 		}
 	}
@@ -566,8 +567,10 @@ public final class NowPlayingHud {
 		}
 		int n = parts.size();
 		float[] widths = new float[n];
+		boolean rtl = TopBarWords.baseRtl(text);
 		for (int i = 0; i < n; i++) {
-			widths[i] = LyricsFont.width(font, style, parts.get(i).text()) * scale;
+			// Measured as drawn: the word reordered with the line's direction
+			widths[i] = LyricsFont.width(font, style, TopBarWords.shown(parts.get(i).text(), rtl)) * scale;
 		}
 		// Placed as they are seen (a Hebrew word in an English line, numbers in a Hebrew one), then measured from
 		// the start edge: the left for a left-to-right line, the right for a right-to-left one
@@ -576,7 +579,6 @@ public final class NowPlayingHud {
 		for (int i = 0; i < n; i++) {
 			total = Math.max(total, left[i] + widths[i]);
 		}
-		boolean rtl = TopBarWords.baseRtl(text);
 		Word[] out = new Word[n];
 		int seen = 0;
 		for (int i = 0; i < n; i++) {
@@ -593,6 +595,29 @@ public final class NowPlayingHud {
 		g.pose().translate(x, midY);
 		g.pose().scale(scale, scale);
 		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
+		g.pose().popMatrix();
+	}
+
+	/**
+	 * Draws one word of the line, reordered here with the line's direction and then drawn as it stands from left to
+	 * right (the game's own ordering would pick the word's direction from its first letter).
+	 */
+	private static void word(GuiGraphics g, Font font, Style style, String text, boolean lineRtl, float x, float midY, float scale, int color) {
+		String shown = TopBarWords.shown(text, lineRtl);
+		FormattedCharSequence seq = sink -> {
+			for (int i = 0, v = 0; i < shown.length(); v++) {
+				int cp = shown.codePointAt(i);
+				if (!sink.accept(v, style, cp)) {
+					return false;
+				}
+				i += Character.charCount(cp);
+			}
+			return true;
+		};
+		g.pose().pushMatrix();
+		g.pose().translate(x, midY);
+		g.pose().scale(scale, scale);
+		g.drawString(font, seq, 0, -4, color, false);
 		g.pose().popMatrix();
 	}
 

@@ -45,6 +45,15 @@ final class TopBarWords {
 		return !text.isEmpty() && !new Bidi(text, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
 	}
 
+	/**
+	 * One word as it is drawn from left to right: reordered with the line's own direction rather than the word's first
+	 * letter, so the comma of "שלום," sits on the right in an English line and on the left in a Hebrew one. Arabic is joined.
+	 */
+	static String shown(String word, boolean lineRtl) {
+		int[] cps = LyricsRenderer.Display.of(word, lineRtl).cps();
+		return new String(cps, 0, cps.length);
+	}
+
 	/** Logical piece numbers in the order they are seen from left to right. */
 	static int[] visualOrder(List<Piece> pieces) {
 		int n = pieces.size();
