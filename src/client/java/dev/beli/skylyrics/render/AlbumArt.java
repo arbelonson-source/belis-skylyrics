@@ -64,6 +64,8 @@ public final class AlbumArt {
 		return t;
 	});
 	private final AtomicLong generation = new AtomicLong();
+	/** Held while a song change is registered and while a finished cover is accepted, so the colour and the image go together. */
+	private final Object accept = new Object();
 
 	private volatile int color = FALLBACK_COLOR;
 	/**
@@ -91,7 +93,10 @@ public final class AlbumArt {
 			return;
 		}
 		loadedUrl = url;
-		long gen = generation.incrementAndGet();
+		long gen;
+		synchronized (accept) {
+			gen = generation.incrementAndGet();
+		}
 		hasTexture = false;
 		// A cover that finished decoding for the song we just left must not be shown on this one
 		NativeImage stale = pending.getAndSet(null);
@@ -99,7 +104,9 @@ public final class AlbumArt {
 			stale.close();
 		}
 		if (url.isEmpty()) {
-			color = FALLBACK_COLOR;
+			synchronized (accept) {
+				color = FALLBACK_COLOR;
+			}
 			return;
 		}
 		executor.execute(() -> {
@@ -110,12 +117,16 @@ public final class AlbumArt {
 				}
 				int picked = pickColor(image);
 				NativeImage scaled = shrink(image, SIZE, SIZE / 2f);
-				if (generation.get() != gen) {
-					scaled.close();
-					return;
+				NativeImage old;
+				synchronized (accept) {
+					if (generation.get() != gen) {
+						scaled.close();
+						return;
+					}
+					// The colour is taken together with the image, so a song we already left never tints the new one
+					color = picked;
+					old = pending.getAndSet(scaled);
 				}
-				color = picked;
-				NativeImage old = pending.getAndSet(scaled);
 				if (old != null) {
 					old.close();
 				}
