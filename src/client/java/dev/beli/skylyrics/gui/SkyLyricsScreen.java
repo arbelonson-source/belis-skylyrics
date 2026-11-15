@@ -1277,6 +1277,7 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		announcement = null;
 		if (event.button() == 0 && !rescue.pressed()) {
 			return true;
 		}
@@ -1441,6 +1442,7 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyPressed(KeyEvent event) {
+		announcement = null; // a tab switch (set again below) is said once; after that the focused row speaks
 		if (preview) {
 			preview = false;
 			return true;
