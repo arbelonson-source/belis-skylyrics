@@ -2,6 +2,7 @@
 
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title, especially one with a bracket left open, no longer makes the lyrics lookup hang.
+- **Quick skips.** After a quick skip, a late lyrics retry for the old song can no longer get in the way of the new song's lyrics.
 - **Lyrics on time on a Mac.** On a Mac, lyrics no longer run a little late.
 - **Steady timing on Windows.** On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
 - **World words stay put.** On Linux, a music player that answers slowly, or Spotify right after a pause or resume, no longer makes the World words vanish for a moment. Moving the **Timing** slider no longer makes them blink.
@@ -11,7 +12,6 @@
 - **Library keys.** Pressing Space on a playlist opens it without jumping to search. Pressing Enter after changing the search no longer plays a song from the old results.
 - **Open song library key.** With Iris installed, an **Open song library** key you set to K (the same key as Iris's shader switch) is moved back to N only once, not on every start.
 - **Album covers.** A cover shows even when it can't be saved for next time, and a damaged saved cover is fetched again. A cover that stalls while downloading is cut off instead of blocking the next song's cover. A cover the game can't read no longer leaves the last song's colour.
-- **Quick skips.** After a quick skip, a late lyrics retry for the old song can no longer get in the way of the new song's lyrics.
 - **Bottom bar.** The bottom bar sits above the held item's name. A bigger **Bar size** grows upward instead of off the screen.
 - **Big bars fit.** A big **Bar size** on a narrow screen now fits: the bar shrinks and, if needed, hides the stats and then the clock.
 - **Bar and F3.** A bar at the top hides while the debug screen (F3) is showing.
