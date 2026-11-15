@@ -448,15 +448,18 @@ public final class NowPlayingHud {
 		// Words past the room stop where the highlight would, a little before the equaliser
 		int clipRight = Math.round(tx + room);
 		g.enableScissor(clipLeft, Math.round(midY - PILL_H / 2f) + 1, clipRight, Math.round(midY + PILL_H / 2f) - 1);
-		if (old != null && p < 1) {
-			drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
-		} else {
-			old = null;
+		try {
+			if (old != null && p < 1) {
+				drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
+			} else {
+				old = null;
+			}
+			if (content != null) {
+				drawContent(g, font, style, scale, content, tx, midY, room, alpha * (old == null ? 1 : p), true, dt);
+			}
+		} finally {
+			g.disableScissor();
 		}
-		if (content != null) {
-			drawContent(g, font, style, scale, content, tx, midY, room, alpha * (old == null ? 1 : p), true, dt);
-		}
-		g.disableScissor();
 	}
 
 	private void drawContent(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,

@@ -197,8 +197,11 @@ public final class RecordCard {
 		float shift = lyricShift(lineW, room, hud.singingThrough(cfg));
 		float start = NowPlayingHud.isRtl(lyric) ? left - (lineW - room) + shift : left - shift;
 		g.enableScissor(Math.round(left), Math.round(rowTop), Math.round(left + room), Math.round(rowTop + LYRIC_H));
-		text(g, font, style, lyric, start, midY, scale, color);
-		g.disableScissor();
+		try {
+			text(g, font, style, lyric, start, midY, scale, color);
+		} finally {
+			g.disableScissor();
+		}
 	}
 
 	/** A line before or after the current one: dimmed, smaller, centred, and cut with "…" when too long. */
