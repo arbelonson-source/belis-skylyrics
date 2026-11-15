@@ -135,6 +135,10 @@ On **Auto** (the starting setting), the mod already draws on top when a shader p
 
 In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). It gives the words a dark edge that makes them easier to read against a pale sky.
 
+## Lyrics trail behind when I turn (Exordium)
+
+Exordium redraws the HUD less often than the game draws frames, and the lyrics are drawn as part of the HUD, so they can lag behind your camera. Turn off Exordium's HUD buffering and they follow smoothly again.
+
 ## The mod says a new version is out, but won't install it
 
 On Windows, if your user folder or your Minecraft folder has accented or non-English letters in its name (like `C:\Users\José`), the mod can't swap in the new version by itself, so it just tells you a new one is out. Download the new jar for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases), put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.

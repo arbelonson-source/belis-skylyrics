@@ -40,15 +40,15 @@ abstract class GuiMixin {
 	@WrapOperation(method = "renderCrosshair", at = @At(value = "INVOKE", ordinal = 0,
 	//?}
 			//? if >=1.21.6 {
-			target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
+			target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"), require = 0)
 	private void skylyrics$crosshair(GuiGraphics g, RenderPipeline pipeline, Identifier sprite, int x, int y, int width,
 			int height, Operation<Void> original) {
 			//?} else if >=1.21.2 {
-			/*target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+			/*target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"), require = 0)
 	private void skylyrics$crosshair(GuiGraphics g, Function<ResourceLocation, RenderType> pipeline, ResourceLocation sprite,
 			int x, int y, int width, int height, Operation<Void> original) {
 			*///?} else {
-			/*target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+			/*target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"), require = 0)
 	private void skylyrics$crosshair(GuiGraphics g, ResourceLocation sprite, int x, int y, int width, int height,
 			Operation<Void> original) {
 			*///?}
