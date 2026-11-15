@@ -38,6 +38,7 @@ public final class Themes {
 				c.smoothFont = false;
 				c.scriptFont = false;
 				c.boldFont = false;
+				c.roundFont = false;
 				c.depth = false;
 				c.glow = 0;
 				c.pulse = false;
@@ -54,6 +55,7 @@ public final class Themes {
 				c.smoothFont = true;
 				c.scriptFont = false;
 				c.boldFont = true;
+				c.roundFont = false;
 				c.depth = true;
 				c.size = 1.5f;
 				c.glow = 0.9f;
@@ -69,6 +71,7 @@ public final class Themes {
 				c.smoothFont = false;
 				c.scriptFont = false;
 				c.boldFont = false;
+				c.roundFont = false;
 				c.depth = false;
 				c.glow = 0;
 				c.pulse = false;
@@ -82,6 +85,7 @@ public final class Themes {
 				c.color = 0xF4A6FF;
 				c.smoothFont = true;
 				c.boldFont = false;
+				c.roundFont = false;
 				c.depth = true;
 				c.scriptFont = true;
 				c.glow = 0.4f;
@@ -97,6 +101,7 @@ public final class Themes {
 				c.smoothFont = true;
 				c.scriptFont = false;
 				c.boldFont = true;
+				c.roundFont = false;
 				c.depth = true;
 				c.glow = 0.85f;
 				c.animation = Animation.POP;
@@ -111,6 +116,7 @@ public final class Themes {
 				c.smoothFont = true;
 				c.scriptFont = false;
 				c.boldFont = true;
+				c.roundFont = false;
 				c.depth = true;
 				c.glow = 0.45f;
 				c.animation = Animation.POP;
@@ -126,6 +132,7 @@ public final class Themes {
 				c.smoothFont = true;
 				c.scriptFont = false;
 				c.boldFont = false;
+				c.roundFont = false;
 				c.depth = false;
 				c.glow = 0.3f;
 				c.pulse = false;
@@ -143,6 +150,7 @@ public final class Themes {
 				c.smoothFont = true;
 				c.scriptFont = false;
 				c.boldFont = false;
+				c.roundFont = false;
 				c.depth = false;
 				c.glow = 0.7f;
 				c.glowPick = true;
@@ -162,6 +170,7 @@ public final class Themes {
 				c.smoothFont = true;
 				c.scriptFont = false;
 				c.boldFont = true;
+				c.roundFont = false;
 				c.depth = true;
 				c.glow = 0.6f;
 				c.size = 1.25f;

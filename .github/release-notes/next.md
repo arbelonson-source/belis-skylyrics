@@ -38,8 +38,8 @@
 - **Clicks on 26.3.** On Minecraft 26.3, a click outside the game window no longer counts as a click inside it.
 - **Linux launchers.** On Linux, when a launcher hides your session from the game, the mod now still finds your music players instead of saying it can't reach them.
 - **Flatpak.** In a Flatpak (for example the Prism Launcher), when the sandbox isn't allowed to talk to music players and none show up, the mod now shows the Flatpak hint instead of just "nothing playing".
-- **Players with long names.** On Linux, players such as Amberol or Rhythmbox are now shown by their own name, picking one as your player in the settings works, and songs from the library open in the right player.
-- **Players without a position.** On Linux, a player that doesn't say where it is in the song no longer holds the lyrics on the first line; they keep time from when the song started.
+- **Players with long names.** On Linux, players such as Amberol or Rhythmbox are now shown by their own name, and songs from the library open in the right player.
+- **Players without a position.** A player that doesn't say where it is in the song no longer holds the lyrics on the first line; they keep time from when the song started or resumed.
 - **Spotify asks less.** With Spotify signed in, when the lyrics are off and none of the mod's screens is open, the mod asks Spotify for the song only every 15 seconds. When Spotify says it is busy or keeps failing, the mod waits longer before asking again.
 - **Spotify gaps.** With Spotify, a moment when Spotify says nothing is playing (around an ad, a track change or a switch to another device) no longer makes the lyrics blink out and come back up to 4 s late: the mod asks again after a second. An ad is no longer taken for a song.
 - **Same name, two songs.** When one Spotify song follows another with the same title and artist (like two "Interlude"s), the mod now sees a new song: it looks up the second one's lyrics and starts them from the top instead of carrying on with the first one's. The two still share their per-song **Timing**.
