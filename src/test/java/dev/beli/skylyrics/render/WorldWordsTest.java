@@ -832,4 +832,18 @@ class WorldWordsTest {
 		assertFalse(WorldWords.stillBlocked(t, pos, eye, t + 100_000_000L, pos, eye.add(0, 0, 2)), "you moved");
 		assertFalse(WorldWords.stillBlocked(-1, pos, eye, t, pos, eye), "never blocked");
 	}
+
+	@Test
+	void everyArabicLetterIsEventuallyShown() {
+		for (String word : new String[] {"سلام", "لاعب", "مَرحبا"}) {
+			int[] logical = LyricsRenderer.Display.of(word).logical();
+			int most = 0;
+			for (int l : logical) {
+				most = Math.max(most, l);
+			}
+			assertTrue(WorldWords.shownLetters(logical, true, 0) > most, word);
+			assertTrue(WorldWords.shownLetters(logical, false, 10) > most, word + " typed");
+			assertEquals(0, WorldWords.shownLetters(logical, false, 0), word + " start");
+		}
+	}
 }

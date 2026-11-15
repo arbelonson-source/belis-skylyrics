@@ -1702,6 +1702,19 @@ final class WorldWords {
 		return (float) Math.toDegrees(Math.atan2(half, distance));
 	}
 
+	/**
+	 * How many logical letters of a card are showing: all of them, or while it types in, a share by its age. The count is
+	 * of logical letters (the highest index plus one), not drawn glyphs: shaping drops marks and merges lam-alef, so
+	 * there can be fewer glyphs than letters, and counting glyphs would leave the last letters never drawn.
+	 */
+	static int shownLetters(int[] logical, boolean instant, float age) {
+		int letters = 0;
+		for (int l : logical) {
+			letters = Math.max(letters, l + 1);
+		}
+		return instant ? letters : Mth.ceil(letters * Math.min(1, age / TYPE));
+	}
+
 	/** A number in [0, 1); cards only need to look scattered, not be reproducible. */
 	private float next() {
 		rng = rng * 6364136223846793005L + 1442695040888963407L;
@@ -1790,7 +1803,7 @@ final class WorldWords {
 			}
 			// A card seen from behind turns around, so its words never read mirrored
 			float face = seenFromBehind(x, z, c.face) ? c.face + 180 : c.face;
-			int shown = flow || !popping ? n : Mth.ceil(n * Math.min(1, age / TYPE));
+			int shown = shownLetters(c.display.logical(), flow || !popping, age);
 			float typed = arrival == WorldArrival.TYPE ? age : -1;
 			int own = c.title ? rgb : toned(rgb, toneRgb, c.along);
 			int colour = c.goneAt < 0 ? mix(own, 0xFFFFFF, flash(age))
