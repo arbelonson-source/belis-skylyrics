@@ -26,4 +26,20 @@ class VisibilityTest {
 		assertTrue(Visibility.underground(true, between));
 		assertFalse(Visibility.underground(true, Visibility.SHOW_AT));
 	}
+
+	@Test
+	void theNetherCountsAsUndergroundButTheEndDoesNot() {
+		assertTrue(Visibility.canBeUnderground(true, false));
+		// Nether: no sky light, bedrock ceiling
+		assertTrue(Visibility.canBeUnderground(false, true));
+		// End: no sky light, no ceiling
+		assertFalse(Visibility.canBeUnderground(false, false));
+	}
+
+	@Test
+	void divingDeepIsNotACave() {
+		assertFalse(Visibility.underground(false, 2, true));
+		assertFalse(Visibility.underground(true, 2, true));
+		assertTrue(Visibility.underground(false, 2, false));
+	}
 }

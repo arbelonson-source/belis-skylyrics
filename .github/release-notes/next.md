@@ -10,3 +10,6 @@
 - Pressing Enter after changing the search no longer plays a song from the old results.
 - The album cover is called the same everywhere in the settings and help pages.
 - With Hat pulse off, the propeller cap turns at its calm speed instead of a faster one.
+- With Follow, the sky sparkles and shooting stars move with the lyrics again.
+- Show underground too also works in the Nether.
+- Diving deep no longer counts as being underground.

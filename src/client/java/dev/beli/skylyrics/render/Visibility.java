@@ -42,11 +42,13 @@ public final class Visibility {
 
 	/**
 	 * Whether the player is under cover right now (no open sky above), with the cave-mouth hysteresis. The one answer
-	 * for both Hide in caves and Show underground too. Always false where the dimension has no sky light.
+	 * for Show underground too. Where the dimension has no sky light it still counts when there is a ceiling (the
+	 * Nether, under its bedrock roof), but not in the End, which has neither. Hide in caves keeps its own rule in
+	 * {@link #hidden}: no sky light, no hiding.
 	 */
 	public static boolean underground(Minecraft mc) {
 		ClientLevel level = mc.level;
-		if (level == null || !level.dimensionType().hasSkyLight()) {
+		if (level == null || !canBeUnderground(level.dimensionType().hasSkyLight(), level.dimensionType().hasCeiling())) {
 			return false;
 		}
 		//? if >=26.2 {
@@ -61,9 +63,20 @@ public final class Visibility {
 		long now = System.nanoTime();
 		if (now - checkedAt >= CHECK_NS) {
 			checkedAt = now;
-			underground = underground(underground, level.getBrightness(LightLayer.SKY, camera.blockPosition()));
+			underground = underground(underground, level.getBrightness(LightLayer.SKY, camera.blockPosition()),
+					camera.getFluidInCamera() == FogType.WATER);
 		}
 		return underground;
+	}
+
+	/** Whether "under cover" means anything in a dimension: it has sky light to lose, or a ceiling over you. */
+	static boolean canBeUnderground(boolean hasSkyLight, boolean hasCeiling) {
+		return hasSkyLight || hasCeiling;
+	}
+
+	/** Diving deep in open water dims the sky light too, so being underwater never counts as under cover. */
+	static boolean underground(boolean was, int skyLight, boolean inWater) {
+		return !inWater && underground(was, skyLight);
 	}
 
 	static boolean underground(boolean was, int skyLight) {
