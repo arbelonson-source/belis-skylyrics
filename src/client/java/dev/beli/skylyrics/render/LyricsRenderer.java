@@ -1,12 +1,15 @@
 package dev.beli.skylyrics.render;
 
 import java.text.Bidi;
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.ToDoubleFunction;
 
 import com.ibm.icu.text.ArabicShaping;
 import com.ibm.icu.text.ArabicShapingException;
@@ -47,6 +50,7 @@ import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.TitleCleaner;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.util.TextCut;
 
 /**
  * Draws the lyrics in the world. Text goes through Minecraft's own text pipeline (the same one
@@ -995,21 +999,9 @@ public final class LyricsRenderer {
 
 		/** Cuts a line into words and places them for the arc layout. */
 		ArcText arcText(int index, String text) {
-			List<String> words = new ArrayList<>();
-			List<Integer> first = new ArrayList<>();
+			ArcWords split = arcWords(text);
+			List<String> words = split.words();
 			int[] cps = text.codePoints().toArray();
-			for (int i = 0; i < cps.length; ) {
-				if (cps[i] == ' ') {
-					i++;
-					continue;
-				}
-				int start = i;
-				while (i < cps.length && cps[i] != ' ') {
-					i++;
-				}
-				words.add(new String(cps, start, i - start));
-				first.add(start);
-			}
 			int n = words.size();
 			float[] widths = new float[n];
 			boolean[] pause = new boolean[n];
@@ -1017,14 +1009,14 @@ public final class LyricsRenderer {
 			for (int w = 0; w < n; w++) {
 				String word = words.get(w);
 				widths[w] = LyricsFont.width(font, base, word);
-				pause[w] = ",.;:!?…".indexOf(word.charAt(word.length() - 1)) >= 0;
-				firstChar[w] = first.get(w);
+				pause[w] = endsWithPause(word);
+				firstChar[w] = split.first()[w];
 			}
 			boolean rtl = Bidi.requiresBidi(text.toCharArray(), 0, text.length())
 					&& !new Bidi(text, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
 			float space = LyricsFont.width(font, base, " ");
-			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause), space,
-					ArcLayout.seed(index, text), rtl);
+			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause, split.tight()), space,
+					ArcLayout.seed(index, text), rtl, split.tight());
 			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups);
 		}
 
@@ -1496,18 +1488,34 @@ public final class LyricsRenderer {
 		return RANKS.computeIfAbsent(row, LyricsRenderer::computeWordRanks);
 	}
 
-	private static int[] computeWordRanks(String row) {
+	/** Chinese and Japanese stretches count one word per character, as in {@link #arcWords}. */
+	static int[] computeWordRanks(String row) {
 		int[] cps = row.codePoints().toArray();
 		int[] rank = new int[cps.length];
 		int w = -1;
-		boolean inWord = false;
-		for (int i = 0; i < cps.length; i++) {
-			boolean space = cps[i] == ' ';
-			if (!space && !inWord) {
-				w++;
+		for (int i = 0; i < cps.length; ) {
+			if (cps[i] == ' ') {
+				rank[i++] = Math.max(0, w);
+				continue;
 			}
-			inWord = !space;
-			rank[i] = Math.max(0, w);
+			int start = i;
+			boolean cjk = false;
+			while (i < cps.length && cps[i] != ' ') {
+				cjk |= WorldWords.cjk(cps[i]);
+				i++;
+			}
+			if (!cjk) {
+				w++;
+				Arrays.fill(rank, start, i, w);
+				continue;
+			}
+			int at = start;
+			for (int[] unit : WorldWords.cjkUnits(cps, start, i)) {
+				w++;
+				Arrays.fill(rank, at, unit[1], w);
+				at = unit[1];
+			}
+			Arrays.fill(rank, at, i, w);
 		}
 		return rank;
 	}
@@ -1537,31 +1545,88 @@ public final class LyricsRenderer {
 		});
 	}
 
-	private static int wordCount(String row) {
+	static int wordCount(String row) {
 		int[] rank = wordRanks(row);
 		boolean any = row.chars().anyMatch(c -> c != ' ');
 		return any ? rank[rank.length - 1] + 1 : 0;
 	}
 
+	/** Whether a word ends with a mark where a row may nicely end. */
+	static boolean endsWithPause(String word) {
+		return !word.isEmpty() && ",.;:!?…،؟。、，！？".indexOf(word.charAt(word.length() - 1)) >= 0;
+	}
+
+	/** A line cut into arc words: each word's text, where it starts (code points), and whether it runs straight into the next. */
+	record ArcWords(List<String> words, int[] first, boolean[] tight) {}
+
+	/**
+	 * Cuts a line into the words the arc layout places. Words are split at spaces; a stretch with Chinese or Japanese
+	 * in it is cut into single characters (see {@link WorldWords#cjkUnits}) that sit side by side with no gap, so a
+	 * long line can wrap into rows and its characters come in one at a time. Other lines are cut exactly at spaces.
+	 */
+	static ArcWords arcWords(String text) {
+		List<String> words = new ArrayList<>();
+		List<Integer> first = new ArrayList<>();
+		List<Boolean> tight = new ArrayList<>();
+		int[] cps = text.codePoints().toArray();
+		for (int i = 0; i < cps.length; ) {
+			if (cps[i] == ' ') {
+				i++;
+				continue;
+			}
+			int start = i;
+			while (i < cps.length && cps[i] != ' ') {
+				i++;
+			}
+			boolean cjk = false;
+			for (int k = start; k < i && !cjk; k++) {
+				cjk = WorldWords.cjk(cps[k]);
+			}
+			if (!cjk) {
+				words.add(new String(cps, start, i - start));
+				first.add(start);
+				tight.add(false);
+				continue;
+			}
+			List<int[]> units = WorldWords.cjkUnits(cps, start, i);
+			for (int u = 0; u < units.size(); u++) {
+				int[] unit = units.get(u);
+				words.add(new String(cps, unit[0], unit[1] - unit[0]));
+				first.add(unit[0]);
+				tight.add(u + 1 < units.size());
+			}
+		}
+		boolean[] tightArr = new boolean[tight.size()];
+		for (int k = 0; k < tightArr.length; k++) {
+			tightArr[k] = tight.get(k);
+		}
+		return new ArcWords(words, first.stream().mapToInt(Integer::intValue).toArray(), tightArr);
+	}
+
 	static List<String> wrap(Font font, Style style, String text, float maxWidth) {
+		return wrap(s -> LyricsFont.width(font, style, s), text, maxWidth);
+	}
+
+	/** {@link #wrap(Font, Style, String, float)} with the width measure passed in, so it can be tested without a game. */
+	static List<String> wrap(ToDoubleFunction<String> width, String text, float maxWidth) {
 		List<String> rows = new ArrayList<>();
-		if (LyricsFont.width(font, style, text) <= maxWidth) {
+		if (width.applyAsDouble(text) <= maxWidth) {
 			rows.add(text);
 			return rows;
 		}
 		// Balance the rows: aim for even widths instead of a long row and a one-word orphan
-		int rowsNeeded = (int) Math.ceil(LyricsFont.width(font, style, text) / maxWidth);
-		float target = Math.min(maxWidth, LyricsFont.width(font, style, text) / (float) rowsNeeded + 12);
+		int rowsNeeded = (int) Math.ceil(width.applyAsDouble(text) / maxWidth);
+		float target = (float) Math.min(maxWidth, width.applyAsDouble(text) / rowsNeeded + 12);
 		StringBuilder row = new StringBuilder();
 		for (String word : text.split(" ")) {
 			if (word.isEmpty()) {
 				continue;
 			}
-			List<String> pieces = breakPoints(word);
+			List<String> pieces = fitPieces(width, breakPoints(word), maxWidth);
 			for (int p = 0; p < pieces.size(); p++) {
 				String piece = pieces.get(p);
 				String candidate = row.isEmpty() ? piece : row + (p == 0 ? " " : "") + piece;
-				if (!row.isEmpty() && LyricsFont.width(font, style, candidate) > target) {
+				if (!row.isEmpty() && width.applyAsDouble(candidate) > target) {
 					rows.add(row.toString());
 					row.setLength(0);
 					row.append(piece);
@@ -1575,6 +1640,55 @@ public final class LyricsRenderer {
 			rows.add(row.toString());
 		}
 		return rows;
+	}
+
+	/**
+	 * Makes sure no piece is wider than a row. Thai is written without spaces, so its words are found with the
+	 * line-break rules; a piece still too wide (a long unbroken word) is cut at the nearest break the rules allow, and
+	 * as a last resort between whole characters, never inside a letter with its accents. Pieces that already fit are
+	 * left alone, so spaced languages wrap as they always did.
+	 */
+	private static List<String> fitPieces(ToDoubleFunction<String> width, List<String> pieces, float maxWidth) {
+		List<String> out = new ArrayList<>();
+		for (String piece : pieces) {
+			boolean thai = piece.codePoints().anyMatch(cp -> Character.UnicodeScript.of(cp) == Character.UnicodeScript.THAI);
+			if (!thai && width.applyAsDouble(piece) <= maxWidth) {
+				out.add(piece);
+				continue;
+			}
+			for (String part : lineBreaks(piece)) {
+				String rest = part;
+				while (width.applyAsDouble(rest) > maxWidth && rest.length() > 1) {
+					String head = TextCut.prefix(rest, s -> width.applyAsDouble(s) <= maxWidth);
+					if (head.isEmpty()) {
+						head = firstCharacter(rest);
+					}
+					out.add(head);
+					rest = rest.substring(head.length());
+				}
+				if (!rest.isEmpty()) {
+					out.add(rest);
+				}
+			}
+		}
+		return out;
+	}
+
+	private static String firstCharacter(String text) {
+		BreakIterator it = BreakIterator.getCharacterInstance();
+		it.setText(text);
+		return text.substring(0, it.next());
+	}
+
+	/** The pieces of a word between the places where the line-break rules (and, for Thai, its dictionary) allow a break. */
+	static List<String> lineBreaks(String word) {
+		List<String> out = new ArrayList<>();
+		BreakIterator it = BreakIterator.getLineInstance(Locale.ROOT);
+		it.setText(word);
+		for (int from = 0, to = it.next(); to != BreakIterator.DONE; from = to, to = it.next()) {
+			out.add(word.substring(from, to));
+		}
+		return out;
 	}
 
 	/**

@@ -3,6 +3,7 @@ package dev.beli.skylyrics.render;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Where each word of a line goes in the arc layout. The line is cut into a couple of even rows that bend up at the
@@ -77,11 +78,19 @@ final class ArcLayout {
 	 * @param pause whether a row may end nicely after each word (it ends with a comma, full stop…)
 	 */
 	static int[] rows(float[] widths, boolean[] pause) {
+		return rows(widths, pause, null);
+	}
+
+	/**
+	 * Like {@link #rows(float[], boolean[])}, with {@code tight[i]} saying word i runs straight into word i+1 with no
+	 * gap (neighbouring Chinese or Japanese characters). May be null.
+	 */
+	static int[] rows(float[] widths, boolean[] pause, boolean @Nullable [] tight) {
 		int n = widths.length;
 		if (n == 0) {
 			return new int[0];
 		}
-		float total = width(widths, 0, n, GAP);
+		float total = width(widths, tight, 0, n, GAP);
 		int k = total <= SINGLE_ROW ? 1 : Math.max(2, (int) Math.ceil(total / ROW_WIDTH));
 		k = Math.min(k, n);
 		if (k == 1) {
@@ -92,7 +101,7 @@ final class ArcLayout {
 			int bestCut = 1;
 			float bestScore = Float.MAX_VALUE;
 			for (int c = 1; c < n; c++) {
-				float score = Math.max(width(widths, 0, c, GAP), width(widths, c, n, GAP)) * (pause[c - 1] ? PAUSE_BONUS : 1);
+				float score = Math.max(width(widths, tight, 0, c, GAP), width(widths, tight, c, n, GAP)) * (pause[c - 1] ? PAUSE_BONUS : 1);
 				if (score < bestScore) {
 					bestScore = score;
 					bestCut = c;
@@ -113,7 +122,7 @@ final class ArcLayout {
 					if (best[r - 1][j] == Float.MAX_VALUE) {
 						continue;
 					}
-					float w = width(widths, j, i, GAP);
+					float w = width(widths, tight, j, i, GAP);
 					float worst = Math.max(best[r - 1][j], w);
 					if (worst < best[r][i]) {
 						best[r][i] = worst;
@@ -137,6 +146,18 @@ final class ArcLayout {
 			w += widths[i];
 		}
 		return w + gap * Math.max(0, to - from - 1);
+	}
+
+	/** Width of words {@code from..to-1} with {@code gap} between them, except after a word flagged in {@code tight}. */
+	static float width(float[] widths, boolean @Nullable [] tight, int from, int to, float gap) {
+		float w = 0;
+		for (int i = from; i < to; i++) {
+			w += widths[i];
+			if (i + 1 < to && (tight == null || !tight[i])) {
+				w += gap;
+			}
+		}
+		return w;
 	}
 
 	/** How far the ends of a row this wide rise above its middle. */
@@ -171,6 +192,12 @@ final class ArcLayout {
 	 * @param rtl   lay the words out right to left (Hebrew, Arabic)
 	 */
 	static List<Group> place(float[] widths, int[] rowStarts, float space, long seed, boolean rtl) {
+		return place(widths, rowStarts, space, seed, rtl, null);
+	}
+
+	/** Like {@link #place(float[], int[], float, long, boolean)}; {@code tight[i]}: no space between word i and i+1. */
+	static List<Group> place(float[] widths, int[] rowStarts, float space, long seed, boolean rtl,
+			boolean @Nullable [] tight) {
 		int n = widths.length;
 		List<Group> out = new ArrayList<>();
 		int rows = rowStarts.length;
@@ -194,7 +221,7 @@ final class ArcLayout {
 				int[] s = spans.get(g);
 				scale[g] = groupScale(seed, s[0]);
 				biggest = Math.max(biggest, scale[g]);
-				advance[g] = width(widths, s[0], s[1], space) * (1 + (scale[g] - 1) * PUSH);
+				advance[g] = width(widths, tight, s[0], s[1], space) * (1 + (scale[g] - 1) * PUSH);
 				rowWidth += advance[g];
 			}
 			// Big words need more room between the rows, or the row below runs into them
@@ -217,13 +244,13 @@ final class ArcLayout {
 				float tangent = (float) Math.toDegrees(Math.atan(-2 * curve * cx));
 				float own = (groupNo % 2 == 0 ? flip : -flip) * (ROLL_MIN + (ROLL_MAX - ROLL_MIN) * unit(seed, s[0], SALT_ROLL));
 				float angle = Math.clamp(FOLLOW * tangent + own, -ROLL_LIMIT, ROLL_LIMIT);
-				float inner = width(widths, s[0], s[1], space);
+				float inner = width(widths, tight, s[0], s[1], space);
 				float[] wordX = new float[s[1] - s[0]];
 				float wx = -inner / 2;
 				for (int i = s[0]; i < s[1]; i++) {
 					float c = wx + widths[i] / 2;
 					wordX[i - s[0]] = rtl ? -c : c;
-					wx += widths[i] + space;
+					wx += widths[i] + (tight != null && tight[i] ? 0 : space);
 				}
 				out.add(new Group(s[0], s[1], cx, y, angle, scale[g], wordX));
 			}
