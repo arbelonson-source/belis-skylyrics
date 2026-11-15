@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.media;
 
+import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -64,6 +65,29 @@ public final class TitleCleaner {
 		// after "feat", so a title like "A Feat Of Strength" does too.
 		t = GUEST_TAIL.matcher(t.trim()).replaceFirst("");
 		return t.trim();
+	}
+
+	/** "(Remastered)", "[Live]", "(Radio Edit)", "(from X)" …: a version of the same song. "remix" and "part N" are not. */
+	private static final Pattern VERSION_BRACKET = Pattern.compile(
+			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014][^)\\]\uFF09\uFF3D\u3011\u3015]*\\b(remaster(ed)?|live|radio edit|edit|version|mix|mono|stereo|acoustic|demo|from .+|feat\\.?|ft\\.?|featuring|with|prod\\.?)\\b[^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
+			Pattern.CASE_INSENSITIVE);
+
+	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */
+	public static String key(String s) {
+		return s.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "");
+	}
+
+	/** What identifies the song: no version tags or credits, no case, accents or punctuation; "&" means "and". */
+	static String songKey(String title) {
+		String t = VERSION_BRACKET.matcher(forSearch(title)).replaceAll("").replace("&", " and ");
+		t = Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+		String k = key(t);
+		return k.isEmpty() ? title.strip().toLowerCase(Locale.ROOT) : k; // "!!!" must not equal "???"
+	}
+
+	/** Whether a lyrics result titled {@code found} is the song {@code wanted}. A blank title is never a match. */
+	public static boolean sameSong(String wanted, String found) {
+		return !found.isBlank() && songKey(wanted).equals(songKey(found));
 	}
 
 	/** Longest artist credit a title card shows whole. */

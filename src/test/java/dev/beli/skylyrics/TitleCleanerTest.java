@@ -1,7 +1,9 @@
 package dev.beli.skylyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -123,5 +125,46 @@ class TitleCleanerTest {
 	void mainArtistIsTheFirstOne() {
 		assertEquals("A", TitleCleaner.mainArtist("A, B & C"));
 		assertEquals("A", TitleCleaner.mainArtist("A feat. B"));
+	}
+
+	private static void same(String a, String b) {
+		assertTrue(TitleCleaner.sameSong(a, b), a + " / " + b);
+		assertTrue(TitleCleaner.sameSong(b, a), b + " / " + a);
+	}
+
+	private static void different(String a, String b) {
+		assertFalse(TitleCleaner.sameSong(a, b), a + " / " + b);
+		assertFalse(TitleCleaner.sameSong(b, a), b + " / " + a);
+	}
+
+	@Test
+	void sameSongIgnoresVersionTagsCreditsCaseAccentsAndPunctuation() {
+		same("Song", "Song");
+		same("Song", "Song (feat. X)");
+		same("Song", "Song - Remastered 2011");
+		same("Song", "Song (Radio Edit)");
+		same("Song", "Song [Live]");
+		same("Song", "Song (Live at Wembley)");
+		same("Song (2011 Remaster)", "Song");
+		same("Beyonc\u00e9", "Beyonce");
+		same("Don\u2019t", "Don't");
+		same("Rock & Roll", "Rock and Roll");
+		same("\u05e9\u05dc\u05d5\u05dd", "\u05e9\u05dc\u05d5\u05dd!");
+		same("\u591c\u306b\u99c6\u3051\u308b", "\u591c\u306b\u99c6\u3051\u308b");
+		same("\u4f60\u597d", "\u4f60\u597d (Live)");
+		same("\uc548\ub155", "\uc548\ub155");
+		same("\u0645\u0631\u062d\u0628\u0627", "\u0645\u0631\u062d\u0628\u0627\u064b");
+	}
+
+	@Test
+	void sameSongTellsDifferentSongsApart() {
+		different("Yellow", "Fix You");
+		different("Hello", "Hello Again");
+		different("Hello", "Hello (Remix)");
+		different("Song (Part 1)", "Song (Part 2)");
+		different("\u591c\u306b\u99c6\u3051\u308b", "Yoru ni Kakeru");
+		different("!!!", "???");
+		assertFalse(TitleCleaner.sameSong("Song", ""));
+		assertFalse(TitleCleaner.sameSong("Song", "  "));
 	}
 }

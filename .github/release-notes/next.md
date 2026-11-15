@@ -10,3 +10,4 @@
 - Pressing Enter after changing the search no longer plays a song from the old results.
 - The album cover is called the same everywhere in the settings and help pages.
 - With Hat pulse off, the propeller cap turns at its calm speed instead of a faster one.
+- When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist.

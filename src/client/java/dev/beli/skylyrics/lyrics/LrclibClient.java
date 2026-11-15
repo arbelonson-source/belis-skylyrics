@@ -139,24 +139,28 @@ public final class LrclibClient implements LyricsSource {
 		}
 
 		// With no artist and no length, nothing but the title says which song this is (browser audio is often
-		// like that), so a result only counts when its title is the same
-		String exactTitle = artist.isEmpty() && seconds <= 0 ? title : null;
+		// like that), so then several artists sharing the title also count as no match
+		boolean titleOnly = artist.isEmpty() && seconds <= 0;
+		String main = TitleCleaner.mainArtist(artist);
 
-		// 2. Search with title + artist, then title + main artist, then free text
-		Result best = searchBest(Map.of("track_name", title, "artist_name", artist), seconds, exactTitle);
-		if (best == null && !artist.isEmpty()) {
-			String main = TitleCleaner.mainArtist(artist);
-			if (!main.equals(artist)) {
-				best = searchBest(Map.of("track_name", title, "artist_name", main), seconds, exactTitle);
-			}
+		// 2. Search with title + artist, then title + main artist, then free text (which also checks the artist)
+		Result best = searchBest(Map.of("track_name", title, "artist_name", artist), seconds, title, null, titleOnly);
+		if (best == null && !artist.isEmpty() && !main.equals(artist)) {
+			best = searchBest(Map.of("track_name", title, "artist_name", main), seconds, title, null, false);
 		}
 		if (best == null) {
-			best = searchBest(Map.of("q", (title + " " + TitleCleaner.mainArtist(artist)).trim()), seconds, exactTitle);
+			best = searchBest(Map.of("q", (title + " " + main).trim()), seconds, title, main, titleOnly);
 		}
 		return best == null ? Result.NOT_FOUND : best;
 	}
 
-	private @Nullable Result searchBest(Map<String, String> query, double seconds, @Nullable String exactTitle) throws IOException, InterruptedException {
+	/**
+	 * @param title the wanted title: a result must be the same song
+	 * @param mainArtist when not null/empty, the result's artist must contain it or the reverse (free-text tier,
+	 *                   where nothing else ties the result to the artist)
+	 * @param titleOnly nothing but the title identifies the song: several artists sharing it means no match
+	 */
+	private @Nullable Result searchBest(Map<String, String> query, double seconds, String title, @Nullable String mainArtist, boolean titleOnly) throws IOException, InterruptedException {
 		if (query.values().stream().allMatch(String::isBlank)) {
 			return null;
 		}
@@ -165,6 +169,7 @@ public final class LrclibClient implements LyricsSource {
 			return null;
 		}
 		JsonArray results = json.getAsJsonArray();
+		String wantArtist = mainArtist == null ? "" : TitleCleaner.key(mainArtist);
 		JsonObject best = null;
 		int bestScore = Integer.MIN_VALUE;
 		java.util.Set<String> sameTitleArtists = new java.util.HashSet<>();
@@ -173,8 +178,14 @@ public final class LrclibClient implements LyricsSource {
 				continue;
 			}
 			JsonObject o = e.getAsJsonObject();
-			if (exactTitle != null && !NeteaseClient.key(string(o, "trackName")).equals(NeteaseClient.key(exactTitle))) {
+			if (!TitleCleaner.sameSong(title, string(o, "trackName"))) {
 				continue;
+			}
+			if (!wantArtist.isEmpty()) {
+				String name = TitleCleaner.key(string(o, "artistName"));
+				if (name.isEmpty() || !(name.contains(wantArtist) || wantArtist.contains(name))) {
+					continue;
+				}
 			}
 			int score = 0;
 			if (hasText(o, "syncedLyrics")) {
@@ -192,8 +203,8 @@ public final class LrclibClient implements LyricsSource {
 					score -= (int) Math.min(200, diff * 2); // probably a different version (live, remix…)
 				}
 			}
-			if (exactTitle != null) {
-				sameTitleArtists.add(NeteaseClient.key(string(o, "artistName")));
+			if (titleOnly) {
+				sameTitleArtists.add(TitleCleaner.key(string(o, "artistName")));
 			}
 			if (score > bestScore) {
 				bestScore = score;
@@ -206,7 +217,7 @@ public final class LrclibClient implements LyricsSource {
 		}
 		// Songs by different artists share this title and nothing tells them apart: better no lyrics than another
 		// song's (several uploads of the same artist's song are fine)
-		if (exactTitle != null && sameTitleArtists.size() > 1) {
+		if (titleOnly && sameTitleArtists.size() > 1) {
 			return null;
 		}
 		return toResult(best);
