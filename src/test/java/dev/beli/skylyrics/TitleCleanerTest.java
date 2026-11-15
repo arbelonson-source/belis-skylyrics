@@ -154,6 +154,9 @@ class TitleCleanerTest {
 		same("\u4f60\u597d", "\u4f60\u597d (Live)");
 		same("\uc548\ub155", "\uc548\ub155");
 		same("\u0645\u0631\u062d\u0628\u0627", "\u0645\u0631\u062d\u0628\u0627\u064b");
+		// Uploads that add the title's romanisation or translation in brackets
+		same("\u591c\u306b\u99c6\u3051\u308b", "\u591c\u306b\u99c6\u3051\u308b (Yoru ni Kakeru)");
+		same("\u7a3b\u9999", "\u7a3b\u9999 [Dao Xiang]");
 	}
 
 	@Test
@@ -162,6 +165,9 @@ class TitleCleanerTest {
 		different("Hello", "Hello Again");
 		different("Hello", "Hello (Remix)");
 		different("Song (Part 1)", "Song (Part 2)");
+		different("Song", "Song (Part 2)");
+		different("Song", "Song (Interlude)");
+		different("Song", "Song [Reprise]");
 		different("\u591c\u306b\u99c6\u3051\u308b", "Yoru ni Kakeru");
 		different("!!!", "???");
 		assertFalse(TitleCleaner.sameSong("Song", ""));

@@ -3,7 +3,10 @@ package dev.beli.skylyrics.media;
 import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.jspecify.annotations.Nullable;
 
 /** Tidies up song info, mostly for browser players where the "title" is a YouTube video title. */
 public final class TitleCleaner {
@@ -85,9 +88,39 @@ public final class TitleCleaner {
 		return k.isEmpty() ? title.strip().toLowerCase(Locale.ROOT) : k; // "!!!" must not equal "???"
 	}
 
+	/** Any bracketed part of a title. */
+	private static final Pattern ANY_BRACKET = Pattern.compile(
+			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014]([^)\\]\uFF09\uFF3D\u3011\u3015]*)[)\\]\uFF09\uFF3D\u3011\u3015]");
+	/** Brackets that make it another work, so they are never ignored. */
+	private static final Pattern OTHER_WORK = Pattern.compile("(?i)\\b(remix|part|pt|reprise|interlude|intro|outro|skit|cover)\\b");
+
 	/** Whether a lyrics result titled {@code found} is the song {@code wanted}. A blank title is never a match. */
 	public static boolean sameSong(String wanted, String found) {
-		return !found.isBlank() && songKey(wanted).equals(songKey(found));
+		if (found.isBlank()) {
+			return false;
+		}
+		if (songKey(wanted).equals(songKey(found))) {
+			return true;
+		}
+		// A bracket only one side has, often the title's translation or romanisation ("夜に駆ける (Yoru ni Kakeru)"),
+		// doesn't make it another song; one that names another work ("(Remix)", "(Part 2)") does
+		String w = withoutBrackets(wanted);
+		String f = withoutBrackets(found);
+		return w != null && f != null && !w.isBlank() && !f.isBlank() && songKey(w).equals(songKey(f));
+	}
+
+	/** The title without its bracketed parts, or null when one of them names another work. */
+	static @Nullable String withoutBrackets(String title) {
+		Matcher m = ANY_BRACKET.matcher(title);
+		StringBuilder out = new StringBuilder();
+		while (m.find()) {
+			if (OTHER_WORK.matcher(m.group(1)).find()) {
+				return null;
+			}
+			m.appendReplacement(out, "");
+		}
+		m.appendTail(out);
+		return out.toString();
 	}
 
 	/** Longest artist credit a title card shows whole. */
