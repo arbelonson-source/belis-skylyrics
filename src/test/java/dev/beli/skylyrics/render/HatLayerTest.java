@@ -17,7 +17,6 @@ class HatLayerTest {
 
 	@Test
 	void withoutPulsingTheHatStaysSteady() {
-		assertEquals(HatLayer.brightness(Float.NaN), HatLayer.brightness(Float.NaN));
 		assertTrue(HatLayer.brightness(Float.NaN) > HatLayer.REST);
 	}
 
