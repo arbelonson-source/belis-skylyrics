@@ -7,7 +7,19 @@ final class SpotifyPace {
 	static final long RETRY_DEFAULT_S = 10;
 	static final long RETRY_MAX_S = 300;
 
+	static final long BACKOFF_FIRST_NS = 4_000_000_000L;
+	static final long BACKOFF_MAX_NS = 60_000_000_000L;
+
 	private SpotifyPace() {
+	}
+
+	/** 4 s after the first failure in a row, doubling each time, never over 60 s. */
+	static long backoffNs(int failures) {
+		long ns = BACKOFF_FIRST_NS;
+		for (int i = 1; i < failures && ns < BACKOFF_MAX_NS; i++) {
+			ns *= 2;
+		}
+		return Math.min(ns, BACKOFF_MAX_NS);
 	}
 
 	/** The {@code Retry-After} header as nanoseconds: seconds only (an HTTP date or junk reads as 10 s), kept within 1 to 300 s. */

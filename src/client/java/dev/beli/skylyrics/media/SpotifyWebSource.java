@@ -121,6 +121,8 @@ public final class SpotifyWebSource implements MediaSource {
 	private volatile String problem = "";
 	private Snapshot last = Snapshot.NOTHING;
 	private long nextPollNs;
+	/** How many asks in a row failed; each waits longer than the last. */
+	private int failures;
 
 	public SpotifyWebSource(Supplier<String> clientId, Path loginFile) {
 		this.clientId = clientId;
@@ -581,6 +583,18 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		// Set before asking, so a broken connection or a missing sign-in isn't retried twice a second
 		nextPollNs = now + POLL_IDLE_NS;
+		try {
+			Snapshot result = ask(now);
+			failures = 0;
+			return result;
+		} catch (IOException e) {
+			failures++;
+			nextPollNs = now + SpotifyPace.backoffNs(failures);
+			throw e;
+		}
+	}
+
+	private Snapshot ask(long now) throws IOException, InterruptedException {
 		String token = access();
 		long sent = System.nanoTime();
 		HttpResponse<String> response = api("GET", "/me/player/currently-playing?additional_types=episode", token);
