@@ -9,6 +9,29 @@ package dev.beli.skylyrics.media;
  * @param uri      what the player says this song is (MPRIS xesam:url: a file://, https:// or spotify: address); may be empty
  */
 public record Track(String title, String artist, String album, long lengthMs, String artUrl, String player, String uri) {
+	/** Players can send line breaks, tabs and text-direction marks in a title; those draw as boxes or flip the title. */
+	public Track {
+		title = clean(title);
+		artist = clean(artist);
+		album = clean(album);
+	}
+
+	/** Control characters become a space, text-direction embeddings and overrides go, runs of space become one, and the ends are trimmed. */
+	static String clean(String s) {
+		if (s == null) {
+			return "";
+		}
+		StringBuilder b = new StringBuilder(s.length());
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c >= '\u202A' && c <= '\u202E' || c >= '\u2066' && c <= '\u2069') {
+				continue;
+			}
+			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
+		}
+		return b.toString().replaceAll("[\\s\\p{Z}]+", " ").strip();
+	}
+
 	public static final Track NONE = new Track("", "", "", 0, "", "");
 
 	public Track(String title, String artist, String album, long lengthMs, String artUrl, String player) {
