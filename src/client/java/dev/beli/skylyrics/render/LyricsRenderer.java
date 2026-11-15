@@ -1,12 +1,15 @@
 package dev.beli.skylyrics.render;
 
 import java.text.Bidi;
+import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.function.ToDoubleFunction;
 
 import com.ibm.icu.text.ArabicShaping;
 import com.ibm.icu.text.ArabicShapingException;
@@ -47,6 +50,7 @@ import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.TitleCleaner;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.util.TextCut;
 
 /**
  * Draws the lyrics in the world. Text goes through Minecraft's own text pipeline (the same one
@@ -1595,24 +1599,29 @@ public final class LyricsRenderer {
 	}
 
 	static List<String> wrap(Font font, Style style, String text, float maxWidth) {
+		return wrap(s -> LyricsFont.width(font, style, s), text, maxWidth);
+	}
+
+	/** {@link #wrap(Font, Style, String, float)} with the width measure passed in, so it can be tested without a game. */
+	static List<String> wrap(ToDoubleFunction<String> width, String text, float maxWidth) {
 		List<String> rows = new ArrayList<>();
-		if (LyricsFont.width(font, style, text) <= maxWidth) {
+		if (width.applyAsDouble(text) <= maxWidth) {
 			rows.add(text);
 			return rows;
 		}
 		// Balance the rows: aim for even widths instead of a long row and a one-word orphan
-		int rowsNeeded = (int) Math.ceil(LyricsFont.width(font, style, text) / maxWidth);
-		float target = Math.min(maxWidth, LyricsFont.width(font, style, text) / (float) rowsNeeded + 12);
+		int rowsNeeded = (int) Math.ceil(width.applyAsDouble(text) / maxWidth);
+		float target = (float) Math.min(maxWidth, width.applyAsDouble(text) / rowsNeeded + 12);
 		StringBuilder row = new StringBuilder();
 		for (String word : text.split(" ")) {
 			if (word.isEmpty()) {
 				continue;
 			}
-			List<String> pieces = breakPoints(word);
+			List<String> pieces = fitPieces(width, breakPoints(word), maxWidth);
 			for (int p = 0; p < pieces.size(); p++) {
 				String piece = pieces.get(p);
 				String candidate = row.isEmpty() ? piece : row + (p == 0 ? " " : "") + piece;
-				if (!row.isEmpty() && LyricsFont.width(font, style, candidate) > target) {
+				if (!row.isEmpty() && width.applyAsDouble(candidate) > target) {
 					rows.add(row.toString());
 					row.setLength(0);
 					row.append(piece);
@@ -1626,6 +1635,55 @@ public final class LyricsRenderer {
 			rows.add(row.toString());
 		}
 		return rows;
+	}
+
+	/**
+	 * Makes sure no piece is wider than a row. Thai is written without spaces, so its words are found with the
+	 * line-break rules; a piece still too wide (a long unbroken word) is cut at the nearest break the rules allow, and
+	 * as a last resort between whole characters, never inside a letter with its accents. Pieces that already fit are
+	 * left alone, so spaced languages wrap as they always did.
+	 */
+	private static List<String> fitPieces(ToDoubleFunction<String> width, List<String> pieces, float maxWidth) {
+		List<String> out = new ArrayList<>();
+		for (String piece : pieces) {
+			boolean thai = piece.codePoints().anyMatch(cp -> Character.UnicodeScript.of(cp) == Character.UnicodeScript.THAI);
+			if (!thai && width.applyAsDouble(piece) <= maxWidth) {
+				out.add(piece);
+				continue;
+			}
+			for (String part : lineBreaks(piece)) {
+				String rest = part;
+				while (width.applyAsDouble(rest) > maxWidth && rest.length() > 1) {
+					String head = TextCut.prefix(rest, s -> width.applyAsDouble(s) <= maxWidth);
+					if (head.isEmpty()) {
+						head = firstCharacter(rest);
+					}
+					out.add(head);
+					rest = rest.substring(head.length());
+				}
+				if (!rest.isEmpty()) {
+					out.add(rest);
+				}
+			}
+		}
+		return out;
+	}
+
+	private static String firstCharacter(String text) {
+		BreakIterator it = BreakIterator.getCharacterInstance();
+		it.setText(text);
+		return text.substring(0, it.next());
+	}
+
+	/** The pieces of a word between the places where the line-break rules (and, for Thai, its dictionary) allow a break. */
+	static List<String> lineBreaks(String word) {
+		List<String> out = new ArrayList<>();
+		BreakIterator it = BreakIterator.getLineInstance(Locale.ROOT);
+		it.setText(word);
+		for (int from = 0, to = it.next(); to != BreakIterator.DONE; from = to, to = it.next()) {
+			out.add(word.substring(from, to));
+		}
+		return out;
 	}
 
 	/**
