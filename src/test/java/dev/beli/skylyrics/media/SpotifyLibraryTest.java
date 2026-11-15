@@ -61,6 +61,23 @@ class SpotifyLibraryTest {
 	}
 
 	@Test
+	void pagingCountsDroppedEntriesToo() {
+		String local = "{\"track\":{\"id\":null,\"uri\":\"spotify:local:x\"}}";
+		String episode = "{\"item\":{\"id\":\"e1\",\"uri\":\"spotify:episode:e1\"}}";
+		// 50 entries sent, 2 kept: the next page starts at 100, not 52
+		StringBuilder items = new StringBuilder("{\"item\":" + song("c1", "Moth Radio") + "},{\"item\":" + song("c2", "Neon Orchard") + "}");
+		for (int i = 2; i < 50; i++) {
+			items.append(',').append(i % 2 == 0 ? local : episode);
+		}
+		SpotifyLibrary.Page<LibraryItem> page = SpotifyLibrary.parsePlaylistItems("{\"total\":300,\"offset\":50,\"items\":[" + items + "]}", "spotify:playlist:p1");
+		assertEquals(2, page.items().size());
+		assertEquals(100, page.next());
+		// A page where everything was dropped still has a next one
+		String dropped = "{\"total\":300,\"offset\":0,\"items\":[" + local + "," + episode + "]}";
+		assertEquals(2, SpotifyLibrary.parsePlaylistItems(dropped, "spotify:playlist:p1").next());
+	}
+
+	@Test
 	void onlyYourOwnOrSharedPlaylistsOpen() {
 		String body = """
 				{"total":3,"offset":0,"items":[
