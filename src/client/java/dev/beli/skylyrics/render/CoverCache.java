@@ -309,13 +309,21 @@ public final class CoverCache {
 		return image;
 	}
 
-	/** The cover saved earlier, or null when there is none or the file is damaged (which is then removed so it downloads again). */
+	/** The cover saved earlier, or null when there is none, it can't be read now, or the file is damaged (which is then removed so it downloads again). */
 	static @Nullable BufferedImage readCached(Path file) {
 		if (!Files.isRegularFile(file)) {
 			return null;
 		}
+		byte[] bytes;
 		try {
-			BufferedImage image = ImageIO.read(file.toFile());
+			bytes = Files.readAllBytes(file);
+		} catch (java.io.IOException e) {
+			// Locked or unreadable just now (another program, Windows): keep it, the download stands in this time
+			LOG.debug("Cached cover {} can't be read now", file, e);
+			return null;
+		}
+		try {
+			BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
 			if (image != null) {
 				file.toFile().setLastModified(System.currentTimeMillis());
 				return image;

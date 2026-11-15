@@ -118,6 +118,22 @@ class CoverCacheTest {
 	}
 
 	@Test
+	void aCoverThatCannotBeReadJustNowIsKept(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		java.nio.file.Path file = tmp.resolve("c.img");
+		java.nio.file.Files.write(file, png(16, 16));
+		// Unreadable for now (another program holds it): it's still a good cover, so it must stay
+		org.junit.jupiter.api.Assumptions.assumeTrue(file.toFile().setReadable(false) && !java.nio.file.Files.isReadable(file),
+				"can't make a file unreadable here");
+		try {
+			assertNull(CoverCache.readCached(file));
+			assertTrue(java.nio.file.Files.exists(file));
+		} finally {
+			file.toFile().setReadable(true);
+		}
+		assertEquals(16, CoverCache.readCached(file).getWidth());
+	}
+
+	@Test
 	void tidyingKeepsTheNewestFiles(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
 		for (int i = 0; i < 5; i++) {
 			java.nio.file.Path p = tmp.resolve("f" + i);

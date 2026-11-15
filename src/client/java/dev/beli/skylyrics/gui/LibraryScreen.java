@@ -53,6 +53,8 @@ public final class LibraryScreen extends Screen {
 	private static final float TOAST_TIME = 3;
 	/** A page that failed in the middle of a list is tried again after this many seconds. */
 	private static final float RETRY_AFTER = 4;
+	/** After this many failed loads in a row the list stops trying by itself (a click still tries again). */
+	private static final int AUTO_RETRIES = 3;
 	/** How many of the following songs are queued after the one clicked. */
 	private static final int QUEUE = 50;
 
@@ -152,6 +154,8 @@ public final class LibraryScreen extends Screen {
 		boolean loaded;
 		String error = "";
 		float retryAt;
+		/** Failed loads in a row. */
+		int failures;
 		float scroll;
 		float scrollTarget;
 
@@ -178,9 +182,11 @@ public final class LibraryScreen extends Screen {
 					lift.add(0f);
 				}
 				next = page.next();
+				failures = 0;
 			} catch (CompletionException e) {
 				error = message(e.getCause());
 				retryAt = clock + RETRY_AFTER;
+				failures++;
 			}
 			pending = null;
 			loaded = true;
@@ -334,10 +340,11 @@ public final class LibraryScreen extends Screen {
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
 				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
 			};
-			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt)) {
+			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt && shelf.failures < AUTO_RETRIES)) {
 				shelf.more();
 			}
-			if (view() == SkyLyricsConfig.LibraryView.CAROUSEL && selected < 0 && !shelf.items.isEmpty()) {
+			// Not while a search is being typed: the old results are still up, and Enter must not play one of them
+			if (view() == SkyLyricsConfig.LibraryView.CAROUSEL && selected < 0 && !shelf.items.isEmpty() && !searchDirty) {
 				selected = 0;
 			}
 			carPos = LibraryViews.ease(carPos, Mth.clamp(selected, 0, Math.max(0, shelf.items.size() - 1)), dt, 12);
