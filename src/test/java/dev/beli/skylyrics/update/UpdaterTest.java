@@ -84,7 +84,7 @@ class UpdaterTest {
 		assertFalse(Updater.swapPathsSafe(ok, Path.of("/Games/mods/b&c.jar")));
 	}
 
-	/** The script lives beside the jar (already checked), not in %TEMP%, which may have letters cmd can't read. */
+	/** The script goes in the temp folder, out of sight, unless cmd couldn't read that path (accents); then beside the jar. */
 	@Test
 	void swapScriptGoesToTheTempFolderUnlessItsNameHasAccents() {
 		Path mods = dir.resolve("mods");
@@ -104,12 +104,15 @@ class UpdaterTest {
 		Path part = Files.createFile(mods.resolve(target.getFileName() + ".part"));
 		Path bat = Updater.writeSwapScript(old, waiting, target, part);
 		assertEquals(Updater.scriptFolder(Path.of(System.getProperty("java.io.tmpdir")), old), bat.getParent());
+		String written = Files.readString(bat, java.nio.charset.StandardCharsets.US_ASCII);
 		Files.deleteIfExists(bat);
 		assertTrue(bat.getFileName().toString().endsWith(".bat"));
 		assertTrue(Files.exists(waiting));
 		assertFalse(Files.exists(part));
-		String text = Updater.swapScript(old, waiting, target);
-		assertTrue(text.contains("move /y \"" + waiting + "\" \"" + target + "\""));
+		assertEquals(Updater.swapScript(old, waiting, target), written);
+		assertTrue(written.contains("move /y \"" + waiting + "\" \"" + target + "\""));
+		assertTrue(written.contains("del /f /q \"" + old + "\""));
+		assertTrue(written.endsWith("del \"%~f0\"\r\n"));
 	}
 
 	@Test
