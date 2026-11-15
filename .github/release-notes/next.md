@@ -32,6 +32,7 @@
 - **Font mods.** Fixes a clash with other font mods on Minecraft 1.21.1 and 1.21.4, and a small memory leak when a letter can't be loaded.
 - **Intro tour.** The intro tour fits small windows and big GUI scales. It no longer opens over a screen that replaced the title screen, and its last page says the keys work in a world.
 - **Reset all.** **Reset all** keeps your intro tour done, your update choice, your Spotify app id, your per-song timings and your recent searches.
+- **Hand-edited settings file.** A blank or very long recent search in the settings file no longer breaks the song library, and a hand-typed player name like "Spotify-Web" now picks that player.
 - **Settings scroll.** **Open Music tab** in the song library now takes you down to the Spotify card every time. Settings tabs also keep their place after you visit a shorter tab.
 
 ### Faster
