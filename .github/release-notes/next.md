@@ -20,6 +20,10 @@
 - The bottom bar sits above the held item's name, and a bigger bar grows upward instead of off the screen.
 - A bigger top bar now shrinks to fit the screen instead of overflowing it.
 - "Set up Spotify" scrolls to the Spotify card even when the settings screen has just opened, and tabs keep their scroll after you visit a shorter one.
+- On a Mac, lyrics no longer run a little late.
+- A music player that answers slowly, or Spotify right after a pause, no longer makes the World words vanish for a moment.
+- On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
+- The sky effects change line at the same moment as the words.
 
 ### Faster
 
