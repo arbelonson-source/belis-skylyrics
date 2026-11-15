@@ -34,6 +34,18 @@ final class LineClock {
 		}
 	}
 
+	/**
+	 * While the lyrics are hidden but still loaded: keeps up with the song without restarting the clock, so showing
+	 * them again mid-song isn't taken for a line change.
+	 */
+	void follow(int index, long now, long settleNs) {
+		if (last != NONE && index != last) {
+			previous = index;
+			last = index;
+			changedAt = now - settleNs;
+		}
+	}
+
 	/** New lyrics: the next line is a first line again. */
 	void reset() {
 		last = NONE;

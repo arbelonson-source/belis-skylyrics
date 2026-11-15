@@ -58,4 +58,21 @@ class LineClockTest {
 		clock.frame(true, true, 2, 3_000 * MS, SETTLE);
 		assertEquals(0, clock.last());
 	}
+
+	@Test
+	void showingTheLyricsAgainMidSongIsNotALineChange() {
+		LineClock clock = new LineClock();
+		clock.frame(true, false, 2, 1_000 * MS, SETTLE);
+		// Hidden for a while: the song moves on to line 5
+		clock.follow(3, 10_000 * MS, SETTLE);
+		clock.follow(5, 20_000 * MS, SETTLE);
+		clock.frame(true, false, 5, 21_000 * MS, SETTLE);
+		assertEquals(5, clock.last());
+		assertEquals(5, clock.previous());
+		assertTrue(clock.secondsSince(21_000 * MS) > 0.4f);
+		// A real change afterwards still restarts it
+		clock.frame(true, false, 6, 22_000 * MS, SETTLE);
+		assertEquals(5, clock.previous());
+		assertEquals(0f, clock.secondsSince(22_000 * MS), 1e-6f);
+	}
 }
