@@ -61,13 +61,14 @@ class ConfigParseTest {
 	}
 
 	@Test
-	void damagedFileIsCopiedToBadAndAnOlderCopyIsReplaced() throws Exception {
+	void damagedFileIsCopiedToBadAndAnOlderCopyIsKept() throws Exception {
 		Path file = dir.resolve("skylyrics.json");
 		Path bad = dir.resolve("skylyrics.json.bad");
 		Files.writeString(bad, "old");
 		Files.writeString(file, "{\"glow\": 0.4, \"songOffsets\": {");
 		SkyLyricsConfig.keepCopy(file);
-		assertEquals("{\"glow\": 0.4, \"songOffsets\": {", Files.readString(bad));
+		assertEquals("old", Files.readString(bad));
+		assertEquals("{\"glow\": 0.4, \"songOffsets\": {", Files.readString(dir.resolve("skylyrics.json.bad.1")));
 	}
 
 	@Test

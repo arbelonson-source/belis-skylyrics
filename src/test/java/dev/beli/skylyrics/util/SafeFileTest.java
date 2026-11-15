@@ -96,4 +96,33 @@ class SafeFileTest {
 	void totalPausesStayShortForTheGameThread() {
 		assertTrue((SafeFile.TRIES - 1) * SafeFile.PAUSE_MS <= 100);
 	}
+
+	@Test
+	void keepBadNeverSkipsABiggerEarlierCopy() throws IOException {
+		Path file = dir.resolve("a.json");
+		Path bad = dir.resolve("a.json.bad");
+		Files.writeString(bad, "a much bigger earlier damaged file");
+		Files.writeString(file, "{");
+		SafeFile.keepBad(file);
+		assertEquals("a much bigger earlier damaged file", Files.readString(bad));
+		assertEquals("{", Files.readString(dir.resolve("a.json.bad.1")));
+		Files.writeString(file, "{{");
+		SafeFile.keepBad(file);
+		assertEquals("{{", Files.readString(dir.resolve("a.json.bad.2")));
+	}
+
+	@Test
+	void keepBadReplacesTheOldestWhenAllTenAreTaken() throws IOException {
+		Path file = dir.resolve("a.json");
+		for (int i = 0; i <= 9; i++) {
+			Path p = dir.resolve(i == 0 ? "a.json.bad" : "a.json.bad." + i);
+			Files.writeString(p, "copy " + i);
+			Files.setLastModifiedTime(p, java.nio.file.attribute.FileTime.fromMillis(1_000_000L - (i == 4 ? 500 : 0) + i));
+		}
+		Files.writeString(file, "newest");
+		SafeFile.keepBad(file);
+		assertEquals("newest", Files.readString(dir.resolve("a.json.bad.4")));
+		assertEquals("copy 0", Files.readString(dir.resolve("a.json.bad")));
+		assertEquals("copy 9", Files.readString(dir.resolve("a.json.bad.9")));
+	}
 }
