@@ -62,4 +62,22 @@ class AlbumArtFileUrlTest {
 		org.junit.jupiter.api.Assertions.assertNotNull(back);
 		org.junit.jupiter.api.Assertions.assertTrue(java.nio.file.Files.isRegularFile(back));
 	}
+
+	@Test
+	void networkSharesAreNeverLocalFiles() {
+		for (String url : new String[] {"file://evil/share/x.jpg", "file:////evil/share/x.jpg", "file://evil.example.com/c.jpg",
+				"file:///%5C%5Cevil/share/x.jpg", "file://evil.invalid/share/x.jpg", "file:///\\\\evil/share/x.jpg"}) {
+			assertNull(AlbumArt.fileUrlPath(url), url);
+			assertNull(AlbumArt.fileUrlString(url), url);
+		}
+		assertEquals("C:/Users/a b/cover.img", AlbumArt.fileUrlString("file:///C:/Users/a%20b/cover.img"));
+		assertEquals(p("/home/u/c.jpg"), AlbumArt.fileUrlPath("file://localhost/home/u/c.jpg"));
+	}
+
+	@Test
+	void noNetworkShareOnWindows() {
+		org.junit.jupiter.api.Assumptions.assumeTrue(System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows"), "Windows only");
+		assertNull(AlbumArt.fileUrlPath("file://evil.invalid/share/x.jpg"));
+		assertNull(AlbumArt.fileUrlPath("file:////evil.invalid/share/x.jpg"));
+	}
 }

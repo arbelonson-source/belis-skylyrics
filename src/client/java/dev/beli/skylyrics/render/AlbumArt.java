@@ -289,7 +289,17 @@ public final class AlbumArt {
 			// The strict way first: right for a Windows drive and for any well-formed address on every system
 			URI uri = URI.create(url);
 			if ("file".equalsIgnoreCase(uri.getScheme())) {
-				return Path.of(uri);
+				String authority = uri.getRawAuthority();
+				if (authority != null && !authority.isEmpty() && !authority.equalsIgnoreCase("localhost")) {
+					return null; // another computer: on Windows that is a network share, which would send login details to it
+				}
+				if (authority == null || authority.isEmpty()) {
+					String raw = uri.getPath();
+					if (raw == null || uncLike(raw)) {
+						return null;
+					}
+					return safe(Path.of(uri));
+				}
 			}
 		} catch (RuntimeException e) {
 			// raw spaces, "localhost" and other loose forms: decoded by hand below
@@ -299,10 +309,20 @@ public final class AlbumArt {
 			return null;
 		}
 		try {
-			return Path.of(decoded);
+			return safe(Path.of(decoded));
 		} catch (java.nio.file.InvalidPathException e) {
 			return null;
 		}
+	}
+
+	/** Two slashes or backslashes in a row at the start: a network share or device path on Windows. */
+	private static boolean uncLike(String path) {
+		return path.length() >= 2 && (path.charAt(0) == '/' || path.charAt(0) == '\\') && (path.charAt(1) == '/' || path.charAt(1) == '\\');
+	}
+
+	private static @Nullable Path safe(Path path) {
+		String text = path.toString();
+		return path.isAbsolute() && !text.startsWith("\\\\") && !text.startsWith("//") ? path : null;
 	}
 
 	/** The decoded path text of a loose file address ("/home/a b/c.jpg", "C:/Users/c.jpg"), or null when it isn't a local file. */
@@ -339,6 +359,9 @@ public final class AlbumArt {
 		}
 		String decoded = bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
 		if (decoded.indexOf('\0') >= 0) {
+			return null;
+		}
+		if (uncLike(decoded)) {
 			return null;
 		}
 		// "/C:/Users/x": a Windows drive, without the slash in front
