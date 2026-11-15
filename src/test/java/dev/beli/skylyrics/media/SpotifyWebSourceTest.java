@@ -249,12 +249,21 @@ class SpotifyWebSourceTest {
 	void staleProgressRightAfterAPauseIsIgnoredOnce() {
 		SpotifyWebSource.StaleGuard guard = new SpotifyWebSource.StaleGuard();
 		Snapshot playing = snap(61_000, true, 100);
-		// Paused 1 s later; the song was at 62 s but Spotify still says 60.8 s
+		// Paused within the next second; Spotify still says 60.8 s, behind the 61 s it already said
 		Snapshot paused = guard.apply(playing, snap(60_800, false, 101));
 		assertFalse(paused.playing(), "the pause itself shows");
-		assertEquals(62_000, paused.positionMs());
+		assertEquals(61_000, paused.positionMs(), "no further than the song is known to have got");
 		// The next reading is not shielded again
 		assertEquals(61_500, guard.apply(paused, snap(61_500, false, 102)).positionMs());
+	}
+
+	@Test
+	void aPauseReadingBetweenTheLastOneAndNowIsBelieved() {
+		SpotifyWebSource.StaleGuard guard = new SpotifyWebSource.StaleGuard();
+		// Paused half a second after the last reading: 61.5 s is right, not 2 s behind
+		Snapshot paused = guard.apply(snap(61_000, true, 100), snap(61_500, false, 102));
+		assertFalse(paused.playing());
+		assertEquals(61_500, paused.positionMs(), "the lyrics must not sit ahead of the pause");
 	}
 
 	@Test

@@ -733,7 +733,10 @@ public final class SpotifyWebSource implements MediaSource {
 			if (flipAt == 0 || used || reading.readAtNanos() - flipAt > WINDOW_NS) {
 				return reading;
 			}
-			long expected = before.positionMs() + (before.playing() ? (reading.readAtNanos() - before.readAtNanos()) / 1_000_000 : 0);
+			// Only count on while it played on: after a pause the song stopped somewhere between the two readings, so a
+			// reading in that span is right, and only one behind the last reading is stale
+			boolean ranOn = before.playing() && reading.playing();
+			long expected = before.positionMs() + (ranOn ? (reading.readAtNanos() - before.readAtNanos()) / 1_000_000 : 0);
 			long length = reading.track().lengthMs();
 			if (length > 0) {
 				expected = Math.min(expected, length);

@@ -159,7 +159,12 @@ public final class WindowsMediaSource implements MediaSource {
 	 * What a poll said about one player: its state and reported position, when we asked, and the time its
 	 * position counts from (see {@link #countFrom}).
 	 */
-	record Seen(boolean playing, long reportedMs, long polledMs, long countFromMs) {
+	record Seen(String title, long lengthMs, boolean playing, long reportedMs, long polledMs, long countFromMs) {
+
+		/** Whether this is still the same song, so its count can go on. */
+		boolean sameSong(String title, long lengthMs) {
+			return this.title.equals(title) && this.lengthMs == lengthMs;
+		}
 	}
 
 	/**
@@ -219,8 +224,10 @@ public final class WindowsMediaSource implements MediaSource {
 			long reported = number(o, "positionMs") - start;
 			long updated = number(o, "updatedMs");
 			String key = id + "#" + (int) number(o, "index");
-			long from = countFrom(playing, reported, updated, nowMs, before.get(key));
-			after.put(key, new Seen(playing, reported, nowMs, from));
+			Seen prev = before.get(key);
+			// Another song on the same player starts its own count
+			long from = countFrom(playing, reported, updated, nowMs, prev != null && prev.sameSong(title, length) ? prev : null);
+			after.put(key, new Seen(title, length, playing, reported, nowMs, from));
 			long position = position(reported, from, playing, length, nowMs, rate);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
 			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing, rate));

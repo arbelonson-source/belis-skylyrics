@@ -301,6 +301,13 @@ class WindowsMediaSourceTest {
 				.formatted(status, positionMs, updatedMs)).getAsJsonObject();
 	}
 
+	/** One poll answer with one player that never says when it updated, playing the given song. */
+	private static JsonObject pollSong(String title, long positionMs) {
+		return JsonParser.parseString("""
+				{"seq":1,"ok":true,"sessions":[{"id":"Browser","title":"%s","status":"Playing","positionMs":%d,"startMs":0,"endMs":200000,"updatedMs":0}]}"""
+				.formatted(title, positionMs)).getAsJsonObject();
+	}
+
 	/** Runs polls through sessions() the way poll() does, and returns the position each one gives. */
 	private static long[] positions(Object... pollsAndTimes) {
 		Map<String, WindowsMediaSource.Seen> seen = new HashMap<>();
@@ -347,6 +354,18 @@ class WindowsMediaSourceTest {
 		assertEquals(62_000, p[1], "was frozen at 60 s");
 		assertEquals(63_500, p[2]);
 		assertEquals(90_000, p[3]);
+	}
+
+	@Test
+	void aNewSongOnAPlayerWithNoUpdateTimeStartsItsOwnCount() {
+		long[] p = positions(
+				pollSong("First", 0), 10_000L,
+				pollSong("First", 0), 70_000L,
+				pollSong("Second", 0), 71_000L, // the next song, and the player still says 0
+				pollSong("Second", 0), 72_000L);
+		assertEquals(60_000, p[1]);
+		assertEquals(0, p[2], "the new song starts at its beginning");
+		assertEquals(1_000, p[3]);
 	}
 
 	@Test
