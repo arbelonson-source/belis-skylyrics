@@ -5,7 +5,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
 //? if >=1.21.2 {
@@ -37,6 +39,12 @@ import dev.beli.skylyrics.media.DemoSource;
  * reads the real keyboard state, so they have no effect there), {@code type <text>} (typed characters on the open screen)
  * and {@code hover <x> <y>} (moves the mouse over the open screen, in scaled GUI pixels). These three do nothing but log
  * when no screen is open.
+ * <p>
+ * {@code burst <name> <count> <everyMs>} grabs the game frame {@code count} times (1 to 60), {@code everyMs} apart (0 = every
+ * rendered frame), one grab per rendered frame, and saves them as {@code screenshots/<name>_00.png}, {@code _01}, ...
+ * The frames are kept in memory and only written (on another thread) after the last grab, so encoding does not slow
+ * the frames being caught. {@code burstat <name> <count> <everyMs>} first waits until the lyrics move to the next line
+ * (so the first frame is the crosshair flash's peak, the start of a slide), and gives up after 10 s. One burst at a time.
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -44,6 +52,146 @@ public final class DevTestHook {
 	/** Ticks left of a frame-rate measurement, and the rate it saw each second so far. */
 	private int fpsLeft;
 	private final List<Integer> fpsSeen = new ArrayList<>();
+
+	/** The running hook, for the per-frame call; null whenever the hook is off. */
+	private static volatile DevTestHook active;
+	/** A burst in progress: waiting for a line change, then grabbing, then waiting for the pictures to arrive. */
+	private BurstPlan.Burst burst;
+	private boolean burstWaiting;
+	private long burstWaitStart;
+	private float lastSince = Float.NaN;
+	private long burstStart;
+	private int burstTaken;
+	private NativeImage[] burstImages;
+	private AtomicInteger burstArrived;
+
+	public DevTestHook() {
+		active = this;
+	}
+
+	/** Called once per rendered frame by the game loop; a no-op unless the test hook is on. */
+	public static void frame(Minecraft client) {
+		DevTestHook hook = active;
+		if (hook != null) {
+			try {
+				hook.onFrame(client);
+			} catch (RuntimeException e) {
+				SkyLyricsClient.LOG.warn("Test hook burst failed", e);
+				hook.abortBurst();
+			}
+		}
+	}
+
+	private void startBurst(String arg, boolean atLineChange) {
+		BurstPlan.Burst parsed = BurstPlan.parse(arg);
+		if (burst != null) {
+			SkyLyricsClient.LOG.warn("Test hook: a burst is already running, {} ignored", parsed.name());
+			return;
+		}
+		burst = parsed;
+		burstTaken = 0;
+		burstImages = new NativeImage[parsed.count()];
+		burstArrived = new AtomicInteger();
+		burstWaiting = atLineChange;
+		burstWaitStart = System.nanoTime();
+		lastSince = Float.NaN;
+		if (atLineChange) {
+			SkyLyricsClient.LOG.info("Test hook: burst {} waits for the next lyric line", parsed.name());
+		}
+	}
+
+	private void abortBurst() {
+		if (burstImages != null) {
+			for (NativeImage image : burstImages) {
+				if (image != null) {
+					image.close();
+				}
+			}
+		}
+		burst = null;
+		burstImages = null;
+		burstWaiting = false;
+	}
+
+	private void onFrame(Minecraft client) {
+		if (burst == null || burstTaken >= burst.count()) {
+			return;
+		}
+		long now = System.nanoTime();
+		if (burstWaiting) {
+			float since = SkyLyricsClient.get().renderer().secondsSinceLineChange();
+			boolean changed = BurstPlan.lineChanged(lastSince, since);
+			lastSince = since;
+			if (!changed) {
+				if (BurstPlan.gaveUp(now - burstWaitStart)) {
+					SkyLyricsClient.LOG.warn("Test hook: burst {} gave up, the lyrics did not move to a new line in 10 s", burst.name());
+					burst = null;
+					burstImages = null;
+					burstWaiting = false;
+				}
+				return;
+			}
+			burstWaiting = false;
+		}
+		if (burstTaken == 0) {
+			burstStart = now;
+			SkyLyricsClient.LOG.info("Test hook: burst {} starts, {} frames every {} ms", burst.name(), burst.count(), burst.everyMs());
+		}
+		if (BurstPlan.due(burstTaken, now - burstStart, burst.everyMs())) {
+			grabFrame(client, burstTaken++);
+		}
+	}
+
+	/** Takes the game frame as the {@code shot} command does, keeping the picture in memory. */
+	private void grabFrame(Minecraft client, int index) {
+		NativeImage[] images = burstImages;
+		AtomicInteger arrived = burstArrived;
+		BurstPlan.Burst mine = burst;
+		java.util.function.Consumer<NativeImage> keep = image -> {
+			images[index] = image;
+			if (arrived.incrementAndGet() == mine.count()) {
+				writeBurst(client.gameDirectory.toPath().resolve("screenshots"), mine, images);
+			}
+		};
+		//? if >=26.2 {
+		/*Screenshot.takeScreenshot(client.gameRenderer.mainRenderTarget(), keep);
+		*///?} else if >=1.21.5 {
+		Screenshot.takeScreenshot(client.getMainRenderTarget(), keep);
+		//?} else {
+		/*keep.accept(Screenshot.takeScreenshot(client.getMainRenderTarget()));
+		*///?}
+		if (index == mine.count() - 1) {
+			burst = null;
+		}
+	}
+
+	/** Encodes and writes the pictures off the render thread, closing each one. */
+	private static void writeBurst(Path dir, BurstPlan.Burst done, NativeImage[] images) {
+		Thread writer = new Thread(() -> {
+			int written = 0;
+			try {
+				Files.createDirectories(dir);
+				for (int i = 0; i < images.length; i++) {
+					try {
+						images[i].writeToFile(dir.resolve(BurstPlan.fileName(done.name(), i) + ".png"));
+						written++;
+					} catch (IOException e) {
+						SkyLyricsClient.LOG.warn("Test hook: could not write burst frame {}", i, e);
+					} finally {
+						images[i].close();
+					}
+				}
+			} catch (IOException e) {
+				SkyLyricsClient.LOG.warn("Test hook: could not create {}", dir, e);
+				for (NativeImage image : images) {
+					image.close();
+				}
+			}
+			SkyLyricsClient.LOG.info("Test hook: burst {} wrote {} of {} files to {}", done.name(), written, images.length, dir);
+		}, "skylyrics-burst-writer");
+		writer.setDaemon(true);
+		writer.start();
+	}
 
 	/** On in the dev game, and in runProductionClient, which sets -Dskylyrics.testHook=true. */
 	public static boolean enabled() {
@@ -281,6 +429,8 @@ public final class DevTestHook {
 						SkyLyricsClient.LOG.info("Test hook: typed {} characters into {}", arg.codePointCount(0, arg.length()), screen.getClass().getSimpleName());
 					}
 				}
+				case "burst" -> startBurst(arg, false);
+				case "burstat" -> startBurst(arg, true);
 				case "hover" -> {
 					String[] xy = arg.split("\\s+");
 					Screen screen = currentScreen(client);
