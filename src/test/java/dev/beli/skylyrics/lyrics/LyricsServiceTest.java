@@ -313,6 +313,11 @@ class LyricsServiceTest {
 
 	/** Saves a found answer for the song the way 0.7.8 did: the same file, but without a version. */
 	private Path saveOldVersionFile(Track t, LrclibClient.Result saved) throws Exception {
+		return saveOldVersionFile(t, saved, "");
+	}
+
+	/** Same, but stamped with the given version text instead of the current one (empty: no version at all). */
+	private Path saveOldVersionFile(Track t, LrclibClient.Result saved, String versionText) throws Exception {
 		service.shutdown();
 		service = new LyricsService(x -> saved, cache);
 		service.load(t);
@@ -322,8 +327,8 @@ class LyricsServiceTest {
 			file = files.filter(f -> f.toString().endsWith(".json")).findFirst().orElseThrow();
 		}
 		String json = Files.readString(file);
-		assertTrue(json.contains(",\"v\":2"), json);
-		Files.writeString(file, json.replace(",\"v\":2", ""));
+		assertTrue(json.contains(",\"v\":3"), json);
+		Files.writeString(file, json.replace(",\"v\":3", versionText));
 		service.shutdown();
 		return file;
 	}
@@ -339,7 +344,7 @@ class LyricsServiceTest {
 		service.load(OLD_SONG);
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		try (var files = Files.list(cache)) {
-			assertTrue(Files.readString(files.filter(f -> f.toString().endsWith(".json")).findFirst().orElseThrow()).contains("\"v\":2"));
+			assertTrue(Files.readString(files.filter(f -> f.toString().endsWith(".json")).findFirst().orElseThrow()).contains("\"v\":3"));
 		}
 	}
 
@@ -356,30 +361,59 @@ class LyricsServiceTest {
 		waitFor(() -> service.lyrics().lines().get(0).text().contains("Main version"));
 		assertEquals(1, asks.get());
 		assertTrue(Files.readString(file).contains("Main version"));
-		assertTrue(Files.readString(file).contains("\"v\":2"));
+		assertTrue(Files.readString(file).contains("\"v\":3"));
 	}
 
 	@Test
-	void versionlessLyricsAreKeptAndStampedWhenTheMainSiteHasNothing() throws Exception {
-		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
+	void olderLyricsAreDroppedWhenTheMainSiteSaysThereAreNone() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN, ",\"v\":2");
+		service = new LyricsService(x -> LrclibClient.Result.NOT_FOUND, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
+		waitFor(() -> !Files.exists(file));
+		assertTrue(service.lyrics().isEmpty());
+	}
+
+	@Test
+	void olderInstrumentalIsReplacedByLyricsTheMainSiteHas() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, new LrclibClient.Result(null, null, true), ",\"v\":2");
+		service = new LyricsService(x -> BETTER, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY && !service.lyrics().isEmpty());
+		assertTrue(service.lyrics().lines().get(0).text().contains("Main version"));
+		waitFor(() -> readFile(file).contains("Main version"));
+		assertTrue(readFile(file).contains("\"v\":3"));
+	}
+
+	@Test
+	void olderLyricsAreKeptWhenTheCheckFails() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN, ",\"v\":2");
+		String before = readFile(file);
 		AtomicInteger asks = new AtomicInteger();
 		service = new LyricsService(x -> {
 			asks.incrementAndGet();
-			return asks.get() == 1 ? LrclibClient.Result.NOT_FOUND : BETTER;
+			throw new java.io.IOException("offline");
+		}, cache, attempt -> 30);
+		service.load(OLD_SONG);
+		waitFor(() -> asks.get() == 1);
+		Thread.sleep(300);
+		assertEquals(before, readFile(file));
+		assertEquals(LyricsService.State.READY, service.state());
+		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+	}
+
+	@Test
+	void currentVersionLyricsAreNotAskedAgain() throws Exception {
+		saveOldVersionFile(OLD_SONG, STANDIN, ",\"v\":3");
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return LrclibClient.Result.NOT_FOUND;
 		}, cache);
 		service.load(OLD_SONG);
 		waitFor(() -> service.state() == LyricsService.State.READY);
-		waitFor(() -> readFile(file).contains("\"v\":2"));
-		assertTrue(readFile(file).contains("Backup version"));
-		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
-		// stamped, so the next play doesn't ask again
-		service.load(track("Other", 100_000));
-		waitFor(() -> asks.get() == 2); // the other song's own lookup
-		service.load(OLD_SONG);
-		waitFor(() -> service.state() == LyricsService.State.READY);
-		Thread.sleep(200);
-		assertEquals(2, asks.get(), "the second play comes from the file without asking");
-		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+		Thread.sleep(300);
+		assertEquals(0, asks.get());
 	}
 
 	@Test
@@ -405,7 +439,7 @@ class LyricsServiceTest {
 		service.load(OLD_SONG);
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		Lyrics shown = service.lyrics();
-		waitFor(() -> readFile(file).contains("\"v\":2"));
+		waitFor(() -> readFile(file).contains("\"v\":3"));
 		Thread.sleep(100);
 		assertTrue(shown == service.lyrics(), "the same lyrics were applied again");
 	}

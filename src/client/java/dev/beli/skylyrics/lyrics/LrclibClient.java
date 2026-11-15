@@ -29,6 +29,8 @@ public final class LrclibClient implements LyricsSource {
 	private static final String BASE = "https://lrclib.net/api";
 	/** Durations closer than this count as the same recording. */
 	private static final double DURATION_SLACK_S = 4;
+	/** A record this much longer or shorter than the track is another recording; never used. */
+	private static final double DURATION_MAX_S = 20;
 
 	/** What LRCLIB gave us, before parsing. */
 	public record Result(@Nullable String synced, @Nullable String plain, boolean instrumental, boolean stopgap) {
@@ -43,8 +45,17 @@ public final class LrclibClient implements LyricsSource {
 			return new Result(synced, plain, instrumental, true);
 		}
 
+		/** Whether the synced text has any line (tags alone parse to nothing, and don't count). */
+		public boolean hasSynced() {
+			if (synced == null) {
+				return false;
+			}
+			Lyrics parsed = LrcParser.parseSynced(synced);
+			return !parsed.isEmpty() || parsed.instrumental();
+		}
+
 		public boolean found() {
-			return instrumental || synced != null || plain != null;
+			return instrumental || hasSynced() || plain != null;
 		}
 	}
 
@@ -110,6 +121,7 @@ public final class LrclibClient implements LyricsSource {
 		String artist = track.artist();
 		double seconds = track.lengthMs() / 1000.0;
 
+		Result plainOnly = null; // an exact hit with no synced text: kept in case the search finds a synced copy
 		// 1. Exact match (fast, uses LRCLIB's own matching)
 		if (!artist.isEmpty() && seconds > 0) {
 			Map<String, String> q = new LinkedHashMap<>();
@@ -133,7 +145,10 @@ public final class LrclibClient implements LyricsSource {
 			if (exact != null && exact.isJsonObject()) {
 				Result r = toResult(exact.getAsJsonObject());
 				if (r.found()) {
-					return r;
+					if (r.hasSynced() || r.instrumental()) {
+						return r;
+					}
+					plainOnly = r;
 				}
 			}
 		}
@@ -151,7 +166,10 @@ public final class LrclibClient implements LyricsSource {
 		if (best == null) {
 			best = searchBest(Map.of("q", (title + " " + main).trim()), seconds, title, main, titleOnly);
 		}
-		return best == null ? Result.NOT_FOUND : best;
+		if (best != null && (best.hasSynced() || plainOnly == null)) {
+			return best;
+		}
+		return plainOnly != null ? plainOnly : Result.NOT_FOUND;
 	}
 
 	/**
@@ -197,6 +215,9 @@ public final class LrclibClient implements LyricsSource {
 			}
 			if (seconds > 0 && o.has("duration") && !o.get("duration").isJsonNull()) {
 				double diff = Math.abs(o.get("duration").getAsDouble() - seconds);
+				if (diff > DURATION_MAX_S) {
+					continue; // showing another recording's timing is worse than none
+				}
 				if (diff <= DURATION_SLACK_S) {
 					score += 60 - (int) (diff * 5);
 				} else {

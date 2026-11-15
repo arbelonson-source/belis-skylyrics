@@ -266,4 +266,32 @@ class LrcParserTest {
 		Lyrics l = LrcParser.parseSynced("[00:01.00]<00:01.0000>hel<00:01.5000>lo <00:00:02.50>there");
 		assertEquals("hello there", l.get(0).text());
 	}
+
+	@Test
+	void invisibleAndNoBreakSpacesBeforeAStampAreIgnored() {
+		assertEquals(1, LrcParser.parseSynced("\u00A0[00:05.00]Hi").lines().size());
+		assertEquals(1, LrcParser.parseSynced("\u200B[00:05.00]Hi").lines().size());
+		assertEquals(1, LrcParser.parseSynced("[00:01.00]a\n\u2060[00:05.00]Hi").lines().size() - 1);
+		assertEquals("Hi", LrcParser.parseSynced("[00:01.00]a\n\uFEFF[00:05.00]Hi").get(1).text());
+		assertEquals("Hi", LrcParser.parseSynced("\u00A0\u200B [00:05.00]Hi").get(0).text());
+	}
+
+	@Test
+	void spacesInsideTheBracketsAreAllowed() {
+		Lyrics l = LrcParser.parseSynced("[ 00:12.00 ]a\n[00:13.00 ]b\n[ 00:14.00]c");
+		assertEquals(3, l.lines().size());
+		assertEquals(12000, l.get(0).timeMs());
+		assertEquals("b", l.get(1).text());
+		assertEquals(14000, l.get(2).timeMs());
+	}
+
+	@Test
+	void controlCharactersAreRemovedAndLineSeparatorsBreakLines() {
+		assertEquals("ab", LrcParser.parseSynced("[00:01.00]a\u0001b").get(0).text());
+		Lyrics l = LrcParser.parseSynced("[00:01.00]a\u2028[00:02.00]b\u2029[00:03.00]c");
+		assertEquals(3, l.lines().size());
+		assertEquals("a", l.get(0).text());
+		assertEquals("ab", LrcParser.parsePlain("a\u0007b", 0).get(0).text());
+		assertEquals("a b", LrcParser.parseSynced("[00:01.00]a\tb").get(0).text());
+	}
 }

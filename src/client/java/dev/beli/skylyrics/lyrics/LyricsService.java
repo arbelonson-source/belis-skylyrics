@@ -43,7 +43,7 @@ public final class LyricsService {
 	/** Songs kept on disk (a few KB each); past this the ones not played for longest go. */
 	private static final int DISK_FILES = 3000;
 	/** The version written into new cache files. */
-	private static final int CACHE_VERSION = 2;
+	private static final int CACHE_VERSION = 3;
 	/** Only our own lyrics files; the folder also holds the Spotify login. */
 	private static final Pattern CACHE_NAME = Pattern.compile("[0-9a-f]{24}\\.json(\\.tmp)?");
 
@@ -305,6 +305,16 @@ public final class LyricsService {
 		try {
 			LrclibClient.Result result = client.find(t);
 			if (result.stopgap()) {
+				return;
+			}
+			if (!found(parse(result, t.lengthMs()))) {
+				// A real "no lyrics" from the main site: what v0.8.0 and older saved came from looser matching
+				try {
+					Files.deleteIfExists(file);
+				} catch (IOException e) {
+					LOG.debug("Couldn't delete the old lyrics file {}: {}", file, e.toString());
+				}
+				apply(t, gen, LrclibClient.Result.NOT_FOUND);
 				return;
 			}
 			boolean same = java.util.Objects.equals(result.synced(), old.synced) && java.util.Objects.equals(result.plain(), old.plain)
