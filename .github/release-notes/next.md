@@ -28,6 +28,10 @@
 - **Lyrics stuck after a bad camera value.** A bad camera value can no longer pin the lyrics in the wrong place or stick the **View lock**.
 - **Clicks on 26.3.** On Minecraft 26.3, a click outside the game window no longer counts as a click inside it.
 - **Spotify asks less.** With Spotify signed in, when the lyrics are off and none of the mod's screens is open, the mod asks Spotify for the song only every 15 seconds. When Spotify says it is busy or keeps failing, the mod waits longer before asking again.
+- **Spotify gaps.** With Spotify, the lyrics no longer blink out for a moment around an ad, a track change or a switch to another device: the mod asks again after a second.
+- **Same name, two songs.** Two different Spotify songs with the same title, artist and album (two "Interlude"s, or a deluxe and a standard edition) now count as two songs, each with its own lyrics.
+- **Spotify odd answers.** A Spotify answer without a play state no longer causes an error, and Spotify's own ads no longer look up lyrics for "Spotify - Spotify".
+- **Two game copies, one Spotify login.** When two copies of the game share a folder, one renewing the Spotify login no longer signs the other one out.
 - **Spotify 403.** A Spotify app that doesn't know your account now tells you to add it under User Management on the Spotify dashboard, instead of "error 403".
 - **Spotify signed out.** If Spotify refuses your sign-in even after the mod renewed it, the mod now says "Spotify signed you out, sign in again" instead of "error 401", and waits longer before trying again.
 - **No crash from a drawing error.** A rare error in the mod's drawing no longer crashes the game. Only the part that failed (lyrics, title-screen lyrics, sky, bar, card, hat or crosshair) pauses for 5 seconds, and the error goes to the log.

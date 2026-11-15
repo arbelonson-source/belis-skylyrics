@@ -316,9 +316,25 @@ class SpotifyWebSourceTest {
 	private static final class FakeHttp extends HttpClient {
 		final int apiStatus;
 		final List<String> calls = new ArrayList<>();
+		/** Answers for the next Web API calls ("204" for no content, else a 200 body); empty means apiStatus with no body. */
+		final java.util.Deque<String> apiAnswers = new java.util.ArrayDeque<>();
+		/** Token endpoint: refresh tokens it accepts; any other one gets invalid_grant. Null accepts everything. */
+		java.util.Set<String> acceptedRefresh;
+		final List<String> refreshed = new ArrayList<>();
 
 		FakeHttp(int apiStatus) {
 			this.apiStatus = apiStatus;
+		}
+
+		private static String bodyOf(HttpRequest request) {
+			StringBuilder sb = new StringBuilder();
+			request.bodyPublisher().ifPresent(p -> p.subscribe(new java.util.concurrent.Flow.Subscriber<java.nio.ByteBuffer>() {
+				public void onSubscribe(java.util.concurrent.Flow.Subscription s) { s.request(Long.MAX_VALUE); }
+				public void onNext(java.nio.ByteBuffer b) { sb.append(StandardCharsets.UTF_8.decode(b)); }
+				public void onError(Throwable t) { }
+				public void onComplete() { }
+			}));
+			return sb.toString();
 		}
 
 		@Override
@@ -328,12 +344,27 @@ class SpotifyWebSourceTest {
 			calls.add(token ? "token" : "api");
 			int status = token ? 200 : apiStatus;
 			String body = token ? "{\"access_token\":\"fresh\",\"expires_in\":3600}" : "";
+			if (token) {
+				String sent = bodyOf(request);
+				String used = sent.replaceAll(".*refresh_token=([^&]*).*", "$1");
+				refreshed.add(used);
+				if (acceptedRefresh != null && !acceptedRefresh.contains(used)) {
+					status = 400;
+					body = "{\"error\":\"invalid_grant\",\"error_description\":\"Refresh token revoked\"}";
+				}
+			} else if (!apiAnswers.isEmpty()) {
+				String a = apiAnswers.poll();
+				status = a.equals("204") ? 204 : 200;
+				body = a.equals("204") ? "" : a;
+			}
+			final int statusF = status;
+			final String bodyF = body;
 			return (HttpResponse<T>) new HttpResponse<String>() {
-				public int statusCode() { return status; }
+				public int statusCode() { return statusF; }
 				public HttpRequest request() { return request; }
 				public Optional<HttpResponse<String>> previousResponse() { return Optional.empty(); }
 				public HttpHeaders headers() { return HttpHeaders.of(Map.of(), (a, b) -> true); }
-				public String body() { return body; }
+				public String body() { return bodyF; }
 				public Optional<SSLSession> sslSession() { return Optional.empty(); }
 				public URI uri() { return request.uri(); }
 				public Version version() { return Version.HTTP_1_1; }
@@ -382,5 +413,91 @@ class SpotifyWebSourceTest {
 		long now = System.nanoTime();
 		assertFalse(source.pollDue(now + 2 * SEC, true));
 		assertTrue(source.pollDue(now + 5 * SEC, true));
+	}
+
+	private static final String PLAYING = "{\"is_playing\": true, \"progress_ms\": 1000, \"currently_playing_type\": \"track\","
+			+ " \"item\": {\"name\": \"A\", \"uri\": \"spotify:track:1\", \"duration_ms\": 200000, \"artists\": [{\"name\": \"B\"}], \"album\": {\"name\": \"C\"}}}";
+
+	@Test
+	void anEmptyAnswerRightAfterASongIsAskedAgainSoonAndTheIdlePaceReturnsLater(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		SpotifyWebSource source = signedIn(dir, http);
+		http.apiAnswers.add(PLAYING);
+		http.apiAnswers.add("204");
+		http.apiAnswers.add("204");
+		http.apiAnswers.add("204");
+		http.apiAnswers.add("204");
+		source.settle(System.nanoTime() - 10 * SEC);
+		assertTrue(source.poll().playing());
+		source.settle(System.nanoTime() - 10 * SEC);
+		assertTrue(source.poll().track().isNone()); // the empty answer
+		long now = System.nanoTime();
+		assertTrue(source.pollDue(now + 3 * SEC / 2, true), "a second later, not 4");
+		// the next few empty answers keep the quick pace, then the idle pace takes over
+		for (int i = 0; i < 3; i++) {
+			assertTrue(source.pollDue(System.nanoTime() + 3 * SEC / 2, true), "ask " + i);
+			source.settle(System.nanoTime() - 10 * SEC);
+			assertTrue(source.poll().track().isNone());
+		}
+		assertFalse(source.pollDue(System.nanoTime() + 3 * SEC / 2, true));
+		assertTrue(source.pollDue(System.nanoTime() + 5 * SEC, true));
+	}
+
+	@Test
+	void aSourceThatWasIdleAllAlongKeepsTheIdlePace(@TempDir Path dir) {
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		long now = System.nanoTime();
+		source.settle(now);
+		assertFalse(source.pollDue(now + 3 * SEC / 2, true));
+		assertTrue(source.pollDue(now + 5 * SEC, true));
+	}
+
+	@Test
+	void aRefusedRefreshAdoptsTheTokenAnotherGameCopySavedInsteadOfSigningOut(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http); // memory has "r"
+		Path login = dir.resolve("login.json");
+		Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"x\",\"scopes\":\"\"}");
+		http.acceptedRefresh = java.util.Set.of("x");
+		source.poll();
+		assertEquals(List.of("r", "x"), http.refreshed);
+		assertTrue(Files.exists(login));
+		assertTrue(Files.readString(login).contains("\"x\""));
+		assertEquals(SpotifyWebSource.Account.SIGNED_IN, source.account());
+	}
+
+	@Test
+	void aRefusedRefreshWithNothingNewInTheFileStillSignsOut(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		http.acceptedRefresh = java.util.Set.of();
+		assertThrows(IOException.class, source::poll);
+		assertEquals(List.of("r"), http.refreshed);
+		assertFalse(Files.exists(dir.resolve("login.json")));
+		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
+	}
+
+	@Test
+	void parseReadsTheTrackAddress() {
+		assertEquals("spotify:track:1", SpotifyWebSource.parse(PLAYING, 0).track().uri());
+		Snapshot ep = SpotifyWebSource.parse("{\"item\": {\"name\": \"E\", \"uri\": \"spotify:episode:9\", \"show\": {\"name\": \"S\"}}}", 0);
+		assertEquals("spotify:episode:9", ep.track().uri());
+	}
+
+	@Test
+	void aNullOrMissingIsPlayingReadsAsPausedNotACrash() {
+		Snapshot nul = SpotifyWebSource.parse("{\"is_playing\": null, \"item\": {\"name\": \"A\"}}", 0);
+		assertEquals("A", nul.track().title());
+		assertFalse(nul.playing());
+		assertFalse(SpotifyWebSource.parse("{\"item\": {\"name\": \"A\"}}", 0).playing());
+	}
+
+	@Test
+	void anAdOrAnUnknownThingIsNothingEvenWithAnItem() {
+		for (String type : new String[] {"ad", "unknown"}) {
+			assertSame(Snapshot.NOTHING, SpotifyWebSource.parse("{\"is_playing\": true, \"currently_playing_type\": \"" + type
+					+ "\", \"item\": {\"name\": \"Spotify\", \"artists\": [{\"name\": \"Spotify\"}]}}", 0), type);
+		}
+		assertEquals("A", SpotifyWebSource.parse("{\"currently_playing_type\": \"episode\", \"item\": {\"name\": \"A\"}}", 0).track().title());
 	}
 }

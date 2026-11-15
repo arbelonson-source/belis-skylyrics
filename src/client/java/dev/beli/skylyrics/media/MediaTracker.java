@@ -68,7 +68,7 @@ public final class MediaTracker {
 	 * player) with something that was empty now filled in, and nothing else different.
 	 */
 	private static boolean lateFill(Track old, Track fresh) {
-		if (old.isNone() || !old.title().equals(fresh.title()) || !old.player().equals(fresh.player())) {
+		if (old.isNone() || !old.title().equals(fresh.title()) || !old.player().equals(fresh.player()) || old.otherUri(fresh)) {
 			return false;
 		}
 		boolean artistOk = old.artist().equals(fresh.artist()) || (old.artist().isEmpty() && !fresh.artist().isEmpty());

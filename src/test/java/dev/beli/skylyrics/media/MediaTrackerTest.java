@@ -123,6 +123,22 @@ class MediaTrackerTest {
 		assertEquals("", changes.get(0).artist());
 	}
 
+	private static Track withUri(String uri) {
+		return new Track("Interlude", "Made Up Band", "Made Up Album", 60_000, "", "Spotify", uri);
+	}
+
+	@Test
+	void twoSongsWithTheSameNamesButOtherAddressesAreTwoSongs() throws InterruptedException {
+		List<Track> changes = run(withUri("spotify:track:1"), withUri("spotify:track:2"), withUri("spotify:track:2"));
+		assertEquals(2, changes.size(), changes.toString());
+	}
+
+	@Test
+	void anAddressThatAppearsLateOrIsMissingIsStillTheSameSong() throws InterruptedException {
+		assertEquals(1, run(withUri(""), withUri("spotify:track:1"), withUri("spotify:track:1")).size());
+		assertEquals(1, run(withUri("spotify:track:1"), withUri(""), withUri("")).size());
+	}
+
 	@Test
 	void albumThatArrivesLateIsNotANewSong() throws InterruptedException {
 		Track bare = new Track("Made Up Song", "Made Up Band", "", 215_000, "", "firefox");
