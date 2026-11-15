@@ -98,6 +98,10 @@ public final class SpotifyWebSource implements MediaSource {
 	/** What the user agreed to share at sign-in, space separated. */
 	private volatile String grantedScopes = "";
 	private @Nullable String accessToken;
+	/** Counts sign-ins and sign-outs; a token refresh that started under an older number is thrown away. Guarded by this. */
+	private long signInGeneration;
+	/** Only one token refresh at a time; the network call runs under this, never under the main lock. */
+	private final Object refreshLock = new Object();
 	private long accessUntilNs;
 	private volatile @Nullable ServerSocket loginServer;
 	private volatile String problem = "";
@@ -191,6 +195,7 @@ public final class SpotifyWebSource implements MediaSource {
 
 	public synchronized void signOut() {
 		cancelLogin();
+		signInGeneration++;
 		refreshToken = null;
 		tokenClient = "";
 		grantedScopes = "";
@@ -314,6 +319,7 @@ public final class SpotifyWebSource implements MediaSource {
 		if (loginServer != server) {
 			return false;
 		}
+		signInGeneration++;
 		accept(id, tokens);
 		return true;
 	}
@@ -457,23 +463,47 @@ public final class SpotifyWebSource implements MediaSource {
 		nextPollNs = 0;
 	}
 
-	private synchronized String access() throws IOException, InterruptedException {
-		String id = id();
-		String refresh = refreshToken;
-		if (refresh == null || !id.equals(tokenClient)) {
-			throw new IOException(Tr.t("Sign in to Spotify below"));
+	/** Whether a token refresh that began under {@code started} may still be stored: only if nobody signed in or out since. */
+	static boolean keepRefresh(long started, long current) {
+		return started == current;
+	}
+
+	private String access() throws IOException, InterruptedException {
+		synchronized (refreshLock) {
+			String id = id();
+			String refresh;
+			long started;
+			synchronized (this) {
+				refresh = refreshToken;
+				if (refresh == null || !id.equals(tokenClient)) {
+					throw new IOException(Tr.t("Sign in to Spotify below"));
+				}
+				if (accessToken != null && System.nanoTime() < accessUntilNs) {
+					return accessToken;
+				}
+				started = signInGeneration;
+			}
+			// The network call happens with the main lock free, so signing out or quitting never waits for it
+			JsonObject result = null;
+			boolean refused = false;
+			try {
+				result = token(form("grant_type", "refresh_token", "refresh_token", refresh, "client_id", id));
+			} catch (Refused e) {
+				refused = true;
+			}
+			synchronized (this) {
+				if (!keepRefresh(started, signInGeneration)) {
+					throw new IOException(Tr.t("Sign in to Spotify below"));
+				}
+				if (refused) {
+					signOut();
+					problem = Tr.t("Spotify signed you out, sign in again");
+					throw new IOException(problem);
+				}
+				accept(id, result);
+				return accessToken;
+			}
 		}
-		if (accessToken != null && System.nanoTime() < accessUntilNs) {
-			return accessToken;
-		}
-		try {
-			accept(id, token(form("grant_type", "refresh_token", "refresh_token", refresh, "client_id", id)));
-		} catch (Refused e) {
-			signOut();
-			problem = Tr.t("Spotify signed you out, sign in again");
-			throw new IOException(problem);
-		}
-		return accessToken;
 	}
 
 	private void load() {

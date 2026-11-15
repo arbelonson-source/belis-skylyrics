@@ -53,7 +53,7 @@ class LrcParserTest {
 		Lyrics l = LrcParser.parseSynced("[00:05.00] [00:30.00]  chorus\n[00:10.00] verse [00:20.00]");
 		assertEquals(3, l.lines().size());
 		assertEquals("chorus", l.get(0).text());
-		assertEquals("verse [00:20.00]", l.get(1).text());
+		assertEquals("verse", l.get(1).text());
 		assertEquals("chorus", l.get(2).text());
 		assertEquals(30000, l.get(2).timeMs());
 	}
@@ -160,5 +160,36 @@ class LrcParserTest {
 		assertTrue(l.lines().get(1).isBreak());
 		assertEquals(5000, l.lines().get(1).timeMs());
 		assertEquals("two ♪", l.lines().get(2).text());
+	}
+
+	@Test
+	void syncedTextOfOnlyNotesOrBlanksIsInstrumental() {
+		for (String lrc : new String[] {"[00:00.00] ♪", "[00:00.00]\n[00:30.00]♪ ♪\n[01:00.00]", "[00:05.00][Intro]"}) {
+			Lyrics l = LrcParser.parseSynced(lrc);
+			assertTrue(l.instrumental(), lrc);
+			assertTrue(l.isEmpty(), lrc);
+		}
+		assertFalse(LrcParser.parseSynced("[00:00.00]♪\n[00:10.00]words").instrumental());
+	}
+
+	@Test
+	void threeNumberStampsStayMinutesSecondsAndCentiseconds() {
+		// "[mm:ss:xx]" is what some files use; no test in the repo uses hh:mm:ss, so that reading stays unsupported
+		assertEquals(62_030, LrcParser.parseSynced("[01:02:03]x").lines().getFirst().timeMs());
+	}
+
+	@Test
+	void aTimestampInTheMiddleOfALineIsNotShown() {
+		Lyrics l = LrcParser.parseSynced("[00:12.00]Hello [00:14.00]world\n[00:20]a [00:21] b");
+		assertEquals(2, l.lines().size());
+		assertEquals(12000, l.get(0).timeMs());
+		assertEquals("Hello world", l.get(0).text());
+		assertEquals("a b", l.get(1).text());
+	}
+
+	@Test
+	void wordStampsAndOtherBracketsInsideALineStayHandled() {
+		Lyrics l = LrcParser.parseSynced("[00:12.00]<00:12.34>Hello <00:13.00>[x2] world [Chorus]");
+		assertEquals("Hello [x2] world [Chorus]", l.get(0).text());
 	}
 }

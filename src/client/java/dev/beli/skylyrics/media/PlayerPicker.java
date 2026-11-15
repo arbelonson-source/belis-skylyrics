@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.media;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
@@ -25,10 +26,15 @@ final class PlayerPicker {
 		}
 		preferred = preferred.toLowerCase(Locale.ROOT).trim();
 		if (!preferred.isEmpty()) {
+			// Only the chosen player's own windows/instances compete; the order below then picks among them
+			List<T> matching = new ArrayList<>();
 			for (T p : players) {
 				if (player.apply(p).toLowerCase(Locale.ROOT).contains(preferred)) {
-					return p;
+					matching.add(p);
 				}
+			}
+			if (!matching.isEmpty()) {
+				players = matching;
 			}
 		}
 		// Stick with the current player while it's playing, so two tabs don't fight

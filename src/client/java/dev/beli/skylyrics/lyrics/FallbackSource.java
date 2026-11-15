@@ -48,7 +48,8 @@ public final class FallbackSource implements LyricsSource {
 		try {
 			return backup.find(track);
 		} catch (IOException | RuntimeException backupDown) {
-			return result;
+			// The backup didn't answer, so this isn't a real "no lyrics": show nothing now, but don't keep it
+			return result.asStopgap();
 		}
 	}
 

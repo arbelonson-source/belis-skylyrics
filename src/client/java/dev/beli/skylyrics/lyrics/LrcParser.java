@@ -56,7 +56,7 @@ public final class LrcParser {
 			if (times.isEmpty()) {
 				continue;
 			}
-			String text = tidy(WORD_TIME.matcher(raw.substring(end)).replaceAll(""));
+			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
 			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches()) {
 				text = "";
 			}
@@ -74,6 +74,10 @@ public final class LrcParser {
 			shifted.add(new LyricLine(Math.max(0, line.timeMs() + shift), line.text()));
 		}
 		shifted.sort(Comparator.comparingLong(LyricLine::timeMs));
+		// Stamps with nothing but notes or blanks (some sites do this for songs without words) is an instrumental
+		if (shifted.stream().allMatch(LyricLine::isBreak)) {
+			return Lyrics.INSTRUMENTAL;
+		}
 		return new Lyrics(collapseBreaks(shifted), true, false);
 	}
 

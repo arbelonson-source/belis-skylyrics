@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,6 +35,15 @@ public final class MediaTracker {
 	private Consumer<Track> onTrackChange = t -> {
 	};
 	private boolean loggedError;
+	private boolean loggedFault;
+	/** How many empty/failed reads in a row still keep the last song (about 1.5 s at the usual poll rate). */
+	private static final int EMPTY_POLLS_HELD = 3;
+	/** How many polls a new song with no artist yet waits for one (the second poll announces it anyway). */
+	private static final int ARTISTLESS_POLLS_HELD = 1;
+	private int emptyPolls;
+	private @Nullable MediaSource lastSource;
+	private @Nullable Track pending;
+	private int pendingCount;
 
 	public MediaTracker(MediaSource player, BooleanSupplier demoMode) {
 		this.player = player;
@@ -52,12 +62,40 @@ public final class MediaTracker {
 		return demoMode.getAsBoolean() ? demo : player;
 	}
 
-	/** Browsers often send the length and cover a moment after the title. */
-	private static boolean filledIn(Track old, Track fresh) {
-		return (old.lengthMs() <= 0 && fresh.lengthMs() > 0) || (old.artUrl().isEmpty() && !fresh.artUrl().isEmpty());
+	/**
+	 * Browsers often send the length, cover, artist or album a moment after the title: the same song (same title and
+	 * player) with something that was empty now filled in, and nothing else different.
+	 */
+	private static boolean lateFill(Track old, Track fresh) {
+		if (old.isNone() || !old.title().equals(fresh.title()) || !old.player().equals(fresh.player())) {
+			return false;
+		}
+		boolean artistOk = old.artist().equals(fresh.artist()) || (old.artist().isEmpty() && !fresh.artist().isEmpty());
+		boolean albumOk = old.album().equals(fresh.album()) || (old.album().isEmpty() && !fresh.album().isEmpty());
+		return artistOk && albumOk;
 	}
 
+	/** A late length, cover or artist is worth passing on (lyrics lookup, cover); a late album alone is not. */
+	private static boolean filledIn(Track old, Track fresh) {
+		return lateFill(old, fresh) && ((old.lengthMs() <= 0 && fresh.lengthMs() > 0)
+				|| (old.artUrl().isEmpty() && !fresh.artUrl().isEmpty())
+				|| (old.artist().isEmpty() && !fresh.artist().isEmpty()));
+	}
+
+	/** Never lets an exception out: an escaped one would silently cancel every later scheduled poll. */
 	private void pollOnce() {
+		try {
+			pollInner();
+			loggedFault = false;
+		} catch (Throwable e) {
+			if (!loggedFault) {
+				LOG.warn("Media poll failed, carrying on", e);
+				loggedFault = true; // logged again only after a poll that went through
+			}
+		}
+	}
+
+	private void pollInner() {
 		MediaSource source = source();
 		Snapshot fresh;
 		try {
@@ -76,20 +114,52 @@ public final class MediaTracker {
 		}
 
 		Snapshot old = snapshot;
-		if (!fresh.track().sameSong(old.track()) || filledIn(old.track(), fresh.track())) {
+		boolean sameSource = source == lastSource;
+		lastSource = source;
+
+		// A read that comes back empty or fails is usually a hiccup (busy player, track switching): keep the song
+		// through a few of them, and only say "nothing playing" if it keeps being empty.
+		if (sameSource && fresh.track().isNone() && !old.track().isNone()) {
+			if (++emptyPolls <= EMPTY_POLLS_HELD) {
+				sourceName = source.displayName();
+				return;
+			}
+		} else {
+			emptyPolls = 0;
+		}
+
+		Track freshTrack = fresh.track();
+		boolean newSong = !freshTrack.sameSong(old.track()) && !lateFill(old.track(), freshTrack);
+		// A title can arrive before its artist: wait a poll or two for the artist before announcing a new song
+		if (newSong && !freshTrack.isNone() && freshTrack.artist().isEmpty()) {
+			if (pending != null && freshTrack.sameSong(pending)) {
+				pendingCount++;
+			} else {
+				pending = freshTrack;
+				pendingCount = 1;
+			}
+			if (pendingCount <= ARTISTLESS_POLLS_HELD) {
+				sourceName = source.displayName();
+				return;
+			}
+		}
+		pending = null;
+		pendingCount = 0;
+
+		if (newSong || filledIn(old.track(), freshTrack)) {
 			snapshot = fresh;
 			sourceName = source.displayName();
-			onTrackChange.accept(fresh.track());
+			onTrackChange.accept(freshTrack);
 			return;
 		}
 
 		// Same song: only accept the new position if it really moved (seek), to avoid jitter
 		long predicted = positionAt(old, fresh.readAtNanos());
 		boolean jumped = Math.abs(predicted - fresh.positionMs()) > SEEK_THRESHOLD_MS;
-		if (jumped || fresh.playing() != old.playing()) {
+		if (jumped || fresh.playing() != old.playing() || fresh.rate() != old.rate()) {
 			snapshot = fresh;
 		} else {
-			snapshot = new Snapshot(fresh.track(), old.positionMs(), old.playing(), old.readAtNanos());
+			snapshot = new Snapshot(freshTrack, old.positionMs(), old.playing(), old.readAtNanos(), old.rate());
 		}
 		sourceName = source.displayName();
 	}
@@ -98,7 +168,7 @@ public final class MediaTracker {
 		if (!s.playing()) {
 			return s.positionMs();
 		}
-		long pos = s.positionMs() + (nanos - s.readAtNanos()) / 1_000_000;
+		long pos = s.positionMs() + (long) ((nanos - s.readAtNanos()) / 1_000_000.0 * s.rate());
 		long length = s.track().lengthMs();
 		return length > 0 ? Math.min(pos, length) : pos;
 	}

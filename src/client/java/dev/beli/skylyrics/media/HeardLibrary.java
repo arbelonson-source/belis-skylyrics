@@ -230,18 +230,57 @@ public final class HeardLibrary implements Library {
 		return new Gson().toJson(root);
 	}
 
-	/** The songs in {@code file}, or none when it is missing, empty or damaged. */
+	/**
+	 * The songs in {@code file}, or none when it is missing, empty or damaged. A damaged file is first copied to
+	 * {@code heard.json.bad}, so the next saved song doesn't wipe the history it still holds.
+	 */
 	static List<Entry> read(Path file) {
 		List<Entry> out = new ArrayList<>();
 		try {
 			if (!Files.isRegularFile(file)) {
 				return out;
 			}
-			JsonElement root = new Gson().fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonElement.class);
-			if (root == null || !root.isJsonObject() || !root.getAsJsonObject().get("songs").isJsonArray()) {
+			String text = Files.readString(file, StandardCharsets.UTF_8);
+			if (text.isBlank()) {
 				return out;
 			}
-			for (JsonElement e : root.getAsJsonObject().getAsJsonArray("songs")) {
+			try {
+				readSongs(text, out);
+			} catch (RuntimeException e) {
+				out.clear();
+				LOG.warn("The recently heard file is damaged, starting empty (kept a copy as heard.json.bad): {}", e.toString());
+				keepCopy(file);
+			}
+		} catch (IOException e) {
+			LOG.warn("Couldn't read the recently heard file, starting empty: {}", e.toString());
+			keepCopy(file);
+		}
+		return out;
+	}
+
+	private static void keepCopy(Path file) {
+		try {
+			Files.copy(file, file.resolveSibling(file.getFileName() + ".bad"), StandardCopyOption.REPLACE_EXISTING);
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("Couldn't keep a copy of the damaged recently heard file: {}", e.toString());
+		}
+	}
+
+	/** Adds the songs in {@code text} to {@code out}; throws when it isn't a JSON object. A missing list is just no songs. */
+	private static void readSongs(String text, List<Entry> out) {
+		JsonElement root = new Gson().fromJson(text, JsonElement.class);
+		if (root == null || !root.isJsonObject()) {
+			throw new IllegalStateException("not a JSON object");
+		}
+		JsonElement songs = root.getAsJsonObject().get("songs");
+		if (songs == null || songs.isJsonNull()) {
+			return;
+		}
+		if (!songs.isJsonArray()) {
+			throw new IllegalStateException("\"songs\" is not a list");
+		}
+		for (JsonElement e : songs.getAsJsonArray()) {
+			try {
 				if (!e.isJsonObject()) {
 					continue;
 				}
@@ -255,12 +294,10 @@ public final class HeardLibrary implements Library {
 				if (out.stream().noneMatch(x -> x.key().equals(entry.key())) && out.size() < CAP) {
 					out.add(entry);
 				}
+			} catch (RuntimeException bad) {
+				// One bad song doesn't cost the rest
 			}
-		} catch (Exception e) {
-			LOG.warn("The recently heard file is damaged, starting empty: {}", e.toString());
-			out.clear();
 		}
-		return out;
 	}
 
 	private static String text(JsonObject o, String name) {
