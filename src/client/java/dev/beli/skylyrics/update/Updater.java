@@ -384,8 +384,8 @@ public final class Updater {
 	/**
 	 * Whether the swap script can handle these places. cmd reads a .bat in the OEM code page, so any non-ASCII
 	 * character (C:\Users\José) would be mangled and the swap would fail without a word. Characters with a meaning
-	 * in a batch file are not worth the risk either. The script itself is written next to the old jar, so this
-	 * covers it too, and it can be checked before anything is downloaded.
+	 * in a batch file are not worth the risk either. The script goes where its path is safe too (see
+	 * {@link #scriptFolder}), so all of this can be checked before anything is downloaded.
 	 */
 	static boolean swapPathsSafe(Path oldJar, Path target) {
 		for (Path p : List.of(oldJar, waitingName(target), target)) {
@@ -396,9 +396,19 @@ public final class Updater {
 		return true;
 	}
 
-	/** Moves the new jar to its waiting name and writes the script that swaps it in, next to the old jar. */
+	/**
+	 * Where the swap script goes: the temp folder, out of sight, unless cmd couldn't read its name there (C:\\Users\\José
+	 * puts accents in it); then next to the old jar, whose place {@link #swapPathsSafe} has already checked. The script's
+	 * own name is plain ASCII either way, and it deletes itself when it has run.
+	 */
+	static Path scriptFolder(Path temp, Path oldJar) {
+		return batchSafe(temp.toAbsolutePath().toString()) ? temp : oldJar.getParent();
+	}
+
+	/** Moves the new jar to its waiting name and writes the script that swaps it in (see {@link #scriptFolder}). */
 	static Path writeSwapScript(Path oldJar, Path waiting, Path target, Path part) throws IOException {
-		Path bat = Files.createTempFile(oldJar.getParent(), "skylyrics-update-", ".bat");
+		Path temp = Path.of(System.getProperty("java.io.tmpdir"));
+		Path bat = Files.createTempFile(scriptFolder(temp, oldJar), "skylyrics-update-", ".bat");
 		try {
 			Files.move(part, waiting, StandardCopyOption.REPLACE_EXISTING);
 			Files.write(bat, swapScript(oldJar, waiting, target).getBytes(StandardCharsets.US_ASCII));

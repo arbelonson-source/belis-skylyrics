@@ -86,20 +86,30 @@ class UpdaterTest {
 
 	/** The script lives beside the jar (already checked), not in %TEMP%, which may have letters cmd can't read. */
 	@Test
-	void swapScriptIsWrittenNextToTheOldJar() throws Exception {
+	void swapScriptGoesToTheTempFolderUnlessItsNameHasAccents() {
+		Path mods = dir.resolve("mods");
+		Path old = mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar");
+		Path plain = dir.resolve("Temp");
+		Path accented = dir.resolve("Jos\u00e9").resolve("Temp");
+		assertEquals(Updater.batchSafe(plain.toAbsolutePath().toString()) ? plain : mods, Updater.scriptFolder(plain, old));
+		assertEquals(mods, Updater.scriptFolder(accented, old));
+	}
+
+	@Test
+	void swapScriptIsWrittenWhereItsPathIsSafe() throws Exception {
 		Path mods = Files.createDirectories(dir.resolve("mods"));
 		Path old = Files.createFile(mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
 		Path target = mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar");
 		Path waiting = mods.resolve(target.getFileName() + ".new");
 		Path part = Files.createFile(mods.resolve(target.getFileName() + ".part"));
 		Path bat = Updater.writeSwapScript(old, waiting, target, part);
-		assertEquals(mods, bat.getParent());
+		assertEquals(Updater.scriptFolder(Path.of(System.getProperty("java.io.tmpdir")), old), bat.getParent());
+		Files.deleteIfExists(bat);
 		assertTrue(bat.getFileName().toString().endsWith(".bat"));
 		assertTrue(Files.exists(waiting));
 		assertFalse(Files.exists(part));
-		String text = Files.readString(bat);
+		String text = Updater.swapScript(old, waiting, target);
 		assertTrue(text.contains("move /y \"" + waiting + "\" \"" + target + "\""));
-		assertTrue(Updater.batchSafe(bat.toString()) || !Updater.batchSafe(mods.toString()));
 	}
 
 	@Test
