@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import dev.beli.skylyrics.config.SkyLyricsConfig;
 import net.minecraft.util.Mth;
 
 /**
@@ -13,6 +14,11 @@ final class FollowAnchor {
 	static final float LAZY_SPEED = 2.2f;
 
 	private FollowAnchor() {
+	}
+
+	/** Whether Lazy follow counts: the World layout ignores it (its setting is hidden there), so the sparkles must too. */
+	static boolean lazy(boolean lazyFollow, SkyLyricsConfig.Layout layout) {
+		return lazyFollow && layout != SkyLyricsConfig.Layout.WORLD;
 	}
 
 	/** Whether the anchor is chasing the camera this frame, given whether it was and the yaw gap in degrees. */

@@ -23,6 +23,8 @@
 - **Record card.** The Record card in a top corner moves below the boss bars on a narrow screen.
 - **Minecraft 1.21.1 to 1.21.5.** On 1.21.1 the top bar's text is clipped right at every **Bar size**, and the lyrics, bar and card no longer cover the chat. On 1.21.1 to 1.21.5, setting descriptions are no longer cut off at the edge of the list.
 - **Caves and the Nether.** **Show underground too** now also works in the Nether (when **See through blocks** is off). Swimming deep underwater no longer counts as being in a cave.
+- **Spyglass and sky lines.** The thin lines of the painted skies (Synthwave, Moonlight) and the constellations keep their width while you zoom with a spyglass, and with Speed or sprinting, instead of getting about 11 times too thick when zoomed.
+- **Twinkling stars in World.** With the World layout the sparkles stay with the words even when **Lazy follow** was left on from another layout.
 - **Sky effects.** With **Lazy follow** on or off, the sparkles and shooting stars now follow your view the same way the lyrics do, and they change line at the same moment as the words. They stay visible in front of the eclipse.
 - **Sky fades.** The sky fades back in after leaving the Nether or the End, or coming up out of water, instead of popping in. It fades out under Blindness and Darkness, as the vanilla sky does. The Comet sky no longer flickers on 26.2 and later.
 - **Propeller.** With **Glow with the lyrics** off, the propeller cap turns at its calm speed.
@@ -50,6 +52,7 @@
 ### Faster
 
 - **Lighter lyrics and Galaxy.** Lines and Arc lyrics and the Galaxy sky do less work each frame.
+- **Lighter Aurora and Nebula.** The default Aurora sky, the Nebula clouds and stars, and the constellations skip the parts behind you or off the side of the screen. They look the same and cost less each frame.
 
 ### Changed
 
