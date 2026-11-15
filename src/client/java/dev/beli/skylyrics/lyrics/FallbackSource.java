@@ -18,10 +18,12 @@ public final class FallbackSource implements LyricsSource {
 	private final LyricsSource main;
 	private final LyricsSource backup;
 	private final LongSupplier clockMs;
+	/** Only meaningful once {@link #skipping} is set: the monotonic clock can read any value, including negative ones. */
 	private volatile long skipMainUntil;
+	private volatile boolean skipping;
 
 	public FallbackSource(LyricsSource main, LyricsSource backup) {
-		this(main, backup, System::currentTimeMillis);
+		this(main, backup, () -> System.nanoTime() / 1_000_000); // monotonic, so a changed PC clock can't extend the skip
 	}
 
 	FallbackSource(LyricsSource main, LyricsSource backup, LongSupplier clockMs) {
@@ -32,7 +34,7 @@ public final class FallbackSource implements LyricsSource {
 
 	@Override
 	public LrclibClient.Result find(Track track) throws IOException, InterruptedException {
-		if (clockMs.getAsLong() < skipMainUntil) {
+		if (skipping && clockMs.getAsLong() - skipMainUntil < 0) {
 			return fromBackup(track, new IOException("Main lyrics source is down, trying again soon"));
 		}
 		LrclibClient.Result result;
@@ -40,6 +42,7 @@ public final class FallbackSource implements LyricsSource {
 			result = main.find(track);
 		} catch (IOException | RuntimeException mainDown) {
 			skipMainUntil = clockMs.getAsLong() + SKIP_MAIN_MS;
+			skipping = true;
 			return fromBackup(track, mainDown instanceof IOException io ? io : new IOException(mainDown));
 		}
 		if (result.found()) {

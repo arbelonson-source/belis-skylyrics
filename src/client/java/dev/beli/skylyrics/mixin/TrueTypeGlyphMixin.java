@@ -1,6 +1,8 @@
 package dev.beli.skylyrics.mixin;
 
 import com.mojang.blaze3d.platform.NativeImage;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import dev.beli.skylyrics.render.RgbaGlyph;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -8,7 +10,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -70,11 +71,21 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 		return picture;
 	}
 
-	@Inject(method = "upload", at = @At("RETURN"))
-	private void skylyrics$freePicture(CallbackInfo ci) {
-		if (skylyrics$uploading != null) {
-			skylyrics$uploading.close();
-			skylyrics$uploading = null;
+	// Wraps the whole upload so the picture is freed even when the upload throws
+	//? if >=26.3 {
+	/*@WrapMethod(method = "upload")
+	private void skylyrics$freePicture(int x, int y, com.mojang.renderpearl.api.textures.GpuTexture texture, Operation<Void> original) {
+	*///?} else {
+	@WrapMethod(method = "upload")
+	private void skylyrics$freePicture(int x, int y, com.mojang.blaze3d.textures.GpuTexture texture, Operation<Void> original) {
+	//?}
+		try {
+			original.call(x, y, texture);
+		} finally {
+			if (skylyrics$uploading != null) {
+				skylyrics$uploading.close();
+				skylyrics$uploading = null;
+			}
 		}
 	}
 	//?} else if >=1.21.2 {
@@ -93,7 +104,12 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 				picture.setPixel(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
 			}
 		}
-		picture.upload(level, x, y, skipX, skipY, width, height, true);
+		try {
+			picture.upload(level, x, y, skipX, skipY, width, height, true);
+		} catch (RuntimeException | Error e) {
+			picture.close(); // closing twice is harmless, so this is safe even if upload already closed it
+			throw e;
+		}
 		if (autoClose) {
 			mask.close();
 		}
@@ -115,7 +131,12 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 				picture.setPixelRGBA(px, py, (mask.getLuminanceOrAlpha(px, py) & 0xFF) * 0x01010101);
 			}
 		}
-		picture.upload(level, x, y, skipX, skipY, width, height, true, true, false, true);
+		try {
+			picture.upload(level, x, y, skipX, skipY, width, height, true, true, false, true);
+		} catch (RuntimeException | Error e) {
+			picture.close(); // closing twice is harmless, so this is safe even if upload already closed it
+			throw e;
+		}
 		if (autoClose) {
 			mask.close();
 		}
