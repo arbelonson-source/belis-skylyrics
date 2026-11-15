@@ -1,7 +1,7 @@
 # Beli's SkyLyrics
 
 Synced lyrics for the song you're listening to, glowing in the Minecraft sky.
-A free, open-source Fabric mod for Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.9 and 1.21.10, 1.21.11, 26.1, 26.2 and 26.3.
+A free, open-source Fabric mod for Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3.
 
 ![Lyrics fading in word by word over a sunset](docs/demo.webp)
 
@@ -15,11 +15,11 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - Gets the synced lyrics from [LRCLIB](https://lrclib.net) and shows them line by line, in time with the song. When LRCLIB is down or doesn't have a song, it asks [NetEase Cloud Music](https://music.163.com) instead.
 - Three layouts. **Arc** shows the line being sung on a gentle curve, each word tilted a little. **Lines** shows the previous, current and next lines, straight and centred. **World** places each word or two in the world around you as it's sung.
 - In the **World** layout, words can flow into a line that glides in and lands with a flash. Each row bows gently, like handwriting across the sky. They keep clear of the middle of your view, slide out of each other's way, never sink into blocks, and move off other players (handy in PvP). Hit a word to knock it back. When you die, the words drop out of the sky, spinning as they fade. You choose how words arrive (pop, drop, zoom, fade in, or typed letter by letter) and how they leave (shrink, float up, blow away, sink or dissolve). Their glow is a deeper shade of the letters' colour, like neon, and **Soft edges** drops the dark outline for the softest look. Most of these can be turned off under **Position**.
-- **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you. **View lock** (under **Lyrics → Position**, or a key you set) pins the lyrics where you are looking right now, so they stay put while you look around.
-- The lyrics stay visible in caves and under roofs (**Show underground too**, on the **Display** tab, on at first), instead of vanishing behind the rock.
+- **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you. **View lock** (under **Lyrics → Position**, or the "Lock lyrics here" key you set) pins the lyrics where you are looking right now, so they stay put while you look around.
+- The lyrics stay visible in caves and under roofs (**Show underground too**, under **Display → Hide lyrics**, on at first), instead of vanishing behind the rock.
 - Words fade in one by one and light up as they are sung. Five other line animations are included, plus an optional glow pulse on each new line.
 - A bar at the top of the screen shows the round cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own, and the cover can spin slowly like a record.
-- An optional **Record card** sits in a corner of your choice: a spinning vinyl with the album cover in the middle, the song title and artist, and a progress line with the time played and the song length, with the line being sung on a strip underneath. **Card lines** can show the line before and the line after it too, dimmed. It keeps clear of your hotbar, your off-hand slot and your potion effect icons.
+- An optional **Record card** sits in a corner of your choice: a spinning vinyl with the album cover in the middle, the song title and artist, and a progress line with the time played and the song length, with the line being sung on a strip underneath. **Card lines** (under **Display → Record card**) can show the line before and the line after it too, dimmed. It keeps clear of your hotbar, your off-hand slot and your potion effect icons.
 - The word being sung can grow a little in the sky (optional).
 - Five letter styles for the sky lyrics: Bold, Smooth, Round, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
 - A soft periwinkle colour at first, with more soft colours to pick from. It can also take its colour from the album cover, follow the time of day (warm at sunrise and sunset, lilac at night), change with each new line, or use rainbow. **Two-tone** makes each line fade from your colour into a second one. The glow around the letters can have its own colour.
@@ -27,10 +27,11 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - When a new song starts, its name and artist can float up in the sky.
 - A hat for your character, seen in third person (F5): halo, neon headphones, conical hat, crown, cat ears, pumpkin head, top hat, devil horns, neon shades, antennae, a flower crown, a propeller cap or music notes circling your head, with parts that glow in your lyrics colour. Only you can see it.
 - Crosshair styles: Minecraft's normal one, or a dot, cross, circle, corners, music note, heart or diamond in your lyrics colour. They can flash brighter as each new lyric line starts.
-- A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first. Without Spotify, it shows a **Recently heard** list of the songs you have played lately instead (clicking one to play it again works on Linux).
+- A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first. Without Spotify, it shows a **Recently heard** list of the songs you have played lately instead, kept on this computer only (clicking one to play it again works on Linux). You can empty it with **Forget recently heard** on the **Music** tab.
+- Lyrics that have no timing are spread evenly over the song (**Untimed lyrics** on the **Music** tab, on at first). When a lyrics file gives a line and its translation at the same time, they show together as "line / translation".
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
 - Works with Sodium and Iris shaders. The smooth letters stay smooth with shader packs on. The **Draw on top** setting keeps the lyrics bright and in front of shader clouds, rain and fog.
-- A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu. You can use it with the keyboard alone (Tab or the arrow keys to move, Enter to press, Ctrl+Tab for the next tab, Ctrl+F to search), and it speaks through the Narrator.
+- A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu. You can use it with the keyboard alone (Tab or the arrow keys to move, Left and Right to change a value, Enter or Space to press, Page Up and Page Down to scroll, Ctrl+Tab for the next tab, Ctrl+F, or Cmd+F on a Mac, to search). With the Narrator on, each row reads out its name, its value and its place in the list, and so does the song library.
 - A demo mode with a built-in song, so you can try it without any music playing.
 - Hebrew and Arabic lyrics are written from the right, with Arabic letters joined properly.
 - A short welcome tour the first time you start the game helps you pick a layout, a look and your music.

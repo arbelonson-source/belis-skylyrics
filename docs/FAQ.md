@@ -6,6 +6,10 @@ Short answers about Beli's SkyLyrics. If something isn't working, see [TROUBLESH
 
 While you play Minecraft and listen to music on the same computer, it shows the words of the song in the sky, in time with the music. A bar at the top of the screen shows the album cover, the song name and the line being sung.
 
+## Which Minecraft versions does it work on?
+
+Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3, with Fabric and Fabric API. Each release has one jar per version, so pick the one whose name ends in your version (see "Install" in the [README](../README.md#install)).
+
 ## Does it work on Windows or macOS?
 
 **Windows 10 and 11: yes.** The mod reads the same media controls that Windows shows when you press a media key or change the volume. To do that it runs a small hidden PowerShell helper. PowerShell comes with Windows, so there is nothing extra to install.
@@ -56,7 +60,7 @@ If neither has a song, the mod can't show lyrics for it.
 
 No. To show lyrics you don't need Spotify at all, and no Premium: the mod follows whatever player you already use (see "Which music players work?" above).
 
-Spotify only matters for the **song library** (press **N**). If you have signed in to Spotify on the **Music** tab, it shows your liked songs and playlists. Starting a song from there needs Spotify Premium (on Linux, a single song can also open in the Spotify app without it). If you haven't signed in, the library shows a **Recently heard** list instead: the songs you have played lately. It is kept on your computer only, and you can switch it off or empty it on the **Music** tab (**Recently heard** and **Forget recent songs**). Clicking a song in that list asks the player that played it to play it again. That works on Linux, when that player is open and can do it; on Windows and macOS the list is there to look at, and the mod says so when a player can't start the song.
+Spotify only matters for the **song library** (press **N**). If you have signed in to Spotify on the **Music** tab, it shows your liked songs and playlists. Starting a song from there needs Spotify Premium (on Linux, a single song can also open in the Spotify app without it). If you haven't signed in, the library shows a **Recently heard** list instead: the songs you have played lately. It is kept on your computer only, and you can switch it off or empty it on the **Music** tab (**Recently heard**, and the **Forget recently heard** button that empties the list). Clicking a song in that list asks the player that played it to play it again. That works on Linux, when that player is open and can do it; on Windows and macOS the list is there to look at, and the mod says so when a player can't start the song.
 
 ## Does it need internet?
 
@@ -64,7 +68,7 @@ Only to look up lyrics for songs it hasn't seen before, and to download album co
 
 ## How do I update it?
 
-From 0.7.0 on, it updates itself. When a new version is out, it downloads in the background and a pop-up tells you to restart Minecraft; the new version is used from the next start. To choose this yourself, open the settings, go to **About → Updates** and pick **Install**, **Tell me** (just a notice) or **Off**. Versions before 0.7.0 can't update themselves: download the new jar from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases) and replace the old one in your `mods` folder.
+From 0.7.0 on, it updates itself. When a new version is out, it downloads in the background and a pop-up tells you to restart Minecraft; the new version is used from the next start. To choose this yourself, open the settings, go to **About → Updates** and pick **Install**, **Tell me** (just a notice) or **Off**. An update is only downloaded from the mod's own GitHub releases, and only used if it really is Beli's SkyLyrics in the expected version. If the download fails, you still get the "new version available" message, and on Windows the same happens when the folder your game lives in has accented letters in its path (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#the-mod-says-a-new-version-is-out-but-wont-install-it)). Versions before 0.7.0 can't update themselves: download the new jar from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases) and replace the old one in your `mods` folder.
 
 ## Does it work with shaders, Sodium and Iris?
 
@@ -74,7 +78,7 @@ Yes. Shader packs can make the sky darker and paint clouds over things, so the m
 
 With the **Arc** and **Lines** layouts, the lyrics stay visible underground at first: **Show underground too** on the **Display** tab is on, and it works while **Draw on top** (Look tab) is on **Auto**. If you can't see them in a cave, check these:
 
-- **Show underground too** is on. It only shows up when **Draw on top** is **Auto** and **Hide in caves** is off.
+- **Show underground too** is on. It only shows up when the layout is Arc or Lines, **Draw on top** is **Auto** and **Hide in caves** is off.
 - **Hide in caves** (Display tab) is off. It hides the lyrics on purpose when there is no open sky above you, and it wins over Show underground too.
 - **Draw on top** is not on **Never**, which keeps the lyrics inside the world, where rock can hide them.
 
@@ -90,7 +94,7 @@ Press **J** in game. If you have [Mod Menu](https://modrinth.com/mod/modmenu), y
 
 ## Can I use the settings with the keyboard?
 
-Yes, you don't need the mouse. **Tab** or **Up** and **Down** move through the settings, **Left** and **Right** change a value, **Enter** presses a button, and **Page Up** and **Page Down** scroll. **Ctrl+Tab** goes to the next tab and **Ctrl+F** starts a search. The Narrator reads out what you are on: the name, the kind of control, its value and where it sits among the choices.
+Yes, you don't need the mouse. **Tab** or **Up** and **Down** move from row to row, **Left** and **Right** change a choice or a slider, **Enter** or **Space** switches the row or presses its button, and **Page Up** and **Page Down** scroll. **Ctrl+Tab** goes to the next tab and **Ctrl+F** (**Cmd+F** on a Mac) starts a search. With the Narrator on, each row reads out its name, the kind of control, its value and its place in the list (like "Layout, choice, Arc, 1 of 3"), and the song library reads out the song you are on, the section, the buttons and the search box. In the song library, Space plays the chosen song, and the sign-in and Try again buttons work from the keyboard too.
 
 ## Can I change the keys?
 
@@ -105,6 +109,10 @@ Yes. In Minecraft go to **Options → Controls → Key Binds** and scroll to **B
 - Lyrics are late (this song)
 - Lyrics are early (this song)
 
+## What if a song's lyrics have no timing, or come with a translation?
+
+Lyrics without timing are spread evenly over the song, as long as **Untimed lyrics** on the **Music** tab is on (it is at first). In the World layout they come out word by word along each line, and the last line leaves when the song is over. Some lyrics files give a line and its translation (or its romanization) the same time. They show together as "line / translation", in every layout.
+
 ## The lyrics come too early or too late. Can I fix it?
 
 Yes, and the fix is remembered for that song. See "Lyrics come early or late" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
@@ -113,7 +121,7 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 - **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (with Lines: Words, Fade, Rise, Pop, Type or Slide), how World words arrive (Pop, Drop, Zoom, Fade or Type, letter by letter) and leave (Shrink, Float, Blow, Sink or Dissolve), the pulse when a new line starts, capital letters, and **View lock** (under **Position**).
 - **Look tab:** your own colour (a soft periwinkle at first), the album cover's colour, **Time of day**, **Each line** (a new neon colour with every line) or rainbow; **Two-tone**, where each line fades into a second colour you pick; the letter style (Bold, Smooth, Round, Handwritten or Minecraft); **Depth** for a solid 3D edge on the letters; glow (a deeper shade of the letters' colour, or one you pick), shadow and opacity; **Soft edges** for World words with only a glow and no dark outline; the night sky (Off, Aurora, Nebula, Synthwave, Eclipse, Aurora + nebula, Moonlight, Galaxy, Comet or Random) with its strength; and **Constellations**, star patterns joined by thin lines.
-- **Display tab:** hide the lyrics with F1, in menus or when the music is paused, hide them in the Nether, the End, underwater or in caves, keep them visible underground (**Show underground too**), turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, **Lyric line** shows the line being sung under the record, and **Card lines** (with Lyric line on) can show the line before and the line after it too.
+- **Display tab:** under **Hide lyrics**, hide the lyrics with F1, in menus or when the music is paused, hide them in the Nether, the End, underwater or in caves, keep them visible underground (**Show underground too**), turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, **Lyric line** shows the line being sung under the record, and **Card lines** (with Lyric line on) can show the line before and the line after it too.
 
 ## Is the mod in Hebrew?
 
