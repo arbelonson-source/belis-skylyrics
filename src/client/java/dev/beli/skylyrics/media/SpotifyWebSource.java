@@ -89,6 +89,11 @@ public final class SpotifyWebSource implements MediaSource {
 	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
 	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
 
+	/** The tests' stand-in for the network. */
+	void useHttp(HttpClient fake) {
+		httpClient = fake;
+	}
+
 	private HttpClient http() {
 		HttpClient c = httpClient;
 		if (c == null) {
@@ -624,8 +629,11 @@ public final class SpotifyWebSource implements MediaSource {
 		final int status;
 
 		BadStatus(int status) {
-			// The usual 403: a development-mode app only answers the accounts listed under User Management
-			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management") : Tr.t("Spotify answered with error %s", status));
+			// The usual 403: a development-mode app only answers the accounts listed under User Management.
+			// A 401 here means a token we had just refreshed was refused too, so only signing in again helps.
+			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management")
+					: status == 401 ? Tr.t("Spotify signed you out, sign in again")
+					: Tr.t("Spotify answered with error %s", status));
 			this.status = status;
 		}
 	}
@@ -645,6 +653,10 @@ public final class SpotifyWebSource implements MediaSource {
 		} catch (IOException e) {
 			failures++;
 			failDelayNs = SpotifyPace.failureDelayNs(e instanceof BadStatus b ? b.status : 0, failures);
+			if (e instanceof BadStatus b && b.status == 401) {
+				// The refresh that came before this 401 asked for an immediate re-poll; the backoff must rule instead
+				pollNow = false;
+			}
 			throw e;
 		}
 	}

@@ -531,31 +531,34 @@ public final class LibraryScreen extends Screen {
 			return;
 		}
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		int top = viewY + GRID_PAD - Math.round(shelf.scroll);
-		for (int i = 0; i < shelf.items.size(); i++) {
-			int x = viewX + (i % cols) * (cellW + LibraryGrid.GAP);
-			int y = top + (i / cols) * (cellH + LibraryGrid.GAP);
-			if (y + cellH < viewY || y > viewY + viewH) {
-				continue;
+		try {
+			int top = viewY + GRID_PAD - Math.round(shelf.scroll);
+			for (int i = 0; i < shelf.items.size(); i++) {
+				int x = viewX + (i % cols) * (cellW + LibraryGrid.GAP);
+				int y = top + (i / cols) * (cellH + LibraryGrid.GAP);
+				if (y + cellH < viewY || y > viewY + viewH) {
+					continue;
+				}
+				boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, cellW, cellH);
+				float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
+				shelf.lift.set(i, lift);
+				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+				if (t <= 0) {
+					continue;
+				}
+				Object entry = shelf.items.get(i);
+				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+				renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == selected, current, moving);
 			}
-			boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, cellW, cellH);
-			float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
-			shelf.lift.set(i, lift);
-			float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
-			if (t <= 0) {
-				continue;
+			if (shelf.pending != null) {
+				int y = top + contentHeight(shelf) - 12;
+				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
+			} else if (!shelf.error.isEmpty()) {
+				g.drawCenteredString(font, Ui.visual(shelf.error), px + pw / 2, top + contentHeight(shelf) + 4, Ui.MUTED);
 			}
-			Object entry = shelf.items.get(i);
-			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-			renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == selected, current, moving);
+		} finally {
+			g.disableScissor();
 		}
-		if (shelf.pending != null) {
-			int y = top + contentHeight(shelf) - 12;
-			g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
-		} else if (!shelf.error.isEmpty()) {
-			g.drawCenteredString(font, Ui.visual(shelf.error), px + pw / 2, top + contentHeight(shelf) + 4, Ui.MUTED);
-		}
-		g.disableScissor();
 
 		float max = maxScroll(shelf);
 		if (max > 0) {
@@ -576,38 +579,41 @@ public final class LibraryScreen extends Screen {
 		int left = Math.round(shelf.scroll);
 		int width = LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP);
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		for (int r = 0; r < shelfRows; r++) {
-			int fy = top + r * rowH + SHELF_COVER + 4;
-			int end = Math.min(viewX + viewW, viewX - left + width);
-			if (end > viewX) {
-				g.fill(viewX, fy, end, fy + 1, Ui.DIVIDER);
-				g.fill(viewX + 2, fy + 1, end - 2, fy + 3, 0x18000000);
-				g.fill(viewX + 6, fy + 3, end - 6, fy + 4, 0x0C000000);
+		try {
+			for (int r = 0; r < shelfRows; r++) {
+				int fy = top + r * rowH + SHELF_COVER + 4;
+				int end = Math.min(viewX + viewW, viewX - left + width);
+				if (end > viewX) {
+					g.fill(viewX, fy, end, fy + 1, Ui.DIVIDER);
+					g.fill(viewX + 2, fy + 1, end - 2, fy + 3, 0x18000000);
+					g.fill(viewX + 6, fy + 3, end - 6, fy + 4, 0x0C000000);
+				}
 			}
-		}
-		for (int i = 0; i < shelf.items.size(); i++) {
-			int x = viewX + LibraryViews.shelfCol(i, shelfRows) * shelfStride - left;
-			int y = top + LibraryViews.shelfRow(i, shelfRows) * rowH;
-			if (x + SHELF_COVER < viewX - 4 || x > viewX + viewW + 4) {
-				continue;
+			for (int i = 0; i < shelf.items.size(); i++) {
+				int x = viewX + LibraryViews.shelfCol(i, shelfRows) * shelfStride - left;
+				int y = top + LibraryViews.shelfRow(i, shelfRows) * rowH;
+				if (x + SHELF_COVER < viewX - 4 || x > viewX + viewW + 4) {
+					continue;
+				}
+				boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, SHELF_COVER, SHELF_COVER);
+				float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
+				shelf.lift.set(i, lift);
+				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+				if (t <= 0) {
+					continue;
+				}
+				Object entry = shelf.items.get(i);
+				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+				renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == selected,
+						current, moving);
 			}
-			boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, SHELF_COVER, SHELF_COVER);
-			float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
-			shelf.lift.set(i, lift);
-			float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
-			if (t <= 0) {
-				continue;
+			if (shelf.pending != null) {
+				g.drawString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), viewX - left + width + 8,
+						top + SHELF_COVER / 2, Ui.DIM, false);
 			}
-			Object entry = shelf.items.get(i);
-			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-			renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == selected,
-					current, moving);
+		} finally {
+			g.disableScissor();
 		}
-		if (shelf.pending != null) {
-			g.drawString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), viewX - left + width + 8,
-					top + SHELF_COVER / 2, Ui.DIM, false);
-		}
-		g.disableScissor();
 		if (selected >= 0 && selected < shelf.items.size()) {
 			String[] text = labels(shelf.items.get(selected));
 			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[0], viewW - 20)), px + pw / 2, viewY + viewH - TEXT_H + 2, Ui.TEXT);
@@ -642,37 +648,43 @@ public final class LibraryScreen extends Screen {
 		int size = carSize();
 		int y = carTop(size);
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		boolean first = true;
-		for (int i : carouselOrder(shelf)) {
-			float o = i - carPos;
-			float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
-			if (t <= 0) {
-				continue;
+		try {
+			boolean first = true;
+			for (int i : carouselOrder(shelf)) {
+				float o = i - carPos;
+				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+				if (t <= 0) {
+					continue;
+				}
+				// Each card gets its own layer, or the letters of cards further back end up on top of nearer ones
+				if (!first) {
+					g.nextStratum();
+				}
+				first = false;
+				int x = Math.round(px + pw / 2f + LibraryViews.spread(o, size) - size / 2f);
+				float squash = LibraryViews.squash(o), scale = LibraryViews.scale(o) * LibraryGrid.popIn(t);
+				// A solid panel-coloured backing so a dimmed card fades into the panel, not into the cards behind it
+				g.pose().pushMatrix();
+				try {
+					g.pose().translate(x + size / 2f, y + size / 2f);
+					g.pose().scale(scale * squash, scale);
+					g.pose().translate(-(x + size / 2f), -(y + size / 2f));
+					Ui.rect(g, x, y, size, size, 5, Ui.alpha(Ui.PANEL, t));
+				} finally {
+					g.pose().popMatrix();
+				}
+				boolean middle = i == selected;
+				Object entry = shelf.items.get(i);
+				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+				renderCard(g, entry, x, y, size, squash, false, scale, LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
 			}
-			// Each card gets its own layer, or the letters of cards further back end up on top of nearer ones
-			if (!first) {
-				g.nextStratum();
+			if (shelf.pending != null) {
+				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2,
+						viewY + viewH - 10, Ui.DIM);
 			}
-			first = false;
-			int x = Math.round(px + pw / 2f + LibraryViews.spread(o, size) - size / 2f);
-			float squash = LibraryViews.squash(o), scale = LibraryViews.scale(o) * LibraryGrid.popIn(t);
-			// A solid panel-coloured backing so a dimmed card fades into the panel, not into the cards behind it
-			g.pose().pushMatrix();
-			g.pose().translate(x + size / 2f, y + size / 2f);
-			g.pose().scale(scale * squash, scale);
-			g.pose().translate(-(x + size / 2f), -(y + size / 2f));
-			Ui.rect(g, x, y, size, size, 5, Ui.alpha(Ui.PANEL, t));
-			g.pose().popMatrix();
-			boolean middle = i == selected;
-			Object entry = shelf.items.get(i);
-			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-			renderCard(g, entry, x, y, size, squash, false, scale, LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
+		} finally {
+			g.disableScissor();
 		}
-		if (shelf.pending != null) {
-			g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2,
-					viewY + viewH - 10, Ui.DIM);
-		}
-		g.disableScissor();
 		if (selected >= 0 && selected < shelf.items.size()) {
 			String[] text = labels(shelf.items.get(selected));
 			int ty = y + size + 6;
@@ -713,7 +725,7 @@ public final class LibraryScreen extends Screen {
 		return out;
 	}
 
-	static final int RECENT = 6;
+	static final int RECENT = SkyLyricsConfig.MAX_RECENT_SEARCHES;
 
 	/** Where each recent search chip sits: x, y, width. */
 	private List<int[]> recentChips() {
@@ -793,47 +805,53 @@ public final class LibraryScreen extends Screen {
 		int glow = cover == null ? rgb : cover.color();
 
 		g.pose().pushMatrix();
-		g.pose().translate(x + size / 2f, y + size / 2f);
-		g.pose().scale(scale * xSquash, scale);
-		g.pose().translate(-(x + size / 2f), -(y + size / 2f));
-		if (lift > 0.01f) {
-			Ui.rect(g, x - 2, y - 2, size + 4, size + 4, 7, Ui.alpha(0xFF000000 | glow, 0.35f * lift * alpha));
-		}
-		if (shown < 1) {
-			// Coloured stand-in until the real cover arrives, then the cover fades in over it
-			Ui.rect(g, x, y, size, size, 5, Ui.alpha(0xFF000000 | rgb, alpha));
-			Ui.rect(g, x, y + size / 2, size, size / 2, 5, Ui.alpha(0x30000000, alpha));
-			String initial = dev.beli.skylyrics.util.TextCut.first(title).toUpperCase(Locale.ROOT);
-			if (initial.isEmpty()) {
-				initial = "♪";
+		try {
+			g.pose().translate(x + size / 2f, y + size / 2f);
+			g.pose().scale(scale * xSquash, scale);
+			g.pose().translate(-(x + size / 2f), -(y + size / 2f));
+			if (lift > 0.01f) {
+				Ui.rect(g, x - 2, y - 2, size + 4, size + 4, 7, Ui.alpha(0xFF000000 | glow, 0.35f * lift * alpha));
 			}
-			g.pose().pushMatrix();
-			g.pose().translate(x + size / 2f, y + size / 2f - 7);
-			g.pose().scale(2, 2);
-			g.drawCenteredString(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
+			if (shown < 1) {
+				// Coloured stand-in until the real cover arrives, then the cover fades in over it
+				Ui.rect(g, x, y, size, size, 5, Ui.alpha(0xFF000000 | rgb, alpha));
+				Ui.rect(g, x, y + size / 2, size, size / 2, 5, Ui.alpha(0x30000000, alpha));
+				String initial = dev.beli.skylyrics.util.TextCut.first(title).toUpperCase(Locale.ROOT);
+				if (initial.isEmpty()) {
+					initial = "♪";
+				}
+				g.pose().pushMatrix();
+				try {
+					g.pose().translate(x + size / 2f, y + size / 2f - 7);
+					g.pose().scale(2, 2);
+					g.drawCenteredString(font, initial, 0, 0, Ui.alpha(0xFFFFFFFF, 0.85f * alpha));
+				} finally {
+					g.pose().popMatrix();
+				}
+			}
+			if (cover != null) {
+				int s = CoverCache.SIZE;
+				g.blit(RenderPipelines.GUI_TEXTURED, cover.id(), x, y, 0, 0, size, size, s, s, s, s, ARGB.white(alpha * shown));
+			}
+			if (current) {
+				// Little bars in the corner of the song playing now, still while it's paused
+				int bw = 16, bh = 12, bx = x + size - bw - 3, by = y + size - bh - 3;
+				Ui.rect(g, bx, by, bw, bh, 4, Ui.alpha(Ui.ACCENT, 0.95f * alpha));
+				for (int b = 0; b < 3; b++) {
+					int barH = Math.max(2, Math.round(7 * (moving ? LibraryGrid.bar(b, clock) : 0.35f)));
+					Ui.rect(g, bx + 3 + b * 4, by + bh - 2 - barH, 2, barH, 0, Ui.alpha(0xFFFFFFFF, alpha));
+				}
+			}
+			if (chosen) {
+				Ui.outline(g, x - 1, y - 1, size + 2, size + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
+			}
+			if (withLabels) {
+				g.drawString(font, Ui.visual(Ui.clip(font, title, size)), x, y + size + 3, Ui.alpha(current ? Ui.ACCENT : Ui.TEXT, alpha), false);
+				g.drawString(font, Ui.visual(Ui.clip(font, under, size)), x, y + size + 12, Ui.alpha(Ui.DIM, alpha), false);
+			}
+		} finally {
 			g.pose().popMatrix();
 		}
-		if (cover != null) {
-			int s = CoverCache.SIZE;
-			g.blit(RenderPipelines.GUI_TEXTURED, cover.id(), x, y, 0, 0, size, size, s, s, s, s, ARGB.white(alpha * shown));
-		}
-		if (current) {
-			// Little bars in the corner of the song playing now, still while it's paused
-			int bw = 16, bh = 12, bx = x + size - bw - 3, by = y + size - bh - 3;
-			Ui.rect(g, bx, by, bw, bh, 4, Ui.alpha(Ui.ACCENT, 0.95f * alpha));
-			for (int b = 0; b < 3; b++) {
-				int barH = Math.max(2, Math.round(7 * (moving ? LibraryGrid.bar(b, clock) : 0.35f)));
-				Ui.rect(g, bx + 3 + b * 4, by + bh - 2 - barH, 2, barH, 0, Ui.alpha(0xFFFFFFFF, alpha));
-			}
-		}
-		if (chosen) {
-			Ui.outline(g, x - 1, y - 1, size + 2, size + 2, 6, Ui.alpha(Ui.ACCENT, alpha));
-		}
-		if (withLabels) {
-			g.drawString(font, Ui.visual(Ui.clip(font, title, size)), x, y + size + 3, Ui.alpha(current ? Ui.ACCENT : Ui.TEXT, alpha), false);
-			g.drawString(font, Ui.visual(Ui.clip(font, under, size)), x, y + size + 12, Ui.alpha(Ui.DIM, alpha), false);
-		}
-		g.pose().popMatrix();
 	}
 
 	private String signInText() {

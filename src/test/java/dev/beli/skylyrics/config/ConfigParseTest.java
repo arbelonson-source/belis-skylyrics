@@ -74,4 +74,33 @@ class ConfigParseTest {
 		assertEquals(0.4f, p.config().glow, 1e-6f);
 		assertFalse(p.unreadable());
 	}
+
+	@Test
+	void recentSearchesAreCleanedOnLoad() {
+		String json = "{\"recentSearches\": [\"a\", null, \"  \", \"  b  \", \"A\", \"c\", \"d\", \"e\", \"f\", \"g\"]}";
+		assertEquals(java.util.List.of("a", "b", "c", "d", "e", "f"), SkyLyricsConfig.parse(json).config().recentSearches);
+		String longOne = "x".repeat(99) + "\uD83C\uDFB5" + "tail";
+		String capped = SkyLyricsConfig.parse("{\"recentSearches\": [\"" + longOne + "\"]}").config().recentSearches.get(0);
+		assertEquals("x".repeat(99), capped);
+		StringBuilder many = new StringBuilder("{\"recentSearches\": [");
+		for (int i = 0; i < 1000; i++) many.append(i == 0 ? "" : ",").append('"').append(i).append('"');
+		assertEquals(SkyLyricsConfig.MAX_RECENT_SEARCHES, SkyLyricsConfig.parse(many.append("]}").toString()).config().recentSearches.size());
+	}
+
+	@Test
+	void playerAndClientIdAreTidied() {
+		SkyLyricsConfig c = SkyLyricsConfig.parse("{\"preferredPlayer\": \" Spotify-Web \", \"spotifyClientId\": \"  abcd \"}").config();
+		assertEquals("spotify-web", c.preferredPlayer);
+		assertEquals("abcd", c.spotifyClientId);
+	}
+
+	@Test
+	void hugeSongOffsetMapKeepsTheLastOnes() {
+		StringBuilder sb = new StringBuilder("{\"songOffsets\": {");
+		for (int i = 0; i < 700; i++) sb.append(i == 0 ? "" : ",").append("\"k").append(i).append("\": 100");
+		var map = SkyLyricsConfig.parse(sb.append("}}").toString()).config().songOffsets;
+		assertEquals(500, map.size());
+		assertFalse(map.containsKey("k199"));
+		assertTrue(map.containsKey("k200") && map.containsKey("k699"));
+	}
 }

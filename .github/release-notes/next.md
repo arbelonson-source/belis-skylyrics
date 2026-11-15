@@ -3,6 +3,10 @@
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title, especially one with a bracket left open, no longer makes the lyrics lookup hang.
 - **Quick skips.** After a quick skip, a late lyrics retry for the old song can no longer get in the way of the new song's lyrics.
+- **Rare lyric files.** Lyrics with an hour in their time stamps, extra digits after the seconds, or wide brackets no longer lose those lines.
+- **Instrumental lines.** A line that is only "(Instrumental)" or "[music]" now counts as a pause instead of being shown as words.
+- **Effects after loading.** With Effects on Auto, reloading resources or switching shaders no longer leaves the lyrics in light mode for up to two minutes, and a single stutter no longer counts as a slow game.
+- **NetEase lyrics.** A song whose lyrics mention "纯音乐" (Chinese for "instrumental") no longer loses them; only NetEase's own "instrumental" placeholder counts.
 - **Lyrics on time on a Mac.** On a Mac, lyrics no longer run a little late.
 - **Steady timing on Windows.** On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
 - **World words stay put.** On Linux, a music player that answers slowly, or Spotify right after a pause or resume, no longer makes the World words vanish for a moment. Moving the **Timing** slider no longer makes them blink.
@@ -25,10 +29,12 @@
 - **Clicks on 26.3.** On Minecraft 26.3, a click outside the game window no longer counts as a click inside it.
 - **Spotify asks less.** With Spotify signed in, when the lyrics are off and none of the mod's screens is open, the mod asks Spotify for the song only every 15 seconds. When Spotify says it is busy or keeps failing, the mod waits longer before asking again.
 - **Spotify 403.** A Spotify app that doesn't know your account now tells you to add it under User Management on the Spotify dashboard, instead of "error 403".
-- **No crash from a drawing error.** A rare error in the mod's drawing no longer crashes the game. Only the part that failed (lyrics, title-screen lyrics, sky, bar, card or crosshair) pauses for 5 seconds, and the error goes to the log.
+- **Spotify signed out.** If Spotify keeps refusing your sign-in, the mod asks you to sign in again, instead of showing "error 401", and waits longer between tries.
+- **No crash from a drawing error.** A rare error in the mod's drawing no longer crashes the game. Only the part that failed (lyrics, title-screen lyrics, sky, bar, card, hat or crosshair) pauses for 5 seconds, and the error goes to the log.
 - **Font mods.** Fixes a clash with other font mods on Minecraft 1.21.1 and 1.21.4, and a small memory leak when a letter can't be loaded.
 - **Intro tour.** The intro tour fits small windows and big GUI scales. It no longer opens over a screen that replaced the title screen, and its last page says the keys work in a world.
 - **Reset all.** **Reset all** keeps your intro tour done, your update choice, your Spotify app id, your per-song timings and your recent searches.
+- **Hand-edited settings file.** A blank or very long recent search in the settings file no longer breaks the song library, and a hand-typed player name like "Spotify-Web" now picks that player.
 - **Settings scroll.** **Open Music tab** in the song library now takes you down to the Spotify card every time. Settings tabs also keep their place after you visit a shorter tab.
 
 ### Faster

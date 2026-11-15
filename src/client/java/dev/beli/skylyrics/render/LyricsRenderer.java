@@ -137,6 +137,9 @@ public final class LyricsRenderer {
 
 	private long lastFrame;
 	private final FrameBudget budget = new FrameBudget();
+	private boolean wasReloading;
+	/** A gap this long between lyrics frames means they weren't drawn for a while, not that the game is slow. */
+	private static final long GAP_FORGIVE_NS = 1_000_000_000L;
 	/** Fewer glow copies this frame, because the settings ask for it or the game is slow. */
 	private boolean light;
 	private float visibility;
@@ -429,11 +432,28 @@ public final class LyricsRenderer {
 
 	/** Time since the last frame, in seconds, and whether the effects have to be light this frame. */
 	private float step(Minecraft mc, SkyLyricsConfig cfg, long now) {
-		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
+		long gap = lastFrame == 0 ? 0 : now - lastFrame;
+		float dt = Math.min(0.1f, gap / 1e9f);
 		lastFrame = now;
+		// A resource reload (its loading screen is up), a shader switch or a second without lyrics frames (a reload this
+		// path doesn't see, world loading) stalls the game: don't count it as a slow game
+		boolean reloading = loadingScreenUp(mc);
+		if (reloading || wasReloading || gap > GAP_FORGIVE_NS || ScreenLayer.takeShaderFlip()) {
+			budget.forgive();
+		}
+		wasReloading = reloading;
 		budget.update(dt, mc.getFramerateLimitTracker().getFramerateLimit());
 		light = cfg.effects == SkyLyricsConfig.Effects.LIGHT || cfg.effects == SkyLyricsConfig.Effects.AUTO && budget.light();
 		return dt;
+	}
+
+	/** Whether the resource loading screen is up. */
+	private static boolean loadingScreenUp(Minecraft mc) {
+		//? if >=26.2 {
+		/*return mc.gui.overlay() != null;
+		*///?} else {
+		return mc.getOverlay() != null;
+		//?}
 	}
 
 	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
@@ -470,7 +490,7 @@ public final class LyricsRenderer {
 	/** Lines are wrapped once and kept; this drops them when the width or the font changes. */
 	private void wrapAt(Minecraft mc, SkyLyricsConfig cfg, float wrapWidth) {
 		Style wrapStyle = LyricsFont.sky(cfg);
-		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪");
+		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪漢א ع");
 		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
 			wrapCacheProbe = probe;
 			wrapCache.clear();

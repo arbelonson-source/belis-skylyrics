@@ -2,6 +2,7 @@ package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,6 +12,23 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.Authenticator;
+import java.net.CookieHandler;
+import java.net.ProxySelector;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSession;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -300,5 +318,77 @@ class SpotifyWebSourceTest {
 		Snapshot paused = guard.apply(snap(61_000, true, 100), snap(61_000, false, 101));
 		// 4 s on (the idle poll), still paused: the user dragged the bar back a second
 		assertEquals(60_000, guard.apply(paused, snap(60_000, false, 105)).positionMs());
+	}
+
+	/** A network that answers the token call with a good token and every Web API call with the same status. */
+	private static final class FakeHttp extends HttpClient {
+		final int apiStatus;
+		final List<String> calls = new ArrayList<>();
+
+		FakeHttp(int apiStatus) {
+			this.apiStatus = apiStatus;
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) {
+			boolean token = request.uri().getHost().startsWith("accounts");
+			calls.add(token ? "token" : "api");
+			int status = token ? 200 : apiStatus;
+			String body = token ? "{\"access_token\":\"fresh\",\"expires_in\":3600}" : "";
+			return (HttpResponse<T>) new HttpResponse<String>() {
+				public int statusCode() { return status; }
+				public HttpRequest request() { return request; }
+				public Optional<HttpResponse<String>> previousResponse() { return Optional.empty(); }
+				public HttpHeaders headers() { return HttpHeaders.of(Map.of(), (a, b) -> true); }
+				public String body() { return body; }
+				public Optional<SSLSession> sslSession() { return Optional.empty(); }
+				public URI uri() { return request.uri(); }
+				public Version version() { return Version.HTTP_1_1; }
+			};
+		}
+
+		@Override public Optional<CookieHandler> cookieHandler() { return Optional.empty(); }
+		@Override public Optional<Duration> connectTimeout() { return Optional.empty(); }
+		@Override public Redirect followRedirects() { return Redirect.NEVER; }
+		@Override public Optional<ProxySelector> proxy() { return Optional.empty(); }
+		@Override public SSLContext sslContext() { throw new UnsupportedOperationException(); }
+		@Override public SSLParameters sslParameters() { return new SSLParameters(); }
+		@Override public Optional<Authenticator> authenticator() { return Optional.empty(); }
+		@Override public Version version() { return Version.HTTP_1_1; }
+		@Override public Optional<Executor> executor() { return Optional.empty(); }
+
+		@Override
+		public <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request, HttpResponse.BodyHandler<T> handler) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public <T> CompletableFuture<HttpResponse<T>> sendAsync(HttpRequest request, HttpResponse.BodyHandler<T> handler,
+				HttpResponse.PushPromiseHandler<T> push) {
+			throw new UnsupportedOperationException();
+		}
+	}
+
+	private static SpotifyWebSource signedIn(Path dir, FakeHttp http) throws IOException {
+		Path login = dir.resolve("login.json");
+		Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"r\",\"scopes\":\"\"}");
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
+		source.useHttp(http);
+		return source;
+	}
+
+	@Test
+	void aTokenSpotifyKeepsRefusingIsRefreshedOnceAndThenBacksOff(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(401);
+		SpotifyWebSource source = signedIn(dir, http);
+		IOException e = assertThrows(IOException.class, source::poll);
+		// One refresh for the first ask and one more after its 401, then it gives up
+		assertEquals(List.of("token", "api", "token", "api"), http.calls);
+		assertEquals("Spotify signed you out, sign in again", e.getMessage());
+		// And does not ask (or refresh) again at the next poll or the one after
+		long now = System.nanoTime();
+		assertFalse(source.pollDue(now + 2 * SEC, true));
+		assertTrue(source.pollDue(now + 5 * SEC, true));
 	}
 }
