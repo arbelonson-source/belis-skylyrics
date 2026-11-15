@@ -1718,7 +1718,9 @@ final class WorldWords {
 		float dx = Mth.wrapDegrees(b[0] - a[0]), dy = b[1] - a[1];
 		float w = a[2] + b[2] - Math.abs(dx), h = a[3] + b[3] - Math.abs(dy);
 		if (w <= 0 || h <= 0) {
-			return new float[] {0, 0};
+			// Apart already: the answer for most pairs, so no array per pair. Callers read it and only write to a result
+			// that moves something (see separate), so sharing the one zero is safe.
+			return NO_PUSH;
 		}
 		// Words sit in rows, so going up or down past a short word is often the smaller step than going round it
 		if (h <= w) {
@@ -1726,6 +1728,9 @@ final class WorldWords {
 		}
 		return new float[] {(dx < 0 ? -1 : 1) * (w + SLIDE_ROOM), 0};
 	}
+
+	/** The shared answer when two words are apart. Read-only: never write into it. */
+	private static final float[] NO_PUSH = {0, 0};
 
 	/** Spare degrees left between two words a slide has parted, and how quickly (per second) a word glides there. */
 	static final float SLIDE_ROOM = 0.6f, SLIDE_SPEED = 6f;

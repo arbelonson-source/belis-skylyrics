@@ -156,6 +156,12 @@ public final class LyricsRenderer {
 	private final Map<String, List<String>> wrapCache = new HashMap<>();
 	/** Where each character of a row starts, in display order (one extra entry: the row's width). */
 	private final Map<String, float[]> offsetCache = new HashMap<>();
+	/** The same for rows laid out right to left; a map of its own so no key string is built per frame. */
+	private final Map<String, float[]> offsetCacheRtl = new HashMap<>();
+	/** What depends only on a line's text and its rows (where rows start, word counts, direction); see {@link LineInfo}. */
+	private final Map<String, LineInfo> infoCache = new HashMap<>();
+	/** Scratch for {@code Draw.line}, reused so a row doesn't allocate its per-character arrays every frame. Render thread only. */
+	private float[] scratchReveal = new float[64], scratchFlare = new float[64], scratchSpread = new float[65];
 	private float wrapCacheWidth;
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
@@ -169,6 +175,7 @@ public final class LyricsRenderer {
 	public void onLeaveWorld() {
 		wordsLevel = null;
 		announced = null;
+		SkyEffects.forgetStars();
 		WorldWords.forgetPlayers();
 	}
 
@@ -188,7 +195,7 @@ public final class LyricsRenderer {
 	/** The song whose title World words last showed, to show the next one's when it changes. */
 	private @Nullable Track announced;
 	/** Arc layouts of the lines on show, keyed by line number and text. */
-	private final Map<String, ArcText> arcCache = new HashMap<>();
+	private final Map<String, List<ArcSlot>> arcCache = new HashMap<>();
 	/** Where in the sky each arc line was put, by line number. */
 	private final Map<Integer, ArcAnchor> arcAnchors = new HashMap<>();
 
@@ -213,8 +220,11 @@ public final class LyricsRenderer {
 		long lostSince = -1;
 	}
 
+	/** One arc layout of a text, for the line number it was made for. */
+	private record ArcSlot(int index, ArcText arc) {}
+
 	/** A line cut into words and placed for the arc layout. */
-	private record ArcText(String[] words, float[] widths, int[] firstChar, int total, List<ArcLayout.Group> groups) {}
+	private record ArcText(String[] words, float[] widths, int[] firstChar, int total, List<ArcLayout.Group> groups, boolean rtl) {}
 
 	public LyricsRenderer(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -406,6 +416,8 @@ public final class LyricsRenderer {
 				clock.reset();
 				wrapCache.clear();
 				offsetCache.clear();
+				offsetCacheRtl.clear();
+				infoCache.clear();
 				arcCache.clear();
 				arcAnchors.clear();
 				worldWords.newLyrics();
@@ -425,6 +437,8 @@ public final class LyricsRenderer {
 			wrapCacheProbe = probe;
 			wrapCache.clear();
 			offsetCache.clear();
+			offsetCacheRtl.clear();
+			infoCache.clear();
 			arcCache.clear();
 			wrapCacheWidth = wrapWidth;
 			wrapCacheStyle = wrapStyle;
@@ -982,13 +996,17 @@ public final class LyricsRenderer {
 
 		float[] offsets(String row, Display d, boolean rtl) {
 			// The same row is laid out differently by line direction (and apart from the default Display.of(row)), so it is part of the key
-			return offsetCache.computeIfAbsent((rtl ? "\u202B" : "\u202A") + row, r -> {
+			return (rtl ? offsetCacheRtl : offsetCache).computeIfAbsent(row, r -> {
 				float[] at = new float[d.cps.length + 1];
 				for (int v = 1; v <= d.cps.length; v++) {
 					at[v] = LyricsFont.width(font, base, new String(d.cps, 0, v));
 				}
 				return at;
 			});
+		}
+
+		LineInfo info(String text, List<String> rows) {
+			return infoCache.computeIfAbsent(text, t -> LineInfo.of(t, rows));
 		}
 
 		/** How much bigger each character is drawn (1 = normal): the word being sung swells, then settles. */
@@ -1037,7 +1055,7 @@ public final class LyricsRenderer {
 			float space = LyricsFont.width(font, base, " ");
 			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause, split.tight()), space,
 					ArcLayout.seed(index, text), rtl, split.tight());
-			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups);
+			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups, rtl);
 		}
 
 		/**
@@ -1052,7 +1070,19 @@ public final class LyricsRenderer {
 			*///?} else {
 			String text = cfg.uppercase ? WorldWords.capitals(line.text()) : line.text();
 			//?}
-			ArcText arc = arcCache.computeIfAbsent(index + "\n" + text, k -> arcText(index, text));
+			// Looked up by text, then by line number: no key string is built per frame
+			List<ArcSlot> slots = arcCache.computeIfAbsent(text, k -> new ArrayList<>(1));
+			ArcText arc = null;
+			for (int i = 0; i < slots.size(); i++) {
+				if (slots.get(i).index() == index) {
+					arc = slots.get(i).arc();
+					break;
+				}
+			}
+			if (arc == null) {
+				arc = arcText(index, text);
+				slots.add(new ArcSlot(index, arc));
+			}
 			boolean leaving = shot.leave() >= 0;
 			float leave = leaving ? shot.leave() : 0;
 			float alpha = visibility * cfg.opacity * (1 - leave) * shot.arrive();
@@ -1066,7 +1096,7 @@ public final class LyricsRenderer {
 			float since = (now - clock.changedAt()) / 1e9f;
 			int dark = depthDark(color, daylight), light = depthLight(color);
 			int words = arc.words().length;
-			boolean rtl = WorldWords.rightToLeft(text);
+			boolean rtl = arc.rtl();
 			// The one word after those already sung, shown faintly ahead of its time
 			int nextWord = -1;
 			if (!leaving && timed) {
@@ -1135,9 +1165,10 @@ public final class LyricsRenderer {
 				int glowByte = Math.round(cfg.glow * alpha * 1.28f / copies * 255);
 				if (glowByte >= 2) {
 					int halo = mix(glowOf(face), 0x000000, 0.75f * daylight);
+					FormattedCharSequence haloSeq = colored(d, halo);
 					for (int k = 0; k < copies; k++) {
 						float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
-						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
+						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, haloSeq, false, glowByte << 24 | halo, 3);
 					}
 				}
 			}
@@ -1183,13 +1214,9 @@ public final class LyricsRenderer {
 			if (rows.isEmpty()) {
 				return; // only a line of nothing but spaces wraps to no rows
 			}
-			int[] starts = rowStarts(text, rows);
-			int last = rows.size() - 1;
-			// Counted through the last row, so the break spaces are part of what has to be sung
-			int total = starts[last] + rows.get(last).codePointCount(0, rows.get(last).length()), words = 0;
-			for (String row : rows) {
-				words += wordCount(row);
-			}
+			LineInfo info = info(text, rows);
+			int[] starts = info.starts;
+			int total = info.total, words = info.words;
 			float sungChars = sung * total;
 			float stagger = Math.min(WORD_STAGGER, 0.7f / Math.max(1, words));
 
@@ -1212,7 +1239,7 @@ public final class LyricsRenderer {
 
 			canvas.push(0, y, scale, 0);
 			float top = -rows.size() * ROW_H / 2;
-			boolean rtl = WorldWords.rightToLeft(text);
+			boolean rtl = info.rtl;
 			int wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
 				String row = rows.get(r);
@@ -1220,8 +1247,12 @@ public final class LyricsRenderer {
 				Display d = Display.of(row, rtl);
 				int n = d.cps.length;
 				// How visible each character is: typewriter cuts the line off, words fade in one at a time
-				float[] reveal = new float[n];
-				float[] flare = new float[n];
+				if (scratchReveal.length < n) {
+					scratchReveal = new float[n * 2];
+					scratchFlare = new float[n * 2];
+				}
+				float[] reveal = scratchReveal;
+				float[] flare = scratchFlare;
 				int[] rank = wordRanks(row);
 				for (int v = 0; v < n; v++) {
 					int ci = charIndex + d.logical[v];
@@ -1240,7 +1271,11 @@ public final class LyricsRenderer {
 				float[] grow = growing ? growth(row, d, charIndex, sungChars, highlight) : null;
 				if (grow != null) {
 					// A bigger word pushes its neighbours aside instead of covering them
-					float[] spread = new float[n + 1];
+					if (scratchSpread.length < n + 1) {
+						scratchSpread = new float[n * 2 + 1];
+					}
+					float[] spread = scratchSpread;
+					spread[0] = 0;
 					for (int v = 0; v < n; v++) {
 						spread[v + 1] = spread[v] + (at[v + 1] - at[v]) * grow[v];
 					}
@@ -1271,16 +1306,32 @@ public final class LyricsRenderer {
 						float fl = flare[from];
 						int start = charIndex;
 						int a0 = from, a1 = to;
+						// One-entry cache: a run mostly shares one colour, so build its Style once, not per glyph per frame
+						Style[] lastStyle = {null};
+						int[] lastColor = {0};
+						float[] lastFill = {Float.NaN};
 						FormattedCharSequence seq = sink -> {
 							for (int v = a0; v < a1; v++) {
 								float fill = Mth.clamp(sungChars - (start + d.logical[v]), 0, 1);
-								int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
-								if (tone >= 0) {
-									float t = letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1);
-									int shade = mix(mix(secondaryTo, mix(dimTo, brightTo, fill), highlight), 0xFFFFFF, 0.35f * fl);
-									c = mix(c, shade, t);
+								Style st;
+								if (tone < 0 && lastStyle[0] != null && fill == lastFill[0]) {
+									// Without a second tone the colour depends on the fill alone
+									st = lastStyle[0];
+								} else {
+									int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
+									if (tone >= 0) {
+										float t = letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1);
+										int shade = mix(mix(secondaryTo, mix(dimTo, brightTo, fill), highlight), 0xFFFFFF, 0.35f * fl);
+										c = mix(c, shade, t);
+									}
+									if (lastStyle[0] == null || c != lastColor[0]) {
+										lastStyle[0] = base.withColor(c);
+										lastColor[0] = c;
+									}
+									lastFill[0] = fill;
+									st = lastStyle[0];
 								}
-								if (!sink.accept(v, base.withColor(c), d.cps[v])) {
+								if (!sink.accept(v, st, d.cps[v])) {
 									return false;
 								}
 							}
@@ -1327,7 +1378,7 @@ public final class LyricsRenderer {
 					}
 					from = to;
 				}
-				wordIndex += wordCount(row);
+				wordIndex += info.rowWords[r];
 			}
 			canvas.pop();
 		}
@@ -1429,14 +1480,22 @@ public final class LyricsRenderer {
 		 * goes for a left-to-right line: the comma of "hello שלום," belongs on the right of שלום.
 		 */
 		static Display of(String row, boolean rtl) {
-			return rtl ? CACHE.computeIfAbsent(RTL_KEY + row, r -> compute(row, true))
-					: CACHE.computeIfAbsent(LTR_KEY + row, r -> compute(row, false));
+			return (rtl ? CACHE_RTL : CACHE_LTR).computeIfAbsent(row, r -> compute(row, rtl));
 		}
 
-		/** Keeps a row drawn right to left apart from the same row drawn with the default direction in the cache. */
-		private static final String RTL_KEY = "\u202B\u0000";
-		/** Likewise for a row drawn left to right on purpose, apart from the default (first strong letter decides). */
-		private static final String LTR_KEY = "\u202A\u0000";
+		/** Rows drawn right to left on purpose, kept apart from the default-direction {@link #CACHE}; same size and LRU. */
+		private static final Map<String, Display> CACHE_RTL = lru();
+		/** Likewise for rows drawn left to right on purpose (the first strong letter would decide by default). */
+		private static final Map<String, Display> CACHE_LTR = lru();
+
+		private static Map<String, Display> lru() {
+			return new LinkedHashMap<>(256, 0.75f, true) {
+				@Override
+				protected boolean removeEldestEntry(Map.Entry<String, Display> eldest) {
+					return size() > 256;
+				}
+			};
+		}
 
 		/** @param rightBase true for a right-to-left base, false for left-to-right, null for the row's first strong letter */
 		private static Display compute(String row, @Nullable Boolean rightBase) {
@@ -1595,8 +1654,45 @@ public final class LyricsRenderer {
 
 	static int wordCount(String row) {
 		int[] rank = wordRanks(row);
-		boolean any = row.chars().anyMatch(c -> c != ' ');
+		boolean any = false;
+		for (int i = 0; i < row.length() && !any; i++) {
+			any = row.charAt(i) != ' ';
+		}
 		return any ? rank[rank.length - 1] + 1 : 0;
+	}
+
+	/**
+	 * Everything about a line that depends only on its text and how it wraps: where each row starts, how many letters
+	 * and words it has, its direction. Kept with the wrapped rows so a frame doesn't count them again.
+	 */
+	static final class LineInfo {
+		final int[] starts;
+		/** Letters through the last row, so the break spaces are part of what has to be sung. */
+		final int total;
+		final int words;
+		final int[] rowWords;
+		final boolean rtl;
+
+		private LineInfo(int[] starts, int total, int words, int[] rowWords, boolean rtl) {
+			this.starts = starts;
+			this.total = total;
+			this.words = words;
+			this.rowWords = rowWords;
+			this.rtl = rtl;
+		}
+
+		static LineInfo of(String text, List<String> rows) {
+			int[] starts = rowStarts(text, rows);
+			int last = rows.size() - 1;
+			int total = last < 0 ? 0 : starts[last] + rows.get(last).codePointCount(0, rows.get(last).length());
+			int[] rowWords = new int[rows.size()];
+			int words = 0;
+			for (int r = 0; r < rowWords.length; r++) {
+				rowWords[r] = wordCount(rows.get(r));
+				words += rowWords[r];
+			}
+			return new LineInfo(starts, total, words, rowWords, WorldWords.rightToLeft(text));
+		}
 	}
 
 	/** Whether a word ends with a mark where a row may nicely end. */
@@ -1758,16 +1854,14 @@ public final class LyricsRenderer {
 	private void updateDaylight(Minecraft mc, Camera camera, float dt) {
 		ClientLevel level = mc.level;
 		float target = 0;
-		if (level != null && SkyEffects.overworldSky(level)
-				&& camera.getFluidInCamera() == FogType.NONE) {
-			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			target = daylight(SkyEffects.starBrightness(level, camera, partial),
-					level.getRainLevel(partial));
-		}
 		float sun = 0;
 		if (level != null && SkyEffects.overworldSky(level)) {
 			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			sun = 1 - Mth.clamp(SkyEffects.starBrightness(level, camera, partial) / SkyEffects.NIGHT_STARS, 0, 1);
+			float stars = SkyEffects.starBrightness(level, camera, partial);
+			if (camera.getFluidInCamera() == FogType.NONE) {
+				target = daylight(stars, level.getRainLevel(partial));
+			}
+			sun = 1 - Mth.clamp(stars / SkyEffects.NIGHT_STARS, 0, 1);
 		}
 		sunlight = approach(sunlight, sun, dt * 2f);
 		daylight = approach(daylight, Math.max(target, BACKDROP * backdrop), dt * 2f);

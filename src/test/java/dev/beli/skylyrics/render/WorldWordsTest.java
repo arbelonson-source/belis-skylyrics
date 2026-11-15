@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -381,6 +382,12 @@ class WorldWordsTest {
 	void overlappingWordsArePushedTheShortWay() {
 		float[] a = {0, 0, 4, 1};
 		assertArrayEquals(new float[] {0, 0}, WorldWords.push(a, new float[] {10, 0, 4, 1}));
+		// Apart again later still reads zero, however the earlier answer was used, and a push that moves is its own array
+		float[] apart = WorldWords.push(a, new float[] {10, 0, 4, 1});
+		assertEquals(0f, apart[0]);
+		assertEquals(0f, apart[1]);
+		float[] moved = WorldWords.push(a, new float[] {1, -0.5f, 4, 1});
+		assertNotSame(apart, moved);
 		// Wide words side by side on one row: stepping down a row is shorter than going round
 		float[] down = WorldWords.push(a, new float[] {1, -0.5f, 4, 1});
 		assertEquals(0, down[0]);

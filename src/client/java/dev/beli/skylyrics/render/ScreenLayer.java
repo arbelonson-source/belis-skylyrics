@@ -30,6 +30,12 @@ public final class ScreenLayer {
 	private static boolean captured;
 	private static Method irisInstance, irisShadersOn;
 	private static boolean irisLookedUp;
+	/** World frames captured so far; with {@link #shadersAskedAt} it says whether the shader answer is from this frame. */
+	private static long frames;
+	private static long shadersAskedFrame = -1, shadersAskedAt;
+	private static boolean shadersAnswer;
+	/** Longest a shader answer is kept even when no world frame comes (a menu): short enough that a toggle shows at once. */
+	private static final long SHADERS_KEEP_NS = 50_000_000L;
 
 	private ScreenLayer() {}
 
@@ -50,6 +56,7 @@ public final class ScreenLayer {
 		tanHalfH = 1 / projection.m00();
 		tanHalfV = 1 / projection.m11();
 		captured = true;
+		frames++;
 	}
 
 	/** Points {@code view} at where the camera looked this frame; with no frame captured yet it counts everything as visible. */
@@ -143,6 +150,23 @@ public final class ScreenLayer {
 
 	/** Asks Iris through its public API, without needing Iris to build or run. */
 	static boolean shadersOn() {
+		// Asked up to three times a frame, and each ask is a reflective call: answer once per world frame
+		long now = System.nanoTime();
+		if (answerKept(shadersAskedFrame, frames, shadersAskedAt, now)) {
+			return shadersAnswer;
+		}
+		shadersAnswer = askIris();
+		shadersAskedFrame = frames;
+		shadersAskedAt = now;
+		return shadersAnswer;
+	}
+
+	/** Whether an answer given at {@code askedAt} in frame {@code askedFrame} still stands in frame {@code frame} at {@code now}. */
+	static boolean answerKept(long askedFrame, long frame, long askedAt, long now) {
+		return askedFrame == frame && now - askedAt < SHADERS_KEEP_NS;
+	}
+
+	private static boolean askIris() {
 		if (!irisLookedUp) {
 			irisLookedUp = true;
 			if (FabricLoader.getInstance().isModLoaded("iris")) {
