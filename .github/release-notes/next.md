@@ -55,6 +55,9 @@
 - **Last line fades.** In Lines and Arc, a line that ended more than a second and a half ago (the last lyric during the outro, or a line before a long instrumental part) fades out.
 - **Floating distance.** With Floating placement, every step of the **Distance** slider now moves the lyrics nearer or farther (before, 8 to 24 were all the same distance, and so were 96 to 160). They keep the same size on screen, so you see it as you walk past them or with **See through blocks** off. The default is unchanged.
 - **Faint glow on 1.21.1 to 1.21.5.** A very faint glow (the previous and next lines, the end of the pulse) no longer flashes as solid colour.
+- **Hide Lightning Flashes.** Turning on **Hide Lightning Flashes** in Minecraft's Accessibility settings now also turns off the lyrics' flashes: the glow pulse, the crosshair flash, the hat flare, the sky pulse and the World words' white flash when they appear.
+- **At most three flashes a second.** When lines come very quickly, the glow, crosshair, hat and sky flashes no longer restart for every line: they start at most three times a second. Normal songs look the same.
+- **Distortion Effects.** Minecraft's **Distortion Effects** setting now also calms the lyrics' motion: at 0 the line pop, the World words' sway, knock and arrival bounce, and the hat's wobble and spin stay still, and in between they are smaller.
 
 ### Faster
 

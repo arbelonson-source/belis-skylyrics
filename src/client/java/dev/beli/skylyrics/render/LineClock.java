@@ -11,6 +11,8 @@ final class LineClock {
 	private int last = NONE;
 	private int previous = NONE;
 	private long changedAt;
+	/** When the line-start flash last began: a line within a third of a second of the last flash doesn't start another. */
+	private long flashAt;
 
 	/**
 	 * Feeds in the line being sung this frame. A new line restarts the clock; the first line after new lyrics counts as
@@ -21,6 +23,11 @@ final class LineClock {
 			previous = last;
 			last = index;
 			changedAt = previous == NONE ? now - settleNs : now;
+			if (previous == NONE) {
+				flashAt = now - settleNs;
+			} else if (Calm.flashDue(flashAt, now)) {
+				flashAt = now;
+			}
 		}
 	}
 
@@ -43,6 +50,7 @@ final class LineClock {
 			previous = index;
 			last = index;
 			changedAt = now - settleNs;
+			flashAt = changedAt;
 		}
 	}
 
@@ -65,5 +73,10 @@ final class LineClock {
 
 	float secondsSince(long now) {
 		return (now - changedAt) / 1e9f;
+	}
+
+	/** Seconds since the line-start flash last began: like {@link #secondsSince} but a flash isn't restarted more than three times a second. */
+	float flashSince(long now) {
+		return (now - flashAt) / 1e9f;
 	}
 }
