@@ -17,7 +17,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import dev.beli.skylyrics.Tr;
@@ -69,9 +72,15 @@ public final class MprisSource implements MediaSource {
 	}
 
 	private final Reader reader;
+	private final BooleanSupplier flatpak;
+	/** How many polls in a row saw no MPRIS player at all. */
+	private int noPlayerPolls;
+	/** How many polls in a row with no player at all mean the Flatpak sandbox hides them. */
+	static final int HIDDEN_POLLS = 3;
 
 	public MprisSource(Supplier<String> preferredPlayer) {
 		this.preferredPlayer = preferredPlayer;
+		this.flatpak = () -> hidesPlayers(System.getenv(), flatpakInfo());
 		this.reader = new Reader() {
 			@Override
 			public List<String> names() throws Exception {
@@ -86,19 +95,116 @@ public final class MprisSource implements MediaSource {
 	}
 
 	MprisSource(Supplier<String> preferredPlayer, Reader reader) {
+		this(preferredPlayer, reader, () -> false);
+	}
+
+	MprisSource(Supplier<String> preferredPlayer, Reader reader, BooleanSupplier flatpak) {
 		this.preferredPlayer = preferredPlayer;
 		this.reader = reader;
+		this.flatpak = flatpak;
 	}
 
 	private synchronized DBusConnection connection() throws Exception {
 		if (connection == null || !connection.isConnected()) {
 			try {
-				connection = DBusConnectionBuilder.forSessionBus().withShared(false).build();
+				connection = sessionBus().build();
 			} catch (Exception e) {
 				throw new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
 			}
 		}
 		return connection;
+	}
+
+	/**
+	 * The session bus address to connect to when the environment doesn't give one (launchers that clear it, pure
+	 * Wayland): the user's runtime-dir socket, if it exists. Null means leave it to the library.
+	 *
+	 * @param uid the user id, "" when unknown
+	 */
+	static @Nullable String sessionBusAddress(Map<String, String> env, Predicate<String> exists, String uid) {
+		String given = env.get("DBUS_SESSION_BUS_ADDRESS");
+		if (given != null && !given.isBlank()) {
+			return null;
+		}
+		String runtime = env.get("XDG_RUNTIME_DIR");
+		if (runtime != null && !runtime.isBlank()) {
+			String socket = runtime.strip().replaceAll("/+$", "") + "/bus";
+			if (exists.test(socket)) {
+				return "unix:path=" + socket;
+			}
+		}
+		if (!uid.isBlank()) {
+			String socket = "/run/user/" + uid + "/bus";
+			if (exists.test(socket)) {
+				return "unix:path=" + socket;
+			}
+		}
+		return null;
+	}
+
+	private static String currentUid() {
+		try {
+			return String.valueOf(Files.getAttribute(Path.of("/proc/self"), "unix:uid"));
+		} catch (Exception | LinkageError e) {
+			return "";
+		}
+	}
+
+	private static DBusConnectionBuilder sessionBus() {
+		String address = sessionBusAddress(System.getenv(), p -> Files.exists(Path.of(p)), currentUid());
+		return (address == null ? DBusConnectionBuilder.forSessionBus() : DBusConnectionBuilder.forAddress(address)).withShared(false);
+	}
+
+	private static @Nullable String flatpakInfoText;
+	private static boolean flatpakInfoRead;
+
+	/** The text of /.flatpak-info (read once), or null outside a Flatpak or when it can't be read. */
+	private static synchronized @Nullable String flatpakInfo() {
+		if (!flatpakInfoRead) {
+			flatpakInfoRead = true;
+			try {
+				flatpakInfoText = Files.readString(Path.of("/.flatpak-info"));
+			} catch (Exception e) {
+				flatpakInfoText = null;
+			}
+		}
+		return flatpakInfoText;
+	}
+
+	/**
+	 * Whether an empty player list should be blamed on the Flatpak sandbox: it is a Flatpak, and its permissions give
+	 * neither the whole session bus nor talking to the MPRIS names. {@code info} is the text of /.flatpak-info, null
+	 * when it is missing (then nothing is said).
+	 */
+	static boolean hidesPlayers(Map<String, String> env, @Nullable String info) {
+		if (info == null) {
+			return false;
+		}
+		String section = "";
+		for (String raw : info.split("\\R")) {
+			String line = raw.strip();
+			if (line.startsWith("[") && line.endsWith("]")) {
+				section = line.substring(1, line.length() - 1);
+				continue;
+			}
+			int eq = line.indexOf('=');
+			if (eq < 0) {
+				continue;
+			}
+			String key = line.substring(0, eq).strip();
+			String value = line.substring(eq + 1).strip();
+			if (section.equals("Context") && key.equals("sockets")) {
+				for (String socket : value.split(";")) {
+					if (socket.strip().equals("session-bus")) {
+						return false;
+					}
+				}
+			} else if (section.equals("Session Bus Policy") && key.startsWith("org.mpris.MediaPlayer2")
+					&& (value.equals("talk") || value.equals("own"))) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	/** Whether the game runs inside a Flatpak sandbox, which hides the music players from it. */
@@ -163,6 +269,14 @@ public final class MprisSource implements MediaSource {
 			if (name.startsWith(PREFIX) && !name.equals(PREFIX + "playerctld")) {
 				names.add(name);
 			}
+		}
+		// In a Flatpak the bus connects but the sandbox hides every player: say so instead of "nothing playing"
+		if (names.isEmpty() && flatpak.getAsBoolean()) {
+			if (++noPlayerPolls >= HIDDEN_POLLS) {
+				throw new IOException(Tr.t("If music is playing and nothing shows: Minecraft runs as a Flatpak and may not see your music players. Allow it with: flatpak override --user --talk-name=org.mpris.MediaPlayer2.* %s", flatpakAppId(System.getenv())));
+			}
+		} else {
+			noPlayerPolls = 0;
 		}
 		asked.keySet().removeIf(n -> {
 			if (names.contains(n)) {
@@ -246,12 +360,24 @@ public final class MprisSource implements MediaSource {
 		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, readAt.get(chosen), chosen.rate);
 	}
 
+	/** The Position from GetAll, or, when the player left it out of that, asked for once on its own (0 if it doesn't say). */
+	static long positionMicros(Map<String, Variant<?>> all, Callable<Object> getPosition) {
+		if (all.containsKey("Position")) {
+			return number(value(all.get("Position")));
+		}
+		try {
+			return number(value(getPosition.call()));
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+
 	private static @Nullable Reading read(DBusConnection conn, String busName) throws Exception {
 		Properties props = conn.getRemoteObject(busName, PATH, Properties.class);
 		Map<String, Variant<?>> all = props.GetAll(PLAYER_IFACE);
 
 		boolean playing = "Playing".equals(value(all.get("PlaybackStatus")));
-		long positionUs = number(value(all.get("Position")));
+		long positionUs = positionMicros(all, () -> props.Get(PLAYER_IFACE, "Position"));
 		Object metaObj = value(all.get("Metadata"));
 		if (!(metaObj instanceof Map<?, ?> meta)) {
 			return null;
@@ -265,18 +391,31 @@ public final class MprisSource implements MediaSource {
 		String trackId = string(meta.get("mpris:trackid"));
 		String url = string(meta.get("xesam:url"));
 
-		String player = busName.substring(PREFIX.length());
-		int dot = player.indexOf('.');
-		if (dot > 0) {
-			player = player.substring(0, dot); // "firefox.instance_1_42" -> "firefox"
-		}
+		String player = playerId(busName);
 
 		Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : url));
 		double rate = value(all.get("Rate")) instanceof Number n ? n.doubleValue() : 1.0;
 		return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId, rate);
 	}
 
-	private static String prettyName(String player) {
+	/**
+	 * The player's id from its bus name: a trailing ".instance..." goes ("firefox.instance_1_42" -> "firefox"); then
+	 * a name with one dot after the prefix is cut there as always ("kdeconnect.mpris_000001" -> "kdeconnect"), and a
+	 * real reverse-DNS name with two or more dots stays whole ("io.bassi.Amberol").
+	 */
+	static String playerId(String busName) {
+		String id = busName.startsWith(PREFIX) ? busName.substring(PREFIX.length()) : busName;
+		id = id.replaceFirst("\\.instance[_0-9]*$", "");
+		long dots = id.chars().filter(c -> c == '.').count();
+		int first = id.indexOf('.');
+		return dots == 1 && first > 0 ? id.substring(0, first) : id;
+	}
+
+	static String prettyName(String player) {
+		int dot = player.lastIndexOf('.');
+		if (dot > 0 && dot < player.length() - 1) {
+			player = player.substring(dot + 1); // "io.bassi.Amberol" -> "Amberol"
+		}
 		return switch (player.toLowerCase(Locale.ROOT)) {
 			case "spotify" -> "Spotify";
 			case "firefox" -> "Firefox";
@@ -313,7 +452,7 @@ public final class MprisSource implements MediaSource {
 	 * when no such player is running. Browsers usually list none.
 	 */
 	public static @Nullable List<String> supportedSchemes(String player) {
-		try (DBusConnection conn = DBusConnectionBuilder.forSessionBus().withShared(false).build()) {
+		try (DBusConnection conn = sessionBus().build()) {
 			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
 			List<String> names = busNames(bus, player);
 			if (names.isEmpty()) {
@@ -342,7 +481,7 @@ public final class MprisSource implements MediaSource {
 
 	/** Asks the running player {@code player} to play {@code uri}. False if it isn't running or refuses. */
 	public static boolean openUri(String player, String uri) {
-		try (DBusConnection conn = DBusConnectionBuilder.forSessionBus().withShared(false).build()) {
+		try (DBusConnection conn = sessionBus().build()) {
 			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
 			for (String name : busNames(bus, player)) {
 				conn.getRemoteObject(name, PATH, Player.class).OpenUri(uri);

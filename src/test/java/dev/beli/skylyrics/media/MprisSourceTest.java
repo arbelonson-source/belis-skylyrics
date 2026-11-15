@@ -3,7 +3,11 @@ package dev.beli.skylyrics.media;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.freedesktop.dbus.types.Variant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -126,5 +130,155 @@ class MprisSourceTest {
 			release.countDown();
 			source.close();
 		}
+	}
+
+	@Test
+	void sessionBusAddressFallsBackToTheRuntimeDirSocket() {
+		Set<String> there = Set.of("/run/user/1000/bus");
+		// the environment's own address is left to the library
+		assertEquals(null, MprisSource.sessionBusAddress(Map.of("DBUS_SESSION_BUS_ADDRESS", "unix:path=/x", "XDG_RUNTIME_DIR", "/run/user/1000"), there::contains, "1000"));
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.sessionBusAddress(Map.of("XDG_RUNTIME_DIR", "/run/user/1000"), there::contains, "1000"));
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.sessionBusAddress(Map.of("DBUS_SESSION_BUS_ADDRESS", " ", "XDG_RUNTIME_DIR", "/run/user/1000/"), there::contains, ""));
+		// no runtime dir variable: the user's own directory
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.sessionBusAddress(Map.of(), there::contains, "1000"));
+		// nothing there: leave it to the library
+		assertEquals(null, MprisSource.sessionBusAddress(Map.of(), p -> false, "1000"));
+		assertEquals(null, MprisSource.sessionBusAddress(Map.of(), there::contains, ""));
+	}
+
+	@Test
+	void aFlatpakThatHidesEveryPlayerSaysSo() throws Exception {
+		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return List.of(":1.5", "org.freedesktop.DBus");
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) {
+				return null;
+			}
+		}, () -> true);
+		try {
+			for (int i = 1; i < MprisSource.HIDDEN_POLLS; i++) {
+				assertTrue(source.poll().track().isNone());
+			}
+			Exception e = org.junit.jupiter.api.Assertions.assertThrows(java.io.IOException.class, source::poll);
+			assertTrue(e.getMessage().contains("flatpak override"), e.getMessage());
+		} finally {
+			source.close();
+		}
+	}
+
+	@Test
+	void outsideAFlatpakNoPlayersIsJustNothingPlaying() throws Exception {
+		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return List.of();
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) {
+				return null;
+			}
+		}, () -> false);
+		try {
+			for (int i = 0; i < 10; i++) {
+				assertTrue(source.poll().track().isNone());
+			}
+		} finally {
+			source.close();
+		}
+	}
+
+	@Test
+	void aFlatpakThatCanSeeAPlayerIsNotToldAnything() throws Exception {
+		AtomicBoolean visible = new AtomicBoolean();
+		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return visible.get() ? List.of(GOOD) : List.of();
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) {
+				return reading(GOOD, "Good Song", 5000);
+			}
+		}, () -> true);
+		try {
+			for (int i = 0; i < MprisSource.HIDDEN_POLLS - 1; i++) {
+				source.poll();
+			}
+			visible.set(true);
+			assertEquals("Good Song", source.poll().track().title());
+			visible.set(false);
+			// the count starts over once a player has been seen
+			for (int i = 0; i < MprisSource.HIDDEN_POLLS - 1; i++) {
+				source.poll();
+			}
+		} finally {
+			source.close();
+		}
+	}
+
+	@Test
+	void playerIdsDropOnlyAnInstanceSuffix() {
+		assertEquals("firefox", MprisSource.playerId("org.mpris.MediaPlayer2.firefox.instance_1_23"));
+		assertEquals("chromium", MprisSource.playerId("org.mpris.MediaPlayer2.chromium.instance123"));
+		assertEquals("io.bassi.Amberol", MprisSource.playerId("org.mpris.MediaPlayer2.io.bassi.Amberol"));
+		assertEquals("org.gnome.Rhythmbox3", MprisSource.playerId("org.mpris.MediaPlayer2.org.gnome.Rhythmbox3"));
+		assertEquals("spotify", MprisSource.playerId("org.mpris.MediaPlayer2.spotify"));
+		assertEquals("spotifyd", MprisSource.playerId("org.mpris.MediaPlayer2.spotifyd"));
+		assertEquals("vlc", MprisSource.playerId("org.mpris.MediaPlayer2.vlc"));
+		assertEquals("kdeconnect", MprisSource.playerId("org.mpris.MediaPlayer2.kdeconnect.mpris_000001"));
+		assertEquals("plasma-browser-integration", MprisSource.playerId("org.mpris.MediaPlayer2.plasma-browser-integration"));
+		assertEquals("mpv", MprisSource.playerId("org.mpris.MediaPlayer2.mpv"));
+	}
+
+	@Test
+	void playerNamesShowTheLastSegment() {
+		assertEquals("Amberol", MprisSource.prettyName("io.bassi.Amberol"));
+		assertEquals("Rhythmbox3", MprisSource.prettyName("org.gnome.Rhythmbox3"));
+		assertEquals("Firefox", MprisSource.prettyName("firefox"));
+		assertEquals("Spotify", MprisSource.prettyName("spotify"));
+		assertEquals("Spotifyd", MprisSource.prettyName("spotifyd"));
+		assertEquals("VLC", MprisSource.prettyName("vlc"));
+		assertEquals("mpv", MprisSource.prettyName("mpv"));
+		assertEquals("Kdeconnect", MprisSource.prettyName(MprisSource.playerId("org.mpris.MediaPlayer2.kdeconnect.mpris_000001")));
+		assertEquals("Amberol", MprisSource.prettyName(MprisSource.playerId("org.mpris.MediaPlayer2.io.bassi.Amberol")));
+	}
+
+	@Test
+	void aPreferredPlayerFindsAReverseDnsPlayerByItsLastName() {
+		Track amberol = new Track("Made Up Song", "Made Up Band", "", 1000, "", MprisSource.playerId("org.mpris.MediaPlayer2.io.bassi.Amberol"));
+		Track other = new Track("Other Song", "Made Up Band", "", 1000, "", "io.other.Thing");
+		assertEquals(amberol, PlayerPicker.choose(List.of(other, amberol), t -> t.player(), Track::player, t -> true, "amberol", null));
+	}
+
+	@Test
+	void positionIsAskedForOnItsOwnWhenGetAllLeavesItOut() {
+		assertEquals(7L, MprisSource.positionMicros(Map.of("Position", new Variant<>(7L)), () -> {
+			throw new AssertionError("not needed");
+		}));
+		assertEquals(42L, MprisSource.positionMicros(Map.of(), () -> new Variant<>(42L)));
+		assertEquals(0L, MprisSource.positionMicros(Map.of(), () -> {
+			throw new IllegalStateException("no such property");
+		}));
+	}
+
+	private static final String SANDBOX = "[Application]\nname=org.prismlauncher.PrismLauncher\n\n[Context]\nshared=network;ipc;\nsockets=x11;wayland;pulseaudio;\n";
+
+	@Test
+	void theFlatpakHintIsOnlyForASandboxThatCannotTalkToPlayers() {
+		assertTrue(MprisSource.hidesPlayers(Map.of(), SANDBOX));
+		assertTrue(MprisSource.hidesPlayers(Map.of(), SANDBOX + "\n[Session Bus Policy]\norg.freedesktop.Notifications=talk\norg.mpris.MediaPlayer2.spotify=none\n"));
+		// the whole session bus
+		assertFalse(MprisSource.hidesPlayers(Map.of(), SANDBOX.replace("sockets=x11;", "sockets=x11;session-bus;")));
+		// talking to the players' names
+		assertFalse(MprisSource.hidesPlayers(Map.of(), SANDBOX + "\n[Session Bus Policy]\norg.mpris.MediaPlayer2.*=talk\n"));
+		assertFalse(MprisSource.hidesPlayers(Map.of(), SANDBOX + "\n[Session Bus Policy]\norg.mpris.MediaPlayer2.vlc=own\n"));
+		// no /.flatpak-info: nothing is said
+		assertFalse(MprisSource.hidesPlayers(Map.of(), null));
 	}
 }

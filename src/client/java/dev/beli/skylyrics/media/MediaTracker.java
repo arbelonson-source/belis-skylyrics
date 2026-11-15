@@ -41,7 +41,11 @@ public final class MediaTracker {
 	private static final int EMPTY_POLLS_HELD = 3;
 	/** How many polls a new song with no artist yet waits for one (the second poll announces it anyway). */
 	private static final int ARTISTLESS_POLLS_HELD = 1;
+	/** A song that says it is playing but reports position 0 this many polls in a row has no position to trust. */
+	private static final int ZERO_POLLS_TRUSTED = 3;
 	private int emptyPolls;
+	private int zeroPolls;
+	private @Nullable Snapshot zeroRunBase;
 	private @Nullable MediaSource lastSource;
 	private @Nullable Track pending;
 	private int pendingCount;
@@ -133,6 +137,10 @@ public final class MediaTracker {
 		} else {
 			emptyPolls = 0;
 		}
+		if (fresh.track().isNone()) {
+			zeroPolls = 0;
+			zeroRunBase = null;
+		}
 
 		Track freshTrack = fresh.track();
 		boolean newSong = !freshTrack.sameSong(old.track()) && !lateFill(old.track(), freshTrack);
@@ -154,6 +162,9 @@ public final class MediaTracker {
 
 		if (newSong || filledIn(old.track(), freshTrack)) {
 			snapshot = fresh;
+			zeroPolls = 0;
+			zeroRunBase = null;
+			noteZero(fresh);
 			sourceName = source.displayName();
 			onTrackChange.accept(freshTrack);
 			return;
@@ -167,7 +178,29 @@ public final class MediaTracker {
 		} else {
 			snapshot = new Snapshot(freshTrack, old.positionMs(), old.playing(), old.readAtNanos(), old.rate());
 		}
+		// A player that never reports its position says 0 every time, which would hold the lyrics on the first line:
+		// after a few such polls let the clock run from where the zeros began (when the song appeared)
+		if (noteZero(fresh) > ZERO_POLLS_TRUSTED && zeroRunBase != null) {
+			Snapshot base = zeroRunBase;
+			snapshot = new Snapshot(freshTrack, base.positionMs(), base.playing(), base.readAtNanos(), base.rate());
+		}
 		sourceName = source.displayName();
+	}
+
+	/**
+	 * Counts polls in a row that read a playing song at exactly 0; the clock in effect at the first of them is where
+	 * the zeros began. Call after {@code snapshot} is set for this poll.
+	 */
+	private int noteZero(Snapshot reading) {
+		if (reading.playing() && reading.positionMs() == 0) {
+			if (++zeroPolls == 1) {
+				zeroRunBase = snapshot;
+			}
+		} else {
+			zeroPolls = 0;
+			zeroRunBase = null;
+		}
+		return zeroPolls;
 	}
 
 	private static long positionAt(Snapshot s, long nanos) {
