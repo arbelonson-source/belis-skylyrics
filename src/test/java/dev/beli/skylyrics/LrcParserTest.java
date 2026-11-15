@@ -192,4 +192,20 @@ class LrcParserTest {
 		Lyrics l = LrcParser.parseSynced("[00:12.00]<00:12.34>Hello <00:13.00>[x2] world [Chorus]");
 		assertEquals("Hello [x2] world [Chorus]", l.get(0).text());
 	}
+
+	@Test
+	void linesWithTheSameStampAreShownTogether() {
+		Lyrics l = LrcParser.parseSynced("[00:10.00]Hello world\n[00:10.00]Hola mundo\n[00:15.00]Next");
+		assertEquals(2, l.lines().size());
+		assertEquals("Hello world / Hola mundo", l.get(l.indexAt(10_000)).text());
+		assertEquals("Hello world / Hola mundo", l.get(l.indexAt(12_000)).text());
+		assertEquals("Next", l.get(l.indexAt(15_000)).text());
+	}
+
+	@Test
+	void aRepeatedStampOfTheSameWordsStaysOneLine() {
+		Lyrics l = LrcParser.parseSynced("[00:10.00]Oh\n[00:10.00]Oh\n[00:15.00]Next");
+		assertEquals(2, l.lines().size());
+		assertEquals("Oh", l.get(0).text());
+	}
 }

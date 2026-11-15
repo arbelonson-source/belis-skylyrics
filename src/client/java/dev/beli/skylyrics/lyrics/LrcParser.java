@@ -78,7 +78,7 @@ public final class LrcParser {
 		if (shifted.stream().allMatch(LyricLine::isBreak)) {
 			return Lyrics.INSTRUMENTAL;
 		}
-		return new Lyrics(collapseBreaks(shifted), true, false);
+		return new Lyrics(collapseBreaks(joinSameStamp(shifted)), true, false);
 	}
 
 	/** Spreads unsynced lyrics evenly across the song so they still move along with it. */
@@ -123,6 +123,26 @@ public final class LrcParser {
 
 	static String tidy(String text) {
 		return SPACES.matcher(INVISIBLE.matcher(text).replaceAll("")).replaceAll(" ").strip();
+	}
+
+	/**
+	 * Lines that share a stamp (an original and its translation, or a repeated stamp) are shown together as one line,
+	 * "first / second": the line being sung is found by time alone, so the first of two equal stamps would never show.
+	 * A repeat of the same words stays single, and a break stamped with words yields to the words.
+	 */
+	private static List<LyricLine> joinSameStamp(List<LyricLine> lines) {
+		List<LyricLine> out = new ArrayList<>(lines.size());
+		for (LyricLine line : lines) {
+			LyricLine before = out.isEmpty() ? null : out.getLast();
+			if (before == null || before.timeMs() != line.timeMs()) {
+				out.add(line);
+			} else if (before.isBreak()) {
+				out.set(out.size() - 1, line);
+			} else if (!line.isBreak() && !line.text().equals(before.text())) {
+				out.set(out.size() - 1, new LyricLine(before.timeMs(), before.text() + " / " + line.text()));
+			}
+		}
+		return out;
 	}
 
 	private static List<LyricLine> collapseBreaks(List<LyricLine> lines) {
