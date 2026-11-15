@@ -18,6 +18,7 @@ import net.minecraft.client.renderer.entity.layers.RenderLayer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 //?} else {
 /*import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
 *///?}
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -38,6 +39,13 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/** Head space is in blocks with y pointing down; the top of the head is half a block above the neck. */
 	private static final float HEAD_TOP = -0.5f;
 	private static final float HALO_LIFT = 0.17f, HALO_RADIUS = 0.27f, HALO_TUBE = 0.022f, HALO_SHINE = 0.11f;
+	/** The middle of the head (head space, y down): a worn helmet, pumpkin or head puffs the head out round it. */
+	static final float HEAD_CENTER = HEAD_TOP / 2;
+	/**
+	 * What a hat grows by when something is worn on the head. Armor, a carved pumpkin and a skull reach about 0.5625 above the neck and
+	 * 0.3125 out from the middle; the lowest hats start 0.285 from the middle (top hat brim, cap dome, flower vine), so this clears them.
+	 */
+	static final float WORN_HEAD_SCALE = 1.15f;
 	/** How bright the hat sits between flares, and how much a flare adds. */
 	static final float REST = 0.7f, FLARE = 0.3f;
 	private static final int FULL_BRIGHT = 0xF000F0;
@@ -58,7 +66,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/** The notes' clock starts over after this many seconds, when every one of their motions has come full circle. */
 	static final double NOTE_LOOP = 10 * Math.PI;
 	private static final int EAR_DARK = 0xFF24202E;
-	private static final float PUMPKIN_HALF = 0.32f, PUMPKIN_TOP = HEAD_TOP - 0.07f, PUMPKIN_BOTTOM = 0.07f;
+	static final float PUMPKIN_HALF = 0.32f, PUMPKIN_TOP = HEAD_TOP - 0.07f, PUMPKIN_BOTTOM = 0.07f;
 	private static final int RIBS = 4, GRIN_COLUMNS = 5;
 	/** The top hat sits just above the head's outer layer; its brim is wide enough to clear that layer's corners. */
 	static final float TOP_HAT_BRIM_Y = HEAD_TOP - 0.035f, TOP_HAT_HEIGHT = 0.38f, TOP_HAT_RADIUS = 0.27f, TOP_HAT_BRIM = 0.43f;
@@ -118,6 +126,16 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	 * Plain colour that takes the light where you stand. 26.3 dropped the untextured lit type, so there the colours are
 	 * text drawn from a white patch, which the light still reaches.
 	 */
+	/** Whether anything sits on the head: armor, a carved pumpkin, a player head or mob skull. An elytra is on the chest, not here. */
+	static boolean headCovered(boolean armorEmpty, boolean itemEmpty, boolean skull) {
+		return !armorEmpty || !itemEmpty || skull;
+	}
+
+	/** How much to scale every hat about the middle of the head so it sits outside whatever is worn there. */
+	static float hatScale(boolean headCovered) {
+		return headCovered ? WORN_HEAD_SCALE : 1f;
+	}
+
 	private static RenderType paint() {
 		//? if >=26.3 {
 		/*return RenderTypes.text(WHITE);
@@ -158,6 +176,16 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		//?} else {
 		/*getParentModel().getHead().translateAndRotate(pose);
 		*///?}
+		//? if >=1.21.2 {
+		float scale = hatScale(headCovered(state.headEquipment.isEmpty(), state.headItem.isEmpty(), state.wornHeadType != null));
+		//?} else {
+		/*float scale = hatScale(!player.getItemBySlot(EquipmentSlot.HEAD).isEmpty());
+		*///?}
+		if (scale != 1f) {
+			pose.translate(0, HEAD_CENTER, 0);
+			pose.scale(scale, scale, scale);
+			pose.translate(0, -HEAD_CENTER, 0);
+		}
 		switch (cfg.hat) {
 			case HALO -> {
 				pose.translate(0, HEAD_TOP - HALO_LIFT, 0);
