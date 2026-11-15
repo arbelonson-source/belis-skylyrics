@@ -8,8 +8,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.locale.Language;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
@@ -158,7 +156,7 @@ public final class RecordCard {
 			NowPlayingHud.roundRectGui(g, tx, lineY, Math.max(2, lineW * done), 2, 1,
 					ARGB.color(Math.round(alpha * 255), accent));
 			float small = scale * 0.85f;
-			String[] times = times(played, length);
+			String[] times = timesShown(played, length);
 			text(g, font, style, times[0], tx, lineY + 7, small, fade(SUB));
 			String left = times[1];
 			float leftW = LyricsFont.width(font, style, left) * small;
@@ -329,7 +327,7 @@ public final class RecordCard {
 		try {
 			g.pose().translate(x, midY);
 			g.pose().scale(scale, scale);
-			g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
+			g.drawString(font, NowPlayingHud.visual(text, style), 0, -4, color, false);
 		} finally {
 			g.pose().popMatrix();
 		}
@@ -518,6 +516,20 @@ public final class RecordCard {
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
 		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars),
 				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc));
+	}
+
+	/** The last {@link #times}, kept while the same whole seconds are asked for (the card asks every frame). */
+	private long timesPlayedSec = -1, timesLengthSec = -1;
+	private String[] timesShown = new String[0];
+
+	private String[] timesShown(long playedMs, long lengthMs) {
+		long playedSec = Math.max(0, playedMs) / 1000, lengthSec = Math.round(Math.max(0, lengthMs) / 1000.0);
+		if (playedSec != timesPlayedSec || lengthSec != timesLengthSec) {
+			timesPlayedSec = playedSec;
+			timesLengthSec = lengthSec;
+			timesShown = times(playedMs, lengthMs);
+		}
+		return timesShown;
 	}
 
 	/**

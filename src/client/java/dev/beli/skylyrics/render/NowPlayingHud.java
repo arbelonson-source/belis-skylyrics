@@ -146,13 +146,42 @@ public final class NowPlayingHud {
 	private float spin, spinSpeed;
 	private int clockMinute = -1;
 	private String clockText = "";
+	/** The last few lines laid out (the one sung, the one fading out, one spare); see {@link LineKey}. */
+	private final SmallCache<LineKey, Laid> laid = new SmallCache<>(3);
+	/** How many resource reloads were seen, so a reload drops every laid-out line. */
+	private long reloads;
+	private double guiScale;
+	private boolean wasLoading;
+	private int fpsShown = -1;
+	private String fpsText = "";
+	/** The last line text worked out from a lyric line, and what it was worked out from. */
+	private @Nullable LineText lineText;
+	private @Nullable SongSource songSource;
+	private @Nullable Content songContent;
 
 	/** What the bar says: a lyric line, or the song's title and artist. */
 	/** {@code through} is how far the song is through the line's time, 0 to 1, karaoke or not. */
 	private record Content(String key, boolean lyric, String text, String sub, float sung, float through) {}
 
-	/** A word of the line, placed from the line's start in GUI units. */
-	private record Word(String text, float x, float w, boolean sung) {}
+	/** A laid-out line with what each word is drawn from, built once per {@link LineKey}. */
+	private record Laid(LineLayout layout, FormattedCharSequence[] seqs) {}
+
+	/** What a lyric line's bar text is worked out from, and the content key and text it gives. */
+	private record LineSource(int index, LyricLine line, boolean uppercase) {}
+
+	private record LineText(LineSource source, String key, String text) {}
+
+	/** What the song info is worked out from. */
+	private record SongSource(String title, String artist, String source, LyricsService.State state, Object language) {}
+
+	/** What a piece of text's visual order is worked out from. */
+	private record VisualKey(String text, Style style, Object language) {}
+
+	/** The game's visual order of short texts (the clock, the frame rate, a title), kept while they stay the same. */
+	private static final SmallCache<VisualKey, FormattedCharSequence> VISUAL = new SmallCache<>(12);
+	/** Cut texts, by everything the cut depends on. */
+	private record ClipKey(Object font, Style style, String text, float maxW, float width, float ellipsis) {}
+	private static final SmallCache<ClipKey, String> CLIPS = new SmallCache<>(8);
 
 	public NowPlayingHud(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -178,6 +207,13 @@ public final class NowPlayingHud {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
+		// A resource reload can change glyph widths: every laid-out line is dropped by it
+		boolean loading = loadingScreenUp(mc);
+		if (loading || wasLoading) {
+			reloads++;
+		}
+		wasLoading = loading;
+		guiScale = mc.getWindow().getGuiScale();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
 
@@ -282,6 +318,15 @@ public final class NowPlayingHud {
 		} finally {
 			g.pose().popMatrix();
 		}
+	}
+
+	/** Whether the resource loading screen is up. */
+	private static boolean loadingScreenUp(Minecraft mc) {
+		//? if >=26.2 {
+		/*return mc.gui.overlay() != null;
+		*///?} else {
+		return mc.getOverlay() != null;
+		//?}
 	}
 
 	/** How far down a bar at the top must start to keep clear of the potion effect icons (0 when it doesn't reach them). */
@@ -493,7 +538,12 @@ public final class NowPlayingHud {
 		float a = alpha;
 		if (cfg.barStats) {
 			float tx = cfg.barPing ? x + SIGNAL_W + SIGNAL_TEXT_GAP : x;
-			text(g, font, style, mc.getFps() + FPS, tx, midY, textScale, fade(a, STAT_TEXT));
+			int fps = mc.getFps();
+			if (fps != fpsShown) {
+				fpsShown = fps;
+				fpsText = fps + FPS;
+			}
+			text(g, font, style, fpsText, tx, midY, textScale, fade(a, STAT_TEXT));
 		}
 		if (!cfg.barPing) {
 			return;
@@ -577,31 +627,30 @@ public final class NowPlayingHud {
 	private void drawLyric(GuiGraphics g, Font font, Style style, float scale, Content c, float x, float midY, float room,
 			float a, boolean live, float dt) {
 		//? if >=26.1 {
-		/*Word[] words = words(font, style, scale, c.drawString(), c.sung());
+		/*Laid lay = laid(font, style, scale, c.drawString());
 		*///?} else {
-		Word[] words = words(font, style, scale, c.text(), c.sung());
+		Laid lay = laid(font, style, scale, c.text());
 		//?}
-		if (words.length == 0) {
+		LineLayout words = lay.layout();
+		int n = words.size();
+		if (n == 0) {
 			return;
 		}
-		//? if >=26.1 {
-		/*boolean rtl = TopBarWords.baseRtl(c.drawString());
-		*///?} else {
-		boolean rtl = TopBarWords.baseRtl(c.text());
-		//?}
-		float total = extent(words);
+		boolean rtl = words.rtl;
+		float total = words.extent;
 		boolean probe = BarProbe.begin(live);
 		int current = 0;
-		for (int i = 0; i < words.length; i++) {
-			if (words[i].sung()) {
+		for (int i = 0; i < n; i++) {
+			if (words.sung(i, c.sung())) {
 				current = i;
 			}
 		}
-		Word cur = words[current], prev = words[Math.max(0, current - 1)];
-		float pad = TopBarLayout.highlightPad(wordGap(font, style, scale));
+		int prev = Math.max(0, current - 1);
+		float wordGap = words.gap;
+		float pad = TopBarLayout.highlightPad(wordGap);
 
 		// Long lines scroll, in reading order, to keep the word being sung in view
-		float target = TopBarLayout.lineShift(total, cur.x() + cur.w(), room, pad);
+		float target = TopBarLayout.lineShift(total, words.x[current] + words.w[current], room, pad);
 		float k = 1 - (float) Math.exp(-dt * SCROLL_RATE);
 		float shift;
 		if (live) {
@@ -619,12 +668,12 @@ public final class NowPlayingHud {
 		}
 
 		if (probe) {
-			BarProbe.line(c.text(), rtl, scale, start, shift, pad, wordGap(font, style, scale), total, g);
+			BarProbe.line(c.text(), rtl, scale, start, shift, pad, wordGap, total, g);
 		}
 		if (live) {
-			float left = Math.min(prev.x(), cur.x()), right = Math.max(prev.x() + prev.w(), cur.x() + cur.w());
+			float left = Math.min(words.x[prev], words.x[current]), right = Math.max(words.x[prev] + words.w[prev], words.x[current] + words.w[current]);
 			if (hlRight < 0) {
-				hlLeft = words[0].x();
+				hlLeft = words.x[0];
 				hlRight = hlLeft + HL_START_W;
 			}
 			float hk = 1 - (float) Math.exp(-dt * HL_RATE);
@@ -640,31 +689,18 @@ public final class NowPlayingHud {
 		}
 
 		int sung = fade(a, SUNG), upcoming = fade(a, UPCOMING);
-		for (Word w : words) {
+		for (int i = 0; i < n; i++) {
 			// The old line greys out the moment it is replaced
-			int color = live && w.sung() ? sung : upcoming;
-			float wx = rtl ? start - w.x() - w.w() : start + w.x();
+			int color = live && words.sung(i, c.sung()) ? sung : upcoming;
+			float wx = rtl ? start - words.x[i] - words.w[i] : start + words.x[i];
 			if (probe) {
-				BarProbe.word(font, style, w.text(), rtl, w.x(), w.w(), wx, scale);
+				BarProbe.word(font, style, words.texts[i], rtl, words.x[i], words.w[i], wx, scale);
 			}
-			//? if >=26.1 {
-			/*word(g, font, style, w.drawString(), rtl, wx, midY, scale, color);
-			*///?} else {
-			word(g, font, style, w.text(), rtl, wx, midY, scale, color);
-			//?}
+			text(g, font, lay.seqs()[i], wx, midY, scale, color);
 		}
 		if (probe) {
 			BarProbe.end();
 		}
-	}
-
-	/** How far the words reach from the line's start edge. */
-	private static float extent(Word[] words) {
-		float end = 0;
-		for (Word w : words) {
-			end = Math.max(end, w.x() + w.w());
-		}
-		return end;
 	}
 
 	/** The gap between the line's words, in GUI units. */
@@ -673,79 +709,39 @@ public final class NowPlayingHud {
 	}
 
 	/**
-	 * The line's words in reading order, a space (and a little) apart. A word turns white as a whole once its
-	 * singing starts; the share of the line sung is counted in letters.
+	 * The line laid out: its words in reading order, a space (and a little) apart, and what each is drawn from. A word
+	 * turns white as a whole once its singing starts, which {@link LineLayout#sung} works out each frame. The layout
+	 * only changes with its {@link LineKey}, so it is kept while the line is on screen.
 	 */
-	private static Word[] words(Font font, Style style, float scale, String text, float sungShare) {
-		int letters = 0;
-		for (int i = 0; i < text.length(); i++) {
-			letters += text.charAt(i) == ' ' ? 0 : 1;
+	private Laid laid(Font font, Style style, float scale, String text) {
+		LineKey key = new LineKey(text, font, style, scale, Language.getInstance(), guiScale, LyricsFont.width(font, style, text), reloads);
+		return laid.get(key, NowPlayingHud::lay);
+	}
+
+	private static Laid lay(LineKey k) {
+		Font font = (Font) k.font();
+		Style style = (Style) k.style();
+		LineLayout layout = LineLayout.build(k.text(), k.scale(), wordGap(font, style, k.scale()),
+				(piece, rtl) -> wordWidth(font, style, piece, rtl));
+		FormattedCharSequence[] seqs = new FormattedCharSequence[layout.size()];
+		for (int i = 0; i < seqs.length; i++) {
+			seqs[i] = wordSeq(layout.texts[i], layout.rtl, style);
 		}
-		float at = sungShare * letters;
-		List<TopBarWords.Piece> parts = TopBarWords.split(text);
-		if (parts.isEmpty()) {
-			return new Word[0];
-		}
-		int n = parts.size();
-		float[] widths = new float[n];
-		boolean rtl = TopBarWords.baseRtl(text);
-		for (int i = 0; i < n; i++) {
-			widths[i] = wordWidth(font, style, parts.get(i).text(), rtl) * scale;
-		}
-		// Placed as they are seen (a Hebrew word in an English line, numbers in a Hebrew one), then measured from
-		// the start edge: the left for a left-to-right line, the right for a right-to-left one
-		float[] left = TopBarWords.leftEdges(parts, widths, wordGap(font, style, scale));
-		float total = 0;
-		for (int i = 0; i < n; i++) {
-			total = Math.max(total, left[i] + widths[i]);
-		}
-		Word[] out = new Word[n];
-		int seen = 0;
-		for (int i = 0; i < n; i++) {
-			boolean sung = seen <= at || sungShare >= 1;
-			out[i] = new Word(parts.get(i).text(), rtl ? total - left[i] - widths[i] : left[i], widths[i], sung);
-			seen += parts.get(i).text().length();
-		}
-		return out;
+		return new Laid(layout, seqs);
 	}
 
 	/** Draws text with its middle at {@code midY}, scaled about its left end. */
 	private static void text(GuiGraphics g, Font font, Style style, String text, float x, float midY, float scale, int color) {
-		g.pose().pushMatrix();
-		try {
-			g.pose().translate(x, midY);
-			g.pose().scale(scale, scale);
-			if (BarProbe.on()) {
-				BarProbe.wordPose(g);
-			}
-			g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
-		} finally {
-			g.pose().popMatrix();
-		}
+		text(g, font, visual(text, style), x, midY, scale, color);
 	}
 
-	/**
-	 * How wide one word is as {@link #word} draws it. A word left to the game is measured after the game joins its
-	 * letters, since joined Arabic letters are narrower than the same letters standing alone.
-	 */
-	private static float wordWidth(Font font, Style style, String text, boolean lineRtl) {
-		if (TopBarWords.vanilla(text)) {
-			return font.getSplitter().stringWidth(Language.getInstance().getVisualOrder(FormattedText.of(text, style)));
-		}
-		return LyricsFont.width(font, style, TopBarWords.shown(text, lineRtl));
+	/** The game's visual order of the text (right-to-left runs reversed), kept while the same text is asked for again. */
+	static FormattedCharSequence visual(String text, Style style) {
+		return VISUAL.get(new VisualKey(text, style, Language.getInstance()),
+				k -> ((Language) k.language()).getVisualOrder(FormattedText.of(k.text(), k.style())));
 	}
 
-	/**
-	 * Draws one word of the line, reordered here with the line's direction and then drawn as it stands from left to
-	 * right (the game's own ordering would pick the word's direction from its first letter).
-	 */
-	private static void word(GuiGraphics g, Font font, Style style, String text, boolean lineRtl, float x, float midY, float scale, int color) {
-		if (TopBarWords.vanilla(text)) {
-			// Arabic with vowel marks: the game's own path, as before
-			text(g, font, style, text, x, midY, scale, color);
-			return;
-		}
-		FormattedCharSequence seq = wordSeq(text, lineRtl, style);
+	private static void text(GuiGraphics g, Font font, FormattedCharSequence seq, float x, float midY, float scale, int color) {
 		g.pose().pushMatrix();
 		try {
 			g.pose().translate(x, midY);
@@ -759,10 +755,22 @@ public final class NowPlayingHud {
 		}
 	}
 
-	/** What {@link #word} draws for one word, also what the dev probe measures. */
+	/**
+	 * How wide one word is as {@link #word} draws it. A word left to the game is measured after the game joins its
+	 * letters, since joined Arabic letters are narrower than the same letters standing alone.
+	 */
+	private static float wordWidth(Font font, Style style, String text, boolean lineRtl) {
+		if (TopBarWords.vanilla(text)) {
+			return font.getSplitter().stringWidth(visual(text, style));
+		}
+		return LyricsFont.width(font, style, TopBarWords.shown(text, lineRtl));
+	}
+
+	/** What the bar draws for one word, also what the dev probe measures. */
 	static FormattedCharSequence wordSeq(String text, boolean lineRtl, Style style) {
 		if (TopBarWords.vanilla(text)) {
-			return Language.getInstance().getVisualOrder(FormattedText.of(text, style));
+			// Arabic with vowel marks: the game's own path
+			return visual(text, style);
 		}
 		String shown = TopBarWords.shown(text, lineRtl);
 		return sink -> {
@@ -876,15 +884,33 @@ public final class NowPlayingHud {
 		long end = lyrics.sungEnd(i);
 		float through = Mth.clamp((time - line.timeMs()) / (float) Math.max(1, end - line.timeMs()), 0, 1);
 		float sung = cfg.karaoke ? through : 1;
-		//? if >=26.1 {
-		/*String text = cfg.uppercase ? WorldWords.capitals(line.drawString()) : line.drawString();
-		*///?} else {
-		String text = cfg.uppercase ? WorldWords.capitals(line.text()) : line.text();
-		//?}
-		return new Content("L" + i + text, true, text.strip(), "", sung, through);
+		LineText shown = lineText;
+		if (shown == null || shown.source().index() != i || !shown.source().line().equals(line) || shown.source().uppercase() != cfg.uppercase) {
+			//? if >=26.1 {
+			/*String text = cfg.uppercase ? WorldWords.capitals(line.drawString()) : line.drawString();
+			*///?} else {
+			String text = cfg.uppercase ? WorldWords.capitals(line.text()) : line.text();
+			//?}
+			shown = new LineText(new LineSource(i, line, cfg.uppercase), "L" + i + text, text.strip());
+			lineText = shown;
+		}
+		return new Content(shown.key(), true, shown.text(), "", sung, through);
 	}
 
 	private Content songInfo(Track track, LyricsService.State state) {
+		// Worked out from the song, its state and the language, so it is only built again when one of them changes
+		SongSource source = new SongSource(track.title(), track.artist(), tracker.sourceName(), state, Language.getInstance());
+		Content kept = songContent;
+		if (kept != null && source.equals(songSource)) {
+			return kept;
+		}
+		Content made = buildSongInfo(track, state);
+		songSource = source;
+		songContent = made;
+		return made;
+	}
+
+	private Content buildSongInfo(Track track, LyricsService.State state) {
 		String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
 		String status = switch (state) {
 			case LOADING -> Tr.t("finding lyrics…");
@@ -900,14 +926,13 @@ public final class NowPlayingHud {
 	}
 
 	/** The text's width on screen, in GUI units. */
-	private static float contentWidth(Font font, Style style, float scale, Content c) {
+	private float contentWidth(Font font, Style style, float scale, Content c) {
 		if (c.lyric()) {
 			//? if >=26.1 {
-			/*Word[] words = words(font, style, scale, c.drawString(), 1);
+			/*return laid(font, style, scale, c.drawString()).layout().extent;
 			*///?} else {
-			Word[] words = words(font, style, scale, c.text(), 1);
+			return laid(font, style, scale, c.text()).layout().extent;
 			//?}
-			return extent(words);
 		}
 		//? if >=26.1 {
 		/*float w = LyricsFont.width(font, style, c.drawString());
@@ -933,13 +958,20 @@ public final class NowPlayingHud {
 		return false;
 	}
 
-	/** Cuts the text to fit, ending with "…". */
+	/** Cuts the text to fit, ending with "…". The cut is kept while the same text is cut to the same room. */
 	static String clip(Font font, Style style, String text, float maxW) {
-		if (LyricsFont.width(font, style, text) <= maxW) {
+		float w = LyricsFont.width(font, style, text);
+		if (w <= maxW) {
 			return text;
 		}
-		float room = maxW - LyricsFont.width(font, style, "…");
-		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
+		return CLIPS.get(new ClipKey(font, style, text, maxW, w, LyricsFont.width(font, style, "…")), NowPlayingHud::cut);
+	}
+
+	private static String cut(ClipKey k) {
+		Font font = (Font) k.font();
+		Style style = k.style();
+		float room = k.maxW() - k.ellipsis();
+		return dev.beli.skylyrics.util.TextCut.prefix(k.text(), t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */
