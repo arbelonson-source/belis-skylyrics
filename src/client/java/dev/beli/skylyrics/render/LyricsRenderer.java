@@ -1012,8 +1012,7 @@ public final class LyricsRenderer {
 				pause[w] = endsWithPause(word);
 				firstChar[w] = split.first()[w];
 			}
-			boolean rtl = Bidi.requiresBidi(text.toCharArray(), 0, text.length())
-					&& !new Bidi(text, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight();
+			boolean rtl = WorldWords.rightToLeft(text);
 			float space = LyricsFont.width(font, base, " ");
 			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause, split.tight()), space,
 					ArcLayout.seed(index, text), rtl, split.tight());
