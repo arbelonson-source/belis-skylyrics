@@ -23,6 +23,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer;
 *///?} else {
 /*import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.DeltaTracker;
 *///?}
 //? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
@@ -97,6 +98,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private NowPlayingHud hud;
 	private RecordCard card;
 	private DevTestHook testHook;
+	//? if <1.21.2 {
+	/*// Whether GuiMixin already drew the lyrics / the bar and card this frame (1.21.1 only)
+	private boolean lyricsLayered, barLayered;
+	*///?}
 
 	private KeyMapping openSettings;
 	private KeyMapping openLibrary;
@@ -191,10 +196,22 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			layers.attachLayerBefore(IdentifiedLayer.OVERLAY_MESSAGE, id("record_card"), card::render);
 		});
 		*///?} else {
-		/*// 1.21.1 has no layers: these draw after everything else in the HUD, over the chat and the action bar text
-		HudRenderCallback.EVENT.register(renderer::renderHud);
-		HudRenderCallback.EVENT.register(hud::render);
-		HudRenderCallback.EVENT.register(card::render);
+		/*// 1.21.1's HUD layers aren't hooked by Fabric, and this callback fires after the chat. GuiMixin draws these before
+		// the chat and the action bar text instead, and the callback only draws what the mixin didn't (it didn't apply, or the
+		// HUD layers were skipped this frame).
+		HudRenderCallback.EVENT.register((g, delta) -> {
+			if (!lyricsLayered) {
+				renderer.renderHud(g, delta);
+			}
+			lyricsLayered = false;
+		});
+		HudRenderCallback.EVENT.register((g, delta) -> {
+			if (!barLayered) {
+				hud.render(g, delta);
+				card.render(g, delta);
+			}
+			barLayered = false;
+		});
 		*///?}
 		ScreenEvents.AFTER_INIT.register((client, screen, width, height) -> {
 			if (screen instanceof TitleScreen) {
@@ -539,4 +556,23 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	public NowPlayingHud hud() {
 		return hud;
 	}
+
+	//? if <1.21.2 {
+	/*// From GuiMixin, before the HUD's first layer
+	public void drawLyricsLayer(GuiGraphics g, DeltaTracker delta) {
+		if (renderer != null) {
+			renderer.renderHud(g, delta);
+			lyricsLayered = true;
+		}
+	}
+
+	// From GuiMixin, just before the action bar text, so the chat and that text stay over the bar and the card
+	public void drawBarLayer(GuiGraphics g, DeltaTracker delta) {
+		if (hud != null && card != null) {
+			hud.render(g, delta);
+			card.render(g, delta);
+			barLayered = true;
+		}
+	}
+	*///?}
 }

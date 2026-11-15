@@ -40,6 +40,8 @@
 - A music player that answers slowly, or Spotify right after a pause, no longer makes the World words vanish for a moment.
 - On Windows, a player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics.
 - The sky effects change line at the same moment as the words.
+- On Minecraft 1.21.1 the top bar's text is clipped right at every Bar size, and the lyrics no longer cover the chat.
+- On 1.21.1 to 1.21.5, setting descriptions are no longer cut off at the edge of the list.
 
 ### Faster
 

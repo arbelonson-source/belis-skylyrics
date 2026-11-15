@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -114,6 +115,19 @@ class TopBarLayoutTest {
 	@Test
 	void sizeOneChangesNothing() {
 		assertEquals(TopBarLayout.fit(320, 30, 45), TopBarLayout.fit(320, 1f, 30, 45));
+	}
+
+	@Test
+	void scaledClipMatchesThePoseTheBarIsDrawnWith() {
+		// Full size changes nothing
+		assertArrayEquals(new int[] {100, 20, 220, 36}, TopBarLayout.scaledClip(100, 20, 220, 36, 1f, 320, 18));
+		// 150% about the screen's middle and the top edge: the middle stays, the box grows with it
+		assertArrayEquals(new int[] {70, 20, 250, 44}, TopBarLayout.scaledClip(100, 20, 220, 36, 1.5f, 320, 20));
+		// 75% about a bottom pivot: the pivot row stays put
+		int[] box = TopBarLayout.scaledClip(100, 200, 220, 216, 0.75f, 320, 216);
+		assertEquals(216, box[3]);
+		assertEquals(115, box[0]);
+		assertEquals(205, box[2]);
 	}
 
 	@Test

@@ -73,6 +73,18 @@ final class TopBarLayout {
 		return atBottom ? top + PILL_H : top;
 	}
 
+	/**
+	 * A clip box given in the bar's own units, as screen units, for a bar drawn with {@code size} about the pivot (the
+	 * screen's middle, {@code pivotY}). Minecraft 1.21.1's scissor ignores the pose, so it needs the scaled box; the
+	 * rounding is the one 1.21.4 and later do themselves. Returns left, top, right, bottom.
+	 */
+	static int[] scaledClip(float left, float top, float right, float bottom, float size, float guiWidth, float pivotY) {
+		float dx = (1 - size) * guiWidth / 2f, dy = (1 - size) * pivotY;
+		float x1 = dx + size * left, y1 = dy + size * top, x2 = dx + size * right, y2 = dy + size * bottom;
+		int l = (int) Math.floor(x1), t = (int) Math.floor(y1);
+		return new int[] {l, t, l + (int) Math.floor(x2 - x1), t + (int) Math.floor(y2 - y1)};
+	}
+
 	/** {@link #fit} for a bar drawn {@code size} times bigger: everything is measured in the bar's own, scaled units. */
 	static Fit fit(float guiWidth, float size, float clockW, float statsW) {
 		return fit(guiWidth / size, clockW, statsW);

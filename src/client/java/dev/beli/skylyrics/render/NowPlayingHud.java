@@ -131,6 +131,8 @@ public final class NowPlayingHud {
 	private long swappedAt;
 	/** The pill's width, tweened from {@link #widthFrom} to {@link #widthTo} since {@link #resizedAt}. */
 	private float width = -1, widthFrom, widthTo, widthSpeed;
+	/** The bar's scale and pivot this frame, for the clip box on versions whose scissor ignores the pose. */
+	private float clipSize = 1, clipPivotY, clipGuiWidth;
 	private long resizedAt;
 	/** Where the bar's top edge is, eased: below any boss bars. */
 	private float top = -1;
@@ -256,6 +258,9 @@ public final class NowPlayingHud {
 		g.pose().pushMatrix();
 		try {
 			float pivotY = TopBarLayout.pivotY(cfg.barPosition == BarPosition.BOTTOM, y);
+			clipSize = barSize;
+			clipPivotY = pivotY;
+			clipGuiWidth = g.guiWidth();
 			g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * pivotY);
 			g.pose().scale(barSize, barSize);
 			drawPill(g, mc, x, y, now, dt);
@@ -469,7 +474,14 @@ public final class NowPlayingHud {
 		int clipLeft = Math.round(x + ART_INSET + ART + CLIP_GAP);
 		// Words past the room stop where the highlight would, a little before the equaliser
 		int clipRight = Math.round(tx + room);
-		g.enableScissor(clipLeft, Math.round(midY - PILL_H / 2f) + 1, clipRight, Math.round(midY + PILL_H / 2f) - 1);
+		int clipTop = Math.round(midY - PILL_H / 2f) + 1, clipBottom = Math.round(midY + PILL_H / 2f) - 1;
+		//? if <1.21.2 {
+		/*// 1.21.1's scissor ignores the pose, so give it the box already scaled like the bar is
+		int[] box = TopBarLayout.scaledClip(clipLeft, clipTop, clipRight, clipBottom, clipSize, clipGuiWidth, clipPivotY);
+		g.enableScissor(box[0], box[1], box[2], box[3]);
+		*///?} else {
+		g.enableScissor(clipLeft, clipTop, clipRight, clipBottom);
+		//?}
 		try {
 			if (old != null && p < 1) {
 				drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
