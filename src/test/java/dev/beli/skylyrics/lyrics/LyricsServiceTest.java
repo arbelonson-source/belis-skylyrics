@@ -41,6 +41,8 @@ class LyricsServiceTest {
 	private final CountDownLatch release = new CountDownLatch(1);
 	private volatile boolean holdFirst;
 	private volatile boolean emptyOk;
+	/** While set, the server hangs up on every request without answering, like a site that is down. */
+	private volatile boolean down;
 	private volatile String getAnswer = "";
 	/** The next this many requests (about {@link #failOnly}, if set) get {@link #failCode}. */
 	private final AtomicInteger failures = new AtomicInteger();
@@ -66,28 +68,6 @@ class LyricsServiceTest {
 		return s;
 	}
 
-	private HttpServer restart() {
-		try {
-			// the same port again; the old socket may take a moment to be free, and the client's address can't change
-			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-			while (true) {
-				try {
-					return serve(port);
-				} catch (IOException e) {
-					if (System.nanoTime() > until) {
-						throw e;
-					}
-					Thread.sleep(50);
-				}
-			}
-		} catch (IOException e) {
-			throw new java.io.UncheckedIOException(e);
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new IllegalStateException(e);
-		}
-	}
-
 	/** Same service, but retries after 30 ms instead of seconds. */
 	private void fastRetries() {
 		service.shutdown();
@@ -105,6 +85,10 @@ class LyricsServiceTest {
 		String query = URLDecoder.decode(ex.getRequestURI().getRawQuery(), StandardCharsets.UTF_8);
 		String path = ex.getRequestURI().getPath();
 		asked.add(path + "?" + query);
+		if (down) {
+			ex.close();
+			return;
+		}
 		if (holdFirst && firstSeen.getCount() > 0) {
 			firstSeen.countDown();
 			try {
@@ -262,10 +246,10 @@ class LyricsServiceTest {
 		service.load(track("Song One", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.READY);
 
-		server.stop(0); // nobody answering at all
+		down = true; // nobody answering at all (the connection is dropped, no answer comes)
 		service.load(track("Song Two", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.ERROR);
-		server = restart();
+		down = false;
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		assertEquals("Song Two", service.track().title());
 	}

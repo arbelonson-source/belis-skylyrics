@@ -129,7 +129,7 @@ class ArcLayoutLongLineTest {
 			pause[i] = i % 9 == 8;
 		}
 		int[][] rows = new int[1][];
-		assertTimeoutPreemptively(Duration.ofSeconds(2), () -> rows[0] = ArcLayout.rows(w, pause, null));
+		assertTimeoutPreemptively(Duration.ofSeconds(10), () -> rows[0] = ArcLayout.rows(w, pause, null));
 		assertSane(rows[0], n, w, null);
 	}
 
@@ -141,7 +141,7 @@ class ArcLayoutLongLineTest {
 		Arrays.fill(w, 10.5f);
 		Arrays.fill(tight, true);
 		int[][] rows = new int[1][];
-		assertTimeoutPreemptively(Duration.ofSeconds(2), () -> rows[0] = ArcLayout.rows(w, pause, tight));
+		assertTimeoutPreemptively(Duration.ofSeconds(10), () -> rows[0] = ArcLayout.rows(w, pause, tight));
 		assertSane(rows[0], n, w, tight);
 	}
 

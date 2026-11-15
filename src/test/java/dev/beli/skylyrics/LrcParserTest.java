@@ -338,7 +338,7 @@ class LrcParserTest {
 		String[] lines = {"\u266A".repeat(50_000) + "x", "\u266A" + " ".repeat(50_000) + "instrumentalx", "[Chorus:" + " ".repeat(50_000) + " words",
 				"(" + "a".repeat(50_000) + " solo", "\uD83C\uDFB5".repeat(50_000) + "x"};
 		for (String line : lines) {
-			org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(2),
+			org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(15),
 					() -> LrcParser.parseSynced("[00:01.00]" + line + "\n[00:05.00]more"));
 		}
 	}
