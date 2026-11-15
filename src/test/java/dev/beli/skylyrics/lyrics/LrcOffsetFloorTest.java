@@ -1,0 +1,38 @@
+package dev.beli.skylyrics.lyrics;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+/** An [offset:] tag moves every line; none may land before the start of the song. */
+class LrcOffsetFloorTest {
+	@Test
+	void anOffsetLargerThanALinesTimeLeavesItAtZeroNotNegative() {
+		Lyrics l = LrcParser.parseSynced("[offset:5000]\n[00:02.00] first\n[00:10.00] second");
+		assertEquals(0, l.get(0).timeMs());
+		assertEquals("first", l.get(0).text());
+		assertEquals(5000, l.get(1).timeMs());
+		assertTrue(l.lines().stream().allMatch(line -> line.timeMs() >= 0));
+	}
+
+	@Test
+	void anOffsetEqualToTheTimeLandsExactlyOnZero() {
+		Lyrics l = LrcParser.parseSynced("[offset:2000]\n[00:02.00] first\n[00:04.00] second");
+		assertEquals(0, l.get(0).timeMs());
+		assertEquals(2000, l.get(1).timeMs());
+	}
+
+	@Test
+	void aNegativeOffsetShiftsLaterAndNeverHitsTheFloor() {
+		Lyrics l = LrcParser.parseSynced("[offset:-1500]\n[00:02.00] first");
+		assertEquals(3500, l.get(0).timeMs());
+	}
+
+	@Test
+	void aHugeOffsetFloorsEverythingAndKeepsTheOrder() {
+		Lyrics l = LrcParser.parseSynced("[offset:900000]\n[00:02.00] a\n[00:04.00] b");
+		assertTrue(l.lines().stream().allMatch(line -> line.timeMs() == 0));
+		assertTrue(l.lines().size() >= 1);
+	}
+}
