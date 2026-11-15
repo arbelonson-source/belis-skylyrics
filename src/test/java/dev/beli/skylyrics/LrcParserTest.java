@@ -161,4 +161,20 @@ class LrcParserTest {
 		assertEquals(5000, l.lines().get(1).timeMs());
 		assertEquals("two ♪", l.lines().get(2).text());
 	}
+
+	@Test
+	void syncedTextOfOnlyNotesOrBlanksIsInstrumental() {
+		for (String lrc : new String[] {"[00:00.00] ♪", "[00:00.00]\n[00:30.00]♪ ♪\n[01:00.00]", "[00:05.00][Intro]"}) {
+			Lyrics l = LrcParser.parseSynced(lrc);
+			assertTrue(l.instrumental(), lrc);
+			assertTrue(l.isEmpty(), lrc);
+		}
+		assertFalse(LrcParser.parseSynced("[00:00.00]♪\n[00:10.00]words").instrumental());
+	}
+
+	@Test
+	void threeNumberStampsStayMinutesSecondsAndCentiseconds() {
+		// "[mm:ss:xx]" is what some files use; no test in the repo uses hh:mm:ss, so that reading stays unsupported
+		assertEquals(62_030, LrcParser.parseSynced("[01:02:03]x").lines().getFirst().timeMs());
+	}
 }

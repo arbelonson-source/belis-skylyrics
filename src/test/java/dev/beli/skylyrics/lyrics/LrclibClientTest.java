@@ -30,6 +30,8 @@ class LrclibClientTest {
 	private volatile int getCode = 404;
 	private volatile int searchCode = 200;
 	private volatile String searchBody = "[]";
+	private volatile String getBody = "{}";
+	private volatile String retryAfter;
 
 	@BeforeEach
 	void start() throws IOException {
@@ -48,8 +50,11 @@ class LrclibClientTest {
 		String path = ex.getRequestURI().getPath();
 		asked.add(path);
 		int code = path.endsWith("/get") ? getCode : searchCode;
-		String body = path.endsWith("/get") ? "{}" : searchBody;
+		String body = path.endsWith("/get") ? getBody : searchBody;
 		byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+		if (retryAfter != null) {
+			ex.getResponseHeaders().add("Retry-After", retryAfter);
+		}
 		ex.sendResponseHeaders(code, bytes.length);
 		try (OutputStream out = ex.getResponseBody()) {
 			out.write(bytes);
@@ -95,5 +100,65 @@ class LrclibClientTest {
 		LrclibClient.StatusException e = assertThrows(LrclibClient.StatusException.class, () -> client.find(TRACK));
 		assertEquals(429, e.status());
 		assertEquals(1, asked.size());
+	}
+
+	@Test
+	void emptyOkReplyIsATemporaryErrorNotNoLyrics() {
+		for (String body : new String[] {"", "  \n", "nope", "null", "42"}) {
+			getCode = 200;
+			getBody = body;
+			asked.clear();
+			assertThrows(IOException.class, () -> client.find(TRACK), "get body '" + body + "'");
+		}
+		getCode = 404;
+		for (String body : new String[] {"", "<html>log in</html>", "true"}) {
+			searchBody = body;
+			assertThrows(java.io.IOException.class, () -> client.find(TRACK), "search body '" + body + "'");
+		}
+	}
+
+	@Test
+	void forbiddenIsAStatusError() {
+		getCode = 403;
+		assertEquals(403, assertThrows(LrclibClient.StatusException.class, () -> client.find(TRACK)).status());
+	}
+
+	@Test
+	void retryAfterIsKept() {
+		getCode = 429;
+		retryAfter = "7";
+		assertEquals(7000, assertThrows(LrclibClient.StatusException.class, () -> client.find(TRACK)).retryAfterMs());
+		assertEquals(-1, LrclibClient.retryAfterMs("Wed, 21 Oct 2026 07:28:00 GMT"));
+		assertEquals(-1, LrclibClient.retryAfterMs(null));
+	}
+
+	private static final Track BARE = new Track("Made Up Song", "", "", 0, "", "browser");
+
+	private static String hit(String name, String lyric) {
+		return "{\"trackName\":\"" + name + "\",\"duration\":200,\"syncedLyrics\":\"" + lyric + "\",\"instrumental\":false}";
+	}
+
+	@Test
+	void noArtistAndNoLengthNeedsTheSameTitle() throws Exception {
+		searchBody = "[" + hit("Made Up Song (Remix Of Another Thing)", "[00:01.00]wrong") + "," + hit("MADE UP SONG", "[00:01.00]right") + "]";
+		assertEquals("[00:01.00]right", client.find(BARE).synced());
+	}
+
+	@Test
+	void noArtistAndNoLengthWithOnlyOtherTitlesFindsNothing() throws Exception {
+		searchBody = "[" + hit("Something Else Entirely", "[00:01.00]wrong") + "]";
+		assertFalse(client.find(BARE).found());
+	}
+
+	@Test
+	void noArtistAndNoLengthWithSeveralSameTitlesPicksNone() throws Exception {
+		searchBody = "[" + hit("Made Up Song", "[00:01.00]one") + "," + hit("Made Up Song", "[00:01.00]two") + "]";
+		assertFalse(client.find(BARE).found());
+	}
+
+	@Test
+	void anArtistStillAllowsALooserTitleMatch() throws Exception {
+		searchBody = "[" + hit("Made Up Song - Remastered", "[00:01.00]fine") + "]";
+		assertTrue(client.find(TRACK).found());
 	}
 }

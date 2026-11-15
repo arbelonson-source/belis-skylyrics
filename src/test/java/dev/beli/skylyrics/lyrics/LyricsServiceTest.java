@@ -39,6 +39,7 @@ class LyricsServiceTest {
 	private final CountDownLatch firstSeen = new CountDownLatch(1);
 	private final CountDownLatch release = new CountDownLatch(1);
 	private volatile boolean holdFirst;
+	private volatile boolean emptyOk;
 	private volatile String getAnswer = "";
 	/** The next this many requests (about {@link #failOnly}, if set) get {@link #failCode}. */
 	private final AtomicInteger failures = new AtomicInteger();
@@ -102,6 +103,9 @@ class LyricsServiceTest {
 		if (query.contains(failOnly) && failures.getAndUpdate(n -> Math.max(0, n - 1)) > 0) {
 			code = failCode;
 			body = "{}";
+		} else if (emptyOk) {
+			code = 200;
+			body = "";
 		} else if (path.endsWith("/get")) {
 			code = getAnswer.isEmpty() ? 404 : 200;
 			body = getAnswer.isEmpty() ? "{\"code\":404}" : getAnswer;
@@ -131,6 +135,86 @@ class LyricsServiceTest {
 	private long askedAbout(String title) {
 		return asked.stream().filter(a -> a.contains("track_name=" + title + "&") || a.endsWith("track_name=" + title)
 				|| a.contains("q=" + title)).count();
+	}
+
+	@Test
+	void redirectsForbiddenAndBusyAreTemporary() {
+		for (int status : new int[] {301, 302, 307, 403, 408, 429, 500, 503}) {
+			assertTrue(LyricsService.temporary(new LrclibClient.StatusException(status)), "status " + status);
+		}
+		for (int status : new int[] {400, 401, 410}) {
+			assertFalse(LyricsService.temporary(new LrclibClient.StatusException(status)), "status " + status);
+		}
+	}
+
+	@Test
+	void slowDownAnswersWaitLongerAndHonourRetryAfter() {
+		assertEquals(2_000, LyricsService.delayFor(new LrclibClient.StatusException(503), 2_000));
+		assertEquals(2_000, LyricsService.delayFor(new LrclibClient.StatusException(302), 2_000));
+		assertEquals(6_000, LyricsService.delayFor(new LrclibClient.StatusException(429), 2_000));
+		assertEquals(6_000, LyricsService.delayFor(new LrclibClient.StatusException(403), 2_000));
+		assertEquals(25_000, LyricsService.delayFor(new LrclibClient.StatusException(429, 25_000), 2_000));
+		assertEquals(60_000, LyricsService.delayFor(new LrclibClient.StatusException(429, 900_000), 2_000));
+		assertEquals(60_000, LyricsService.delayFor(new LrclibClient.StatusException(403), 45_000));
+		assertEquals(10_000, LyricsService.delayFor(new LrclibClient.StatusException(429, 1_000), 10_000));
+	}
+
+	@Test
+	void savedTextThatParsesToNothingExpiresLikeNotFound() {
+		long now = 10L * 24 * 60 * 60 * 1000;
+		long old = now - 4L * 24 * 60 * 60 * 1000;
+		long recent = now - 60_000;
+		Lyrics junk = LyricsService.parse(new LrclibClient.Result("no stamps here", null, false), 200_000);
+		assertTrue(junk.isEmpty() && !junk.instrumental());
+		assertTrue(LyricsService.keepCached(junk, recent, now));
+		assertFalse(LyricsService.keepCached(junk, old, now));
+		assertFalse(LyricsService.keepCached(LyricsService.parse(LrclibClient.Result.NOT_FOUND, 0), old, now));
+
+		Lyrics good = LyricsService.parse(new LrclibClient.Result("[00:01.00]words", null, false), 200_000);
+		assertTrue(LyricsService.keepCached(good, old, now));
+		assertTrue(LyricsService.keepCached(LyricsService.parse(new LrclibClient.Result(null, null, true), 0), old, now));
+		// all-notes synced text is an instrumental, which is a real answer
+		assertTrue(LyricsService.keepCached(LyricsService.parse(new LrclibClient.Result("[00:00.00] ♪", null, false), 0), old, now));
+	}
+
+	@Test
+	void unparseableSyncedTextFallsBackToPlain() {
+		Lyrics l = LyricsService.parse(new LrclibClient.Result("junk", "line one\nline two", false), 200_000);
+		assertFalse(l.isEmpty());
+	}
+
+	@Test
+	void emptyOkReplyIsRetriedAndNotSaved() throws InterruptedException, IOException {
+		fastRetries();
+		getAnswer = "";
+		emptyOk = true;
+		service.load(track("Song One", 200_000));
+		waitFor(() -> service.state() == LyricsService.State.ERROR);
+		try (var files = Files.list(cache)) {
+			assertEquals(0, files.count());
+		}
+	}
+
+	@Test
+	void skippingASongDoesNotWaitForTheSlowRequestBeforeIt() throws InterruptedException {
+		getAnswer = "{\"syncedLyrics\":\"" + SYNCED + "\"}";
+		holdFirst = true;
+		service.load(track("Song One", 200_000));
+		assertTrue(firstSeen.await(10, TimeUnit.SECONDS));
+
+		service.load(track("Song Two", 200_000));
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+		while (service.state() != LyricsService.State.READY && System.nanoTime() < until) {
+			Thread.sleep(10);
+		}
+		assertEquals(LyricsService.State.READY, service.state(), "Song Two queued behind the slow Song One");
+		assertEquals("Song Two", service.track().title());
+
+		// the cancelled fetch finishing late must not show an error or replace the lyrics
+		release.countDown();
+		Thread.sleep(300);
+		assertEquals(LyricsService.State.READY, service.state());
+		assertEquals("Song Two", service.track().title());
 	}
 
 	@Test

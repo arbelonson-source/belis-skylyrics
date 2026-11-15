@@ -51,14 +51,26 @@ public final class LrclibClient implements LyricsSource {
 	/** LRCLIB answered with an HTTP error other than 404. */
 	public static final class StatusException extends IOException {
 		private final int status;
+		private final long retryAfterMs;
 
 		StatusException(int status) {
+			this(status, -1);
+		}
+
+		/** @param retryAfterMs what the server's Retry-After header asked for, or -1 */
+		StatusException(int status, long retryAfterMs) {
 			super("LRCLIB answered " + status);
 			this.status = status;
+			this.retryAfterMs = retryAfterMs;
 		}
 
 		public int status() {
 			return status;
+		}
+
+		/** How long the server asked us to wait, or -1 when it didn't say. */
+		public long retryAfterMs() {
+			return retryAfterMs;
 		}
 	}
 
@@ -112,21 +124,25 @@ public final class LrclibClient implements LyricsSource {
 			}
 		}
 
+		// With no artist and no length, nothing but the title says which song this is (browser audio is often
+		// like that), so a result only counts when its title is the same
+		String exactTitle = artist.isEmpty() && seconds <= 0 ? title : null;
+
 		// 2. Search with title + artist, then title + main artist, then free text
-		Result best = searchBest(Map.of("track_name", title, "artist_name", artist), seconds);
+		Result best = searchBest(Map.of("track_name", title, "artist_name", artist), seconds, exactTitle);
 		if (best == null && !artist.isEmpty()) {
 			String main = TitleCleaner.mainArtist(artist);
 			if (!main.equals(artist)) {
-				best = searchBest(Map.of("track_name", title, "artist_name", main), seconds);
+				best = searchBest(Map.of("track_name", title, "artist_name", main), seconds, exactTitle);
 			}
 		}
 		if (best == null) {
-			best = searchBest(Map.of("q", (title + " " + TitleCleaner.mainArtist(artist)).trim()), seconds);
+			best = searchBest(Map.of("q", (title + " " + TitleCleaner.mainArtist(artist)).trim()), seconds, exactTitle);
 		}
 		return best == null ? Result.NOT_FOUND : best;
 	}
 
-	private @Nullable Result searchBest(Map<String, String> query, double seconds) throws IOException, InterruptedException {
+	private @Nullable Result searchBest(Map<String, String> query, double seconds, @Nullable String exactTitle) throws IOException, InterruptedException {
 		if (query.values().stream().allMatch(String::isBlank)) {
 			return null;
 		}
@@ -137,11 +153,15 @@ public final class LrclibClient implements LyricsSource {
 		JsonArray results = json.getAsJsonArray();
 		JsonObject best = null;
 		int bestScore = Integer.MIN_VALUE;
+		int sameTitle = 0;
 		for (JsonElement e : results) {
 			if (!e.isJsonObject()) {
 				continue;
 			}
 			JsonObject o = e.getAsJsonObject();
+			if (exactTitle != null && !NeteaseClient.key(string(o, "trackName")).equals(NeteaseClient.key(exactTitle))) {
+				continue;
+			}
 			int score = 0;
 			if (hasText(o, "syncedLyrics")) {
 				score += 100;
@@ -158,6 +178,7 @@ public final class LrclibClient implements LyricsSource {
 					score -= (int) Math.min(200, diff * 2); // probably a different version (live, remix…)
 				}
 			}
+			sameTitle++;
 			if (score > bestScore) {
 				bestScore = score;
 				best = o;
@@ -165,6 +186,10 @@ public final class LrclibClient implements LyricsSource {
 		}
 		// Reject a match that's a totally different length; showing wrong lyrics is worse than none
 		if (best == null || bestScore < 0) {
+			return null;
+		}
+		// Several songs share this title and nothing tells them apart: better no lyrics than another song's
+		if (exactTitle != null && sameTitle > 1) {
 			return null;
 		}
 		return toResult(best);
@@ -178,6 +203,10 @@ public final class LrclibClient implements LyricsSource {
 
 	private static boolean hasText(JsonObject o, String key) {
 		return o.has(key) && o.get(key).isJsonPrimitive() && !o.get(key).getAsString().isBlank();
+	}
+
+	private static String string(JsonObject o, String key) {
+		return o.has(key) && o.get(key).isJsonPrimitive() ? o.get(key).getAsString() : "";
 	}
 
 	private static boolean bool(JsonObject o, String key) {
@@ -202,8 +231,35 @@ public final class LrclibClient implements LyricsSource {
 			return null;
 		}
 		if (response.statusCode() / 100 != 2) {
-			throw new StatusException(response.statusCode());
+			throw new StatusException(response.statusCode(), retryAfterMs(response.headers().firstValue("Retry-After").orElse(null)));
 		}
-		return JsonParser.parseString(response.body());
+		// A proxy or login page can answer 200 with nothing, or a bare word: that is a failed try, not "no lyrics"
+		String body = response.body();
+		if (body == null || body.isBlank()) {
+			throw new IOException("LRCLIB sent an empty reply");
+		}
+		JsonElement json;
+		try {
+			json = JsonParser.parseString(body);
+		} catch (com.google.gson.JsonParseException e) {
+			throw new IOException("LRCLIB sent a reply that isn't JSON", e);
+		}
+		if (!json.isJsonObject() && !json.isJsonArray()) {
+			throw new IOException("LRCLIB sent a reply that isn't lyrics data");
+		}
+		return json;
+	}
+
+	/** A Retry-After header in seconds as milliseconds, or -1 when missing or not a plain number. */
+	static long retryAfterMs(@Nullable String header) {
+		if (header == null) {
+			return -1;
+		}
+		try {
+			long seconds = Long.parseLong(header.strip());
+			return seconds < 0 || seconds > 86_400 ? -1 : seconds * 1000;
+		} catch (NumberFormatException e) {
+			return -1;
+		}
 	}
 }

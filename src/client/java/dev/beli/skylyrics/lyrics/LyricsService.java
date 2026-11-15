@@ -12,9 +12,9 @@ import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntToLongFunction;
@@ -66,7 +66,8 @@ public final class LyricsService {
 	private volatile Track track = Track.NONE;
 	private volatile Lyrics lyrics = Lyrics.NONE;
 	private volatile State state = State.IDLE;
-	private volatile ScheduledFuture<?> pendingRetry;
+	/** The fetch running or waiting (or the retry scheduled) for the current song. */
+	private volatile Future<?> pendingFetch;
 
 	public LyricsService(LyricsSource client, Path cacheDir) {
 		this(client, cacheDir, LyricsService::retryDelayMs);
@@ -117,7 +118,7 @@ public final class LyricsService {
 			return;
 		}
 		state = State.LOADING;
-		executor.execute(() -> fetch(newTrack, gen, false, 0));
+		pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
 	}
 
 	/** Forget the cached answer for this song and ask again. */
@@ -129,22 +130,43 @@ public final class LyricsService {
 		long gen = generation.incrementAndGet();
 		cancelRetry();
 		state = State.LOADING;
-		executor.execute(() -> fetch(t, gen, true, 0));
+		pendingFetch = executor.submit(() -> fetch(t, gen, true, 0));
 	}
 
+	/**
+	 * Stops the previous song's fetch or retry. One still waiting on the network is interrupted, so the new
+	 * song isn't queued behind up to four slow requests; its answer would be dropped anyway.
+	 */
 	private void cancelRetry() {
-		ScheduledFuture<?> retry = pendingRetry;
-		if (retry != null) {
-			retry.cancel(false);
+		Future<?> previous = pendingFetch;
+		if (previous != null) {
+			previous.cancel(true);
 		}
 	}
 
 	/** A lyrics site busy or down, too many requests, a timeout or no network: worth asking again soon. */
 	static boolean temporary(Exception e) {
 		if (e instanceof LrclibClient.StatusException s) {
-			return s.status() == 408 || s.status() == 429 || s.status() >= 500;
+			// 3xx: a hotspot login page redirecting an https call; 403: a proxy or the site pushing back
+			int status = s.status();
+			return status / 100 == 3 || status == 403 || status == 408 || status == 429 || status >= 500;
 		}
 		return e instanceof IOException || e instanceof JsonParseException;
+	}
+
+	/** The longest wait between tries. */
+	private static final long MAX_DELAY_MS = RETRY_DELAYS_MS[RETRY_DELAYS_MS.length - 1];
+
+	/**
+	 * How long to wait before the next try after {@code e}, given the usual wait: longer when the site said to
+	 * slow down (429) or turned us away (403), and as long as its Retry-After asked, but never over the usual maximum.
+	 */
+	static long delayFor(Exception e, long usualMs) {
+		if (e instanceof LrclibClient.StatusException s && (s.status() == 429 || s.status() == 403)) {
+			long wait = s.retryAfterMs() >= 0 ? Math.max(usualMs, s.retryAfterMs()) : usualMs * 3;
+			return Math.min(wait, MAX_DELAY_MS);
+		}
+		return usualMs;
 	}
 
 	/** @param failures tries for this song that already failed with a temporary problem */
@@ -156,7 +178,8 @@ public final class LyricsService {
 		try {
 			CacheEntry cached = skipCache ? null : readCache(file);
 			LrclibClient.Result result;
-			if (cached != null && (found(cached) || System.currentTimeMillis() - cached.savedAt < NOT_FOUND_TTL_MS)) {
+			if (cached != null && keepCached(parse(new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental), t.lengthMs()),
+					cached.savedAt, System.currentTimeMillis())) {
 				result = new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental);
 				file.toFile().setLastModified(System.currentTimeMillis()); // played again, so kept longer
 			} else {
@@ -185,14 +208,14 @@ public final class LyricsService {
 				return;
 			}
 			// Keep trying while the song plays; never saved to the cache, so it isn't "no lyrics"
-			long delay = retryDelayMs.applyAsLong(failures + 1);
+			long delay = delayFor(e, retryDelayMs.applyAsLong(failures + 1));
 			if (failures == 0) {
 				LOG.warn("Couldn't get lyrics for {}: {}. Trying again while it plays.", t.key(), e.toString());
 			} else {
 				LOG.debug("Still no lyrics for {} ({}), try {} in {} ms", t.key(), e.toString(), failures + 2, delay);
 			}
 			try {
-				pendingRetry = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
+				pendingFetch = executor.schedule(() -> fetch(t, gen, skipCache, failures + 1), delay, TimeUnit.MILLISECONDS);
 			} catch (RejectedExecutionException ignored) {
 				// shutting down
 			}
@@ -200,29 +223,40 @@ public final class LyricsService {
 	}
 
 	private void apply(Track t, LrclibClient.Result result) {
+		lyrics = parse(result, t.lengthMs());
+		state = found(lyrics) ? State.READY : State.NOT_FOUND;
+	}
+
+	/** What the shown lyrics will be for a result: synced first, then plain, then the instrumental flag. */
+	static Lyrics parse(LrclibClient.Result result, long lengthMs) {
 		if (result.synced() != null) {
 			Lyrics parsed = LrcParser.parseSynced(result.synced());
 			if (!parsed.isEmpty()) {
-				lyrics = parsed;
-				state = State.READY;
-				return;
+				return parsed;
+			}
+			if (parsed.instrumental()) {
+				return Lyrics.INSTRUMENTAL;
 			}
 		}
 		if (result.plain() != null) {
-			lyrics = LrcParser.parsePlain(result.plain(), t.lengthMs());
-			state = lyrics.isEmpty() ? State.NOT_FOUND : State.READY;
-			return;
+			Lyrics parsed = LrcParser.parsePlain(result.plain(), lengthMs);
+			if (!parsed.isEmpty()) {
+				return parsed;
+			}
 		}
-		if (result.instrumental()) {
-			lyrics = Lyrics.INSTRUMENTAL;
-			state = State.READY;
-			return;
-		}
-		state = State.NOT_FOUND;
+		return result.instrumental() ? Lyrics.INSTRUMENTAL : Lyrics.NONE;
 	}
 
-	private static boolean found(CacheEntry e) {
-		return e.instrumental || e.synced != null || e.plain != null;
+	private static boolean found(Lyrics l) {
+		return !l.isEmpty() || l.instrumental();
+	}
+
+	/**
+	 * Whether a saved answer still stands: one that gives lyrics always does; one that gives nothing (including
+	 * text that parses to nothing) only until the not-found time is up.
+	 */
+	static boolean keepCached(Lyrics parsed, long savedAtMs, long nowMs) {
+		return found(parsed) || nowMs - savedAtMs < NOT_FOUND_TTL_MS;
 	}
 
 	private Path cacheFile(Track t) {
