@@ -815,16 +815,20 @@ final class WorldWords {
 		if (lineText == null || over) {
 			letGo(now);
 		}
+		expire(camera.position(), now);
+	}
+
+	/** Starts the fade of a title that has had its time and of a card out of reach, and drops the ones that have faded. */
+	void expire(Vec3 eye, long now) {
 		for (Card c : cards) {
-			if (c.title && c.goneAt < 0 && now - c.born > TITLE_HOLD * 1e9f) {
+			if (c.title && c.goneAt < 0 && now - c.born > TITLE_HOLD * 1e9f
+					|| c.goneAt < 0 && c.pos.distanceTo(eye) > GONE_DISTANCE) {
 				c.goneAt = now;
 			}
 		}
-		Vec3 eye = camera.position();
 		for (Iterator<Card> it = cards.iterator(); it.hasNext(); ) {
 			Card c = it.next();
-			if (c.goneAt >= 0 && now - c.goneAt > fade * 1e9f || c.cutAt >= 0 && now - c.cutAt > CUT * 1e9f
-					|| c.pos.distanceTo(eye) > GONE_DISTANCE) {
+			if (c.goneAt >= 0 && now - c.goneAt > fade * 1e9f || c.cutAt >= 0 && now - c.cutAt > CUT * 1e9f) {
 				it.remove();
 			}
 		}
