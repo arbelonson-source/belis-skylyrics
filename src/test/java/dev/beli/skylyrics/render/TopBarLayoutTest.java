@@ -153,4 +153,90 @@ class TopBarLayoutTest {
 		assertEquals(TopBarLayout.bottomTop(240, true) + 14, TopBarLayout.bottomTop(240, false));
 		assertEquals(TopBarLayout.bottomTop(240), TopBarLayout.bottomTop(240, true));
 	}
+
+	@Test
+	void theBarClearsTheArmourRowOfTallHealth() {
+		// 3 rows of hearts (e.g. 40 health and a golden apple's absorption) put the armour row 67 up, over the bar's 64
+		float tall = TopBarLayout.healthTopUp(40, 4, 10);
+		assertEquals(67, tall);
+		assertTrue(TopBarLayout.bottomUp(true, tall, false) >= tall + 4);
+		// ordinary health keeps today's place
+		assertEquals(TopBarLayout.BOTTOM_UP, TopBarLayout.bottomUp(true, TopBarLayout.healthTopUp(20, 0, 10), false));
+		assertEquals(TopBarLayout.BOTTOM_UP, TopBarLayout.bottomUp(true, TopBarLayout.healthTopUp(20, 4, 10), false));
+		assertTrue(TopBarLayout.bottomTop(240, true, tall, false) < TopBarLayout.bottomTop(240, true));
+	}
+
+	@Test
+	void heartRowsFollowVanilla() {
+		assertEquals(1, TopBarLayout.heartRows(20, 0));
+		assertEquals(2, TopBarLayout.heartRows(20, 4));
+		assertEquals(3, TopBarLayout.heartRows(40, 4));
+		assertEquals(10, TopBarLayout.rowSpacing(2));
+		assertEquals(9, TopBarLayout.rowSpacing(3));
+		assertEquals(3, TopBarLayout.rowSpacing(20));
+		assertEquals(39, TopBarLayout.healthTopUp(20, 0, 0));
+		assertEquals(49, TopBarLayout.healthTopUp(20, 0, 5));
+		assertEquals(59, TopBarLayout.healthTopUp(20, 4, 5));
+	}
+
+	@Test
+	void theBarStepsAboveTheActionBarText() {
+		for (boolean hurt : new boolean[] {true, false}) {
+			float top = TopBarLayout.bottomTop(240, hurt, 49, true);
+			float bottom = top + TopBarLayout.PILL_H;
+			assertTrue(240 - bottom >= TopBarLayout.ACTION_UP + TopBarLayout.ACTION_GAP);
+			assertTrue(top < TopBarLayout.bottomTop(240, hurt, 49, false));
+		}
+		assertEquals(TopBarLayout.bottomTop(240, true), TopBarLayout.bottomTop(240, true, 49, false));
+	}
+
+	@Test
+	void barBoxCoversClockAndStatsAndGrowsFromItsBottom() {
+		float[] one = TopBarLayout.barBox(640, 1, 270, 30, true, 40, true, 200);
+		assertEquals(320 - 135 - 11 - 30, one[0], 1e-3f);
+		assertEquals(320 + 135 + 10 + 40, one[2], 1e-3f);
+		assertEquals(200, one[1], 1e-3f);
+		assertEquals(200 + TopBarLayout.PILL_H, one[3], 1e-3f);
+		float[] big = TopBarLayout.barBox(640, 2, 270, 30, true, 40, true, 200);
+		assertEquals(one[3], big[3], 1e-3f);
+		assertEquals(one[3] - 2 * TopBarLayout.PILL_H, big[1], 1e-3f);
+		assertEquals(320 + 2 * (one[2] - 320), big[2], 1e-3f);
+		float[] bare = TopBarLayout.barBox(640, 1, 200, 30, false, 40, false, 200);
+		assertEquals(220, bare[0], 1e-3f);
+		assertEquals(420, bare[2], 1e-3f);
+	}
+
+	@Test
+	void oddHealthFollowsTheHeartsTheGameDraws() {
+		// 19 health and 1 absorption: 10 + 1 hearts are drawn, so two rows, though 20 / 20 is one
+		assertEquals(2, TopBarLayout.heartRows(19, 1));
+		// the game spaces the rows by its own count of one row here: 11 apart
+		assertEquals(50, TopBarLayout.healthTopUp(19, 1, 0));
+		assertEquals(50, TopBarLayout.healthTopUp(19, 1, 5));
+		assertEquals(1, TopBarLayout.heartRows(0, 0));
+		assertEquals(1, TopBarLayout.heartRows(Float.NaN, Float.NaN));
+	}
+
+	@Test
+	void absurdHealthCantPushTheBarOffTheScreen() {
+		for (float health : new float[] {1e6f, Float.POSITIVE_INFINITY, Float.MAX_VALUE}) {
+			assertEquals(TopBarLayout.HEALTH_UP_MAX, TopBarLayout.healthTopUp(health, 0, 5));
+			assertEquals(TopBarLayout.HEALTH_UP_MAX, TopBarLayout.healthTopUp(20, health, 0));
+		}
+		assertTrue(TopBarLayout.bottomTop(100, true, 400, true) >= 0);
+		assertEquals(0f, TopBarLayout.bottomTop(100, true, 400, true));
+	}
+
+	@Test
+	void theActionBarLiftIsPinnedToTheGamesTextPlusAGap() {
+		// the text's top is 68 + 4 up; the bar keeps 3 above it
+		assertEquals(75f, TopBarLayout.bottomUp(true, 0, true));
+		assertEquals(75f, TopBarLayout.bottomUp(false, 0, true));
+	}
+
+	@Test
+	void aBiggerBarsBoxReachesFurtherOutAtItsLeftEdge() {
+		float[] two = TopBarLayout.barBox(640, 2, 270, 30, true, 40, true, 200);
+		assertEquals(320 + 2 * ((320 - 135 - 11 - 30) - 320), two[0], 1e-3f);
+	}
 }

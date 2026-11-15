@@ -55,6 +55,11 @@ final class TopBarLayout {
 
 	private TopBarLayout() {}
 
+	/** How far above the screen's bottom the action bar message's text reaches (its top), and the gap the bar keeps above it. */
+	static final float ACTION_UP = 72, ACTION_GAP = 3;
+	/** The bar keeps this far above the armour row (or the top row of hearts without armour). */
+	static final float HEALTH_GAP = 4;
+
 	/** The bar's top edge in GUI units: just below the boss bars, or above the hotbar's text for the bottom position. */
 	static float bottomTop(int guiHeight) {
 		return bottomTop(guiHeight, true);
@@ -62,7 +67,72 @@ final class TopBarLayout {
 
 	/** The same, where {@code healthRows} says whether hearts and armour are drawn (survival and adventure). */
 	static float bottomTop(int guiHeight, boolean healthRows) {
-		return guiHeight - BOTTOM_UP + (healthRows ? 0 : NO_HEALTH_DROP) - PILL_H;
+		return bottomTop(guiHeight, healthRows, 0, false);
+	}
+
+	/**
+	 * The same, also clear of the top of the hearts and armour ({@link #healthTopUp}) and, while an action bar message
+	 * shows, of that text.
+	 */
+	static float bottomTop(int guiHeight, boolean healthRows, float healthTopUp, boolean actionBar) {
+		return Math.max(0, guiHeight - bottomUp(healthRows, healthTopUp, actionBar) - PILL_H);
+	}
+
+	/** How far above the screen's bottom the bar's lower edge sits; never lower than {@link #BOTTOM_UP} without health rows. */
+	static float bottomUp(boolean healthRows, float healthTopUp, boolean actionBar) {
+		float up = healthRows ? Math.max(BOTTOM_UP, healthTopUp + HEALTH_GAP) : BOTTOM_UP - NO_HEALTH_DROP;
+		return actionBar ? Math.max(up, ACTION_UP + ACTION_GAP) : up;
+	}
+
+	/** The most the hearts and armour are taken to reach up, so absurd health can't push the bar off the screen. */
+	static final float HEALTH_UP_MAX = 120;
+
+	/** How many rows the game spaces the hearts by: from the health plus absorption (absorption rounds up), at least one. */
+	private static int spacingRows(float maxHealth, float absorption) {
+		double rows = Math.ceil((maxHealth + Math.ceil(absorption)) / 20.0);
+		return rows >= 1000 ? 1000 : Math.max(1, (int) rows);
+	}
+
+	/** The rows of hearts and armour the game lays out: the larger of the spacing rows and the rows the drawn hearts fill. */
+	static int heartRows(float maxHealth, float absorption) {
+		return Math.max(spacingRows(maxHealth, absorption), drawnRows(maxHealth, absorption));
+	}
+
+	/** The rows the drawn hearts fill: the game draws ceil(max / 2) + ceil(ceil(absorption) / 2) hearts, ten to a row. */
+	private static int drawnRows(float maxHealth, float absorption) {
+		double hearts = Math.ceil(maxHealth / 2.0) + Math.ceil(Math.ceil(absorption) / 2.0);
+		double rows = Math.ceil(hearts / 10);
+		return rows >= 1000 ? 1000 : Math.max(1, (int) rows);
+	}
+
+	/** The distance between rows of hearts: 10, closing up by one a row from the third row on, to at least 3. */
+	static int rowSpacing(int rows) {
+		return Math.max(10 - (rows - 2), 3);
+	}
+
+	/**
+	 * How far above the screen's bottom the top of the hearts and armour reaches: the armour row (10 above the hearts'
+	 * top spacing row) when there is armour, else the top row of hearts. Never more than {@link #HEALTH_UP_MAX}.
+	 */
+	static float healthTopUp(float maxHealth, float absorption, int armour) {
+		int spaced = spacingRows(maxHealth, absorption);
+		int space = rowSpacing(spaced);
+		float hearts = 39 + (drawnRows(maxHealth, absorption) - 1) * (float) space;
+		float up = armour > 0 ? Math.max(hearts, 39 + (spaced - 1) * (float) space + 10) : hearts;
+		return Math.min(up, HEALTH_UP_MAX);
+	}
+
+	/**
+	 * The bottom bar's box in screen units (left, top, right, bottom) including the clock and the stats, for a bar drawn
+	 * {@code size} times bigger about its bottom edge and the screen's middle, with its pill {@code pill} wide.
+	 */
+	static float[] barBox(float guiWidth, float size, float pill, float clockW, boolean clock, float statsW, boolean stats,
+			float top) {
+		float mid = guiWidth / 2f;
+		float left = mid - pill / 2f - (clock ? CLOCK_GAP + clockW : 0);
+		float right = mid + pill / 2f + (stats ? STATS_GAP + statsW : 0);
+		float bottom = top + PILL_H;
+		return new float[] {mid + (left - mid) * size, bottom - PILL_H * size, mid + (right - mid) * size, bottom};
 	}
 
 	/**
