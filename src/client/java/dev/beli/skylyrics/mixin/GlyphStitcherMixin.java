@@ -51,11 +51,18 @@ abstract class GlyphStitcherMixin {
 	@Final
 	private Identifier name;
 
-	@Inject(method = "stitch", at = @At("HEAD"))
-	private void skylyrics$picturesForOurFonts(SheetGlyphInfo bitmap, CallbackInfoReturnable<?> cir) {
+	@com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod(method = "stitch")
+	private net.minecraft.client.gui.font.glyphs.BakedGlyph skylyrics$picturesForOurFonts(SheetGlyphInfo bitmap,
+			com.llamalad7.mixinextras.injector.wrapoperation.Operation<net.minecraft.client.gui.font.glyphs.BakedGlyph> original) {
 		skylyrics$mark(bitmap, name);
-		// 1.21.4's font pages have no name: tell the page about to be made whose letters it is for
+		// 1.21.4's font pages have no name: tell the page about to be made whose letters it is for, and only until
+		// stitch returns (or throws), so no other font's page is ever made while the flag is up
 		dev.beli.skylyrics.render.FontPageFlag.ours = "skylyrics".equals(name.getNamespace());
+		try {
+			return original.call(bitmap);
+		} finally {
+			dev.beli.skylyrics.render.FontPageFlag.ours = false;
+		}
 	}
 	*///?}
 
