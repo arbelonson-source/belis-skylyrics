@@ -45,7 +45,31 @@ final class TopBarLayout {
 	/** Added to the font's space between words: the reference's gaps are a little wider (3 to 3.7 units). */
 	static final float WORD_EXTRA = 0.6f;
 
+	/**
+	 * How far the bottom bar's lower edge sits above the screen's bottom: clear of the held item's name (which reaches
+	 * 59 up), the air bubbles and the armour row.
+	 */
+	static final float BOTTOM_UP = 64;
+
 	private TopBarLayout() {}
+
+	/** The bar's top edge in GUI units: just below the boss bars, or above the hotbar's text for the bottom position. */
+	static float bottomTop(int guiHeight) {
+		return guiHeight - BOTTOM_UP - PILL_H;
+	}
+
+	/**
+	 * The line the bar grows from when {@code barSize} scales it: its own edge on the side of the screen it sits on, so a
+	 * bigger bar never grows off the screen or into the hotbar.
+	 */
+	static float pivotY(boolean atBottom, float top) {
+		return atBottom ? top + PILL_H : top;
+	}
+
+	/** {@link #fit} for a bar drawn {@code size} times bigger: everything is measured in the bar's own, scaled units. */
+	static Fit fit(float guiWidth, float size, float clockW, float statsW) {
+		return fit(guiWidth / size, clockW, statsW);
+	}
 
 	/** What fits: the pill's widest size, and whether the clock (left) and the stats (right) are shown. */
 	record Fit(float pill, boolean clock, boolean stats) {}

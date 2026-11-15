@@ -36,6 +36,8 @@ import dev.beli.skylyrics.media.Track;
 public final class AlbumArt {
 	private static final Logger LOG = LoggerFactory.getLogger("SkyLyrics");
 	public static final int SIZE = 64;
+	/** The most a cover's body may take to arrive. */
+	private static final long BODY_TIMEOUT_S = 20;
 	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath("skylyrics", "dynamic/album_art");
 	/** Used when there's no cover, or it's all grey. */
 	public static final int FALLBACK_COLOR = 0xB57BFF;
@@ -112,10 +114,19 @@ public final class AlbumArt {
 		executor.execute(() -> {
 			try {
 				BufferedImage image = read(url);
-				if (image == null || generation.get() != gen) {
+				if (generation.get() != gen) {
 					return;
 				}
-				int picked = pickColor(image);
+				if (image == null) {
+					// A cover we can't read (WebP, a failed answer, a data: URI) must not leave the last song's colour behind
+					synchronized (accept) {
+						if (generation.get() == gen) {
+							color = colorFor(null);
+						}
+					}
+					return;
+				}
+				int picked = colorFor(image);
 				NativeImage scaled = shrink(image, SIZE, SIZE / 2f);
 				NativeImage old;
 				synchronized (accept) {
@@ -182,6 +193,16 @@ public final class AlbumArt {
 			HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
 			HttpResponse<InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
 			try (InputStream in = response.body()) {
+				// The request's timeout only covers the wait for the answer: a server that stalls mid-body would hold
+				// the single worker (and every later cover) forever, so the stream is closed after a while
+				java.util.concurrent.CompletableFuture.delayedExecutor(BODY_TIMEOUT_S, java.util.concurrent.TimeUnit.SECONDS)
+					.execute(() -> {
+						try {
+							in.close();
+						} catch (java.io.IOException ignored) {
+							// already closed
+						}
+					});
 				if (response.statusCode() / 100 != 2
 						|| !CoverCache.acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 					return null;
@@ -234,6 +255,11 @@ public final class AlbumArt {
 		float cy = Math.clamp(y + 0.5f, radius, size - radius);
 		float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
 		return Math.clamp(radius - (float) Math.sqrt(dx * dx + dy * dy) + 0.5f, 0f, 1f);
+	}
+
+	/** The colour for a cover: picked from it, or the fallback when there is none. */
+	static int colorFor(@Nullable BufferedImage image) {
+		return image == null ? FALLBACK_COLOR : pickColor(image);
 	}
 
 	/**

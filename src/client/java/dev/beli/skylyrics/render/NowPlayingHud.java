@@ -184,6 +184,8 @@ public final class NowPlayingHud {
 		//?}
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
+				// The debug screen (F3) fills the top corners and the bar would be drawn over its text
+				&& !f3Open(mc)
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
 				//? if >=26.2 {
 				/*&& !(mc.gui.screen() instanceof SkyLyricsScreen settings && settings.coversTopBar());
@@ -220,7 +222,7 @@ public final class NowPlayingHud {
 		String clock = cfg.barClock ? clock() : "";
 		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, clockStyle, clock) * clockScale;
 		float statsW = statsWidth(cfg, font, style, textScale);
-		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), clockW, statsW);
+		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), cfg.barSize, clockW, statsW);
 
 		float target = TopBarLayout.pillFor(contentWidth(font, style, textScale, next), fit.pill());
 		if (width < 0) {
@@ -239,7 +241,7 @@ public final class NowPlayingHud {
 
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
-				? g.guiHeight() - 54 - PILL_H
+				? TopBarLayout.bottomTop(g.guiHeight())
 				: topBelowBossBars(mc, g.guiHeight());
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
@@ -247,7 +249,8 @@ public final class NowPlayingHud {
 
 		float barSize = cfg.barSize;
 		g.pose().pushMatrix();
-		g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * y);
+		float pivotY = TopBarLayout.pivotY(cfg.barPosition == BarPosition.BOTTOM, y);
+		g.pose().translate((1 - barSize) * g.guiWidth() / 2f, (1 - barSize) * pivotY);
 		g.pose().scale(barSize, barSize);
 		drawPill(g, mc, x, y, now, dt);
 		float midY = y + PILL_H / 2f;
@@ -266,12 +269,31 @@ public final class NowPlayingHud {
 	 * as fit in the top third. The bar goes just below the last one instead of covering their names.
 	 */
 	static float topBelowBossBars(Minecraft mc, int guiHeight) {
+		return topBelowBossBars(bossBarCount(mc), guiHeight);
+	}
+
+	/**
+	 * Whether the full debug screen (F3) is open. From 1.21.9 players can pin single debug lines to show without F3, and
+	 * showDebugScreen() is true for those too; they stay small in a corner, so they must not hide the bar.
+	 */
+	static boolean f3Open(Minecraft mc) {
+		//? if >=1.21.11 {
+		return mc.debugEntries.isOverlayVisible();
+		//?} else if >=1.21.9 {
+		/*return mc.debugEntries.isF3Visible();
+		*///?} else {
+		/*return mc.getDebugOverlay().showDebugScreen();
+		*///?}
+	}
+
+	/** How many boss bars the game has (it draws only the first few that fit). */
+	static int bossBarCount(Minecraft mc) {
 		//? if >=26.2 {
 		/*int count = ((BossHealthOverlayAccessor) mc.gui.hud.getBossOverlay()).skylyrics$getEvents().size();
 		*///?} else {
 		int count = ((BossHealthOverlayAccessor) mc.gui.getBossOverlay()).skylyrics$getEvents().size();
 		//?}
-		return topBelowBossBars(count, guiHeight);
+		return count;
 	}
 
 	static float topBelowBossBars(int count, int guiHeight) {

@@ -102,4 +102,34 @@ class TopBarLayoutTest {
 		assertEquals(0.25f, TopBarLayout.progress(2_500, 10_000), 1e-6f);
 		assertEquals(1, TopBarLayout.progress(12_000, 10_000));
 	}
+
+	@Test
+	void aBiggerBarFitsInItsOwnScaledUnits() {
+		// At 150% the bar is drawn 1.5 times wider, so its pill may only be as wide as the screen allows after that
+		TopBarLayout.Fit big = TopBarLayout.fit(320, 1.5f, 0, 0);
+		assertTrue(big.pill() * 1.5f <= 320 - 2 * TopBarLayout.EDGE + 0.01f, "pill " + big.pill());
+		assertTrue(big.pill() < TopBarLayout.fit(320, 1f, 0, 0).pill());
+	}
+
+	@Test
+	void sizeOneChangesNothing() {
+		assertEquals(TopBarLayout.fit(320, 30, 45), TopBarLayout.fit(320, 1f, 30, 45));
+	}
+
+	@Test
+	void aBottomBarGrowsUpFromItsBottomEdge() {
+		assertEquals(100f, TopBarLayout.pivotY(false, 100f));
+		assertEquals(100f + TopBarLayout.PILL_H, TopBarLayout.pivotY(true, 100f));
+		// Scaled about the pivot, the edge on the screen's side stays put
+		float top = TopBarLayout.bottomTop(240), size = 1.5f;
+		float pivot = TopBarLayout.pivotY(true, top);
+		float bottomAfter = (1 - size) * pivot + size * (top + TopBarLayout.PILL_H);
+		assertEquals(top + TopBarLayout.PILL_H, bottomAfter, 0.001f);
+	}
+
+	@Test
+	void theBottomBarSitsAboveTheHeldItemName() {
+		// The held item's name is drawn from 59 above the bottom
+		assertTrue(240 - (TopBarLayout.bottomTop(240) + TopBarLayout.PILL_H) >= 59);
+	}
 }

@@ -205,4 +205,21 @@ class RecordCardTest {
 		float[] at = RecordCard.corner(CardCorner.BOTTOM_LEFT, 533, 300, 0, tall, true, false);
 		assertEquals(300 - RecordCard.HOTBAR_UP, at[1] + tall, 1e-3f);
 	}
+
+	@Test
+	void aNarrowScreensTopCardMovesBelowTheBossBars() {
+		int w = 400, h = 240;
+		float clear = RecordCard.bossClear(CardCorner.TOP_LEFT, w, h, 1);
+		assertEquals(NowPlayingHud.topBelowBossBars(1, h), clear);
+		assertEquals(clear, RecordCard.corner(CardCorner.TOP_LEFT, w, h, 0, RecordCard.H, true, false, clear)[1]);
+		assertEquals(clear, RecordCard.corner(CardCorner.TOP_RIGHT, w, h, 0, RecordCard.H, true, false,
+				RecordCard.bossClear(CardCorner.TOP_RIGHT, w, h, 1))[1]);
+	}
+
+	@Test
+	void bossBarsDontMoveACardThatIsClearOfThem() {
+		assertEquals(0f, RecordCard.bossClear(CardCorner.TOP_LEFT, 600, 240, 2));
+		assertEquals(0f, RecordCard.bossClear(CardCorner.TOP_LEFT, 400, 240, 0));
+		assertEquals(0f, RecordCard.bossClear(CardCorner.BOTTOM_LEFT, 400, 240, 1));
+	}
 }
