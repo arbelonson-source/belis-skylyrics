@@ -34,4 +34,9 @@ final class FollowAnchor {
 	static float speed(boolean lazy) {
 		return lazy ? LAZY_SPEED : Float.POSITIVE_INFINITY;
 	}
+
+	/** True when the anchor has no usable value yet (never set, or a bad camera value got in) and must start over. */
+	static boolean needsInit(float anchorYaw, float anchorPitch) {
+		return !Float.isFinite(anchorYaw) || !Float.isFinite(anchorPitch);
+	}
 }

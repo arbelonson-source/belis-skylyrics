@@ -403,7 +403,10 @@ public final class SkyEffects {
 	/** Where the lyrics hang, by the same rules as {@link LyricsRenderer}, so the sparkles can gather round. */
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
 		float camYaw = camera.yRot();
-		if (Float.isNaN(anchorYaw)) {
+		if (!Float.isFinite(camYaw) || !Float.isFinite(camera.xRot())) {
+			return;
+		}
+		if (FollowAnchor.needsInit(anchorYaw, anchorPitch)) {
 			anchorYaw = camYaw;
 			anchorPitch = -cfg.height;
 		}

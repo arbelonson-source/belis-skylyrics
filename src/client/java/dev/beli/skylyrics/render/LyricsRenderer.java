@@ -1841,7 +1841,10 @@ public final class LyricsRenderer {
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
 		float camYaw = camera.yRot();
 		float camPitch = camera.xRot();
-		if (Float.isNaN(anchorYaw)) {
+		if (!Float.isFinite(camYaw) || !Float.isFinite(camPitch)) {
+			return;
+		}
+		if (FollowAnchor.needsInit(anchorYaw, anchorPitch)) {
 			anchorYaw = camYaw;
 			anchorPitch = -cfg.height;
 		}

@@ -25,14 +25,18 @@ public final class ViewLock {
 
 	/**
 	 * The pinned spot after a frame. Not locked: nothing. Locked: the spot already held, or, on the frame the lock
-	 * turns on, the camera's yaw and pitch right now. The camera never moves a spot that is already held.
+	 * turns on, the camera's yaw and pitch right now (not pinned while either is not a finite number). The camera never moves a spot that is already held.
 	 */
 	@Nullable
 	static float[] step(@Nullable float[] held, boolean locked, float camYaw, float camPitch) {
 		if (!locked) {
 			return null;
 		}
-		return held != null ? held : new float[] {camYaw, camPitch};
+		if (held != null) {
+			return held;
+		}
+		// A NaN or infinite camera value must never become the pinned spot: it would stick there for good
+		return Float.isFinite(camYaw) && Float.isFinite(camPitch) ? new float[] {camYaw, camPitch} : null;
 	}
 
 	/**

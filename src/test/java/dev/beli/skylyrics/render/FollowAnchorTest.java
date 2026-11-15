@@ -26,4 +26,12 @@ class FollowAnchorTest {
 		assertFalse(FollowAnchor.following(true, true, 2));
 		assertEquals(FollowAnchor.LAZY_SPEED, FollowAnchor.speed(true));
 	}
+
+	@Test
+	void aBadAnchorStartsOver() {
+		assertTrue(FollowAnchor.needsInit(Float.NaN, 0));
+		assertTrue(FollowAnchor.needsInit(0, Float.NaN));
+		assertTrue(FollowAnchor.needsInit(Float.POSITIVE_INFINITY, 0));
+		assertFalse(FollowAnchor.needsInit(10, -30));
+	}
 }
