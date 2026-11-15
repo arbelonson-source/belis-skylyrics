@@ -20,6 +20,7 @@ Go through these in order:
      2. Press **Retry**.
      3. If your internet is fine, one of the sites may be down or busy, and the other doesn't have this song. The mod keeps trying while the song plays, and doesn't remember the song as "no lyrics", so the lyrics usually appear by themselves once a site is back. Try again in a few minutes, or play another song.
      4. A school, work or antivirus network can block one of the sites. Try another network, or allow `lrclib.net` and `music.163.com`.
+     5. On hotel or café Wi-Fi you often have to log in first, and until you do, the lyrics site gets an empty page or a redirect instead of lyrics. The mod counts that as a failed try, not as "no lyrics", so the song isn't remembered as having none. Log in to the Wi-Fi, then press **Retry** or play the song again, and the lyrics come back.
    - **Instrumental, no words**: the song has no lyrics.
    - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** is on (it is at first). Then the lines are spread evenly over the song.
 
@@ -27,6 +28,7 @@ Go through these in order:
 
 - **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want. The choices are different on Linux, Windows and macOS (see the [FAQ](FAQ.md#can-i-choose-which-player-it-follows)).
 - **A browser tab is playing something else.** A muted video in another tab still counts as playing. Pause it or close it.
+- **The song has no artist.** Browser audio often comes without an artist and without a length. Then the mod only accepts a lyrics match whose title is the same, and when different artists have a song with that title, it shows no lyrics rather than guess and show another song's words. If you play the song in a player that shows the artist (like Spotify), the lyrics are found.
 - **The song name is messy.** Video titles like "Artist - Song (Official Video)" are cleaned up before looking for lyrics, but some titles are too unusual to match, or LRCLIB matched a different version. Press **Retry** on the Music tab to look again.
 
 ## Lyrics come early or late
@@ -161,6 +163,7 @@ Everything is inside your Minecraft folder:
 | --- | --- |
 | Settings | `config/skylyrics.json` |
 | Saved lyrics | `.cache/skylyrics/` |
+| Recently heard list | `.cache/skylyrics/heard.json` |
 
 Your Minecraft folder is:
 
@@ -172,6 +175,14 @@ Your Minecraft folder is:
 To start over with all settings, use **Reset all** at the bottom of the settings screen (click it twice). Or close Minecraft and delete `skylyrics.json`.
 
 Deleting the `skylyrics` cache folder is safe. The mod just looks up the lyrics again next time. Your per-song timing fixes are kept in the settings file, not in the cache.
+
+## My settings went back to default, or the Recently heard list is empty
+
+If the settings file has a value the mod can't read (a typo, or a value from another version), only that setting goes back to its default and the rest are kept. The mod keeps a copy of the file as `skylyrics.json.bad` next to it in the `config` folder, so nothing is lost. If the whole file is unreadable, the mod starts with the defaults and keeps the copy the same way.
+
+The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others.
+
+To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. Only the newest copy is kept: the next damaged file replaces it.
 
 ## Still stuck?
 
