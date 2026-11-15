@@ -87,6 +87,15 @@ public final class LyricsRenderer {
 	}
 	/** In the WORLD layout, a line's last words stay this long after it's over before they fade too. */
 	private static final long WORLD_LINGER_MS = 450;
+	/** A line over this long (the top bar's limit) fades out of Lines and Arc, over the second time. */
+	static final long STALE_AFTER_MS = 1500, STALE_FADE_MS = 400;
+	/** Text with less alpha than this is drawn fully opaque by the game's font code on 1.21.1 to 1.21.5, so it never gets less. */
+	static final int MIN_TEXT_ALPHA = 4;
+
+	/** Whether a glow copy of this alpha (0 to 255) is worth drawing: fainter ones are invisible, or on 1.21.1 to 1.21.5 would come out solid. */
+	static boolean glowVisible(int alphaByte) {
+		return alphaByte >= MIN_TEXT_ALPHA;
+	}
 	/** How far back the song time must drop between two frames to count as a seek back, well above position noise. */
 	static final long SEEK_BACK_MS = 1500;
 	private static final float ROW_H = 10f;
@@ -202,6 +211,8 @@ public final class LyricsRenderer {
 	private final Map<String, List<ArcSlot>> arcCache = new HashMap<>();
 	/** Where in the sky each arc line was put, by line number. */
 	private final Map<Integer, ArcAnchor> arcAnchors = new HashMap<>();
+	@Nullable
+	private ArcKey arcKey;
 
 	/** A frame laid out by the world pass, waiting for the HUD pass to draw it on screen. */
 	private record Pending(List<Spot> spots, float scale, float wrapWidth, long time, long now) {}
@@ -220,6 +231,8 @@ public final class LyricsRenderer {
 		float yaw, pitch;
 		/** How far left or right of where you looked it was placed. */
 		float side;
+		/** How far above the middle height it was placed, in degrees (within the above-range). */
+		float up;
 		long placed;
 		long lostSince = -1;
 	}
@@ -380,7 +393,7 @@ public final class LyricsRenderer {
 		boolean sky = cfg.placement == Placement.SKY;
 		float distance = sky
 				? Math.max(8, Math.min(cfg.distance, mc.options.getEffectiveRenderDistance() * 16 * 0.8f))
-				: Mth.clamp(cfg.distance / 6f, 4, 16);
+				: floatingDistance(cfg.distance);
 		float angular = (sky ? 3.4f : 2.6f) * cfg.size;
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
@@ -718,10 +731,20 @@ public final class LyricsRenderer {
 	private ArcAnchor arcAnchor(SkyLyricsConfig cfg, Camera camera, int index, long now, boolean follow) {
 		float[] lock = ViewLock.update(cfg, camera.yRot(), camera.xRot());
 		boolean fixed = lock != null || cfg.placement == Placement.SKY && cfg.direction != SkyLyricsConfig.Direction.FOLLOW;
+		// Height, Direction, Placement or the View lock changed: every line's spot is worked out again from its own side and height
+		ArcKey key = ArcKey.of(cfg.placement, cfg.direction, cfg.height, lock);
+		if (!key.equals(arcKey)) {
+			arcKey = key;
+			for (ArcAnchor each : arcAnchors.values()) {
+				aim(each, cfg, camera, lock, fixed);
+				each.lostSince = -1;
+			}
+		}
 		ArcAnchor anchor = arcAnchors.get(index);
 		if (anchor != null && !fixed && follow) {
-			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW
-					|| Math.abs(anchor.pitch - camera.xRot()) > ARC_LOST_PITCH) {
+			// Only Floating keeps its height to your view; in the sky the height is the setting, so looking up or down doesn't lose it
+			boolean tooHigh = cfg.placement == Placement.FLOATING && Math.abs(anchor.pitch - camera.xRot()) > ARC_LOST_PITCH;
+			if (Math.abs(Mth.wrapDegrees(anchor.yaw - camera.yRot())) > ARC_LOST_YAW || tooHigh) {
 				if (anchor.lostSince < 0) {
 					anchor.lostSince = now;
 				} else if (now - anchor.lostSince > ARC_LOST_NS) {
@@ -737,19 +760,11 @@ public final class LyricsRenderer {
 			*///?} else {
 			long seed = ArcLayout.seed(index, shown.get(index).text());
 			//?}
-			float side = (ArcLayout.unit(seed, 0, SALT_SIDE) * 2 - 1) * ARC_SIDE;
-			float up = ARC_ABOVE_MIN + ArcLayout.unit(seed, 0, SALT_UP) * (ARC_ABOVE_MAX - ARC_ABOVE_MIN);
 			anchor = new ArcAnchor();
 			anchor.placed = now;
-			anchor.side = side;
-			if (fixed) {
-				float[] at = ViewLock.target(lock, cfg.direction, camera.yRot(), cfg.height);
-				anchor.yaw = at[0] + side;
-				anchor.pitch = at[1] - (up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2);
-			} else {
-				anchor.yaw = camera.yRot() + side;
-				anchor.pitch = Mth.clamp(camera.xRot() - up, -85, 85);
-			}
+			anchor.side = (ArcLayout.unit(seed, 0, SALT_SIDE) * 2 - 1) * ARC_SIDE;
+			anchor.up = ARC_ABOVE_MIN + ArcLayout.unit(seed, 0, SALT_UP) * (ARC_ABOVE_MAX - ARC_ABOVE_MIN);
+			aim(anchor, cfg, camera, lock, fixed);
 			arcAnchors.put(index, anchor);
 		}
 		if (lock == null && follow && cfg.placement == Placement.SKY && cfg.direction == SkyLyricsConfig.Direction.FOLLOW
@@ -757,6 +772,57 @@ public final class LyricsRenderer {
 			anchor.yaw = camera.yRot() + anchor.side; // turns with you, no waiting
 		}
 		return anchor;
+	}
+
+	/** Puts the anchor where its side and height say, for the settings and the view right now. */
+	private static void aim(ArcAnchor anchor, SkyLyricsConfig cfg, Camera camera, @Nullable float[] lock, boolean fixed) {
+		float lift = anchor.up - (ARC_ABOVE_MIN + ARC_ABOVE_MAX) / 2;
+		if (fixed) {
+			float[] at = ViewLock.target(lock, cfg.direction, camera.yRot(), cfg.height);
+			anchor.yaw = at[0] + anchor.side;
+			anchor.pitch = at[1] - lift;
+		} else {
+			anchor.yaw = camera.yRot() + anchor.side;
+			anchor.pitch = Mth.clamp(followPitch(cfg.placement == Placement.FLOATING, camera.xRot(), cfg.height) - lift, -85, 85);
+		}
+	}
+
+	/** The settings an arc line's spot was worked out from. NaN stands for no pinned view. */
+	record ArcKey(Placement placement, SkyLyricsConfig.Direction direction, float height, float lockYaw, float lockPitch) {
+		static ArcKey of(Placement placement, SkyLyricsConfig.Direction direction, float height, @Nullable float[] lock) {
+			return new ArcKey(placement, direction, height, lock == null ? Float.NaN : lock[0], lock == null ? Float.NaN : lock[1]);
+		}
+	}
+
+	/**
+	 * The pitch the Lines layout sits at when it follows your view: the Height setting as an angle above the horizon
+	 * in the sky, and floating a little below your view (half the Height, at most 15 degrees). The arc lines centre on it too, so
+	 * switching layouts keeps the lyrics at the same height.
+	 */
+	static float followPitch(boolean floating, float camPitch, float height) {
+		return floating ? Mth.clamp(camPitch - Math.min(height, 30) * 0.5f, -85, 85) : -height;
+	}
+
+	/**
+	 * How far in front of you the lyrics float with Placement Floating: the Distance slider's range (8 to 160) spread
+	 * over 4 to 16 blocks, with the default 64 on the same 10.7 blocks as before, so every step moves the lyrics.
+	 */
+	static float floatingDistance(float distance) {
+		float d = Mth.clamp(distance, 8, 160);
+		return d <= 64 ? Mth.lerp((d - 8) / 56f, 4f, 32f / 3f) : Mth.lerp((d - 64) / 96f, 32f / 3f, 16f);
+	}
+
+	/**
+	 * How much of the line being sung still shows. It is all of it until the line has been over for a moment (the
+	 * top bar lets go of it then too), then it fades out over {@link #STALE_FADE_MS}, so the last lyric doesn't
+	 * stay lit through the outro or a long gap with no pause marker. Pauses, unsynced lyrics and the time before the first line are left as they are.
+	 */
+	static float staleFade(Lyrics lyrics, int index, long time) {
+		if (!lyrics.synced() || index < 0 || index >= lyrics.lines().size() || lyrics.get(index).isBreak()) {
+			return 1;
+		}
+		long late = time - (lyrics.lineEnd(index) + STALE_AFTER_MS);
+		return late <= 0 ? 1 : Mth.clamp(1 - late / (float) STALE_FADE_MS, 0, 1);
 	}
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
@@ -941,7 +1007,9 @@ public final class LyricsRenderer {
 					flareT = Float.isNaN(wordsT) ? since : wordsT;
 				}
 			}
-			items.add(new Item(text, r, scale, a * alpha, highlight, sung, maxChars, wordsT, flareT));
+			// The line being sung goes when it has been over for a while; the lines around it stay as they are
+			float stale = i == center ? staleFade(shown, i, time) : 1;
+			items.add(new Item(text, r, scale, a * alpha * stale, highlight, sung, maxChars, wordsT, flareT));
 		}
 		if (items.isEmpty()) {
 			return;
@@ -1188,7 +1256,7 @@ public final class LyricsRenderer {
 			}
 			boolean leaving = shot.leave() >= 0;
 			float leave = leaving ? shot.leave() : 0;
-			float alpha = visibility * cfg.opacity * (1 - leave) * shot.arrive();
+			float alpha = visibility * cfg.opacity * (1 - leave) * shot.arrive() * (leaving ? 1 : staleFade(shown, index, time));
 			if (alpha <= 0.01f) {
 				return;
 			}
@@ -1266,7 +1334,7 @@ public final class LyricsRenderer {
 			if (cfg.glow > 0.01f) {
 				int copies = LyricsRenderer.this.light ? GLOW_LIGHT : GLOW_INNER;
 				int glowByte = Math.round(cfg.glow * alpha * 1.28f / copies * 255);
-				if (glowByte >= 2) {
+				if (glowVisible(glowByte)) {
 					int halo = mix(glowOf(face), 0x000000, 0.75f * daylight);
 					FormattedCharSequence haloSeq = colored(d, halo);
 					for (int k = 0; k < copies; k++) {
@@ -1462,7 +1530,7 @@ public final class LyricsRenderer {
 								}
 								float radius = ring * 0.85f * (1 + 0.7f * fl);
 								int alphaByte = Math.min(255, Math.round(ga * (ring == 1 ? 1.28f : 0.64f) / copies * 255));
-								if (alphaByte < 2) {
+								if (!glowVisible(alphaByte)) {
 									continue;
 								}
 								int glowColor = alphaByte << 24 | halo;
@@ -2053,7 +2121,7 @@ public final class LyricsRenderer {
 		float[] lock = ViewLock.update(cfg, camYaw, camPitch);
 		if (cfg.placement == Placement.FLOATING && lock == null) {
 			targetYaw = camYaw;
-			targetPitch = Mth.clamp(camPitch - Math.min(cfg.height, 30) * 0.5f, -85, 85);
+			targetPitch = followPitch(true, camPitch, cfg.height);
 			speed = 5f;
 		} else if (lock != null) {
 			float[] at = ViewLock.target(lock, cfg.direction, camYaw, cfg.height);
