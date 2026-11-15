@@ -62,4 +62,15 @@ class ArcCjkTest {
 			}
 		}
 	}
+
+	@Test
+	void arabicAndChinesePunctuationMarkAPause() {
+		for (String end : List.of(",", ".", ";", ":", "!", "?", "…", "،", "؟", "。", "、", "，", "！", "？")) {
+			assertTrue(LyricsRenderer.endsWithPause("word" + end), end);
+		}
+		assertEquals(false, LyricsRenderer.endsWithPause("word"));
+		assertEquals(false, LyricsRenderer.endsWithPause(""));
+		// punctuation stays with the character before it, so a Chinese clause end is a pause
+		assertTrue(LyricsRenderer.endsWithPause(LyricsRenderer.arcWords("我爱你。").words().get(2)));
+	}
 }

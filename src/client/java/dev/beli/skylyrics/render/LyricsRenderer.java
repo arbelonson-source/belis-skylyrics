@@ -1009,7 +1009,7 @@ public final class LyricsRenderer {
 			for (int w = 0; w < n; w++) {
 				String word = words.get(w);
 				widths[w] = LyricsFont.width(font, base, word);
-				pause[w] = ",.;:!?…".indexOf(word.charAt(word.length() - 1)) >= 0;
+				pause[w] = endsWithPause(word);
 				firstChar[w] = split.first()[w];
 			}
 			boolean rtl = Bidi.requiresBidi(text.toCharArray(), 0, text.length())
@@ -1549,6 +1549,11 @@ public final class LyricsRenderer {
 		int[] rank = wordRanks(row);
 		boolean any = row.chars().anyMatch(c -> c != ' ');
 		return any ? rank[rank.length - 1] + 1 : 0;
+	}
+
+	/** Whether a word ends with a mark where a row may nicely end. */
+	static boolean endsWithPause(String word) {
+		return !word.isEmpty() && ",.;:!?…،؟。、，！？".indexOf(word.charAt(word.length() - 1)) >= 0;
 	}
 
 	/** A line cut into arc words: each word's text, where it starts (code points), and whether it runs straight into the next. */
