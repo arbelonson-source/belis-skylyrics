@@ -8,14 +8,19 @@ import java.util.regex.Pattern;
 
 /** Parses LRC text ("[01:23.45]words") into {@link Lyrics}. */
 public final class LrcParser {
-	private static final Pattern TIME = Pattern.compile("\\[(\\d{1,3}):(\\d{1,2})(?:[.:](\\d{1,3}))?]");
+	private static final Pattern TIME = Pattern.compile("\\[(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:](\\d+))?]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
-	private static final Pattern WORD_TIME = Pattern.compile("<\\d{1,3}:\\d{1,2}(?:[.:]\\d{1,3})?>");
+	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:]\\d+)?>");
 	// Also old Mac files that end lines with a bare \r
 	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
 	private static final Pattern SECTION = Pattern.compile("\\[[^\\[\\]]*]");
+	// Whole line that is only an instrumental marker: "(Instrumental)", "[music]", "Instrumental"
+	private static final Pattern MARKER = Pattern.compile(
+			"[(\\[（【]?\\s*(?:instrumental|music|musique|musica|instrumental break|instrumental interlude)\\s*[)\\]）】]?",
+			Pattern.CASE_INSENSITIVE);
+	private static final Pattern FULL_WIDTH = Pattern.compile("［[\\d：．.:]+］");
 	private static final char BOM = 0xFEFF;
 	// A timed line of only music notes, like "♪" or "♫ ♫", marks a break in the singing
 	private static final Pattern NOTES = Pattern.compile("[\\s♩♪♫♬]*");
@@ -35,7 +40,7 @@ public final class LrcParser {
 		long offset = 0;
 		List<LyricLine> lines = new ArrayList<>();
 		for (String raw : lines(lrc)) {
-			raw = raw.stripLeading();
+			raw = FULL_WIDTH.matcher(raw.stripLeading()).replaceAll(r -> r.group().replace('［', '[').replace('］', ']').replace('：', ':').replace('．', '.'));
 			// Only a line that starts with the tag sets it; a broken huge number is ignored instead of losing the lyrics
 			Matcher off = OFFSET.matcher(raw);
 			if (off.lookingAt()) {
@@ -50,14 +55,14 @@ public final class LrcParser {
 			int end = 0;
 			// Some files put spaces between the stamps of a repeated line: "[00:05] [00:30] text"
 			while (m.find() && raw.substring(end, m.start()).isBlank()) {
-				times.add(toMillis(m.group(1), m.group(2), m.group(3)));
+				times.add(toMillis(m.group(1), m.group(2), m.group(3), m.group(4)));
 				end = m.end();
 			}
 			if (times.isEmpty()) {
 				continue;
 			}
 			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
-			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches()) {
+			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
 				text = "";
 			}
 			for (long t : times) {
@@ -177,8 +182,8 @@ public final class LrcParser {
 		return out;
 	}
 
-	private static long toMillis(String min, String sec, String frac) {
-		long ms = Long.parseLong(min) * 60_000L + Long.parseLong(sec) * 1000L;
+	private static long toMillis(String hour, String min, String sec, String frac) {
+		long ms = (hour == null ? 0 : Long.parseLong(hour) * 3_600_000L) + Long.parseLong(min) * 60_000L + Long.parseLong(sec) * 1000L;
 		if (frac != null) {
 			// "5" = 500ms, "45" = 450ms, "456" = 456ms
 			String padded = (frac + "00").substring(0, 3);

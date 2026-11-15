@@ -139,6 +139,18 @@ class NeteaseClientTest {
 	}
 
 	@Test
+	void placeholderTextIsInstrumentalButARealLineIsNot() throws Exception {
+		songs(song(12, "A Made-Up Tune", "Made Up Band", 200_000));
+		lyric(12, "[00:00.00]纯音乐，请欣赏");
+		assertTrue(client.find(track("A Made-Up Tune", "Made Up Band", 200_000)).instrumental());
+		songs(song(13, "A Made-Up Song", "Made Up Band", 200_000));
+		lyric(13, "[00:01.00]他说纯音乐很好听\\n[00:05.00]another line");
+		LrclibClient.Result r = client.find(track("A Made-Up Song", "Made Up Band", 200_000));
+		assertFalse(r.instrumental());
+		assertTrue(r.found());
+	}
+
+	@Test
 	void songWithoutLyricsIsNotFound() throws Exception {
 		songs(song(10, "A Made-Up Song", "Made Up Band", 200_000));
 		assertFalse(client.find(track("A Made-Up Song", "Made Up Band", 200_000)).found());
