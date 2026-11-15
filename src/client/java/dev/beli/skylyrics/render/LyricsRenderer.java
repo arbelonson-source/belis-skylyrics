@@ -276,11 +276,11 @@ public final class LyricsRenderer {
 
 	//? if >=26.1 {
 	/*private void guardedRender(LevelRenderContext context) {
-		PoseStack.Pose mark = context.poseStack().last();
 		Guard.run("lyrics in the world", () -> {
+			PoseStack.Pose mark = context.poseStack().last();
 			try {
 				render(context);
-			} catch (RuntimeException e) {
+			} catch (RuntimeException | LinkageError e) {
 				unwindTo(context.poseStack(), mark);
 				throw e;
 			}
@@ -288,11 +288,11 @@ public final class LyricsRenderer {
 	}
 	*///?} else {
 	private void guardedRender(WorldRenderContext context) {
-		PoseStack.Pose mark = context.matrices().last();
 		Guard.run("lyrics in the world", () -> {
+			PoseStack.Pose mark = context.matrices().last();
 			try {
 				render(context);
-			} catch (RuntimeException e) {
+			} catch (RuntimeException | LinkageError e) {
 				unwindTo(context.matrices(), mark);
 				throw e;
 			}

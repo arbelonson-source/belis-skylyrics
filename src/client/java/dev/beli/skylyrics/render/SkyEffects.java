@@ -254,11 +254,11 @@ public final class SkyEffects {
 
 	//? if >=26.1 {
 	/*public void render(LevelRenderContext context) {
-		PoseStack.Pose mark = context.poseStack().last();
 		Guard.run("sky effects", () -> {
+			PoseStack.Pose mark = context.poseStack().last();
 			try {
 				draw(context);
-			} catch (RuntimeException e) {
+			} catch (RuntimeException | LinkageError e) {
 				LyricsRenderer.unwindTo(context.poseStack(), mark);
 				throw e;
 			}
@@ -268,11 +268,11 @@ public final class SkyEffects {
 	private void draw(LevelRenderContext context) {
 	*///?} else {
 	public void render(WorldRenderContext context) {
-		PoseStack.Pose mark = context.matrices().last();
 		Guard.run("sky effects", () -> {
+			PoseStack.Pose mark = context.matrices().last();
 			try {
 				draw(context);
-			} catch (RuntimeException e) {
+			} catch (RuntimeException | LinkageError e) {
 				LyricsRenderer.unwindTo(context.matrices(), mark);
 				throw e;
 			}
