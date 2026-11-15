@@ -12,6 +12,7 @@ import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.util.Guard;
 import java.util.Objects;
 import java.util.Random;
 //? if >=26.1 {
@@ -253,8 +254,32 @@ public final class SkyEffects {
 
 	//? if >=26.1 {
 	/*public void render(LevelRenderContext context) {
+		PoseStack.Pose mark = context.poseStack().last();
+		Guard.run("sky effects", () -> {
+			try {
+				draw(context);
+			} catch (RuntimeException e) {
+				LyricsRenderer.unwindTo(context.poseStack(), mark);
+				throw e;
+			}
+		});
+	}
+
+	private void draw(LevelRenderContext context) {
 	*///?} else {
 	public void render(WorldRenderContext context) {
+		PoseStack.Pose mark = context.matrices().last();
+		Guard.run("sky effects", () -> {
+			try {
+				draw(context);
+			} catch (RuntimeException e) {
+				LyricsRenderer.unwindTo(context.matrices(), mark);
+				throw e;
+			}
+		});
+	}
+
+	private void draw(WorldRenderContext context) {
 	//?}
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();

@@ -16,6 +16,7 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Crosshair;
 import dev.beli.skylyrics.render.CrosshairShape;
+import dev.beli.skylyrics.util.Guard;
 //? if <26.2 {
 import net.minecraft.client.gui.Gui;
 //?}
@@ -63,19 +64,30 @@ abstract class GuiMixin {
 			*///?}
 			return;
 		}
-		int rgb = mod.renderer().color();
-		if (cfg.crosshairPulse) {
-			rgb = CrosshairShape.flash(rgb, mod.renderer().secondsSinceLineChange());
+		// A failure in our drawing falls back to the game's own crosshair (and pauses ours for a few seconds)
+		boolean drawn = Guard.test("crosshair", () -> {
+			int rgb = mod.renderer().color();
+			if (cfg.crosshairPulse) {
+				rgb = CrosshairShape.flash(rgb, mod.renderer().secondsSinceLineChange());
+			}
+			//? if <1.21.2 {
+			/*// 1.21.1 draws the crosshair with inverted colours; ours are plain, so put the normal blending back for them
+			// and the inverted blending back for whatever vanilla draws next (the attack meter)
+			RenderSystem.defaultBlendFunc();
+			CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
+			RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
+					GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+			*///?} else {
+			CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
+			//?}
+			return true;
+		});
+		if (!drawn) {
+			//? if >=1.21.2 {
+			original.call(g, pipeline, sprite, x, y, width, height);
+			//?} else {
+			/*original.call(g, sprite, x, y, width, height);
+			*///?}
 		}
-		//? if <1.21.2 {
-		/*// 1.21.1 draws the crosshair with inverted colours; ours are plain, so put the normal blending back for them
-		// and the inverted blending back for whatever vanilla draws next (the attack meter)
-		RenderSystem.defaultBlendFunc();
-		CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
-		RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
-				GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-		*///?} else {
-		CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
-		//?}
 	}
 }

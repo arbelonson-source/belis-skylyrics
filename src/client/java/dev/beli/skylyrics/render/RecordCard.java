@@ -22,6 +22,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.util.Guard;
 
 /**
  * A small card in a corner of the screen: a record that turns while the song plays, with the cover as its label,
@@ -79,6 +80,10 @@ public final class RecordCard {
 	}
 
 	public void render(GuiGraphics g, DeltaTracker delta) {
+		Guard.run("record card", () -> draw(g, delta));
+	}
+
+	private void draw(GuiGraphics g, DeltaTracker delta) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -108,15 +113,18 @@ public final class RecordCard {
 
 		// The panel and the record in real pixels, so the round edges stay smooth
 		g.pose().pushMatrix();
-		g.pose().scale(1 / s, 1 / s);
-		float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(W * s), ph = Math.round(h * s);
-		float b = Math.max(1, Math.round(s / 2));
-		float r = Math.round(8 * s);
-		NowPlayingHud.roundRect(g, px, py, pw, ph, r, ARGB.color(Math.round(alpha * 255), BORDER));
-		NowPlayingHud.roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, r - b,
-				ARGB.color(Math.round(alpha * 235 * cfg.barBackground), FILL));
-		drawRecord(g, px + Math.round(PAD * s), py + Math.round((H - DISC) / 2 * s), Math.round(DISC * s));
-		g.pose().popMatrix();
+		try {
+			g.pose().scale(1 / s, 1 / s);
+			float px = Math.round(x * s), py = Math.round(y * s), pw = Math.round(W * s), ph = Math.round(h * s);
+			float b = Math.max(1, Math.round(s / 2));
+			float r = Math.round(8 * s);
+			NowPlayingHud.roundRect(g, px, py, pw, ph, r, ARGB.color(Math.round(alpha * 255), BORDER));
+			NowPlayingHud.roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, r - b,
+					ARGB.color(Math.round(alpha * 235 * cfg.barBackground), FILL));
+			drawRecord(g, px + Math.round(PAD * s), py + Math.round((H - DISC) / 2 * s), Math.round(DISC * s));
+		} finally {
+			g.pose().popMatrix();
+		}
 
 		Font font = mc.font;
 		Style style = LyricsFont.base(cfg);
@@ -262,14 +270,17 @@ public final class RecordCard {
 		float label = Math.round(d * 0.5f);
 		if (art.hasTexture()) {
 			g.pose().pushMatrix();
-			g.pose().translate(cx, cy);
-			g.pose().rotate(spin);
-			g.pose().translate(-cx, -cy);
-			int lx = Math.round(cx - label / 2), ly = Math.round(cy - label / 2), lp = Math.round(label);
-			// The texture is already cut round (AlbumArt)
-			g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, lx, ly, 0, 0, lp, lp,
-					AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(alpha));
-			g.pose().popMatrix();
+			try {
+				g.pose().translate(cx, cy);
+				g.pose().rotate(spin);
+				g.pose().translate(-cx, -cy);
+				int lx = Math.round(cx - label / 2), ly = Math.round(cy - label / 2), lp = Math.round(label);
+				// The texture is already cut round (AlbumArt)
+				g.blit(RenderPipelines.GUI_TEXTURED, AlbumArt.TEXTURE, lx, ly, 0, 0, lp, lp,
+						AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, AlbumArt.SIZE, ARGB.white(alpha));
+			} finally {
+				g.pose().popMatrix();
+			}
 		} else {
 			disc(g, cx, cy, label, NO_ART, 1);
 			// A mark on the plain label, so you can still see it turn
@@ -302,10 +313,13 @@ public final class RecordCard {
 	/** Draws text with its middle at {@code midY}, scaled about its left end. */
 	private static void text(GuiGraphics g, Font font, Style style, String text, float x, float midY, float scale, int color) {
 		g.pose().pushMatrix();
-		g.pose().translate(x, midY);
-		g.pose().scale(scale, scale);
-		g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
-		g.pose().popMatrix();
+		try {
+			g.pose().translate(x, midY);
+			g.pose().scale(scale, scale);
+			g.drawString(font, Language.getInstance().getVisualOrder(FormattedText.of(text, style)), 0, -4, color, false);
+		} finally {
+			g.pose().popMatrix();
+		}
 	}
 
 	/**

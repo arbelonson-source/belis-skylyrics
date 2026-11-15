@@ -74,6 +74,7 @@ import dev.beli.skylyrics.render.NowPlayingHud;
 import dev.beli.skylyrics.render.RecordCard;
 import dev.beli.skylyrics.render.SkyEffects;
 import dev.beli.skylyrics.update.Updater;
+import dev.beli.skylyrics.util.Guard;
 
 public final class SkyLyricsClient implements ClientModInitializer {
 	public static final String MOD_ID = "skylyrics";
@@ -232,6 +233,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	/** Lyrics on the main menu, in the gap under its lowest button (the copyright line at the very bottom is a button too). */
 	private void renderTitle(Screen screen, GuiGraphics g) {
+		Guard.run("title screen lyrics", () -> drawTitle(screen, g));
+	}
+
+	private void drawTitle(Screen screen, GuiGraphics g) {
 		int bottom = screen.height - TITLE_FOOTER;
 		int top = 0;
 		//? if >=26.1 {
@@ -319,6 +324,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private Component updateLine;
 
 	private void tick(Minecraft client) {
+		Guard.run("client tick", () -> doTick(client));
+	}
+
+	private void doTick(Minecraft client) {
 		art.upload();
 		// The update check runs in the background; its answer pops up straight away, and is told in chat once a world is open
 		Updater.Notice update = Updater.takeNotice();
