@@ -23,7 +23,7 @@ class PendingFetchTest {
 
 	/**
 	 * Song A fails with a temporary error. While it works out its retry delay (after its generation check), song B is
-	 * loaded. A's retry must not take over {@code pendingFetch}: when song C then skips B, it has to cancel B's fetch
+	 * loaded. A's retry must not take over {@code pendingFetch}: when the player then skips B, it has to cancel B's fetch
 	 * (which is waiting on the network), not the stale retry.
 	 */
 	@Test
@@ -72,7 +72,7 @@ class PendingFetchTest {
 		try {
 			s.load(song("A"));
 			assertTrue(bRunning.await(10, TimeUnit.SECONDS));
-			s.load(song("C"));
+			s.load(Track.NONE); // skip on to nothing: nothing writes the cache after the test
 			assertTrue(bInterrupted.await(5, TimeUnit.SECONDS), "skipping B should cancel B's fetch");
 		} finally {
 			holdB.countDown();
