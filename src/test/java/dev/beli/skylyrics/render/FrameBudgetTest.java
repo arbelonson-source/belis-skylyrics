@@ -64,4 +64,41 @@ class FrameBudgetTest {
 		run(budget, 30, 10, 30); // the player set 30 frames a second, or the game throttles in the background
 		assertFalse(budget.light());
 	}
+
+	@Test
+	void oneLongStallDoesNotGoLight() {
+		FrameBudget budget = new FrameBudget();
+		run(budget, 90, 5, UNCAPPED);
+		for (int i = 0; i < 20; i++) { // a reload or world join: single capped frames among smooth ones
+			budget.update(0.1f, UNCAPPED);
+			for (int j = 0; j < 10; j++) {
+				budget.update(1 / 90f, UNCAPPED);
+			}
+			assertFalse(budget.light());
+		}
+		assertEquals(90, budget.fps(), 5);
+	}
+
+	@Test
+	void steadySlowFramesStillGoLight() {
+		FrameBudget budget = new FrameBudget();
+		run(budget, 90, 5, UNCAPPED);
+		run(budget, 10, 2, UNCAPPED); // every frame is a "stall" size, but they keep coming
+		assertTrue(budget.light());
+	}
+
+	@Test
+	void forgiveClearsTheRelapseDoubling() {
+		FrameBudget budget = new FrameBudget();
+		run(budget, 30, 3, UNCAPPED);
+		run(budget, 80, FrameBudget.FIRST_WAIT + 1, UNCAPPED);
+		run(budget, 30, 3, UNCAPPED); // relapse: the wait is now doubled
+		assertTrue(budget.light());
+		budget.forgive();
+		assertFalse(budget.light());
+		run(budget, 30, 3, UNCAPPED);
+		assertTrue(budget.light());
+		run(budget, 80, FrameBudget.FIRST_WAIT + 1, UNCAPPED);
+		assertFalse(budget.light(), "back to the first wait");
+	}
 }

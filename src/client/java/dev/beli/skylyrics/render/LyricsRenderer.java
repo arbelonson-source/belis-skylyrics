@@ -137,6 +137,7 @@ public final class LyricsRenderer {
 
 	private long lastFrame;
 	private final FrameBudget budget = new FrameBudget();
+	private boolean wasReloading;
 	/** Fewer glow copies this frame, because the settings ask for it or the game is slow. */
 	private boolean light;
 	private float visibility;
@@ -431,6 +432,12 @@ public final class LyricsRenderer {
 	private float step(Minecraft mc, SkyLyricsConfig cfg, long now) {
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
+		// A resource reload (its loading screen is up) or a shader switch stalls the game: don't count it as a slow game
+		boolean reloading = mc.getOverlay() != null;
+		if (reloading || wasReloading || ScreenLayer.takeShaderFlip()) {
+			budget.forgive();
+		}
+		wasReloading = reloading;
 		budget.update(dt, mc.getFramerateLimitTracker().getFramerateLimit());
 		light = cfg.effects == SkyLyricsConfig.Effects.LIGHT || cfg.effects == SkyLyricsConfig.Effects.AUTO && budget.light();
 		return dt;
@@ -470,7 +477,7 @@ public final class LyricsRenderer {
 	/** Lines are wrapped once and kept; this drops them when the width or the font changes. */
 	private void wrapAt(Minecraft mc, SkyLyricsConfig cfg, float wrapWidth) {
 		Style wrapStyle = LyricsFont.sky(cfg);
-		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪");
+		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪漢א ع");
 		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
 			wrapCacheProbe = probe;
 			wrapCache.clear();

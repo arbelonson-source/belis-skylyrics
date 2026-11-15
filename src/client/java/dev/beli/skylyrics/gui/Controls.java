@@ -817,6 +817,8 @@ final class Controls {
 	static final class Paragraph extends Row {
 		private final Supplier<String> text;
 		private List<net.minecraft.util.FormattedCharSequence> lines = List.of();
+		private static final String FONT_PROBE = "Mw0♪漢א ع";
+		private int linesProbe;
 		private int linesWidth = -1;
 		private String linesText = "";
 
@@ -838,7 +840,10 @@ final class Controls {
 		/** Called before layout so height() is right. */
 		void measure(Font font, int width) {
 			String t = text.get();
-			if (width != linesWidth || !t.equals(linesText)) {
+			// the probe notices a font change (a resource pack reload) that would move the line breaks
+			int probe = font.width(FONT_PROBE);
+			if (width != linesWidth || !t.equals(linesText) || probe != linesProbe) {
+				linesProbe = probe;
 				lines = font.split(net.minecraft.network.chat.Component.literal(t), width - 20);
 				linesWidth = width;
 				linesText = t;
