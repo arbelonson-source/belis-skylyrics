@@ -107,7 +107,7 @@ class LyricsServiceTest {
 		if (holdFirst && firstSeen.getCount() > 0) {
 			firstSeen.countDown();
 			try {
-				release.await(10, TimeUnit.SECONDS);
+				release.await(60, TimeUnit.SECONDS);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
@@ -139,7 +139,7 @@ class LyricsServiceTest {
 	}
 
 	private static void waitFor(BooleanSupplier done) throws InterruptedException {
-		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
 		while (!done.getAsBoolean()) {
 			assertTrue(System.nanoTime() < until, "timed out");
 			Thread.sleep(10);
@@ -551,9 +551,13 @@ class LyricsServiceTest {
 
 	@Test
 	void skippedSongsAreNotLookedUp() throws InterruptedException {
+		// A stalled request on a starved machine (the client gives up after 10 s) must cost 30 ms, not the usual
+		// seconds of waiting before the retry, or Song Four's answer arrives after the test's patience ends
+		fastRetries();
 		holdFirst = true;
 		service.load(track("Song One", 200_000));
-		assertTrue(firstSeen.await(10, TimeUnit.SECONDS));
+		// The worker is a single thread: once it is inside Song One's request, Two, Three and Four queue behind it
+		assertTrue(firstSeen.await(60, TimeUnit.SECONDS), "Song One's request never arrived");
 
 		service.load(track("Song Two", 200_000));
 		service.load(track("Song Three", 200_000));

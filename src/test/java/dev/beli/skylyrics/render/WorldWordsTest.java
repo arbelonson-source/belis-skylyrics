@@ -388,6 +388,15 @@ class WorldWordsTest {
 		assertEquals(0f, apart[1]);
 		float[] moved = WorldWords.push(a, new float[] {1, -0.5f, 4, 1});
 		assertNotSame(apart, moved);
+		// A push that moves is the caller's to change (separate does): writing to it must not leak into later answers,
+		// neither the next moving push nor the zero for words that are apart
+		float[] expected = moved.clone();
+		moved[0] = 99;
+		moved[1] = 99;
+		float[] again = WorldWords.push(a, new float[] {1, -0.5f, 4, 1});
+		assertNotSame(moved, again);
+		assertArrayEquals(expected, again);
+		assertArrayEquals(new float[] {0, 0}, WorldWords.push(a, new float[] {10, 0, 4, 1}));
 		// Wide words side by side on one row: stepping down a row is shorter than going round
 		float[] down = WorldWords.push(a, new float[] {1, -0.5f, 4, 1});
 		assertEquals(0, down[0]);

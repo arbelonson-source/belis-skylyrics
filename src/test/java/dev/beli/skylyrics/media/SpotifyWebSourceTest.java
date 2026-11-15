@@ -213,18 +213,26 @@ class SpotifyWebSourceTest {
 
 	@Test
 	void aRetryAfterFromAnyCallHoldsThePoller(@TempDir Path dir) {
+		long sec = 1_000_000_000L;
 		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
 		long now = System.nanoTime();
 		assertTrue(source.pollDue(now + 1, true));
 		source.holdOff("30");
-		assertFalse(source.pollDue(now + 20_000_000_000L, true));
-		assertTrue(source.pollDue(now + 31_000_000_000L, true));
+		long stamped = System.nanoTime(); // the hold ends between now + 30 s and stamped + 30 s
+		assertFalse(source.pollDue(now + 29 * sec, true));
+		assertTrue(source.pollDue(stamped + 31 * sec, true));
 		// A shorter ask later never shortens the hold
 		source.holdOff("2");
-		assertFalse(source.pollDue(now + 20_000_000_000L, true));
-		// A date instead of seconds is 10 s, not a crash
-		source.holdOff("Wed, 21 Oct 2026 07:28:00 GMT");
-		assertFalse(source.pollDue(now + 20_000_000_000L, true));
+		assertFalse(source.pollDue(now + 29 * sec, true));
+		assertTrue(source.pollDue(stamped + 31 * sec, true));
+
+		// A date instead of seconds is 10 s, not a crash (a fresh source, so no earlier hold covers it)
+		SpotifyWebSource dated = new SpotifyWebSource(() -> ID, dir.resolve("login2.json"));
+		long start = System.nanoTime();
+		dated.holdOff("Wed, 21 Oct 2026 07:28:00 GMT");
+		long end = System.nanoTime();
+		assertFalse(dated.pollDue(start + 9 * sec, true), "still held at 9 s");
+		assertTrue(dated.pollDue(end + 11 * sec, true), "free after 10 s");
 	}
 
 	@Test

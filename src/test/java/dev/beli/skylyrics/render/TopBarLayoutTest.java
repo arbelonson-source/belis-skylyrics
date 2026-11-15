@@ -134,11 +134,16 @@ class TopBarLayoutTest {
 	void aBottomBarGrowsUpFromItsBottomEdge() {
 		assertEquals(100f, TopBarLayout.pivotY(false, 100f));
 		assertEquals(100f + TopBarLayout.PILL_H, TopBarLayout.pivotY(true, 100f));
-		// Scaled about the pivot, the edge on the screen's side stays put
-		float top = TopBarLayout.bottomTop(240), size = 1.5f;
-		float pivot = TopBarLayout.pivotY(true, top);
-		float bottomAfter = (1 - size) * pivot + size * (top + TopBarLayout.PILL_H);
-		assertEquals(top + TopBarLayout.PILL_H, bottomAfter, 0.001f);
+		// Scaled about the pivot, the edge on the screen's side stays put: ask the real clip for the bottom edge
+		float top = TopBarLayout.bottomTop(240);
+		float bottom = top + TopBarLayout.PILL_H;
+		for (float size : new float[] {0.75f, 1.5f, 2f}) {
+			int[] box = TopBarLayout.scaledClip(100, top, 220, bottom, size, 320, TopBarLayout.pivotY(true, top));
+			// the clip is whole pixels, so within one of the edge (a wrong pivot is off by several)
+			assertEquals(bottom, box[3], 1f, "bottom edge at size " + size);
+		}
+		// A top bar grows down from its top edge instead
+		assertEquals(top, TopBarLayout.scaledClip(100, top, 220, bottom, 1.5f, 320, TopBarLayout.pivotY(false, top))[1], 1f);
 	}
 
 	@Test

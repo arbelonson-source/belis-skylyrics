@@ -96,10 +96,14 @@ class CoverCacheTest {
 	}
 
 	@Test
-	void aCoverThatCannotBeCachedStillCountsAsDownloaded(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+	void aCoverThatCannotBeCachedIsOnlyAMissedSave(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
 		java.nio.file.Path notAFolder = tmp.resolve("blocked");
 		java.nio.file.Files.writeString(notAFolder, "x");
+		// read() has already decoded the image and returns it whatever store does, so store must swallow the failure
 		assertDoesNotThrow(() -> CoverCache.store(notAFolder, notAFolder.resolve("a.img"), png(8, 8)));
+		// and the save that failed left nothing behind: the blocker is as it was
+		assertEquals("x", java.nio.file.Files.readString(notAFolder));
+		assertFalse(java.nio.file.Files.exists(notAFolder.resolve("a.img")));
 		java.nio.file.Path ok = tmp.resolve("covers");
 		CoverCache.store(ok, ok.resolve("b.img"), png(8, 8));
 		assertTrue(java.nio.file.Files.isRegularFile(ok.resolve("b.img")));
@@ -111,10 +115,29 @@ class CoverCacheTest {
 		java.nio.file.Path file = tmp.resolve("c.img");
 		java.nio.file.Files.write(file, whole);
 		assertEquals(16, CoverCache.readCached(file).getWidth());
-		java.nio.file.Files.write(file, java.util.Arrays.copyOf(whole, whole.length / 2));
+		// Damage the header (not just cut the tail: a decoder may hand back half an image from a cut file)
+		byte[] damaged = whole.clone();
+		for (int i = 0; i < 16; i++) {
+			damaged[i] = (byte) (0x55 + i);
+		}
+		java.nio.file.Files.write(file, damaged);
 		assertNull(CoverCache.readCached(file));
 		assertFalse(java.nio.file.Files.exists(file));
 		assertNull(CoverCache.readCached(file));
+	}
+
+	@Test
+	void aCoverWhoseDecoderThrowsIsRemovedToo(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		byte[] whole = png(16, 16);
+		// The signature and the header stay good, the image data is garbage: the decoder starts and then throws
+		byte[] damaged = whole.clone();
+		for (int i = 40; i < damaged.length - 12; i++) {
+			damaged[i] = (byte) 0xFF;
+		}
+		java.nio.file.Path file = tmp.resolve("d.img");
+		java.nio.file.Files.write(file, damaged);
+		assertNull(CoverCache.readCached(file));
+		assertFalse(java.nio.file.Files.exists(file));
 	}
 
 	@Test

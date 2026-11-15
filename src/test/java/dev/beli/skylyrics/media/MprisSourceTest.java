@@ -86,7 +86,9 @@ class MprisSourceTest {
 
 	@Test
 	void aLateAnswerIsStampedWhenItWasAsked() throws Exception {
-		long ms = 1_000_000L;
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicLong readerEntered = new java.util.concurrent.atomic.AtomicLong();
 		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
 			@Override
 			public List<String> names() {
@@ -95,22 +97,33 @@ class MprisSourceTest {
 
 			@Override
 			public MprisSource.Reading read(String busName) throws Exception {
-				Thread.sleep(MprisSource.ANSWER_WAIT_MS + 250); // answers after the first poll has given up waiting
+				readerEntered.set(System.nanoTime());
+				entered.countDown();
+				// Answers only once the test lets it, i.e. after the first poll has given up waiting
+				release.await();
 				return reading(GOOD, "Good Song", 5000);
 			}
 		});
 		try {
 			long asked = System.nanoTime();
 			assertTrue(source.poll().track().isNone(), "no answer yet");
+			assertTrue(entered.await(20, java.util.concurrent.TimeUnit.SECONDS), "the reader never started");
+			release.countDown();
+			long released = System.nanoTime();
 			Snapshot s = null;
-			for (int i = 0; i < 20 && (s == null || s.track().isNone()); i++) {
-				Thread.sleep(100);
+			long giveUp = System.nanoTime() + 20_000L * 1_000_000L;
+			while ((s == null || s.track().isNone()) && System.nanoTime() < giveUp) {
+				Thread.sleep(20);
 				s = source.poll();
 			}
 			assertEquals("Good Song", s.track().title());
-			// The answer was gathered at the first poll, a second or more before it was picked up
-			assertTrue(s.readAtNanos() < asked + 200 * ms, "stamped " + (s.readAtNanos() - asked) / ms + " ms after the ask");
+			// The answer was gathered when the read asked, before the first poll gave up, not when it was picked up
+			assertTrue(readerEntered.get() != 0);
+			assertTrue(s.readAtNanos() >= asked, "not before the poll");
+			assertTrue(s.readAtNanos() <= readerEntered.get(), "stamped when asked, not when picked up");
+			assertTrue(s.readAtNanos() < released, "stamped before the answer was let go");
 		} finally {
+			release.countDown();
 			source.close();
 		}
 	}
