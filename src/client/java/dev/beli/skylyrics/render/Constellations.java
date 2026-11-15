@@ -64,6 +64,19 @@ final class Constellations {
 		}
 	}
 
+	/** How far (radians) each pattern's farthest star lies from its middle, before the width of a star or line is added. */
+	private static final float[] REACH = new float[PATTERNS.length];
+
+	static {
+		for (int p = 0; p < PATTERNS.length; p++) {
+			double far = 0;
+			for (int i = 0; i < TAN_X[p].length; i++) {
+				far = Math.max(far, Math.atan(Math.hypot(TAN_X[p][i], TAN_Y[p][i])));
+			}
+			REACH[p] = (float) far * 1.02f;
+		}
+	}
+
 	private final SkyFrame frame = new SkyFrame();
 
 	/**
@@ -72,12 +85,20 @@ final class Constellations {
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+		draw(c, radius, baseYaw, level, time, pixel, SkyView.ALL);
+	}
+
+	/** As above, leaving out the patterns the camera {@code view} can't see. */
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
 		int line = SkyColors.argb(LINE_RGB, LINE_ALPHA * level);
 		float half = LINE_PIXELS * pixel / 2;
 		float s = STAR_PIXELS * pixel;
 		for (int p = 0; p < PATTERNS.length; p++) {
 			Pattern pat = PATTERNS[p];
 			frame.aim(baseYaw + pat.yaw(), pat.elev());
+			if (!view.capVisible(frame.dx, frame.dy, frame.dz, REACH[p] + 3 * pixel)) {
+				continue;
+			}
 			float[] xs = TAN_X[p], ys = TAN_Y[p];
 			int[] lines = pat.lines();
 			for (int k = 0; k + 1 < lines.length; k += 2) {

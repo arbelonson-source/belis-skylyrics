@@ -158,16 +158,17 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			float limbSwingAmount, float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
 		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
 	*///?}
+		// Settled before the closure below exists, so every other player each frame costs no allocation
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		Minecraft mc = Minecraft.getInstance();
+		//? if >=1.21.2 {
+		if (cfg.hat == Hat.NONE || state.isInvisible || mc.player == null || state.id != mc.player.getId()) {
+		//?} else {
+		/*if (cfg.hat == Hat.NONE || player.isInvisible() || mc.player == null || player.getId() != mc.player.getId()) {
+		*///?}
+			return;
+		}
 		Guard.run("hat", () -> {
-			SkyLyricsConfig cfg = SkyLyricsConfig.get();
-			Minecraft mc = Minecraft.getInstance();
-			//? if >=1.21.2 {
-			if (cfg.hat == Hat.NONE || state.isInvisible || mc.player == null || state.id != mc.player.getId()) {
-			//?} else {
-			/*if (cfg.hat == Hat.NONE || player.isInvisible() || mc.player == null || player.getId() != mc.player.getId()) {
-			*///?}
-				return;
-			}
 			float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 			int rgb = lyrics.color();
 			int glow = 0xFF000000 | LyricsRenderer.mix(rgb, 0xFFFFFF, 0.55f * bright);

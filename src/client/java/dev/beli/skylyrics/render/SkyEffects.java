@@ -342,7 +342,8 @@ public final class SkyEffects {
 		}
 		baseYaw = baseYaw(cfg.direction);
 		// One screen pixel as a tangent of its angle, so lines stay about a pixel wide at any size
-		pixel = 2 * (float) Math.tan(mc.options.fov().get() * DEG / 2) / Math.max(1, mc.getWindow().getHeight());
+		// from the live view, which a spyglass, Speed or sprinting changes, and not from the slider
+		pixel = pixelAngle(ScreenLayer.tanHalfV(), mc.options.fov().get(), mc.getWindow().getHeight());
 		tint = lyrics.color();
 		radius = radius(mc.options.getEffectiveRenderDistance());
 		aurora = effect == SkyEffect.AURORA || effect == SkyEffect.BOTH;
@@ -408,7 +409,7 @@ public final class SkyEffects {
 			synthwave.draw(paint, far, baseYaw, amount, clock, pixel, view);
 		}
 		if (starPatterns) {
-			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
+			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel, view);
 		}
 	}
 
@@ -442,6 +443,16 @@ public final class SkyEffects {
 		meteorColor = mix(0xFFFFFF, tint, 0.2f);
 	}
 
+	/**
+	 * One screen pixel as a tangent of its angle: twice the tangent of half the vertical field of view, over the window's
+	 * height. {@code tanHalfV} comes from the projection the world was drawn with this frame, so it follows a spyglass,
+	 * Speed and sprinting; with none captured yet (0) the field of view slider stands in.
+	 */
+	static float pixelAngle(float tanHalfV, double sliderFovDeg, int windowHeight) {
+		float tan = tanHalfV > 0 && !Float.isInfinite(tanHalfV) ? tanHalfV : (float) Math.tan(sliderFovDeg * DEG / 2);
+		return 2 * tan / Math.max(1, windowHeight);
+	}
+
 	/** Where the lyrics hang, by the same rules as {@link LyricsRenderer}, so the sparkles can gather round. */
 	private void updateAnchor(SkyLyricsConfig cfg, Camera camera, float dt) {
 		float camYaw = camera.yRot();
@@ -465,9 +476,10 @@ public final class SkyEffects {
 			targetPitch = Mth.clamp(camera.xRot() - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;
 		} else if (cfg.direction == Direction.FOLLOW) {
-			following = FollowAnchor.following(following, cfg.lazyFollow, camYaw - anchorYaw);
+			boolean lazy = FollowAnchor.lazy(cfg.lazyFollow, cfg.layout);
+			following = FollowAnchor.following(following, lazy, camYaw - anchorYaw);
 			targetYaw = following ? camYaw : anchorYaw;
-			speed = FollowAnchor.speed(cfg.lazyFollow);
+			speed = FollowAnchor.speed(lazy);
 		} else {
 			targetYaw = cfg.direction.yaw;
 			speed = 3f;
@@ -537,7 +549,7 @@ public final class SkyEffects {
 			comet.draw(light, far, baseYaw, amount, clock, view);
 		}
 		if (starPatterns && !painted()) {
-			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel);
+			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel, view);
 		}
 		//? if >=26.2 {
 		/*// 26.2 on: the added-light pipeline writes depth, so a nearer shape drawn first hides every farther one drawn
@@ -655,26 +667,87 @@ public final class SkyEffects {
 		return Math.min(blobFraction(BLOBS - 1), ribbonFraction(RIBBONS - 1));
 	}
 
+	/** Where along the sky (radians, drawn as (sin, ., -cos)) a curtain's column {@code u} (0..1) stands. */
+	static float ribbonYaw(float t, int k, float u) {
+		float centre = (k * 2.1f + 0.6f) + t * 0.004f * (k % 2 == 0 ? 1 : -1);
+		float span = (100 + 20 * k) * DEG;
+		return centre + (u - 0.5f) * span + 0.07f * Mth.sin(t * 0.05f + u * 5 + k);
+	}
+
+	/** The height (radians) of a curtain's foot at column {@code u}. */
+	static float ribbonBase(float t, int k, float u) {
+		float baseElev = (27 + 9 * k) * DEG;
+		return baseElev + 4 * DEG * Mth.sin(t * 0.07f + u * 6 + k * 2);
+	}
+
+	/** The height (radians) of a curtain's top at column {@code u}, given its foot {@code base}. */
+	static float ribbonTop(float t, int k, float u, float base) {
+		return base + (22 + 6 * Mth.sin(t * 0.09f + u * 9 + k)) * DEG;
+	}
+
+	/**
+	 * Whether a curtain segment between two columns can be on screen. The curtain is drawn at (sin yaw, ., -cos yaw), a
+	 * direction whose Minecraft yaw (0 = south, +x = -sin) is that yaw plus half a turn, so the angles are turned
+	 * before they meet the view.
+	 */
+	static boolean ribbonVisible(SkyView view, float yawA, float yawB, float lowElev, float highElev) {
+		float lo = (float) Math.toDegrees(Math.min(yawA, yawB)) + 180, hi = (float) Math.toDegrees(Math.max(yawA, yawB)) + 180;
+		return view.yawVisible(lo, hi) && view.heightVisible((float) Math.toDegrees(lowElev), (float) Math.toDegrees(highElev));
+	}
+
+	/** Where a nebula cloud sits, as the yaw and height (radians) of its middle, drawn the same way as the curtains. */
+	static float blobYaw(float t, int k) {
+		return k * 0.9f + 0.3f + t * 0.003f;
+	}
+
+	static float blobElev(float t, int k) {
+		return (38 + 14 * Mth.sin(k * 1.7f + 1)) * DEG + 2 * DEG * Mth.sin(t * 0.04f + k);
+	}
+
+	/** The widest a cloud's edge wobbles out: 1 + 0.2 + 0.1 + 0.05. */
+	static final float BLOB_WOBBLE_MAX = 1.35f;
+
+	/** Whether a cloud whose edge reaches {@code size} (of {@code dist} away) from its middle can be on screen. */
+	static boolean blobVisible(SkyView view, float dx, float dy, float dz, float size, float dist) {
+		// A little over the true reach, so rounding never drops a cloud that just touches the view
+		return view.capVisible(dx, dy, dz, (float) Math.atan(size * BLOB_WOBBLE_MAX / dist) * 1.02f);
+	}
+
+	/** The direction (a unit vector) of nebula star {@code i}, and how far (radians) its quad reaches from it. */
+	static float dotYaw(int i) {
+		return i * 2.399963f;
+	}
+
+	static float dotElev(int i) {
+		return (22 + 40 * (Mth.sin(i * 12.9898f) * 0.5f + 0.5f)) * DEG;
+	}
+
+	/** A nebula star's quad is a hundredth of its distance across, so this holds it with room to spare. */
+	static final float DOT_REACH = 0.02f;
+
+	static boolean dotVisible(SkyView view, float yaw, float elev) {
+		float c = Mth.cos(elev);
+		return view.capVisible(c * Mth.sin(yaw), Mth.sin(elev), -c * Mth.cos(yaw), DOT_REACH);
+	}
+
 	private void ribbon(PoseStack.Pose pose, VertexConsumer vc, int k) {
 		float t = clock;
 		float r = radius * ribbonFraction(k);
-		float centre = (k * 2.1f + 0.6f) + t * 0.004f * (k % 2 == 0 ? 1 : -1);
-		float span = (100 + 20 * k) * DEG;
-		float baseElev = (27 + 9 * k) * DEG;
 		int low = auroraLow;
 		int high = auroraHigh;
 		float peak = 0.85f * fade;
 		float prevYaw = 0, prevBase = 0, prevTop = 0, prevB = 0;
 		for (int i = 0; i <= SEGMENTS; i++) {
 			float u = (float) i / SEGMENTS;
-			float yaw = centre + (u - 0.5f) * span + 0.07f * Mth.sin(t * 0.05f + u * 5 + k);
-			float base = baseElev + 4 * DEG * Mth.sin(t * 0.07f + u * 6 + k * 2);
-			float top = base + (22 + 6 * Mth.sin(t * 0.09f + u * 9 + k)) * DEG;
+			float yaw = ribbonYaw(t, k, u);
+			float base = ribbonBase(t, k, u);
+			float top = ribbonTop(t, k, u, base);
 			float ripple = 0.55f + 0.45f * Mth.sin(t * 0.5f - u * 8 + k * 1.7f);
 			// Fine vertical rays drifting along the curtain
 			float rays = 0.72f + 0.28f * Mth.sin(u * 70 + t * 0.35f + k) * Mth.sin(u * 23 - t * 0.2f);
 			float b = peak * ripple * rays * endFade(u);
-			if (i > 0) {
+			// A segment the camera can't see is skipped, but the values the next one starts from still move on
+			if (i > 0 && ribbonVisible(view, prevYaw, yaw, Math.min(prevBase, base), Math.max(prevTop, top))) {
 				float mid0 = prevBase + (prevTop - prevBase) * 0.14f;
 				float mid1 = base + (top - base) * 0.14f;
 				int foot = argb(low, 0);
@@ -699,8 +772,8 @@ public final class SkyEffects {
 	private void blob(PoseStack.Pose pose, VertexConsumer vc, int k) {
 		float t = clock;
 		// The clouds lie along a wavy band around the sky, like a galaxy; far ones are drawn first
-		float yaw = k * 0.9f + 0.3f + t * 0.003f;
-		float elev = (38 + 14 * Mth.sin(k * 1.7f + 1)) * DEG + 2 * DEG * Mth.sin(t * 0.04f + k);
+		float yaw = blobYaw(t, k);
+		float elev = blobElev(t, k);
 		float dist = radius * blobFraction(k);
 		float cosE = Mth.cos(elev);
 		float dx = cosE * Mth.sin(yaw), dy = Mth.sin(elev), dz = -cosE * Mth.cos(yaw);
@@ -711,6 +784,9 @@ public final class SkyEffects {
 		float vx = dy * uz, vy = dz * ux - dx * uz, vz = -dy * ux;
 		float cx = dx * dist, cy = dy * dist, cz = dz * dist;
 		float size = dist * (0.36f + 0.08f * Mth.sin(k * 1.9f)) * (1 + 0.06f * Mth.sin(t * 0.12f + k));
+		if (!blobVisible(view, dx, dy, dz, size, dist)) {
+			return;
+		}
 		int hue = clouds[k % 3];
 		float alpha = 0.7f * fade * cloudAlpha * (0.8f + 0.2f * Mth.sin(t * 0.15f + k * 2));
 		int centreC = argb(mix(hue, 0xFFFFFF, 0.15f), alpha);
@@ -761,8 +837,11 @@ public final class SkyEffects {
 		float t = clock;
 		int white = starColor;
 		for (int i = 0; i < DOTS; i++) {
-			float yaw = i * 2.399963f;
-			float elev = (22 + 40 * (Mth.sin(i * 12.9898f) * 0.5f + 0.5f)) * DEG;
+			float yaw = dotYaw(i);
+			float elev = dotElev(i);
+			if (!dotVisible(view, yaw, elev)) {
+				continue;
+			}
 			float tw = 0.5f + 0.5f * Mth.sin(t * (0.6f + (i % 5) * 0.15f) + i * 3.1f);
 			int c = argb(white, 0.55f * fade * tw);
 			float s = 0.5f * radius / 100f;
