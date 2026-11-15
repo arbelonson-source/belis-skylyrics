@@ -167,10 +167,9 @@ public final class LibraryScreen extends Screen {
 			}
 			try {
 				Page<?> page = pending.join();
-				float start = Math.max(clock, born.isEmpty() ? 0 : born.getLast());
 				for (int i = 0; i < page.items().size(); i++) {
 					items.add(page.items().get(i));
-					born.add(start + i * STAGGER);
+					born.add(LibraryGrid.revealAt(clock, i, STAGGER));
 					lift.add(0f);
 				}
 				next = page.next();
@@ -884,6 +883,10 @@ public final class LibraryScreen extends Screen {
 
 	private void activate(Shelf shelf, int index) {
 		if (library == null || index < 0 || index >= shelf.items.size()) {
+			return;
+		}
+		if (clock <= shelf.born.get(index)) {
+			// Not on screen yet, so not clickable either
 			return;
 		}
 		selected = index;
