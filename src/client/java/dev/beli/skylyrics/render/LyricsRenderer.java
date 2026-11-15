@@ -549,6 +549,7 @@ public final class LyricsRenderer {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
 		if (alpha <= 0.01f) {
+			worldWords.dropSwing();
 			return;
 		}
 		Font.DisplayMode mode = cfg.seeThroughBlocks ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;

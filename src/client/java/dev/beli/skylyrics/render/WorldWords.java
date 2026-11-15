@@ -321,6 +321,7 @@ final class WorldWords {
 
 	void clear() {
 		cards.clear();
+		swung = false;
 		newLyrics();
 	}
 
@@ -637,6 +638,11 @@ final class WorldWords {
 	/** You swung: the next frame knocks the word under the crosshair, if there is one. */
 	void swing() {
 		swung = knock;
+	}
+
+	/** The words aren't being drawn (hidden), so a swing doesn't wait to knock a word when they show again. */
+	void dropSwing() {
+		swung = false;
 	}
 
 	private static final List<Player> inSight = new ArrayList<>();

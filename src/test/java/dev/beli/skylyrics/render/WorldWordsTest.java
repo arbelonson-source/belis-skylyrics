@@ -984,4 +984,18 @@ class WorldWordsTest {
 		words.expire(Vec3.ZERO, 1_000L + 100_000_000_000L);
 		assertEquals(List.of(near), inside, "gone once the fade is over");
 	}
+
+	@Test
+	void aQueuedSwingIsForgottenWhenTheWordsAreClearedOrHidden() throws Exception {
+		WorldWords words = new WorldWords();
+		var swung = WorldWords.class.getDeclaredField("swung");
+		swung.setAccessible(true);
+		words.swing();
+		assertTrue(swung.getBoolean(words), "a swing is queued");
+		words.clear();
+		assertFalse(swung.getBoolean(words), "clearing forgets it");
+		words.swing();
+		words.dropSwing();
+		assertFalse(swung.getBoolean(words), "so does a frame that draws nothing");
+	}
 }
