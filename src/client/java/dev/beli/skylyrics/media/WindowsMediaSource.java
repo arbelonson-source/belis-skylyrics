@@ -306,7 +306,7 @@ public final class WindowsMediaSource implements MediaSource {
 		try {
 			p = builder.start();
 		} catch (IOException e) {
-			throw new IOException(Tr.t("Couldn't start Windows media reading. Check that Windows PowerShell is installed, then reopen the game. (%s)", e.getMessage()), e);
+			throw new IOException(Tr.t("Couldn't start the Windows music reader. Check that Windows PowerShell is installed, then reopen the game. (%s)", e.getMessage()), e);
 		}
 		BlockingQueue<String> queue = new LinkedBlockingQueue<>();
 		replies = queue;
@@ -322,8 +322,8 @@ public final class WindowsMediaSource implements MediaSource {
 		if (hello == null || !hello.has("ready") || !hello.get("ready").getAsBoolean()) {
 			String error = hello == null ? "" : string(hello, "error");
 			throw new IOException(!error.isEmpty() ? error
-					: first == null ? Tr.t("Windows media reading took too long to start. Reopen the game and give it a moment.")
-					: Tr.t("Windows media reading stopped right away. Check that Windows PowerShell is installed, then reopen the game."));
+					: first == null ? Tr.t("The Windows music reader took too long to start. Reopen the game and give it a moment.")
+					: Tr.t("The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game."));
 		}
 		LOG.info("Reading music from Windows' media controls");
 	}

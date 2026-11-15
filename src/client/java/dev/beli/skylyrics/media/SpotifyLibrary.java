@@ -159,7 +159,7 @@ public final class SpotifyLibrary implements Library {
 		}
 		if (response.statusCode() >= 300) {
 			throw new IOException(response.statusCode() == 403
-					? Tr.t("Sign in again to use the library")
+					? Tr.t("Sign in again to use the song library")
 					: Tr.t("Spotify didn't answer, try again"));
 		}
 		return response.body();

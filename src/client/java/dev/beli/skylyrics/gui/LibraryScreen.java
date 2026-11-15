@@ -818,7 +818,6 @@ public final class LibraryScreen extends Screen {
 
 	private String signInText() {
 		return switch (mod.spotify().account()) {
-			case NO_CLIENT_ID -> Tr.t("Connect Spotify on the Music tab to see your songs here");
 			case SIGNED_IN -> Tr.t("Sign in to Spotify again so SkyLyrics can see your songs");
 			default -> Tr.t("Sign in to Spotify on the Music tab to see your songs here");
 		};
