@@ -597,8 +597,7 @@ public final class SpotifyWebSource implements MediaSource {
 			case 200 -> last = parse(response.body(), readAt);
 			case 204 -> last = Snapshot.NOTHING;
 			case 429 -> {
-				long wait = response.headers().firstValueAsLong("Retry-After").orElse(10);
-				nextPollNs = now + Math.max(1, Math.min(wait, 300)) * 1_000_000_000L;
+				nextPollNs = now + SpotifyPace.retryAfterNs(response.headers().firstValue("Retry-After").orElse(null));
 				return last;
 			}
 			default -> throw new IOException(Tr.t("Spotify answered with error %s", response.statusCode()));
