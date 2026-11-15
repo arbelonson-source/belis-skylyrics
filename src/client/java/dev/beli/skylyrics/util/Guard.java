@@ -12,7 +12,8 @@ import org.slf4j.LoggerFactory;
  * A safety net for the places the game calls into the mod every frame or tick. One unexpected RuntimeException
  * there would crash the whole game, so it is caught instead: the first one is logged with its stack trace, later
  * ones only as a count once a minute, and that entry point sits out the next few seconds before it runs again.
- * Errors (out of memory and the like) are never caught.
+ * Link errors (a method or class missing in one Minecraft version) are caught like exceptions; other Errors (out of
+ * memory, stack overflow) are never caught.
  */
 public final class Guard {
 	/** How long an entry point stays off after it threw. */
@@ -22,7 +23,7 @@ public final class Guard {
 
 	/** Where the messages go; the test swaps it. */
 	public interface Sink {
-		void first(String what, RuntimeException error);
+		void first(String what, Throwable error);
 
 		void count(String what, int errors);
 	}
@@ -38,7 +39,7 @@ public final class Guard {
 	private static final Logger LOG = LoggerFactory.getLogger("SkyLyrics");
 	private static final Guard SHARED = new Guard(System::nanoTime, new Sink() {
 		@Override
-		public void first(String what, RuntimeException error) {
+		public void first(String what, Throwable error) {
 			LOG.error("Error in {}; its drawing pauses for a few seconds (later ones are only counted)", what, error);
 		}
 
@@ -57,7 +58,7 @@ public final class Guard {
 		this.sink = sink;
 	}
 
-	/** Runs {@code body} unless this entry point is muted; a RuntimeException from it is logged and mutes it. */
+	/** Runs {@code body} unless this entry point is muted; a RuntimeException or LinkageError from it is logged and mutes it. */
 	public static void run(String what, Runnable body) {
 		SHARED.attempt(what, body);
 	}
@@ -82,13 +83,13 @@ public final class Guard {
 		try {
 			body.run();
 			return true;
-		} catch (RuntimeException e) {
+		} catch (RuntimeException | LinkageError e) {
 			failed(what, state, e);
 			return false;
 		}
 	}
 
-	private void failed(String what, State state, RuntimeException e) {
+	private void failed(String what, State state, Throwable e) {
 		long now = clock.getAsLong();
 		boolean first = false;
 		int count = 0;
@@ -114,7 +115,7 @@ public final class Guard {
 			} else if (count > 0) {
 				sink.count(what, count);
 			}
-		} catch (RuntimeException ignored) {
+		} catch (RuntimeException | LinkageError ignored) {
 			// logging must never be what throws
 		}
 	}

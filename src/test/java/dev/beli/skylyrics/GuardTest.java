@@ -19,7 +19,7 @@ class GuardTest {
 	private final List<String> log = new ArrayList<>();
 	private final Guard guard = new Guard(now::get, new Guard.Sink() {
 		@Override
-		public void first(String what, RuntimeException error) {
+		public void first(String what, Throwable error) {
 			log.add("first " + what + " " + error.getMessage());
 		}
 
@@ -71,7 +71,22 @@ class GuardTest {
 	}
 
 	@Test
-	void errorsAreNotCaught() {
+	void linkErrorsAreCaughtAndMute() {
+		AtomicInteger runs = new AtomicInteger();
+		assertFalse(guard.attempt("x", () -> {
+			runs.incrementAndGet();
+			throw new NoSuchMethodError("gone in this version");
+		}));
+		assertFalse(guard.attempt("x", runs::incrementAndGet));
+		assertEquals(1, runs.get(), "muted after the link error");
+		assertEquals(List.of("first x gone in this version"), log);
+	}
+
+	@Test
+	void otherErrorsAreNotCaught() {
+		assertThrows(OutOfMemoryError.class, () -> guard.attempt("x", () -> {
+			throw new OutOfMemoryError();
+		}));
 		assertThrows(StackOverflowError.class, () -> guard.attempt("x", () -> {
 			throw new StackOverflowError();
 		}));
@@ -81,7 +96,7 @@ class GuardTest {
 	void aBrokenLoggerCannotThrow() {
 		Guard loud = new Guard(now::get, new Guard.Sink() {
 			@Override
-			public void first(String what, RuntimeException error) {
+			public void first(String what, Throwable error) {
 				throw new IllegalArgumentException("log broke");
 			}
 
