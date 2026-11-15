@@ -40,8 +40,12 @@ class MediaTrackerTest {
 			return last;
 		}
 
+		/** Counted down by a control sent through the tracker, which runs after every poll asked before it. */
+		volatile java.util.concurrent.CountDownLatch barrier = new java.util.concurrent.CountDownLatch(1);
+
 		@Override
 		public void playPause() {
+			barrier.countDown();
 		}
 
 		@Override
@@ -243,5 +247,63 @@ class MediaTrackerTest {
 		}
 		assertEquals(2, seen.size(), seen.toString());
 		assertEquals("Other Song", seen.get(1).title());
+	}
+
+	/** Feeds the readings one poll each and waits until every one has been taken in. */
+	private static MediaTracker feed(FakeSource source, Snapshot... readings) throws InterruptedException {
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		for (Snapshot r : readings) {
+			source.then(r);
+			tracker.refresh();
+		}
+		tracker.playPause();
+		assertTrue(source.barrier.await(30, TimeUnit.SECONDS), "timed out");
+		return tracker;
+	}
+
+	@Test
+	void aPlayerThatNeverSaysWhereItIsStillMovesTheClock() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		Track t = song(0, "");
+		long appeared = System.nanoTime() - 10_000_000_000L;
+		Snapshot zero = new Snapshot(t, 0, true, System.nanoTime());
+		MediaTracker tracker = feed(source, new Snapshot(t, 0, true, appeared), zero, zero, zero, zero, zero);
+		try {
+			// The clock runs from when the song appeared (10 s ago here), not from the last poll
+			assertTrue(tracker.positionMs() >= 9_500, "position " + tracker.positionMs());
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	@Test
+	void aSeekToZeroThenALaterPositionStillWorks() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		Track t = song(215_000, "");
+		long now = System.nanoTime();
+		MediaTracker tracker = feed(source, new Snapshot(t, 50_000, true, now),
+				new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now),
+				new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now), new Snapshot(t, 3_000, true, System.nanoTime()));
+		try {
+			long pos = tracker.positionMs();
+			assertTrue(pos >= 2_900 && pos <= 6_000, "position " + pos);
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	@Test
+	void aRepeatOneRestartMovesTheClockBackToTheStart() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		Track t = song(215_000, "");
+		long now = System.nanoTime();
+		MediaTracker tracker = feed(source, new Snapshot(t, 214_000, true, now),
+				new Snapshot(t, 0, true, now), new Snapshot(t, 500, true, now), new Snapshot(t, 1_000, true, now));
+		try {
+			long pos = tracker.positionMs();
+			assertTrue(pos >= 900 && pos <= 6_000, "position " + pos);
+		} finally {
+			tracker.shutdown();
+		}
 	}
 }
