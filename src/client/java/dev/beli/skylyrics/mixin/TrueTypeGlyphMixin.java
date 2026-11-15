@@ -62,12 +62,12 @@ abstract class TrueTypeGlyphMixin implements RgbaGlyph {
 		int width = mask.getWidth();
 		int height = mask.getHeight();
 		NativeImage picture = new NativeImage(NativeImage.Format.RGBA, width, height, false);
+		skylyrics$uploading = picture; // from here on the wrapper below frees it, even if the loop throws
 		for (int y = 0; y < height; y++) {
 			for (int x = 0; x < width; x++) {
 				picture.setPixel(x, y, (mask.getLuminanceOrAlpha(x, y) & 0xFF) * 0x01010101);
 			}
 		}
-		skylyrics$uploading = picture;
 		return picture;
 	}
 
