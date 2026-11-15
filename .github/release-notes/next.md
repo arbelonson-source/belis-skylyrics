@@ -1,5 +1,8 @@
 ### Fixed
 
+- A Library key you set to K yourself no longer goes back to N on every start.
+- The intro tour fits small windows and big GUI scales.
+- The intro tour no longer opens over another mod's screen, and its last page says the keys work in a world.
 - Reset all keeps your intro tour done, your update choice, your Spotify app id and your per-song timings.
 - Moving the Timing slider no longer makes the World words blink.
 - Spotify playlists with local files or podcasts no longer repeat songs or stop loading partway.

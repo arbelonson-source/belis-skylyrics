@@ -45,6 +45,7 @@ import net.minecraft.resources.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import dev.beli.skylyrics.config.KeyMigration;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.dev.DevTestHook;
 import dev.beli.skylyrics.gui.IntroScreen;
@@ -200,9 +201,13 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				if (!cfg.introSeen) {
 					client.execute(() -> {
 						//? if >=26.2 {
-						/*client.gui.setScreen(new IntroScreen(screen));
+						/*if (IntroScreen.shouldOpen(client.gui.screen(), screen)) {
+							client.gui.setScreen(new IntroScreen(screen));
+						}
 						*///?} else {
-						client.setScreen(new IntroScreen(screen));
+						if (IntroScreen.shouldOpen(client.screen, screen)) {
+							client.setScreen(new IntroScreen(screen));
+						}
 						//?}
 					});
 				}
@@ -296,17 +301,27 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	/**
 	 * The library key was K until 0.6.2, which is also Iris's key for turning shaders on and off, so pressing it did both.
-	 * If ours still sits on the same key as that toggle, move ours back to its default.
+	 * Once, the first launch after the setting file lacks {@code keysMigrated}: if ours still sits on the same key as that
+	 * toggle, move ours back to its default. A player who binds K again later keeps it.
 	 */
-	private static void moveOffShaderToggle(Minecraft client, KeyMapping ours) {
+	private static void moveOffShaderToggle(Minecraft client, KeyMapping ours, SkyLyricsConfig cfg) {
+		if (!KeyMigration.due(cfg.keysMigrated)) {
+			return;
+		}
+		boolean moved = false;
 		for (KeyMapping other : client.options.keyMappings) {
-			if (other != ours && other.getName().equals("iris.keybind.toggleShaders") && other.same(ours)
-					&& !ours.isDefault()) {
+			if (other != ours && other.getName().equals("iris.keybind.toggleShaders")
+					&& KeyMigration.shouldMove(false, other.same(ours), ours.isDefault())) {
 				ours.setKey(ours.getDefaultKey());
-				KeyMapping.resetMapping();
-				client.options.save();
+				moved = true;
 			}
 		}
+		if (moved) {
+			KeyMapping.resetMapping();
+			client.options.save();
+		}
+		cfg.keysMigrated = true;
+		cfg.save();
 	}
 
 	//? if >=1.21.9 {
@@ -369,7 +384,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		attackHeld = attack;
 		if (!keysChecked) {
 			keysChecked = true;
-			moveOffShaderToggle(client, openLibrary);
+			moveOffShaderToggle(client, openLibrary, SkyLyricsConfig.get());
 		}
 		while (openSettings.consumeClick()) {
 			//? if >=26.2 {
