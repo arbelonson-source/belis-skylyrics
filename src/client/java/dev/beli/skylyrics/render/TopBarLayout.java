@@ -75,7 +75,7 @@ final class TopBarLayout {
 	 * shows, of that text.
 	 */
 	static float bottomTop(int guiHeight, boolean healthRows, float healthTopUp, boolean actionBar) {
-		return guiHeight - bottomUp(healthRows, healthTopUp, actionBar) - PILL_H;
+		return Math.max(0, guiHeight - bottomUp(healthRows, healthTopUp, actionBar) - PILL_H);
 	}
 
 	/** How far above the screen's bottom the bar's lower edge sits; never lower than {@link #BOTTOM_UP} without health rows. */
@@ -84,9 +84,25 @@ final class TopBarLayout {
 		return actionBar ? Math.max(up, ACTION_UP + ACTION_GAP) : up;
 	}
 
-	/** How many rows of hearts the game draws for this much health (absorption counts), at least one. */
+	/** The most the hearts and armour are taken to reach up, so absurd health can't push the bar off the screen. */
+	static final float HEALTH_UP_MAX = 120;
+
+	/** How many rows the game spaces the hearts by: from the health plus absorption (absorption rounds up), at least one. */
+	private static int spacingRows(float maxHealth, float absorption) {
+		double rows = Math.ceil((maxHealth + Math.ceil(absorption)) / 20.0);
+		return rows >= 1000 ? 1000 : Math.max(1, (int) rows);
+	}
+
+	/** The rows of hearts and armour the game lays out: the larger of the spacing rows and the rows the drawn hearts fill. */
 	static int heartRows(float maxHealth, float absorption) {
-		return Math.max(1, (int) Math.ceil((maxHealth + Math.ceil(absorption)) / 20));
+		return Math.max(spacingRows(maxHealth, absorption), drawnRows(maxHealth, absorption));
+	}
+
+	/** The rows the drawn hearts fill: the game draws ceil(max / 2) + ceil(ceil(absorption) / 2) hearts, ten to a row. */
+	private static int drawnRows(float maxHealth, float absorption) {
+		double hearts = Math.ceil(maxHealth / 2.0) + Math.ceil(Math.ceil(absorption) / 2.0);
+		double rows = Math.ceil(hearts / 10);
+		return rows >= 1000 ? 1000 : Math.max(1, (int) rows);
 	}
 
 	/** The distance between rows of hearts: 10, closing up by one a row from the third row on, to at least 3. */
@@ -95,12 +111,15 @@ final class TopBarLayout {
 	}
 
 	/**
-	 * How far above the screen's bottom the top of the hearts and armour reaches: the armour row (10 above the hearts)
-	 * when there is armour, else the top row of hearts.
+	 * How far above the screen's bottom the top of the hearts and armour reaches: the armour row (10 above the hearts'
+	 * top spacing row) when there is armour, else the top row of hearts. Never more than {@link #HEALTH_UP_MAX}.
 	 */
 	static float healthTopUp(float maxHealth, float absorption, int armour) {
-		int rows = heartRows(maxHealth, absorption);
-		return 39 + (rows - 1) * rowSpacing(rows) + (armour > 0 ? 10 : 0);
+		int spaced = spacingRows(maxHealth, absorption);
+		int space = rowSpacing(spaced);
+		float hearts = 39 + (drawnRows(maxHealth, absorption) - 1) * (float) space;
+		float up = armour > 0 ? Math.max(hearts, 39 + (spaced - 1) * (float) space + 10) : hearts;
+		return Math.min(up, HEALTH_UP_MAX);
 	}
 
 	/**

@@ -257,7 +257,7 @@ public final class NowPlayingHud {
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
 		bottomBox = cfg.barPosition == BarPosition.BOTTOM
-				? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, width, clockW, fit.clock(), statsW, fit.stats(), top) : null;
+				? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top) : null;
 		bottomBoxAt = now;
 
 		float barSize = cfg.barSize;
@@ -310,7 +310,10 @@ public final class NowPlayingHud {
 
 	private static volatile long bottomBoxAt;
 
-	/** The box, or null when the bar didn't draw it in the last moment (hidden, GUI off, or the bar moved to the top). */
+	/**
+	 * The box, or null when the bar didn't draw it in the last moment (hidden, GUI off, or the bar moved to the top). It
+	 * uses the widest the pill can be at this screen size, not its moving width, so it doesn't shift with each line.
+	 */
 	static float[] bottomBox() {
 		return System.nanoTime() - bottomBoxAt > BOX_STALE_NS ? null : bottomBox;
 	}
@@ -322,7 +325,7 @@ public final class NowPlayingHud {
 		if (mc.player == null) {
 			return TopBarLayout.healthTopUp(20, 0, 0);
 		}
-		return TopBarLayout.healthTopUp(mc.player.getMaxHealth(), mc.player.getAbsorptionAmount(), mc.player.getArmorValue());
+		return TopBarLayout.healthTopUp(Math.max(mc.player.getMaxHealth(), mc.player.getHealth()), mc.player.getAbsorptionAmount(), mc.player.getArmorValue());
 	}
 
 	/** Whether an action bar message (the text above the hotbar) is on screen. */

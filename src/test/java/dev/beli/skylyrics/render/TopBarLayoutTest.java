@@ -205,4 +205,38 @@ class TopBarLayoutTest {
 		assertEquals(220, bare[0], 1e-3f);
 		assertEquals(420, bare[2], 1e-3f);
 	}
+
+	@Test
+	void oddHealthFollowsTheHeartsTheGameDraws() {
+		// 19 health and 1 absorption: 10 + 1 hearts are drawn, so two rows, though 20 / 20 is one
+		assertEquals(2, TopBarLayout.heartRows(19, 1));
+		// the game spaces the rows by its own count of one row here: 11 apart
+		assertEquals(50, TopBarLayout.healthTopUp(19, 1, 0));
+		assertEquals(50, TopBarLayout.healthTopUp(19, 1, 5));
+		assertEquals(1, TopBarLayout.heartRows(0, 0));
+		assertEquals(1, TopBarLayout.heartRows(Float.NaN, Float.NaN));
+	}
+
+	@Test
+	void absurdHealthCantPushTheBarOffTheScreen() {
+		for (float health : new float[] {1e6f, Float.POSITIVE_INFINITY, Float.MAX_VALUE}) {
+			assertEquals(TopBarLayout.HEALTH_UP_MAX, TopBarLayout.healthTopUp(health, 0, 5));
+			assertEquals(TopBarLayout.HEALTH_UP_MAX, TopBarLayout.healthTopUp(20, health, 0));
+		}
+		assertTrue(TopBarLayout.bottomTop(100, true, 400, true) >= 0);
+		assertEquals(0f, TopBarLayout.bottomTop(100, true, 400, true));
+	}
+
+	@Test
+	void theActionBarLiftIsPinnedToTheGamesTextPlusAGap() {
+		// the text's top is 68 + 4 up; the bar keeps 3 above it
+		assertEquals(75f, TopBarLayout.bottomUp(true, 0, true));
+		assertEquals(75f, TopBarLayout.bottomUp(false, 0, true));
+	}
+
+	@Test
+	void aBiggerBarsBoxReachesFurtherOutAtItsLeftEdge() {
+		float[] two = TopBarLayout.barBox(640, 2, 270, 30, true, 40, true, 200);
+		assertEquals(320 + 2 * ((320 - 135 - 11 - 30) - 320), two[0], 1e-3f);
+	}
 }

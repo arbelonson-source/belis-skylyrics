@@ -277,4 +277,46 @@ class RecordCardTest {
 				RecordCard.liftUp(true, 59), null);
 		assertTrue(240 - (at[1] + RecordCard.H) >= 62);
 	}
+
+	@Test
+	void theCardEasesTowardsItsPlaceInsteadOfJumping() {
+		assertEquals(80f, RecordCard.ease(Float.NaN, 80, 0.016f));
+		float step = RecordCard.ease(10, 110, 0.016f);
+		assertTrue(step > 10 && step < 110);
+		assertEquals(110f, RecordCard.ease(109.99f, 110, 0.016f));
+		float y = 0;
+		for (int i = 0; i < 120; i++) {
+			y = RecordCard.ease(y, 100, 1 / 60f);
+		}
+		assertEquals(100f, y);
+		assertEquals(10f, RecordCard.ease(10, 110, 0f));
+	}
+
+	@Test
+	void aLiftedCardClearsTheActionBarText() {
+		float lift = RecordCard.liftUp(true, 39);
+		float[] with = RecordCard.corner(CardCorner.BOTTOM_LEFT, 320, 240, 0, RecordCard.H, true, false, 0, lift, null, true);
+		assertTrue(240 - (with[1] + RecordCard.H) >= 75);
+		float[] without = RecordCard.corner(CardCorner.BOTTOM_LEFT, 320, 240, 0, RecordCard.H, true, false, 0, lift, null, false);
+		assertEquals(lift, 240 - (without[1] + RecordCard.H));
+		// a card far from the middle is left alone
+		float[] wide = RecordCard.corner(CardCorner.BOTTOM_LEFT, 640, 360, 0, RecordCard.H, true, false, 0, lift, null, true);
+		assertEquals(RecordCard.MARGIN, 360 - (wide[1] + RecordCard.H));
+	}
+
+	@Test
+	void aboveBarEdges() {
+		float[] bar = {100, 60, 400, 80};
+		// below the bar's bottom, it stays
+		assertEquals(90f, RecordCard.aboveBar(bar, 10, 90, 30));
+		// exactly at the bar's side, no overlap
+		assertEquals(65f, RecordCard.aboveBar(new float[] {166, 60, 400, 80}, 10, 65, 30));
+		// the card's lower edge exactly BAR_GAP above the bar's top, no move
+		assertEquals(27f, RecordCard.aboveBar(bar, 10, 27, 30));
+		// room for exactly nothing above: it goes to 0
+		assertEquals(0f, RecordCard.aboveBar(new float[] {100, 33, 400, 50}, 10, 35, 30));
+		// only the corner under the bar moves
+		assertEquals(27f, RecordCard.aboveBar(bar, 6, 65, 30));
+		assertEquals(65f, RecordCard.aboveBar(bar, 478, 65, 30));
+	}
 }

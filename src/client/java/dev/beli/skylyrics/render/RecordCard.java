@@ -76,6 +76,8 @@ public final class RecordCard {
 	private float spin;
 	private float spinSpeed;
 	private long lastFrame;
+	/** The card's eased top edge (NaN while it isn't showing), so it glides when its place changes. */
+	private float cardY = Float.NaN;
 
 	public RecordCard(MediaTracker tracker, AlbumArt art, NowPlayingHud hud) {
 		this.tracker = tracker;
@@ -103,6 +105,7 @@ public final class RecordCard {
 				&& !Visibility.hidden(mc, cfg);
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
+			cardY = Float.NaN;
 			return;
 		}
 		art.upload();
@@ -110,7 +113,8 @@ public final class RecordCard {
 		int lines = lines(cfg.cardLines, g.guiHeight());
 		float h = height(cfg.cardLyrics, lines);
 		float[] at = corner(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc), h);
-		float x = at[0], y = at[1];
+		cardY = ease(cardY, at[1], dt);
+		float x = at[0], y = cardY;
 		float s = (float) mc.getWindow().getGuiScale();
 		spinSpeed = TopBarLayout.spinSpeed(spinSpeed, tracker.playing(), dt);
 		spin = (spin + spinSpeed * TURNS_PER_SECOND * Mth.TWO_PI * dt) % Mth.TWO_PI;
@@ -433,6 +437,27 @@ public final class RecordCard {
 	/** The full form with the lift ({@link #liftUp}) and the bottom bar's box (null when it isn't there). */
 	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
 			float bossClear, float liftUp, float[] bar) {
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear, liftUp, bar, false);
+	}
+
+	/**
+	 * Half the width the action bar message is taken to cover around the screen's middle, and how far up its top reaches
+	 * with a gap: a lifted card whose side reaches into that span while a message shows goes above the text.
+	 */
+	static final float ACTION_HALF = 90, ACTION_LIFT = TopBarLayout.ACTION_UP + TopBarLayout.ACTION_GAP;
+
+	/** One step of the card's glide towards its place; the first value (NaN) takes the place at once. Same spring as the bar's. */
+	static float ease(float current, float target, float dt) {
+		if (Float.isNaN(current)) {
+			return target;
+		}
+		float next = current + (target - current) * (1 - (float) Math.exp(-dt * 12));
+		return Math.abs(target - next) < 0.05f ? target : next;
+	}
+
+	/** The same, with {@code actionBar} saying a message shows above the hotbar. */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
+			float bossClear, float liftUp, float[] bar, boolean actionBar) {
 		float left = MARGIN, right = guiW - MARGIN - W;
 		float top = MARGIN, bottom = guiH - MARGIN - h;
 		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
@@ -443,7 +468,8 @@ public final class RecordCard {
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
 		float reach = sideReach(onLeft, rightHanded, indicator);
 		if (onLeft ? left + W > guiW / 2f - reach : right < guiW / 2f + reach) {
-			bottom = guiH - liftUp - h;
+			boolean overText = onLeft ? left + W > guiW / 2f - ACTION_HALF : right < guiW / 2f + ACTION_HALF;
+			bottom = guiH - (actionBar && overText ? Math.max(liftUp, ACTION_LIFT) : liftUp) - h;
 		}
 		bottom = aboveBar(bar, onLeft ? left : right, bottom, h);
 		top = onScreen(top, guiH, h);
@@ -467,7 +493,7 @@ public final class RecordCard {
 		int bars = NowPlayingHud.bossBarCount(mc);
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
 		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars),
-				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox());
+				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc));
 	}
 
 	/**
