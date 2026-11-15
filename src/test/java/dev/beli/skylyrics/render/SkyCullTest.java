@@ -1,16 +1,12 @@
 package dev.beli.skylyrics.render;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** Culling must drop vertices nobody can see and change nothing else. Also writes a vertex count report. */
+/** Culling must drop vertices nobody can see and change nothing else. */
 class SkyCullTest {
 	private static final float TAN_V = (float) Math.tan(Math.toRadians(35)), TAN_H = TAN_V * 16 / 9;
 	private static final float BASE_YAW = 20, RADIUS = 80;
@@ -119,7 +115,7 @@ class SkyCullTest {
 	}
 
 	@Test
-	void cullingDropsMostOfMoonlitLookingAtTheHorizon() throws IOException {
+	void cullingDropsMostOfMoonlitLookingAtTheHorizon() {
 		StringBuilder report = new StringBuilder("sky vertices drawn per frame (16:9, 70 degree vertical field of view)\n");
 		String[] names = {"Moonlit", "Synthwave", "Galaxy", "Comet", "Eclipse"};
 		Sky[] skies = {MOONLIT, SYNTHWAVE, GALAXY, COMET, ECLIPSE};
@@ -135,15 +131,20 @@ class SkyCullTest {
 			}
 			report.append('\n');
 		}
-		Path out = Path.of("build", "sky-cull-counts.txt");
-		Files.createDirectories(out.getParent());
-		Files.writeString(out, report.toString());
 		int before = run(MOONLIT, SkyView.ALL).vertices();
 		// Behind the lyrics (nothing but dome, clouds and stars on the far side) most of the sky goes
 		assertTrue(counts[0][3] < before * 0.25, report.toString());
 		// At the horizon the moon and its glow stay (they are in view), the rest of the dome and clouds thin out
-		assertTrue(counts[0][0] < before * 0.8, report.toString());
+		// (about 72 % today; the margin must not creep up unnoticed)
+		assertTrue(counts[0][0] < before * 0.75, report.toString());
 		assertTrue(counts[0][1] < before, report.toString());
-		assertEquals(0, before % 4);
+		// Looking behind the lyrics drops more than looking at them
+		assertTrue(counts[0][3] < counts[0][0], report.toString());
+		// Culling only ever takes shapes away
+		for (int s = 0; s < skies.length; s++) {
+			for (int v = 0; v < views.length; v++) {
+				assertTrue(counts[s][v] <= run(skies[s], SkyView.ALL).vertices(), names[s] + " " + viewNames[v] + " drew more than the full sky");
+			}
+		}
 	}
 }
