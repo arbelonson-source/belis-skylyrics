@@ -832,4 +832,69 @@ class WorldWordsTest {
 		assertFalse(WorldWords.stillBlocked(t, pos, eye, t + 100_000_000L, pos, eye.add(0, 0, 2)), "you moved");
 		assertFalse(WorldWords.stillBlocked(-1, pos, eye, t, pos, eye), "never blocked");
 	}
+
+	@Test
+	void everyArabicLetterIsEventuallyShown() {
+		for (String word : new String[] {"سلام", "لاعب", "مَرحبا"}) {
+			int[] logical = LyricsRenderer.Display.of(word).logical();
+			int most = 0;
+			for (int l : logical) {
+				most = Math.max(most, l);
+			}
+			assertTrue(WorldWords.shownLetters(logical, true, 0) > most, word);
+			assertTrue(WorldWords.shownLetters(logical, false, 10) > most, word + " typed");
+			assertEquals(0, WorldWords.shownLetters(logical, false, 0), word + " start");
+		}
+	}
+
+	@Test
+	void plainLyricsWordsComeOutOverTheLineSlot() {
+		dev.beli.skylyrics.lyrics.Lyrics plain = dev.beli.skylyrics.lyrics.LrcParser.parsePlain("one two three four five\nsix seven", 120_000);
+		long start = plain.get(0).timeMs();
+		int total = plain.get(0).text().length();
+		long end = plain.sungEnd(0);
+		assertEquals(0f, LyricsRenderer.sungChars(plain, 0, start, total), 0.5f);
+		float mid = LyricsRenderer.sungChars(plain, 0, (start + end) / 2 + LyricsRenderer.LEAD_MS, total);
+		assertTrue(mid > 1 && mid < total - 1, "halfway through the slot only part is sung: " + mid);
+		// Few enough words are due at once for none to be skipped
+		int due = 0;
+		for (int[] c : WorldWords.chunks(plain.get(0).text())) {
+			if (c[0] <= mid) {
+				due++;
+			}
+		}
+		assertTrue(due > 0 && due < WorldWords.chunks(plain.get(0).text()).size());
+	}
+
+	@Test
+	void theLastPlainLineLeavesAfterItsSlot() {
+		dev.beli.skylyrics.lyrics.Lyrics plain = dev.beli.skylyrics.lyrics.LrcParser.parsePlain("one two\nsix seven", 120_000);
+		int last = plain.lines().size() - 1;
+		assertFalse(LyricsRenderer.lineOver(plain, last, plain.get(last).timeMs() + 1000));
+		assertTrue(LyricsRenderer.lineOver(plain, last, plain.lineEnd(last) + 5000));
+	}
+
+	@Test
+	void aVeryWideCardIsScaledToFitItsShareOfTheView() {
+		// 80 letters about 0.4 blocks each at distance 10 is far more than 30 degrees wide
+		float fitted = WorldWords.fitSize(1f, 32f, 10f, 30f);
+		assertTrue(fitted < 0.2f);
+		float width = 32f * fitted;
+		assertEquals(30f, 2 * (float) Math.toDegrees(Math.atan(width / 2 / 10f)), 0.2f);
+		// A normal word keeps its size
+		assertEquals(1f, WorldWords.fitSize(1f, 3f, 10f, 30f));
+	}
+
+	@Test
+	void aVeryLongPieceIsNeverTheBigWord() {
+		String line = "sing along with " + "a".repeat(80) + " and dance tonight";
+		List<int[]> chunks = WorldWords.chunks(line);
+		int big = WorldWords.bigPiece(line, chunks, 0f);
+		assertTrue(big >= 0, "another piece can still be the big one");
+		assertTrue(chunks.get(big)[1] - chunks.get(big)[0] <= 14);
+		for (float roll = 0; roll < 1; roll += 0.1f) {
+			int pick = WorldWords.bigPiece(line, chunks, roll);
+			assertTrue(chunks.get(pick)[1] - chunks.get(pick)[0] <= 14);
+		}
+	}
 }

@@ -464,8 +464,8 @@ public final class LyricsRenderer {
 			text = line.text();
 			//?}
 			int total = text.codePointCount(0, text.length());
-			sungChars = shown.synced() ? progress(time - LEAD_MS, line.timeMs(), shown.sungEnd(index)) * total : total;
-			over = shown.synced() && time - LEAD_MS > lineEnd(index) + WORLD_LINGER_MS;
+			sungChars = sungChars(shown, index, time, total);
+			over = lineOver(shown, index, time);
 		}
 		Style style = LyricsFont.world(cfg);
 		worldWords.glowColour(cfg.glowPick ? cfg.glowColor : -1);
@@ -550,6 +550,19 @@ public final class LyricsRenderer {
 		}
 		arcAnchors.keySet().removeIf(i -> i != index && i != previous);
 		return shots;
+	}
+
+	/**
+	 * How many of a line's {@code total} letters have been sung at {@code time}: spread over the line's time slot. Plain
+	 * (unsynced) lyrics have estimated slots too, so their words come out one by one the same way instead of all at once.
+	 */
+	static float sungChars(Lyrics lyrics, int index, long time, int total) {
+		return progress(time - LEAD_MS, lyrics.get(index).timeMs(), lyrics.sungEnd(index)) * total;
+	}
+
+	/** Whether a line's slot ended a moment ago, so its last words can leave (also for the last line, which has no next one). */
+	static boolean lineOver(Lyrics lyrics, int index, long time) {
+		return time - LEAD_MS > lyrics.lineEnd(index) + WORLD_LINGER_MS;
 	}
 
 	private boolean sungLine(int index) {
@@ -919,8 +932,9 @@ public final class LyricsRenderer {
 			return wrapCache.computeIfAbsent(text, t -> wrap(font, base, t, wrapWidth));
 		}
 
-		float[] offsets(String row, Display d) {
-			return offsetCache.computeIfAbsent(row, r -> {
+		float[] offsets(String row, Display d, boolean rtl) {
+			// The same row is laid out differently in a right-to-left line, so the line's direction is part of the key
+			return offsetCache.computeIfAbsent(rtl ? "\u202B" + row : row, r -> {
 				float[] at = new float[d.cps.length + 1];
 				for (int v = 1; v <= d.cps.length; v++) {
 					at[v] = LyricsFont.width(font, base, new String(d.cps, 0, v));
@@ -1017,6 +1031,7 @@ public final class LyricsRenderer {
 			float since = (now - clock.changedAt()) / 1e9f;
 			int dark = depthDark(color, daylight), light = depthLight(color);
 			int words = arc.words().length;
+			boolean rtl = WorldWords.rightToLeft(text);
 			// The one word after those already sung, shown faintly ahead of its time
 			int nextWord = -1;
 			if (!leaving && timed) {
@@ -1058,7 +1073,7 @@ public final class LyricsRenderer {
 					float size = ahead > 0 ? Mth.lerp(e, NEXT_SCALE, 1) : 1;
 					canvas.push(cx, 0, size, 0);
 					int count = arc.words().length;
-					word(arc.words()[w], -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e),
+					word(arc.words()[w], rtl, -arc.widths()[w] / 2, y, alpha * Math.max(ahead, e),
 							mix(toned(count < 2 ? 0 : w / (float) (count - 1)), 0xFFFFFF, CURRENT_WHITE * current),
 							dark, light, g.angle(), e > 0.004f);
 					canvas.pop();
@@ -1077,8 +1092,8 @@ public final class LyricsRenderer {
 			return WorldWords.toned(color, cfg.twoTone ? cfg.toneColor : -1, along);
 		}
 
-		private void word(String word, float x, float y, float alpha, int face, int dark, int light, float angle, boolean withDepth) {
-			Display d = Display.of(word);
+		private void word(String word, boolean rtl, float x, float y, float alpha, int face, int dark, int light, float angle, boolean withDepth) {
+			Display d = Display.of(word, rtl);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
 			if (cfg.glow > 0.01f) {
 				int copies = LyricsRenderer.this.light ? GLOW_LIGHT : GLOW_INNER;
@@ -1157,10 +1172,13 @@ public final class LyricsRenderer {
 
 			canvas.push(0, y, scale, 0);
 			float top = -rows.size() * ROW_H / 2;
-			int charIndex = 0, wordIndex = 0;
+			int[] starts = rowStarts(rows);
+			boolean rtl = WorldWords.rightToLeft(text);
+			int wordIndex = 0;
 			for (int r = 0; r < rows.size(); r++) {
 				String row = rows.get(r);
-				Display d = Display.of(row);
+				int charIndex = starts[r];
+				Display d = Display.of(row, rtl);
 				int n = d.cps.length;
 				// How visible each character is: typewriter cuts the line off, words fade in one at a time
 				float[] reveal = new float[n];
@@ -1179,7 +1197,7 @@ public final class LyricsRenderer {
 					// Each word flares as it finishes fading in; other animations flare the whole line at once
 					flare[v] = Float.isNaN(flareT) ? 0 : pulse(flareT - wordStart - (byWord ? WORD_FADE * 0.6f : 0)) * highlight;
 				}
-				float[] at = offsets(row, d);
+				float[] at = offsets(row, d, rtl);
 				float[] grow = growing ? growth(row, d, charIndex, sungChars, highlight) : null;
 				if (grow != null) {
 					// A bigger word pushes its neighbours aside instead of covering them
@@ -1270,11 +1288,24 @@ public final class LyricsRenderer {
 					}
 					from = to;
 				}
-				charIndex += n;
 				wordIndex += wordCount(row);
 			}
 			canvas.pop();
 		}
+	}
+
+	/**
+	 * Where each wrapped row starts, counted in the line's own code points (the unit of how far it has been sung). Not the
+	 * rows' drawn lengths: shaping merges lam-alef and drops marks, so those run shorter and would put later rows ahead.
+	 */
+	static int[] rowStarts(List<String> rows) {
+		int[] starts = new int[rows.size()];
+		int at = 0;
+		for (int r = 0; r < starts.length; r++) {
+			starts[r] = at;
+			at += rows.get(r).codePointCount(0, rows.get(r).length());
+		}
+		return starts;
 	}
 
 	private static final float WORD_STAGGER = 0.07f;
@@ -1332,10 +1363,21 @@ public final class LyricsRenderer {
 		};
 
 		static Display of(String row) {
-			return CACHE.computeIfAbsent(row, Display::compute);
+			return CACHE.computeIfAbsent(row, r -> compute(r, false));
 		}
 
-		private static Display compute(String row) {
+		/**
+		 * A piece of a line that reads right to left, such as one word of it: its punctuation and numbers belong on the
+		 * line's side, which the piece alone (starting with Hebrew, say) would not tell, or a lone "5" would not.
+		 */
+		static Display of(String row, boolean rtl) {
+			return rtl ? CACHE.computeIfAbsent(RTL_KEY + row, r -> compute(row, true)) : of(row);
+		}
+
+		/** Keeps a row drawn right to left apart from the same row drawn with the default direction in the cache. */
+		private static final String RTL_KEY = "\u202B\u0000";
+
+		private static Display compute(String row, boolean rightBase) {
 			int[] cps = row.codePoints().toArray();
 			int n = cps.length;
 			int[] logical = new int[n];
@@ -1355,7 +1397,7 @@ public final class LyricsRenderer {
 			}
 			charToCp[row.length()] = n;
 			int[] shaped = joinArabic(row).codePoints().toArray();
-			Bidi bidi = new Bidi(row, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
+			Bidi bidi = new Bidi(row, rightBase ? Bidi.DIRECTION_RIGHT_TO_LEFT : Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
 			int runs = bidi.getRunCount();
 			byte[] levels = new byte[runs];
 			Integer[] order = new Integer[runs];

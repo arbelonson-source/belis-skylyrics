@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -60,5 +61,44 @@ class DisplayOrderTest {
 		// The fatha on the meem would only leave a gap, and the meem still joins the ra after it
 		assertEquals(visual("مرحبا"), visual("مَرحبا"));
 		assertArrayEquals(new int[] {5, 4, 3, 2, 0}, LyricsRenderer.Display.of("مَرحبا").logical());
+	}
+
+	private static String visual(String row, boolean rtl) {
+		LyricsRenderer.Display d = LyricsRenderer.Display.of(row, rtl);
+		return new String(d.cps(), 0, d.cps().length);
+	}
+
+	@Test
+	void punctuationStaysAtTheRightEndOfAHebrewWordInARightToLeftLine() {
+		// A comma after the word is on its left as drawn (reading left to right), a "!" before it is at the far right
+		assertEquals(",םולש", visual("שלום,", true));
+		assertEquals("םולש!", visual("!שלום", true));
+	}
+
+	@Test
+	void aNumberAfterHebrewWordsStaysOnTheLeftInARightToLeftLine() {
+		assertEquals("5 ינא", visual("אני 5", true));
+	}
+
+	@Test
+	void aPieceStartingWithLatinLettersKeepsTheRightToLeftLineBase() {
+		// "hello" first would make the piece read left to right on its own; in a Hebrew line it sits at the right
+		assertEquals("םולש hello", visual("hello שלום", true));
+		assertEquals(",םולש hello", visual("hello שלום,", true));
+	}
+
+	@Test
+	void theLeftToRightDefaultIsKept() {
+		assertEquals(visual("שלום,"), visual("שלום,", false));
+	}
+
+	@Test
+	void wrappedArabicRowsStartWhereTheTextDoes() {
+		// Lam-alef is one drawn letter but two letters of the line, so row two starts after row one's two letters
+		java.util.List<String> rows = java.util.List.of("سلام لا", "كلام");
+		int[] starts = LyricsRenderer.rowStarts(rows);
+		assertEquals(0, starts[0]);
+		assertEquals(7, starts[1]);
+		assertTrue(LyricsRenderer.Display.of(rows.get(0)).cps().length < 7);
 	}
 }
