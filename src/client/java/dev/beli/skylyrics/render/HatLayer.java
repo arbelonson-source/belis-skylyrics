@@ -249,7 +249,8 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 			}
 			case PROPELLER_CAP -> {
 				long now = System.nanoTime();
-				propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f, bright);
+				propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f,
+						cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 				propLast = now;
 				out.submitCustomGeometry(pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
 				pose.pushPose();
@@ -507,9 +508,11 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/**
 	 * Where the propeller has turned to after {@code dt} seconds. It spins faster the brighter the hat is, so it whirls as each
 	 * new line starts; a long pause (a dropped frame, the game in the background) never makes it jump.
+	 *
+	 * @param since seconds since the lyrics moved to a new line, or NaN to turn at the calm speed (Hat pulse off)
 	 */
-	static float propellerTurn(float angle, float dt, float bright) {
-		float speed = PROP_SPIN * (1 + PROP_BOOST * (bright - REST) / FLARE);
+	static float propellerTurn(float angle, float dt, float since) {
+		float speed = Float.isNaN(since) ? PROP_SPIN : PROP_SPIN * (1 + PROP_BOOST * (brightness(since) - REST) / FLARE);
 		return (angle + speed * Mth.clamp(dt, 0, 0.1f)) % Mth.TWO_PI;
 	}
 

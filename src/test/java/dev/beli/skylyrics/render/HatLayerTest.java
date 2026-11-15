@@ -105,17 +105,24 @@ class HatLayerTest {
 
 	@Test
 	void thePropellerTurnsSteadilyAndWhirlsWhenALineStarts() {
-		float calm = HatLayer.propellerTurn(0, 0.05f, HatLayer.REST);
-		float whirl = HatLayer.propellerTurn(0, 0.05f, HatLayer.REST + HatLayer.FLARE);
+		float calm = HatLayer.propellerTurn(0, 0.05f, 10f);
+		float whirl = HatLayer.propellerTurn(0, 0.05f, LyricsRenderer.PULSE_RISE);
 		assertTrue(calm > 0, "it always turns a little");
 		assertEquals(calm * (1 + HatLayer.PROP_BOOST), whirl, 1e-4, "a new line spins it up");
-		assertEquals(HatLayer.propellerTurn(0, 0.1f, HatLayer.REST), HatLayer.propellerTurn(0, 30, HatLayer.REST), 1e-6,
+		assertEquals(HatLayer.propellerTurn(0, 0.1f, 10f), HatLayer.propellerTurn(0, 30, 10f), 1e-6,
 				"a long pause never makes it jump");
 		float a = 0;
 		for (int i = 0; i < 10_000; i++) {
-			a = HatLayer.propellerTurn(a, 0.05f, HatLayer.REST + HatLayer.FLARE);
+			a = HatLayer.propellerTurn(a, 0.05f, LyricsRenderer.PULSE_RISE);
 		}
 		assertTrue(a >= 0 && a < 2 * Math.PI, "the angle stays within one turn");
+	}
+
+	@Test
+	void withoutPulsingThePropellerTurnsAtItsRestingSpeed() {
+		assertEquals(HatLayer.PROP_SPIN * 0.05f, HatLayer.propellerTurn(0, 0.05f, Float.NaN), 1e-6);
+		assertEquals(HatLayer.propellerTurn(0, 0.05f, 10f), HatLayer.propellerTurn(0, 0.05f, Float.NaN), 1e-6,
+				"no faster than the pulsing hat between lines");
 	}
 
 	@Test
