@@ -50,12 +50,19 @@ final class TopBarLayout {
 	 * 59 up), the air bubbles and the armour row.
 	 */
 	static final float BOTTOM_UP = 64;
+	/** Without hearts and armour (creative, spectator) the game draws the held item's name this much lower, and so does the bar. */
+	static final float NO_HEALTH_DROP = 14;
 
 	private TopBarLayout() {}
 
 	/** The bar's top edge in GUI units: just below the boss bars, or above the hotbar's text for the bottom position. */
 	static float bottomTop(int guiHeight) {
-		return guiHeight - BOTTOM_UP - PILL_H;
+		return bottomTop(guiHeight, true);
+	}
+
+	/** The same, where {@code healthRows} says whether hearts and armour are drawn (survival and adventure). */
+	static float bottomTop(int guiHeight, boolean healthRows) {
+		return guiHeight - BOTTOM_UP + (healthRows ? 0 : NO_HEALTH_DROP) - PILL_H;
 	}
 
 	/**

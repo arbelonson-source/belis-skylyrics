@@ -132,4 +132,11 @@ class TopBarLayoutTest {
 		// The held item's name is drawn from 59 above the bottom
 		assertTrue(240 - (TopBarLayout.bottomTop(240) + TopBarLayout.PILL_H) >= 59);
 	}
+
+	@Test
+	void inCreativeTheBottomBarDropsWithTheItemName() {
+		// The game draws the held item's name 14 lower when there are no hearts; the bar follows, keeping the same gap
+		assertEquals(TopBarLayout.bottomTop(240, true) + 14, TopBarLayout.bottomTop(240, false));
+		assertEquals(TopBarLayout.bottomTop(240), TopBarLayout.bottomTop(240, true));
+	}
 }

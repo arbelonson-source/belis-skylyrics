@@ -184,8 +184,8 @@ public final class NowPlayingHud {
 		//?}
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
-				// The debug screen (F3) fills the top corners and the bar would be drawn over its text
-				&& !f3Open(mc)
+				// The debug screen (F3) fills the top corners and a bar at the top would be drawn over its text
+				&& !(cfg.barPosition != BarPosition.BOTTOM && f3Open(mc))
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
 				//? if >=26.2 {
 				/*&& !(mc.gui.screen() instanceof SkyLyricsScreen settings && settings.coversTopBar());
@@ -241,7 +241,7 @@ public final class NowPlayingHud {
 
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
-				? TopBarLayout.bottomTop(g.guiHeight())
+				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer())
 				: topBelowBossBars(mc, g.guiHeight());
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
