@@ -29,6 +29,9 @@
 - Hitting mobs while the World lyrics are hidden no longer knocks a word when they show again.
 - With Spotify signed in, the mod asks Spotify much less often while nothing shows the song, and slows down when Spotify is having trouble.
 - A Spotify app that isn't set up for your account now says what to do instead of "error 403".
+- Lyrics with an hour in their time stamps, extra digits after the seconds, or wide brackets no longer lose those lines.
+- A line that is only "(Instrumental)" or "[music]" now counts as a pause instead of being shown as words.
+- A song whose lyrics merely mention "纯音乐" no longer loses them to the instrumental check.
 
 ### Faster
 

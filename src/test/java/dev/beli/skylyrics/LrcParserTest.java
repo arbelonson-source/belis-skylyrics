@@ -234,4 +234,29 @@ class LrcParserTest {
 		assertEquals("c", l.get(l.indexAt(7_100)).text());
 		assertEquals("e", l.get(l.indexAt(60_000)).text());
 	}
+
+	@Test
+	void hourStampsFourDigitFractionsAndFullWidthBracketsParse() {
+		Lyrics l = LrcParser.parseSynced("[ar:Someone]\n[00:05.1234]a\n[01:00:02.50]b\n［00：09．00］c");
+		assertEquals(3, l.lines().size());
+		assertEquals(5123, l.get(0).timeMs());
+		assertEquals("c", l.get(1).text());
+		assertEquals(9000, l.get(1).timeMs());
+		assertEquals(3_602_500, l.get(2).timeMs());
+		assertEquals("b", l.get(2).text());
+	}
+
+	@Test
+	void instrumentalMarkerLinesAreBreaks() {
+		Lyrics l = LrcParser.parseSynced("[00:01.00]words\n[00:05.00](Instrumental)\n[00:09.00][music]\n[00:12.00]Music of the night\n[00:15.00]end");
+		assertEquals("", l.get(1).text());
+		assertEquals(4, l.lines().size());
+		assertEquals("Music of the night", l.get(2).text());
+	}
+
+	@Test
+	void longWordStampsAreStripped() {
+		Lyrics l = LrcParser.parseSynced("[00:01.00]<00:01.0000>hel<00:01.5000>lo <00:00:02.50>there");
+		assertEquals("hello there", l.get(0).text());
+	}
 }

@@ -59,7 +59,7 @@ public final class NeteaseClient implements LyricsSource {
 	/** Timed lyrics have at least one "[mm:ss" stamp. */
 	private static final Pattern TIMED = Pattern.compile("(?m)^\\[\\d{1,3}:\\d{1,2}");
 	/** NetEase's placeholder text for instrumentals: "pure music, please enjoy". */
-	private static final String PURE_MUSIC = "纯音乐";
+	private static final Pattern PLACEHOLDER = Pattern.compile("纯音乐(?:\\s*[,，、:：-]?\\s*(?:请欣赏|请您欣赏))?[\\s。.!！]*");
 
 	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
 	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
@@ -147,11 +147,27 @@ public final class NeteaseClient implements LyricsSource {
 		return false;
 	}
 
+	/** True when the lyric is only NetEase's placeholder ("纯音乐，请欣赏"), not a real line that happens to mention it. */
+	static boolean isPlaceholder(String text) {
+		boolean any = false;
+		for (String row : text.split("\\R")) {
+			String line = row.replaceAll("\\[[^\\]]*]", "").strip();
+			if (line.isEmpty()) {
+				continue;
+			}
+			if (!PLACEHOLDER.matcher(line).matches()) {
+				return false;
+			}
+			any = true;
+		}
+		return any;
+	}
+
 	private LrclibClient.Result lyrics(long id) throws IOException, InterruptedException {
 		JsonObject answer = get("/song/lyric?lv=1&tv=-1&id=" + id);
 		JsonObject lrc = object(answer, "lrc");
 		String text = lrc == null ? "" : clean(string(lrc, "lyric"));
-		if (bool(answer, "pureMusic") || text.contains(PURE_MUSIC)) {
+		if (bool(answer, "pureMusic") || isPlaceholder(text)) {
 			return new LrclibClient.Result(null, null, true);
 		}
 		if (text.isBlank()) {
