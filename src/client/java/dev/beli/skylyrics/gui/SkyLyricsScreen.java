@@ -892,7 +892,7 @@ public final class SkyLyricsScreen extends Screen {
 			focus = tabFocus[to];
 		}
 		focusVisible = true;
-		announcement = Narration.choice(tabName(to), Tr.t("tab"), "", Tr.t("%s of %s"), to, TAB_COUNT);
+		announcement = Narration.choice(tabName(to), Tr.t("tab"), "", Tr.t("%s of %s", to + 1, TAB_COUNT));
 		afterKeyboardAction();
 	}
 

@@ -362,7 +362,7 @@ final class Controls {
 		@Override
 		String narration() {
 			int i = Mth.clamp(get.getAsInt(), 0, options.length - 1);
-			return Narration.choice(narratedLabel(), Tr.t("choice"), options[i], Tr.t("%s of %s"), i, options.length);
+			return Narration.choice(narratedLabel(), Tr.t("choice"), options[i], Tr.t("%s of %s", i + 1, options.length));
 		}
 
 		private int optionWidth(Font font, int i) {
@@ -480,7 +480,7 @@ final class Controls {
 		@Override
 		String narration() {
 			int i = Mth.clamp(get.getAsInt(), 0, labels.size() - 1);
-			return Narration.choice(narratedLabel(), Tr.t("choice"), labels.get(i), Tr.t("%s of %s"), i, labels.size());
+			return Narration.choice(narratedLabel(), Tr.t("choice"), labels.get(i), Tr.t("%s of %s", i + 1, labels.size()));
 		}
 
 		@Override
@@ -582,7 +582,7 @@ final class Controls {
 				return Narration.join(narratedLabel(), Tr.t("none picked"));
 			}
 			return Narration.join(narratedLabel(), names.get(i), Tr.t("selected"),
-					Narration.position(Tr.t("%s of %s"), i, colors.length));
+					Tr.t("%s of %s", i + 1, colors.length));
 		}
 
 		@Override
@@ -694,7 +694,7 @@ final class Controls {
 		@Override
 		String narration() {
 			Button b = buttons.get(Math.min(sub, buttons.size() - 1));
-			String of = buttons.size() > 1 ? Narration.position(Tr.t("%s of %s"), sub, buttons.size()) : "";
+			String of = buttons.size() > 1 ? Tr.t("%s of %s", sub + 1, buttons.size()) : "";
 			return Narration.join(narratedLabel(), text(b), Tr.t("button"), b.enabled().getAsBoolean() ? "" : Tr.t("unavailable"),
 					desc == null ? "" : desc.get(), of);
 		}

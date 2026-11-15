@@ -1,7 +1,5 @@
 package dev.beli.skylyrics.gui;
 
-import java.util.Locale;
-
 /** The words the Narrator says for the settings screen, built from texts that are already translated. */
 final class Narration {
 	private Narration() {
@@ -24,14 +22,9 @@ final class Narration {
 		return out.toString();
 	}
 
-	/** "2 of 5" for the zero-based {@code index}, with {@code template} like "%s of %s" in the player's language. */
-	static String position(String template, int index, int count) {
-		return String.format(Locale.ROOT, template, index + 1, count);
-	}
-
-	/** "Layout, choice, Arc, 1 of 3": a picker's name, what it is, what is picked and where it sits among the options. */
-	static String choice(String name, String kind, String value, String ofTemplate, int index, int count) {
-		return join(name, kind, value, position(ofTemplate, index, count));
+	/** "Layout, choice, Arc, 1 of 3": a picker's name, what it is, what is picked and where it sits (already said, like "1 of 3"). */
+	static String choice(String name, String kind, String value, String place) {
+		return join(name, kind, value, place);
 	}
 
 	/** A value as it is said aloud: "40%" is "40 percent", "-10°" "-10 degrees", "1.5×" "1.5 times". */

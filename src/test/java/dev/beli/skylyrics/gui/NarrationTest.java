@@ -19,15 +19,9 @@ class NarrationTest {
 	}
 
 	@Test
-	void positionCountsFromOne() {
-		assertEquals("1 of 3", Narration.position("%s of %s", 0, 3));
-		assertEquals("3 of 3", Narration.position("%s of %s", 2, 3));
-	}
-
-	@Test
 	void aChoiceSaysItsNameKindValueAndPlace() {
-		assertEquals("Layout, choice, Arc, 1 of 3", Narration.choice("Layout", "choice", "Arc", "%s of %s", 0, 3));
-		assertEquals("Look, tab, 2 of 5", Narration.choice("Look", "tab", "", "%s of %s", 1, 5));
+		assertEquals("Layout, choice, Arc, 1 of 3", Narration.choice("Layout", "choice", "Arc", "1 of 3"));
+		assertEquals("Look, tab, 2 of 5", Narration.choice("Look", "tab", "", "2 of 5"));
 	}
 
 	@Test

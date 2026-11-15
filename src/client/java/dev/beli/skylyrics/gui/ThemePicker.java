@@ -46,7 +46,7 @@ final class ThemePicker extends Controls.Row {
 		}
 		int i = Themes.ALL.indexOf(active);
 		return Narration.join(label, active.name().get(), Tr.t("selected"),
-				Narration.position(Tr.t("%s of %s"), i, Themes.ALL.size()));
+				Tr.t("%s of %s", i + 1, Themes.ALL.size()));
 	}
 
 	@Override
