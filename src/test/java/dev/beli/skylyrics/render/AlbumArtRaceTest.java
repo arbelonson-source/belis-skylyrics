@@ -155,4 +155,16 @@ class AlbumArtRaceTest {
 		assertEquals(2, taken.gen());
 		mine.close();
 	}
+
+	/** An album-mate with the same cover keeps the colour, but a later song named like the first one with another cover doesn't. */
+	@Test
+	void aSongWithTheSameNameAsBeforeButAnotherCoverFallsBack() {
+		AlbumArt art = new AlbumArt(new RecordingExecutor());
+		art.load(song("A", "https://example.invalid/album.jpg"));
+		art.color = 0x00FF00;
+		art.load(song("B", "https://example.invalid/album.jpg")); // same album, same cover: the colour stays
+		assertEquals(0x00FF00, art.color());
+		art.load(song("A", "https://example.invalid/single.jpg")); // A again, from a single: a new song to the colour
+		assertEquals(AlbumArt.FALLBACK_COLOR, art.color());
+	}
 }

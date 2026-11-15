@@ -244,4 +244,24 @@ class TopBarLayoutTest {
 		float[] two = TopBarLayout.barBox(640, 2, 270, 30, true, 40, true, 200);
 		assertEquals(320 + 2 * ((320 - 135 - 11 - 30) - 320), two[0], 1e-3f);
 	}
+
+	@Test
+	void theTopBarDropsUnderTheEffectIconsItsStatsReach() {
+		// 480 wide, 3 good effects: the icons start at 480 - 75 = 405; the pill (270) and 60 of stats end at 240 + 135 + 70
+		float right = TopBarLayout.barRight(480, 1, TopBarLayout.PILL_W, 60, true);
+		assertEquals(445, right, 0.01f);
+		assertEquals(27, TopBarLayout.effectsClear(480, right, 3, 0, 25, 51), 0.01f);
+		assertEquals(53, TopBarLayout.effectsClear(480, right, 3, 4, 25, 51), 0.01f);
+		// Bad effects alone reach it too; icons that stay right of the bar don't move it
+		assertEquals(53, TopBarLayout.effectsClear(480, right, 0, 4, 25, 51), 0.01f);
+		assertEquals(0, TopBarLayout.effectsClear(480, right, 1, 0, 25, 51), 0.01f);
+		assertEquals(0, TopBarLayout.effectsClear(480, right, 0, 0, 25, 51), 0.01f);
+	}
+
+	@Test
+	void aBiggerBarReachesFurtherToTheRight() {
+		float normal = TopBarLayout.barRight(480, 1, 200, 50, true);
+		assertTrue(TopBarLayout.barRight(480, 1.5f, 200, 50, true) > normal);
+		assertTrue(TopBarLayout.barRight(480, 1, 200, 50, false) < normal);
+	}
 }
