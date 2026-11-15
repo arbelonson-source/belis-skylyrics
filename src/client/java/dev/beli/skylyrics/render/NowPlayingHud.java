@@ -184,8 +184,8 @@ public final class NowPlayingHud {
 		//?}
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
-				// The debug screen (F3) fills the top corners and the bar would be drawn over its text; Minecraft.getDebugOverlay exists in every version
-				&& !mc.getDebugOverlay().showDebugScreen()
+				// The debug screen (F3) fills the top corners and the bar would be drawn over its text
+				&& !f3Open(mc)
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
 				//? if >=26.2 {
 				/*&& !(mc.gui.screen() instanceof SkyLyricsScreen settings && settings.coversTopBar());
@@ -270,6 +270,20 @@ public final class NowPlayingHud {
 	 */
 	static float topBelowBossBars(Minecraft mc, int guiHeight) {
 		return topBelowBossBars(bossBarCount(mc), guiHeight);
+	}
+
+	/**
+	 * Whether the full debug screen (F3) is open. From 1.21.9 players can pin single debug lines to show without F3, and
+	 * showDebugScreen() is true for those too; they stay small in a corner, so they must not hide the bar.
+	 */
+	static boolean f3Open(Minecraft mc) {
+		//? if >=1.21.11 {
+		return mc.debugEntries.isOverlayVisible();
+		//?} else if >=1.21.9 {
+		/*return mc.debugEntries.isF3Visible();
+		*///?} else {
+		/*return mc.getDebugOverlay().showDebugScreen();
+		*///?}
 	}
 
 	/** How many boss bars the game has (it draws only the first few that fit). */
