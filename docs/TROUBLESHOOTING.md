@@ -126,7 +126,7 @@ tccutil reset AppleEvents
 
 Then start Minecraft and play a song. Note that this makes macOS ask again for every app that controls other apps, not only Minecraft.
 
-**No album cover for Music songs.** Spotify gives the mod a link to the cover, but the Music app doesn't, so the top bar shows no cover for songs played in Music.
+**No album cover for Music songs.** Spotify gives the mod a link to the album cover, but the Music app doesn't, so the top bar shows no album cover for songs played in Music.
 
 **Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
 
