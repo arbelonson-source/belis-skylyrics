@@ -25,6 +25,21 @@ class NarrationTest {
 	}
 
 	@Test
+	void aLibraryCardSaysItsSectionOnlyWhenGivenOne() {
+		assertEquals("Liked songs, Blue, Ana, 3 of 50", Narration.card("Liked songs", "", "Blue", "Ana", "3 of 50"));
+		assertEquals("Blue, Ana, 4 of 50", Narration.card("", "", "Blue", "Ana", "4 of 50"));
+		assertEquals("Mix, 12 songs, 1 of 4", Narration.card("", "", "Mix", "12 songs", "1 of 4"));
+		assertEquals("Playlists, Couldn't load", Narration.card("Playlists", "Couldn't load", "", "", ""));
+	}
+
+	@Test
+	void theLibraryButtonsAndSearchBoxAreNamed() {
+		assertEquals("Try again, button", Narration.button("Try again", "button"));
+		assertEquals("Search, text box", Narration.searchBox("Search", "text box", ""));
+		assertEquals("Search, text box, blue", Narration.searchBox("Search", "text box", "blue"));
+	}
+
+	@Test
 	void unitsAreSpokenAsWords() {
 		assertEquals("40 percent", Narration.speakable("40%", "percent", "degrees", "times"));
 		assertEquals("-10 degrees", Narration.speakable("-10°", "percent", "degrees", "times"));

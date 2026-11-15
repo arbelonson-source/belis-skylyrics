@@ -27,6 +27,21 @@ final class Narration {
 		return join(name, kind, value, place);
 	}
 
+	/** A button the keyboard is on: "Try again, button". */
+	static String button(String label, String kind) {
+		return join(label, kind);
+	}
+
+	/** The search box: "Search, text box, what is typed so far". */
+	static String searchBox(String name, String kind, String typed) {
+		return join(name, kind, typed);
+	}
+
+	/** A song or playlist card: the section when it just changed, an error if one shows, title, artist (or song count) and "3 of 50". */
+	static String card(String section, String error, String title, String under, String place) {
+		return join(section, error, title, under, place);
+	}
+
 	/** A value as it is said aloud: "40%" is "40 percent", "-10°" "-10 degrees", "1.5×" "1.5 times". */
 	static String speakable(String value, String percent, String degrees, String times) {
 		return value.replace("%", " " + percent).replace("°", " " + degrees).replace("×", " " + times);

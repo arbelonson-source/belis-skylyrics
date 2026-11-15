@@ -13,6 +13,8 @@ import java.util.function.IntFunction;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.input.CharacterEvent;
@@ -73,6 +75,9 @@ public final class LibraryScreen extends Screen {
 	private int selected = -1;
 	/** Which not-signed-in button the keyboard is on: -1 none, 0 Open Music tab, 1 Try made-up songs. */
 	private int signInFocus = -1;
+	/** The section just changed, so the Narrator names it once; any later key or click ends that. */
+	private boolean sayNewSection;
+	private boolean closed;
 	private @Nullable CompletableFuture<String> playing;
 	private String playingTitle = "";
 	private String toast = "";
@@ -926,6 +931,7 @@ public final class LibraryScreen extends Screen {
 		opened = null;
 		section = s;
 		selected = -1;
+		sayNewSection = true;
 		if (s == Section.SEARCH) {
 			typing = true;
 		}
@@ -935,6 +941,7 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		sayNewSection = false;
 		if (event.button() == 0 && !rescue.pressed()) {
 			return true;
 		}
@@ -1140,6 +1147,15 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyPressed(KeyEvent event) {
+		sayNewSection = false;
+		boolean used = handleKey(event);
+		if (used && !closed) {
+			afterKeyboardAction();
+		}
+		return used;
+	}
+
+	private boolean handleKey(KeyEvent event) {
 		if (event.isEscape()) {
 			if (typing) {
 				typing = false;
@@ -1240,6 +1256,15 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean charTyped(CharacterEvent event) {
+		sayNewSection = false;
+		boolean used = handleChar(event);
+		if (used) {
+			afterKeyboardAction();
+		}
+		return used;
+	}
+
+	private boolean handleChar(CharacterEvent event) {
 		if (library == null || !event.isAllowedChatCharacter()) {
 			return false;
 		}
@@ -1264,6 +1289,38 @@ public final class LibraryScreen extends Screen {
 		searchDirty = true;
 	}
 
+	/** What the Narrator says for what has the keyboard now: the button, the search box, or the chosen card. */
+	private String focusNarration() {
+		if (library == null) {
+			return signInFocus < 0 ? "" : Narration.button(signInFocus == 0 ? Tr.t("Open Music tab") : Tr.t("Try made-up songs"), Tr.t("button"));
+		}
+		if (typing) {
+			return Narration.searchBox(Tr.t("Search"), Tr.t("text box"), query);
+		}
+		Shelf shelf = shelf();
+		if (shelf == null) {
+			return "";
+		}
+		String name = !sayNewSection ? "" : opened != null ? openedName : sectionName(section);
+		if (shelf.items.isEmpty() && !shelf.error.isEmpty()) {
+			return Narration.join(Narration.card(name, shelf.error, "", "", ""), Tr.t("Try again"), Tr.t("button"));
+		}
+		if (selected >= 0 && selected < shelf.items.size()) {
+			String[] text = labels(shelf.items.get(selected));
+			return Narration.card(name, shelf.error, text[0], text[1], Tr.t("%s of %s", selected + 1, shelf.items.size()));
+		}
+		return Narration.card(name, shelf.error, "", "", "");
+	}
+
+	@Override
+	protected void updateNarrationState(NarrationElementOutput output) {
+		output.add(NarratedElementType.TITLE, getNarrationMessage());
+		String now = focusNarration();
+		if (!now.isEmpty()) {
+			output.nest().add(NarratedElementType.TITLE, Component.literal(now));
+		}
+	}
+
 	@Override
 	public boolean isPauseScreen() {
 		return false;
@@ -1271,6 +1328,7 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	public void onClose() {
+		closed = true;
 		//? if >=26.2 {
 		/*minecraft.gui.setScreen(parent);
 		*///?} else {
