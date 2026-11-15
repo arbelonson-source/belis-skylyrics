@@ -186,7 +186,7 @@ public final class SpotifyWebSource implements MediaSource {
 		try {
 			server = new ServerSocket(PORT, 4, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
 		} catch (BindException e) {
-			throw new IOException(Tr.t("Port %s is already in use. Close the other game or app using it and try again", PORT), e);
+			throw new IOException(Tr.t("Spotify sign-in needs port %s, but another program is using it. Close the other game or app and try again", PORT), e);
 		}
 		loginServer = server;
 		problem = "";

@@ -510,7 +510,7 @@ public final class SkyLyricsScreen extends Screen {
 				//?}
 		Row recent = new Toggle(Tr.t("Recently heard"), Tr.t("Remember the songs you play, to pick from the song library. Kept on this computer only"),
 				() -> cfg.recentSongs, v -> cfg.recentSongs = v);
-		Row forget = new Buttons(Tr.t("Forget recent songs"), Tr.t("Empties the Recently heard list"),
+		Row forget = new Buttons(Tr.t("Forget recently heard"), Tr.t("Empties the Recently heard list"),
 				new Button(Tr.t("Clear"), () -> mod.heard().clear())).when(() -> cfg.recentSongs);
 
 		return List.of(
@@ -591,7 +591,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row paused = new Toggle(Tr.t("Hide when paused"), Tr.t("When the music is paused"), () -> cfg.hideWhenPaused, v -> cfg.hideWhenPaused = v);
 		Row nether = new Toggle(Tr.t("Hide in the Nether"), null, () -> cfg.hideInNether, v -> cfg.hideInNether = v);
 		Row end = new Toggle(Tr.t("Hide in the End"), null, () -> cfg.hideInEnd, v -> cfg.hideInEnd = v);
-		Row water = new Toggle(Tr.t("Hide underwater"), Tr.t("While your head is under water"),
+		Row water = new Toggle(Tr.t("Hide underwater"), Tr.t("While your head is underwater"),
 				() -> cfg.hideUnderwater, v -> cfg.hideUnderwater = v);
 		Row caves = new Toggle(Tr.t("Hide in caves"), Tr.t("When there's no open sky above you"),
 				() -> cfg.hideInCaves, v -> cfg.hideInCaves = v);
@@ -1261,7 +1261,7 @@ public final class SkyLyricsScreen extends Screen {
 
 	private void renderPreviewHint(GuiGraphics g) {
 		boolean nothing = mod.tracker().track() == Track.NONE;
-		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song in Music to try it.")
+		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song on the Music tab to try it.")
 				: Tr.t("Previewing. Click or press any key to go back.");
 		int w = font.width(text) + 24;
 		int x = (width - w) / 2;
