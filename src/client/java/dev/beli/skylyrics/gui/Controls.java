@@ -844,7 +844,7 @@ final class Controls {
 			int probe = font.width(FONT_PROBE);
 			if (width != linesWidth || !t.equals(linesText) || probe != linesProbe) {
 				linesProbe = probe;
-				lines = font.split(net.minecraft.network.chat.Component.literal(t), width - 20);
+				lines = font.split(net.minecraft.network.chat.Component.literal(t), Math.max(1, width - 20));
 				linesWidth = width;
 				linesText = t;
 			}
