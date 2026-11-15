@@ -22,7 +22,7 @@ import dev.beli.skylyrics.media.Track;
 
 class LrclibClientTest {
 	private static final Track TRACK = new Track("A Made-Up Song", "Made Up Band", "Made Up Album", 200_000, "", "spotify");
-	private static final String HIT = "[{\"duration\":200,\"syncedLyrics\":\"[00:01.00]A made-up line\",\"instrumental\":false}]";
+	private static final String HIT = "[{\"trackName\":\"A Made-Up Song\",\"duration\":200,\"syncedLyrics\":\"[00:01.00]A made-up line\",\"instrumental\":false}]";
 
 	private HttpServer server;
 	private LrclibClient client;
@@ -31,6 +31,8 @@ class LrclibClientTest {
 	private volatile int searchCode = 200;
 	private volatile String searchBody = "[]";
 	private volatile String getBody = "{}";
+	/** When set, the searches that name an artist get this instead of {@link #searchBody} (the free-text one still gets that). */
+	private volatile String artistSearchBody;
 	private volatile String retryAfter;
 
 	@BeforeEach
@@ -51,6 +53,10 @@ class LrclibClientTest {
 		asked.add(path);
 		int code = path.endsWith("/get") ? getCode : searchCode;
 		String body = path.endsWith("/get") ? getBody : searchBody;
+		String rawQuery = ex.getRequestURI().getRawQuery();
+		if (artistSearchBody != null && path.endsWith("/search") && rawQuery != null && !rawQuery.startsWith("q=")) {
+			body = artistSearchBody;
+		}
 		byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
 		if (retryAfter != null) {
 			ex.getResponseHeaders().add("Retry-After", retryAfter);
@@ -179,7 +185,86 @@ class LrclibClientTest {
 
 	@Test
 	void anArtistStillAllowsALooserTitleMatch() throws Exception {
-		searchBody = "[" + hit("Made Up Song - Remastered", "[00:01.00]fine") + "]";
+		searchBody = "[" + hit("A Made-Up Song - Remastered", "[00:01.00]fine") + "]";
 		assertTrue(client.find(TRACK).found());
+	}
+
+	private static String hit(String name, String artist, int seconds, String lyric) {
+		return "{\"trackName\":\"" + name + "\",\"artistName\":\"" + artist + "\",\"duration\":" + seconds
+				+ ",\"syncedLyrics\":\"" + lyric + "\",\"instrumental\":false}";
+	}
+
+	private LrclibClient.Result findWith(Track track, String... hits) throws Exception {
+		searchBody = "[" + String.join(",", hits) + "]";
+		return client.find(track);
+	}
+
+	private static Track song(String title, String artist, int seconds) {
+		return new Track(title, artist, "", seconds * 1000L, "", "spotify");
+	}
+
+	private static final String BAND = "Made Up Band";
+
+	@Test
+	void anotherSongBySameArtistIsNotPicked() throws Exception {
+		assertFalse(findWith(TRACK, hit("Another Song", BAND, 200, "[00:01.00]wrong")).found());
+	}
+
+	@Test
+	void versionTagsAndCreditsStillMatch() throws Exception {
+		assertEquals("[00:01.00]x", findWith(TRACK, hit("A Made-Up Song (feat. Guest)", BAND, 200, "[00:01.00]x")).synced());
+		assertEquals("[00:01.00]x", findWith(TRACK, hit("A Made-Up Song (Radio Edit)", BAND, 200, "[00:01.00]x")).synced());
+	}
+
+	@Test
+	void caseAccentsPunctuationAndAmpersandStillMatch() throws Exception {
+		assertEquals("[00:01.00]x", findWith(song("Caf\u00e9 Don\u2019t Stop", BAND, 200), hit("CAFE DON'T STOP", BAND, 200, "[00:01.00]x")).synced());
+		assertEquals("[00:01.00]x", findWith(song("Rock & Roll", BAND, 200), hit("Rock and Roll", BAND, 200, "[00:01.00]x")).synced());
+	}
+
+	@Test
+	void nonLatinTitlesMatchOrNot() throws Exception {
+		assertEquals("[00:01.00]x", findWith(song("\u05e9\u05dc\u05d5\u05dd", "\u05dc\u05d4\u05e7\u05d4", 200), hit("\u05e9\u05dc\u05d5\u05dd!", "\u05dc\u05d4\u05e7\u05d4", 200, "[00:01.00]x")).synced());
+		Track yoasobi = song("\u591c\u306b\u99c6\u3051\u308b", "YOASOBI", 260);
+		assertEquals("[00:01.00]x", findWith(yoasobi, hit("\u591c\u306b\u99c6\u3051\u308b", "YOASOBI", 260, "[00:01.00]x")).synced());
+		assertFalse(findWith(yoasobi, hit("Yoru ni Kakeru", "YOASOBI", 260, "[00:01.00]x")).found());
+	}
+
+	@Test
+	void similarTitlesAreNotTheSameSong() throws Exception {
+		Track hello = song("Hello", BAND, 200);
+		assertFalse(findWith(hello, hit("Hello Again", BAND, 200, "[00:01.00]x")).found());
+		assertFalse(findWith(hello, hit("Hello (Remix)", BAND, 200, "[00:01.00]x")).found());
+	}
+
+	@Test
+	void aSlightlyDifferentLengthStillMatches() throws Exception {
+		assertEquals("[00:01.00]x", findWith(TRACK, hit("A Made-Up Song", BAND, 203, "[00:01.00]x")).synced());
+	}
+
+	@Test
+	void unknownLengthWithAnArtistNeedsTheTitle() throws Exception {
+		Track noLength = song("A Made-Up Song", BAND, 0);
+		assertFalse(findWith(noLength, hit("Another Song", BAND, 200, "[00:01.00]wrong")).found());
+		assertEquals("[00:01.00]x", findWith(noLength, hit("A Made-Up Song", BAND, 200, "[00:01.00]x")).synced());
+	}
+
+	@Test
+	void freeTextResultsMustBeByTheArtist() throws Exception {
+		artistSearchBody = "[]";
+		Track noLength = song("A Made-Up Song", BAND, 0);
+		assertFalse(findWith(noLength, hit("A Made-Up Song", "Other Singer", 200, "[00:01.00]wrong")).found());
+		assertEquals("[00:01.00]x", findWith(noLength, hit("A Made-Up Song", "Made Up Band & Friends", 200, "[00:01.00]x")).synced());
+	}
+
+	@Test
+	void aResultWithoutATitleIsRejected() throws Exception {
+		assertFalse(findWith(TRACK, "{\"artistName\":\"Made Up Band\",\"duration\":200,\"syncedLyrics\":\"[00:01.00]x\",\"instrumental\":false}").found());
+	}
+
+	@Test
+	void theSameTitleBeatsAnotherSongEvenWhenItComesLater() throws Exception {
+		assertEquals("[00:01.00]right", findWith(TRACK, hit("Another Song", BAND, 200, "[00:01.00]wrong"),
+				hit("A Made-Up Song", BAND, 203, "[00:01.00]right")).synced());
 	}
 }

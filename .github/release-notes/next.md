@@ -20,6 +20,7 @@
 - The bottom bar sits above the held item's name, and a bigger bar grows upward instead of off the screen.
 - A bigger top bar now shrinks to fit the screen instead of overflowing it.
 - "Set up Spotify" scrolls to the Spotify card even when the settings screen has just opened, and tabs keep their scroll after you visit a shorter one.
+- When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist.
 
 ### Faster
 

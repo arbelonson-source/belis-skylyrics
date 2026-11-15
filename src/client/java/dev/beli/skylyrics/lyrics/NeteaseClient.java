@@ -206,7 +206,7 @@ public final class NeteaseClient implements LyricsSource {
 
 	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */
 	static String key(String s) {
-		return s.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "");
+		return TitleCleaner.key(s);
 	}
 
 	private static String string(JsonObject o, String key) {
