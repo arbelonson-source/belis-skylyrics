@@ -27,6 +27,8 @@
 - In the World layout the song title shows for its full time even when the lyrics take a moment to load, and a long title is shrunk to fit.
 - In the World layout, respawning or changing world during the end of a line no longer flashes its last words, and a word that is far away fades out instead of vanishing.
 - Hitting mobs while the World lyrics are hidden no longer knocks a word when they show again.
+- With Spotify signed in, the mod asks Spotify much less often while nothing shows the song, and slows down when Spotify is having trouble.
+- A Spotify app that isn't set up for your account now says what to do instead of "error 403".
 
 ### Faster
 

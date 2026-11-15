@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 import com.google.gson.JsonArray;
@@ -65,9 +66,6 @@ public final class SpotifyWebSource implements MediaSource {
 	static final String LIBRARY_SCOPES = "user-library-read playlist-read-private";
 	private static final String ACCOUNTS = "https://accounts.spotify.com";
 	private static final String API = "https://api.spotify.com/v1";
-	/** The tracker's smooth clock fills the gaps, so once a second while playing is plenty. */
-	private static final long POLL_PLAYING_NS = 1_000_000_000L;
-	private static final long POLL_IDLE_NS = 4_000_000_000L;
 	private static final int LOGIN_TIMEOUT_MS = 5 * 60_000;
 	/** How long a connection may stay silent before it is dropped. */
 	static final int SOCKET_TIMEOUT_MS = 5000;
@@ -120,11 +118,26 @@ public final class SpotifyWebSource implements MediaSource {
 	private volatile @Nullable ServerSocket loginServer;
 	private volatile String problem = "";
 	private Snapshot last = Snapshot.NOTHING;
-	private long nextPollNs;
+	/** When Spotify was last asked, how many asks in a row failed, and how long to wait after the last failure. */
+	private long askedNs = System.nanoTime();
+	private int failures;
+	private long failDelayNs;
+	/** Set to ask again right away (a control was used, or the sign-in changed). */
+	private volatile boolean pollNow = true;
+	/** Whether anything on screen shows the song; when not, the poll slows right down. */
+	private final BooleanSupplier looking;
+	/** Nothing is asked before this: the latest Retry-After any call (poll, library, controls) was given. */
+	private volatile long holdUntilNs = System.nanoTime();
+	private final Object holdLock = new Object();
 
 	public SpotifyWebSource(Supplier<String> clientId, Path loginFile) {
+		this(clientId, loginFile, () -> true);
+	}
+
+	public SpotifyWebSource(Supplier<String> clientId, Path loginFile, BooleanSupplier looking) {
 		this.clientId = clientId;
 		this.loginFile = loginFile;
+		this.looking = looking;
 		load();
 	}
 
@@ -474,7 +487,7 @@ public final class SpotifyWebSource implements MediaSource {
 			save();
 		}
 		problem = "";
-		nextPollNs = 0;
+		pollNow = true;
 	}
 
 	/** Whether a token refresh that began under {@code started} may still be stored: only if nobody signed in or out since. */
@@ -573,14 +586,69 @@ public final class SpotifyWebSource implements MediaSource {
 
 	// Playing
 
+	/** Leaves Spotify alone for as long as it asked in a 429's {@code Retry-After}; the longest ask wins. */
+	void holdOff(@Nullable String retryAfter) {
+		long until = System.nanoTime() + SpotifyPace.retryAfterNs(retryAfter);
+		synchronized (holdLock) {
+			if (until - holdUntilNs > 0) {
+				holdUntilNs = until;
+			}
+		}
+	}
+
+	private void holdOff(HttpResponse<?> response) {
+		holdOff(response.headers().firstValue("Retry-After").orElse(null));
+	}
+
+	/** Notes that Spotify is being asked at {@code now}. */
+	void settle(long now) {
+		pollNow = false;
+		askedNs = now;
+	}
+
+	/** Whether it is time to ask Spotify about the song again. */
+	boolean pollDue(long now, boolean looking) {
+		if (now - holdUntilNs < 0) {
+			return false;
+		}
+		if (pollNow) {
+			return true;
+		}
+		long wait = failures > 0 ? failDelayNs : SpotifyPace.intervalNs(last.playing(), looking);
+		return now - askedNs >= wait;
+	}
+
+	/** Spotify answered with a status that isn't an answer; the poller backs off by it. */
+	private static final class BadStatus extends IOException {
+		final int status;
+
+		BadStatus(int status) {
+			// The usual 403: a development-mode app only answers the accounts listed under User Management
+			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management") : Tr.t("Spotify answered with error %s", status));
+			this.status = status;
+		}
+	}
+
 	@Override
 	public Snapshot poll() throws Exception {
 		long now = System.nanoTime();
-		if (now < nextPollNs) {
+		if (!pollDue(now, looking.getAsBoolean())) {
 			return last;
 		}
-		// Set before asking, so a broken connection or a missing sign-in isn't retried twice a second
-		nextPollNs = now + POLL_IDLE_NS;
+		// Marked before asking, so a broken connection or a missing sign-in isn't retried twice a second
+		settle(now);
+		try {
+			Snapshot result = ask();
+			failures = 0;
+			return result;
+		} catch (IOException e) {
+			failures++;
+			failDelayNs = SpotifyPace.failureDelayNs(e instanceof BadStatus b ? b.status : 0, failures);
+			throw e;
+		}
+	}
+
+	private Snapshot ask() throws IOException, InterruptedException {
 		String token = access();
 		long sent = System.nanoTime();
 		HttpResponse<String> response = api("GET", "/me/player/currently-playing?additional_types=episode", token);
@@ -597,14 +665,10 @@ public final class SpotifyWebSource implements MediaSource {
 			case 200 -> last = parse(response.body(), readAt);
 			case 204 -> last = Snapshot.NOTHING;
 			case 429 -> {
-				long wait = response.headers().firstValueAsLong("Retry-After").orElse(10);
-				nextPollNs = now + Math.max(1, Math.min(wait, 300)) * 1_000_000_000L;
+				holdOff(response);
 				return last;
 			}
-			default -> throw new IOException(Tr.t("Spotify answered with error %s", response.statusCode()));
-		}
-		if (last.playing()) {
-			nextPollNs = now + POLL_PLAYING_NS;
+			default -> throw new BadStatus(response.statusCode());
 		}
 		return last;
 	}
@@ -633,6 +697,9 @@ public final class SpotifyWebSource implements MediaSource {
 				accessToken = null;
 			}
 			response = api(method, path, access(), json);
+		}
+		if (response.statusCode() == 429) {
+			holdOff(response); // the poller waits too
 		}
 		return response;
 	}
@@ -732,6 +799,9 @@ public final class SpotifyWebSource implements MediaSource {
 	private void control(String method, String path) {
 		try {
 			HttpResponse<String> response = api(method, path, access());
+			if (response.statusCode() == 429) {
+				holdOff(response);
+			}
 			if (response.statusCode() >= 300) {
 				LOG.debug("Spotify control {} answered {}", path, response.statusCode());
 			}
@@ -740,7 +810,7 @@ public final class SpotifyWebSource implements MediaSource {
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}
-		nextPollNs = 0; // show the result right away
+		pollNow = true; // show the result right away
 	}
 
 	@Override
@@ -770,6 +840,6 @@ public final class SpotifyWebSource implements MediaSource {
 
 	@Override
 	public void close() {
-		nextPollNs = 0;
+		pollNow = true;
 	}
 }

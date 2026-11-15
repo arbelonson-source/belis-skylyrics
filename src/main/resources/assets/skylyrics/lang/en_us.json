@@ -292,6 +292,7 @@
   "skylyrics.ui.sign_in_to_spotify_below": "Sign in to Spotify below",
   "skylyrics.ui.spotify_signed_you_out_sign_in_again": "Spotify signed you out, sign in again",
   "skylyrics.ui.spotify_answered_with_error_s": "Spotify answered with error %s",
+  "skylyrics.ui.spotify_blocked_this_app_on_the_spotify_dashboar": "Spotify blocked this app. On the Spotify dashboard, add your account under User Management",
   "skylyrics.ui.follows_your_spotify_account_on_any_device_even": "Follows your Spotify account on any device, even your phone. Spotify needs you to make a free app for this: open the dashboard, create an app with the Redirect URI below and Web API ticked, then paste its Client ID here.",
   "skylyrics.ui.spotify_dashboard": "Spotify dashboard",
   "skylyrics.ui.needs_a_spotify_premium_account": "Needs a Spotify Premium account",

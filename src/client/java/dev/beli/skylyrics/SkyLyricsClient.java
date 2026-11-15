@@ -62,6 +62,7 @@ import dev.beli.skylyrics.media.MediaSource;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.MprisSource;
 import dev.beli.skylyrics.media.SpotifyLibrary;
+import dev.beli.skylyrics.media.SpotifyPace;
 import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.WindowsMediaSource;
@@ -126,7 +127,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				.orElse("dev");
 		Path cache = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(MOD_ID);
 
-		spotify = new SpotifyWebSource(() -> SkyLyricsConfig.get().spotifyClientId, cache.resolve("spotify-login.json"));
+		spotify = new SpotifyWebSource(() -> SkyLyricsConfig.get().spotifyClientId, cache.resolve("spotify-login.json"),
+				SkyLyricsClient::anyoneLooking);
 		library = windows() || mac() ? new SpotifyLibrary(spotify) : new SpotifyLibrary(spotify, MprisSource::openInSpotify);
 		heard = new HeardLibrary(cache.resolve("heard.json"), () -> SkyLyricsConfig.get().recentSongs,
 				windows() || mac() ? HeardLibrary.NO_OPENER : HeardLibrary.MPRIS);
@@ -460,6 +462,25 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	public MediaTracker tracker() {
 		return tracker;
+	}
+
+	/**
+	 * Whether anything on screen shows the song, so Spotify Web has to be asked often: Lyrics on (the sky lyrics, the
+	 * top bar, the Record card and the title screen lyrics all need it), or one of our screens open. Called off the
+	 * render thread; a stale read only costs one poll.
+	 */
+	private static boolean anyoneLooking() {
+		net.minecraft.client.gui.screens.Screen screen = screenOpen();
+		return SpotifyPace.looking(SkyLyricsConfig.get().enabled, screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen
+				|| screen instanceof dev.beli.skylyrics.gui.LibraryScreen || screen instanceof dev.beli.skylyrics.gui.IntroScreen);
+	}
+
+	private static net.minecraft.client.gui.screens.@org.jspecify.annotations.Nullable Screen screenOpen() {
+		//? if >=26.2 {
+		/*return Minecraft.getInstance().gui.screen();
+		*///?} else {
+		return Minecraft.getInstance().screen;
+		//?}
 	}
 
 	public SpotifyWebSource spotify() {
