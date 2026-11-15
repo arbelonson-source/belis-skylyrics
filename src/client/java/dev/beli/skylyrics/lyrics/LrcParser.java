@@ -78,7 +78,7 @@ public final class LrcParser {
 		if (shifted.stream().allMatch(LyricLine::isBreak)) {
 			return Lyrics.INSTRUMENTAL;
 		}
-		return new Lyrics(collapseBreaks(shifted), true, false);
+		return new Lyrics(collapseBreaks(joinSameStamp(shifted)), true, false);
 	}
 
 	/** Spreads unsynced lyrics evenly across the song so they still move along with it. */
@@ -123,6 +123,46 @@ public final class LrcParser {
 
 	static String tidy(String text) {
 		return SPACES.matcher(INVISIBLE.matcher(text).replaceAll("")).replaceAll(" ").strip();
+	}
+
+	/** At most this many different lines share one stamp as one line: an original, its romanization and a translation. */
+	static final int MAX_JOINED = 3;
+	/** How far apart lines are put when a file stamps many lines alike and nothing comes after them. */
+	static final long SPREAD_MS = 3500;
+
+	/**
+	 * Lines that share a stamp (an original and its translation, or a repeated stamp) are shown together as one line,
+	 * "first / second": the line being sung is found by time alone, so the first of two equal stamps would never show.
+	 * A repeat of the same words stays single, and a break stamped with words yields to the words. More than
+	 * {@link #MAX_JOINED} different lines on one stamp is a file whose stamps mean nothing (every line at 00:00, say):
+	 * those are spread out up to the next stamp instead of becoming one huge line.
+	 */
+	private static List<LyricLine> joinSameStamp(List<LyricLine> lines) {
+		List<LyricLine> out = new ArrayList<>(lines.size());
+		for (int i = 0; i < lines.size(); ) {
+			long t = lines.get(i).timeMs();
+			int j = i;
+			List<String> texts = new ArrayList<>();
+			for (; j < lines.size() && lines.get(j).timeMs() == t; j++) {
+				LyricLine line = lines.get(j);
+				if (!line.isBreak() && !texts.contains(line.text())) {
+					texts.add(line.text());
+				}
+			}
+			if (texts.isEmpty()) {
+				out.add(lines.get(i));
+			} else if (texts.size() <= MAX_JOINED) {
+				out.add(new LyricLine(t, String.join(" / ", texts)));
+			} else {
+				long next = j < lines.size() ? lines.get(j).timeMs() : t + texts.size() * SPREAD_MS;
+				long step = Math.max(1, (next - t) / texts.size());
+				for (int k = 0; k < texts.size(); k++) {
+					out.add(new LyricLine(t + k * step, texts.get(k)));
+				}
+			}
+			i = j;
+		}
+		return out;
 	}
 
 	private static List<LyricLine> collapseBreaks(List<LyricLine> lines) {

@@ -192,4 +192,46 @@ class LrcParserTest {
 		Lyrics l = LrcParser.parseSynced("[00:12.00]<00:12.34>Hello <00:13.00>[x2] world [Chorus]");
 		assertEquals("Hello [x2] world [Chorus]", l.get(0).text());
 	}
+
+	@Test
+	void linesWithTheSameStampAreShownTogether() {
+		Lyrics l = LrcParser.parseSynced("[00:10.00]Hello world\n[00:10.00]Hola mundo\n[00:15.00]Next");
+		assertEquals(2, l.lines().size());
+		assertEquals("Hello world / Hola mundo", l.get(l.indexAt(10_000)).text());
+		assertEquals("Hello world / Hola mundo", l.get(l.indexAt(12_000)).text());
+		assertEquals("Next", l.get(l.indexAt(15_000)).text());
+	}
+
+	@Test
+	void aRepeatedStampOfTheSameWordsStaysOneLine() {
+		Lyrics l = LrcParser.parseSynced("[00:10.00]Oh\n[00:10.00]Oh\n[00:15.00]Next");
+		assertEquals(2, l.lines().size());
+		assertEquals("Oh", l.get(0).text());
+	}
+
+	@Test
+	void aLyricWithRomanizationAndTranslationOnOneStampShowsAllThree() {
+		Lyrics l = LrcParser.parseSynced("[00:10.00]君が好き\n[00:10.00]Kimi ga suki\n[00:10.00]I like you\n[00:15.00]Next");
+		assertEquals(2, l.lines().size());
+		assertEquals("君が好き / Kimi ga suki / I like you", l.get(l.indexAt(11_000)).text());
+	}
+
+	@Test
+	void manyLinesOnOneStampAreSpreadOutNotJoined() {
+		Lyrics l = LrcParser.parseSynced("[00:00.00]a\n[00:00.00]b\n[00:00.00]c\n[00:00.00]d\n[00:10.00]e");
+		assertEquals(5, l.lines().size());
+		assertEquals("a", l.get(l.indexAt(1_000)).text());
+		assertEquals("b", l.get(l.indexAt(3_000)).text());
+		assertEquals("d", l.get(l.indexAt(9_000)).text());
+		assertEquals("e", l.get(l.indexAt(10_000)).text());
+	}
+
+	@Test
+	void aFileWithEveryLineOnOneStampStillReadsLineByLine() {
+		Lyrics l = LrcParser.parseSynced("[00:00.00]a\n[00:00.00]b\n[00:00.00]c\n[00:00.00]d\n[00:00.00]e");
+		assertEquals(5, l.lines().size());
+		assertEquals("a", l.get(l.indexAt(1_000)).text());
+		assertEquals("c", l.get(l.indexAt(7_100)).text());
+		assertEquals("e", l.get(l.indexAt(60_000)).text());
+	}
 }
