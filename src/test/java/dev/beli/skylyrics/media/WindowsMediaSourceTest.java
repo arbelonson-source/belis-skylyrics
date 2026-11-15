@@ -2,6 +2,7 @@ package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -238,6 +239,140 @@ class WindowsMediaSourceTest {
 			// The helper went away (say, killed by hand): the next poll starts a fresh one
 			source.close();
 			assertEquals("Video Song", source.poll().track().title());
+		} finally {
+			source.close();
+		}
+	}
+
+	/** A source running the real script against the made-up manager in one of its scenarios. */
+	private WindowsMediaSource fakeSource(String shell, String scenario, Path flag, long replyMs) {
+		Path fake = Path.of("src/test/resources/windows-media-fake.ps1").toAbsolutePath();
+		return new WindowsMediaSource(() -> "", dir, (script, covers) -> List.of(
+				shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString(),
+				"-Scenario", scenario, "-Flag", flag.toString()), START_MS, replyMs);
+	}
+
+	/**
+	 * Covers that never open or never finish copying must not make a poll late: the game gives up on a helper
+	 * after three polls that take over 4 s. Here the reply limit is the game's own.
+	 */
+	@Test
+	@Timeout(300)
+	void coversThatHangNeverMakeAPollLate() throws Exception {
+		String shell = powershell();
+		assumeTrue(shell != null, "PowerShell isn't installed");
+		WindowsMediaSource source = fakeSource(shell, "slowcovers", dir.resolve("none"), 4_000);
+		try {
+			source.poll(); // the helper starts here
+			long end = System.currentTimeMillis() + 9_000; // long enough for every cover to be tried and given up on
+			int polls = 0;
+			while (System.currentTimeMillis() < end) {
+				long before = System.currentTimeMillis();
+				Snapshot s = source.poll();
+				long took = System.currentTimeMillis() - before;
+				assertEquals("Slow Song A", s.track().title());
+				assertTrue(took < 3_500, "a poll took " + took + " ms");
+				polls++;
+				Thread.sleep(300);
+			}
+			assertTrue(polls >= 3, "polls " + polls);
+		} finally {
+			source.close();
+		}
+	}
+
+	/** A player that is slow to answer once keeps showing its last reading for that one poll, and no longer. */
+	@Test
+	@Timeout(300)
+	void aSlowPlayerIsShownOnceMoreThenDropped() throws Exception {
+		String shell = powershell();
+		assumeTrue(shell != null, "PowerShell isn't installed");
+		WindowsMediaSource source = fakeSource(shell, "slowprops", dir.resolve("none"), REPLY_MS);
+		try {
+			assertEquals("Slow Props Song", source.poll().track().title());
+			assertEquals("Slow Props Song", source.poll().track().title(), "late once: the last reading is kept");
+			assertSame(Snapshot.NOTHING, source.poll(), "late twice in a row: gone");
+		} finally {
+			source.close();
+		}
+	}
+
+	/** A cover read right after the song changed can be the old song's; it is read again a few seconds later. */
+	@Test
+	@Timeout(300)
+	void aCoverIsReadAgainAfterAFewSeconds() throws Exception {
+		String shell = powershell();
+		assumeTrue(shell != null, "PowerShell isn't installed");
+		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS);
+		try {
+			String first = null, latest = null;
+			long end = System.currentTimeMillis() + 40_000;
+			while (System.currentTimeMillis() < end && !"new cover".equals(latest)) {
+				String art = source.poll().track().artUrl();
+				if (!art.isEmpty()) {
+					latest = Files.readString(Path.of(java.net.URI.create(art)));
+					if (first == null) {
+						first = latest;
+					}
+				}
+				Thread.sleep(400);
+			}
+			assertEquals("old cover", first, "the first read");
+			assertEquals("new cover", latest, "the second read replaces it");
+		} finally {
+			source.close();
+		}
+	}
+
+	/** When the followed app is gone, a pause must not land on another app. */
+	@Test
+	@Timeout(300)
+	void controlsNeverReachAnotherApp() throws Exception {
+		String shell = powershell();
+		assumeTrue(shell != null, "PowerShell isn't installed");
+		Path flag = dir.resolve("followed-is-gone");
+		WindowsMediaSource source = fakeSource(shell, "vanish", flag, REPLY_MS);
+		try {
+			assertEquals("Followed Song", source.poll().track().title());
+			Files.writeString(flag, "gone");
+			source.playPause(); // would have toggled Windows' pick, the other app
+			source.next();
+			Snapshot s = source.poll();
+			assertEquals("Other Song", s.track().title());
+			assertFalse(s.playing(), "the other app was left alone");
+			assertEquals(2_000, s.positionMs());
+		} finally {
+			source.close();
+		}
+	}
+
+	/**
+	 * The helper answering "ok":false to a button press (the followed app is gone) is not an error worth showing,
+	 * and doesn't count as the helper being stuck or make it restart.
+	 */
+	@Test
+	@Timeout(60)
+	void aRefusedControlIsQuietAndKeepsTheHelper() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String body = "printf '{\"ready\":true}\\n'; while read n cmd rest; do "
+				+ "case \"$cmd\" in poll) printf '{\"seq\":%s,\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\",\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}\\n' \"$n\";; "
+				+ "*) printf '{\"seq\":%s,\"ok\":false,\"error\":\"That player is not there any more\"}\\n' \"$n\";; esac; done";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, 20_000, 5_000);
+		try {
+			assertEquals("Song", source.poll().track().title());
+			for (int i = 0; i < 5; i++) {
+				source.playPause();
+				source.next();
+				source.previous();
+				source.seek(1000);
+			}
+			assertEquals("Song", source.poll().track().title(), "still the same helper, still answering");
+			assertEquals(1, starts[0]);
 		} finally {
 			source.close();
 		}
