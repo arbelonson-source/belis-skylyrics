@@ -629,6 +629,12 @@ final class WorldWords {
 	private static long sightTick = Long.MIN_VALUE;
 	private static @Nullable ClientLevel sightLevel;
 
+	/** Lets go of the last world's players, so its whole level can be freed once you leave it. */
+	static void forgetPlayers() {
+		inSight.clear();
+		sightLevel = null;
+	}
+
 	/**
 	 * Where the other players near you are, as boxes of yaw, pitch and half sizes in degrees seen from {@code eye}. A
 	 * player's box reaches up a little, since words float upwards and would otherwise rise into them.
@@ -638,8 +644,7 @@ final class WorldWords {
 		Player me = Minecraft.getInstance().player;
 		if (level == null || me == null) {
 			// Let go of the old world's players once you've left it
-			inSight.clear();
-			sightLevel = null;
+			forgetPlayers();
 			return spots;
 		}
 		// Only players you can see: a word dodging someone invisible or behind a wall would give them away in PvP.

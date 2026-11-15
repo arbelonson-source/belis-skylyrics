@@ -157,6 +157,18 @@ public final class LyricsRenderer {
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
 
+	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
+	public void onLeaveWorld() {
+		wordsLevel = null;
+		announced = null;
+		WorldWords.forgetPlayers();
+	}
+
+	/** You joined a world: its first song title floats up again. A dimension change within a world doesn't count. */
+	public void onJoinWorld() {
+		announced = null;
+	}
+
 	/** You swung at something; a World word under the crosshair gets knocked. */
 	public void swing() {
 		worldWords.swing();
@@ -288,6 +300,14 @@ public final class LyricsRenderer {
 		updateAnchor(cfg, camera, dt);
 		// Every layout, so the crosshair, sky and hat flashes follow the lines even where nothing here animates them
 		clock.frame(visibility > 0.01f && !shown.isEmpty(), shown.instrumental(), shown.indexAt(time), now, ANIM_NS);
+		if (visibility <= 0.01f && !shown.isEmpty() && !shown.instrumental()) {
+			// Hidden: keep up with the song, so showing the lyrics again isn't mistaken for a line change
+			clock.follow(shown.indexAt(time), now, ANIM_NS);
+		}
+		// Only the Arc layout prunes these; coming back to it must fade each line in afresh, not snap to an old spot
+		if (cfg.layout != Layout.ARC) {
+			arcAnchors.clear();
+		}
 		if (cfg.layout == Layout.WORLD && !shown.instrumental()) {
 			renderWorldWords(context, mc, cfg, camera, time, now);
 			return;
@@ -361,7 +381,11 @@ public final class LyricsRenderer {
 
 	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
 	private long takeLyrics(SkyLyricsConfig cfg) {
-		Lyrics current = service.lyrics();
+		Track playing = tracker.track();
+		Track loaded = service.track();
+		// The tracker moves to a new song a moment before the lyrics are asked for: never show the old song's lines then
+		// (title and artist only: a late album alone doesn't reload the lyrics)
+		Lyrics current = loaded.title().equals(playing.title()) && loaded.artist().equals(playing.artist()) ? service.lyrics() : Lyrics.NONE;
 		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
 			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
 		}
@@ -484,7 +508,6 @@ public final class LyricsRenderer {
 		if (mc.level != wordsLevel) {
 			wordsLevel = mc.level;
 			worldWords.clear();
-			announced = null;
 		}
 		// While you're dead the words drop away and nothing new comes; after respawning they start over
 		boolean dead = cfg.worldDeath && mc.player != null && mc.player.isDeadOrDying();

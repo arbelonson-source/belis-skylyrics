@@ -93,6 +93,11 @@ public final class AlbumArt {
 		loadedUrl = url;
 		long gen = generation.incrementAndGet();
 		hasTexture = false;
+		// A cover that finished decoding for the song we just left must not be shown on this one
+		NativeImage stale = pending.getAndSet(null);
+		if (stale != null) {
+			stale.close();
+		}
 		if (url.isEmpty()) {
 			color = FALLBACK_COLOR;
 			return;
@@ -113,6 +118,13 @@ public final class AlbumArt {
 				NativeImage old = pending.getAndSet(scaled);
 				if (old != null) {
 					old.close();
+				}
+				// load() may have moved on between the check above and the hand-over: take our own image back
+				if (generation.get() != gen) {
+					NativeImage mine = pending.getAndSet(null);
+					if (mine != null) {
+						mine.close();
+					}
 				}
 			} catch (Exception | OutOfMemoryError e) {
 				LOG.debug("Couldn't load album art {}: {}", url, e.toString());
