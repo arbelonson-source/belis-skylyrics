@@ -55,6 +55,8 @@
 - **Last line fades.** In Lines and Arc, a line that ended more than a second and a half ago (the last lyric during the outro, or a line before a long instrumental part) fades out.
 - **Floating distance.** With Floating placement, every step of the **Distance** slider now moves the lyrics (before, 8 to 24 looked the same, and so did 96 to 160). The default looks the same as before.
 - **Faint glow on 1.21.1 to 1.21.5.** A very faint glow (the previous and next lines, the end of the pulse) no longer flashes as solid colour.
+- **Themes keep your other settings.** Picking a theme now changes only what themes set (the layout, colours, fonts, glow, size, opacity, animation, sky and a few more). Settings no theme touches, such as **Karaoke**, **Shadow**, **Two-tone** and **Round font**, stay as you set them.
+- **Elytra mode.** After a steep dive or climb, the words come back to where they were once you level out, instead of staying higher or lower.
 
 ### Faster
 

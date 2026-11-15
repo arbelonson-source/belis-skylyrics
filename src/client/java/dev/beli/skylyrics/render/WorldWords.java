@@ -219,6 +219,8 @@ final class WorldWords {
 		final float nod, lean, size;
 		/** The way the card faces, turned along with you while you travel. */
 		float face;
+		/** How many degrees of tilt were clipped at {@link #SWING_PITCH}, given back when you tilt the other way. */
+		float clip;
 		final long born;
 		long goneAt = -1;
 		/** The colour it had when it started fading, kept so the next line's colour never washes over it, or -1. */
@@ -868,7 +870,9 @@ final class WorldWords {
 			return;
 		}
 		for (Card c : cards) {
-			c.pos = eye.add(swing(c.pos.add(moved).subtract(eye), turn, tilt));
+			Vec3 offset = c.pos.add(moved).subtract(eye);
+			c.pos = eye.add(swing(offset, turn, tilt, c.clip));
+			c.clip = clipAfter(offset, c.clip, tilt);
 			c.face += turn;
 		}
 		if (sentence != null) {
@@ -881,12 +885,33 @@ final class WorldWords {
 
 	/** An offset from the eye turned with the view: {@code turn} degrees round and {@code tilt} degrees down. */
 	static Vec3 swing(Vec3 offset, float turn, float tilt) {
+		return swing(offset, turn, tilt, 0);
+	}
+
+	/**
+	 * The same, where {@code clip} degrees of earlier tilt were cut off at {@link #SWING_PITCH}: they count again, so
+	 * tilting back gives the word its old height instead of leaving it higher or lower.
+	 */
+	static Vec3 swing(Vec3 offset, float turn, float tilt, float clip) {
 		double far = offset.length();
 		if (far < 1e-3 || turn == 0 && tilt == 0) {
 			return offset;
 		}
-		float pitch = Mth.clamp(pitchOf(offset) + tilt, -SWING_PITCH, SWING_PITCH);
-		return direction(yawOf(offset) + turn, pitch).scale(far);
+		return direction(yawOf(offset) + turn, shownPitch(pitchOf(offset), clip, tilt)).scale(far);
+	}
+
+	/** The pitch drawn after tilting by {@code tilt} from {@code pitch} with {@code clip} degrees held back: never past {@link #SWING_PITCH}. */
+	static float shownPitch(float pitch, float clip, float tilt) {
+		return Mth.clamp(pitch + clip + tilt, -SWING_PITCH, SWING_PITCH);
+	}
+
+	/** The degrees of tilt held back after {@link #swing(Vec3, float, float, float)}. */
+	static float clipAfter(Vec3 offset, float clip, float tilt) {
+		if (offset.length() < 1e-3) {
+			return clip;
+		}
+		float pitch = pitchOf(offset);
+		return pitch + clip + tilt - shownPitch(pitch, clip, tilt);
 	}
 
 	/**
@@ -1538,11 +1563,16 @@ final class WorldWords {
 		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */
 		static final float LOST_YAW = 22f, LOST_PITCH = 30f;
 
+		/** Degrees of tilt cut off at {@link #SWING_PITCH}, given back when you tilt the other way. */
+		float clip;
+
 		/** Turns the rest of the line along with you (see {@link WorldWords#glide}). */
 		void swing(float turn, float tilt) {
 			left += turn;
 			cursor += turn;
-			float moved = Mth.clamp(top + tilt, -SWING_PITCH, SWING_PITCH) - top;
+			float shown = shownPitch(top, clip, tilt);
+			float moved = shown - top;
+			clip = top + clip + tilt - shown;
 			top += moved;
 			above += moved;
 			low += moved;

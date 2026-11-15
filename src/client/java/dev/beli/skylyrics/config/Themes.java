@@ -171,15 +171,54 @@ public final class Themes {
 			}));
 
 	private static final List<Field> FIELDS = new ArrayList<>();
+	/** The look fields at least one theme sets, worked out from the themes themselves; the rest are the player's own and a theme leaves them alone. */
+	private static final List<Field> THEMED = new ArrayList<>();
 
 	static {
 		try {
 			for (String name : LOOK) {
 				FIELDS.add(SkyLyricsConfig.class.getField(name));
 			}
-		} catch (NoSuchFieldException e) {
+			// A field is set by a theme when running its look changes it from a config where every field has an odd value
+			// (two tries, so a theme that sets a field to the value of one of them is still seen)
+			for (Field f : FIELDS) {
+				boolean set = false;
+				for (int round = 0; round < 2 && !set; round++) {
+					SkyLyricsConfig odd = new SkyLyricsConfig();
+					f.set(odd, other(f.getType(), f.get(odd), round));
+					Object before = f.get(odd);
+					for (Theme theme : ALL) {
+						theme.look().accept(odd);
+						set |= !Objects.equals(before, f.get(odd));
+						f.set(odd, before);
+					}
+				}
+				if (set) {
+					THEMED.add(f);
+				}
+			}
+		} catch (ReflectiveOperationException e) {
 			throw new IllegalStateException(e);
 		}
+	}
+
+	private static Object other(Class<?> type, Object now, int round) {
+		if (type == boolean.class) {
+			return round == 0 ? !(Boolean) now : now;
+		} else if (type == float.class) {
+			return (Float) now + (round == 0 ? 0.123f : -0.211f);
+		} else if (type == int.class) {
+			return (Integer) now ^ (round == 0 ? 0x123456 : 0x654321);
+		} else if (type.isEnum()) {
+			Object[] all = type.getEnumConstants();
+			return all[(((Enum<?>) now).ordinal() + 1 + round) % all.length];
+		}
+		throw new IllegalStateException("A look setting of type " + type + " needs a way to differ");
+	}
+
+	/** The names of the look settings some theme sets; applying a theme resets exactly these. */
+	public static List<String> themed() {
+		return THEMED.stream().map(Field::getName).toList();
 	}
 
 	private Themes() {
@@ -188,7 +227,7 @@ public final class Themes {
 	public static void apply(Theme theme, SkyLyricsConfig cfg) {
 		SkyLyricsConfig look = theme.preview();
 		try {
-			for (Field f : FIELDS) {
+			for (Field f : THEMED) {
 				f.set(cfg, f.get(look));
 			}
 		} catch (IllegalAccessException e) {
