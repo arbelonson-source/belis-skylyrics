@@ -9,13 +9,13 @@ The **Music** tab in the settings (press **J**) is the best place to start. It s
 Go through these in order:
 
 1. **Is the mod turned on?** At the top of the settings screen there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
-2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to North, East, South or West. Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
+2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to N, E, S or W (north, east, south or west). Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
 3. **Are they hidden on purpose?** On the **Display** tab check **Hide with F1** (pressing F1 hides them along with the rest of the screen), **Hide in menus** (hidden while chat or any menu is open) and **Hide when paused** (hidden while the music is paused).
 4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen).
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
    - **Looking for lyrics…**: wait a moment.
-   - **No lyrics found for this song**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
-   - **Couldn't reach the lyrics sites. Offline?**: the mod uses two sites, LRCLIB first and NetEase Cloud Music as a backup, and it couldn't get lyrics from either. Try these in order:
+   - **No lyrics found for this song. Try Retry.**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
+   - **Couldn't reach the lyrics sites. Check your internet, then press Retry.**: the mod uses two sites, LRCLIB first and NetEase Cloud Music as a backup, and it couldn't get lyrics from either. Try these in order:
      1. Check that your internet works (open a web page).
      2. Press **Retry**.
      3. If your internet is fine, one of the sites may be down or busy, and the other doesn't have this song. The mod keeps trying while the song plays, and doesn't remember the song as "no lyrics", so the lyrics usually appear by themselves once a site is back. Try again in a few minutes, or play another song.
@@ -36,7 +36,7 @@ Go through these in order:
 
 Lyrics can be a little off when the version you're hearing is different from the one the lyrics were timed to. You can fix it for just this song, and the fix is remembered next time it plays.
 
-**In the settings:** open the **Music** tab while the song plays and move the **This song** slider. If the words come late, move it right. If they come early, move it left. It moves in steps of 0.05 seconds, up to 3 seconds either way.
+**In the settings:** open the **Music** tab while the song plays and move the **This song** slider. If the words come late, move it right. If they come early, move it left. It moves in steps of 0.05 seconds, up to 5 seconds either way.
 
 **With keys, without leaving the game:** in **Options → Controls → Key Binds → Beli's SkyLyrics**, give keys to **Lyrics are late (this song)** and **Lyrics are early (this song)**. Each press moves the lyrics by 0.1 seconds, and a message above your hotbar shows the new timing.
 
@@ -179,7 +179,7 @@ Your Minecraft folder is:
 - **Official launcher on macOS:** `~/Library/Application Support/minecraft`. In Finder, choose **Go → Go to Folder…**, paste that and press Return.
 - **Prism Launcher:** right-click the instance and choose **Folder**. The `config` folder and the hidden `.cache` folder are inside.
 
-To start over with all settings, use **Reset all** at the bottom of the settings screen (click it twice). Or close Minecraft and delete `skylyrics.json`.
+To start over with all settings, use **Reset all** at the bottom of the settings screen (click it twice). It keeps your finished intro tour, your update choice, your Spotify app id (Client ID), your per-song timings and your recent searches. Or close Minecraft and delete `skylyrics.json`.
 
 Deleting the `skylyrics` cache folder is safe. The mod just looks up the lyrics again next time. Your per-song timing fixes are kept in the settings file, not in the cache.
 

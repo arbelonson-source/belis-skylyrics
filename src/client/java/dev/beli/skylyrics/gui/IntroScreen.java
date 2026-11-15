@@ -149,7 +149,7 @@ public final class IntroScreen extends Screen {
 		return switch (layout) {
 			case WORLD -> Tr.t("Words float around you in the world and drift up into the sky.");
 			case ARC -> Tr.t("The line being sung, on a gentle curve across the sky.");
-			case LINES -> Tr.t("The last, current and next line, straight and centred.");
+			case LINES -> Tr.t("The previous, current and next line, straight and centred.");
 		};
 	}
 

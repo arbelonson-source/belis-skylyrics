@@ -581,7 +581,7 @@ public final class SkyLyricsConfig {
 		spotifyClientId = spotifyClientId == null ? "" : spotifyClientId.strip();
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);
-		skyStrength = clamp(skyStrength, 0, 1);
+		skyStrength = clamp(skyStrength, 0.1f, 1);
 		size = clamp(size, 0.3f, 3);
 		worldWords = Math.max(1, Math.min(10, worldWords));
 		worldFade = clamp(worldFade, 0.8f, 6);

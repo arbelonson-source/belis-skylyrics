@@ -9,6 +9,9 @@ import net.minecraft.client.resources.language.I18n;
 public final class Tr {
 	private static final Map<String, String> KEYS = new ConcurrentHashMap<>();
 
+	/** What each translated text was written as in English, so a search can match the English words too. */
+	private static final Map<String, String> SOURCE = new ConcurrentHashMap<>();
+
 	private Tr() {
 	}
 
@@ -20,9 +23,18 @@ public final class Tr {
 		*///?} else {
 		if (I18n.exists(key)) {
 		//?}
-			return I18n.get(key, args);
+			String shown = I18n.get(key, args);
+			if (args.length == 0 && !shown.equals(english)) {
+				SOURCE.put(shown, english);
+			}
+			return shown;
 		}
 		return args.length == 0 ? english : String.format(Locale.ROOT, english, args);
+	}
+
+	/** The English a shown text was translated from, or the text itself when it is English or not from {@link #t}. */
+	public static String english(String shown) {
+		return shown == null ? "" : SOURCE.getOrDefault(shown, shown);
 	}
 
 	/** The lang key for an English text: "skylyrics.ui." + slug. */

@@ -47,7 +47,7 @@ It's free and open source, and it always will be.
 ### Features
 
 - **Lyrics in the sky**, in time with the song. Pick a layout: **Arc** puts the line being sung on a gentle curve, **Lines** shows the previous and next lines too, and **World** places each word in the world around you as it's sung.
-- **Word-by-word animation**: words appear as they are sung. Or pick Fade, Rise, Pop or Type, plus a karaoke fill and a small pulse on each new line.
+- **Word-by-word animation**: words appear as they are sung. Or pick Fade, Rise, Pop, Type or Slide, plus a karaoke fill and a small pulse on each new line.
 - **A top bar** with the album cover, the song name and the line being sung, a clock on its left and your frames per second and ping on its right.
 - **Five letter styles**: Bold, Smooth, Round, Handwritten or the Minecraft font, with an optional **Depth** edge that makes the letters look 3D.
 - **Colours**: a soft periwinkle to start with, other colours you pick, the album cover's colour, or rainbow. Glow, shadow and opacity are all adjustable.

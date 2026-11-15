@@ -30,6 +30,21 @@ final class SettingsSearch {
 		return true;
 	}
 
+	/**
+	 * The search box after pasting {@code clip}: runs of white space become one space, and the characters typing
+	 * would refuse (the section sign, control characters) are dropped.
+	 */
+	static String pasted(String query, String clip) {
+		StringBuilder out = new StringBuilder(query);
+		clip.replaceAll("\\s+", " ").codePoints().filter(SettingsSearch::allowed).forEach(out::appendCodePoint);
+		return out.toString();
+	}
+
+	/** Same rule as Minecraft's chat filter: no section sign, no control characters. */
+	static boolean allowed(int cp) {
+		return cp != 167 && cp >= 32 && cp != 127;
+	}
+
 	private static String american(String s) {
 		for (String[] pair : SPELLINGS) {
 			s = s.replace(pair[0], pair[1]);
