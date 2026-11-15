@@ -373,10 +373,13 @@ class MacMediaSourceTest {
 	@Test
 	void snapshotCarriesTheTimeTheScriptStarted() throws Exception {
 		long ms = 1_000_000L;
+		long[] inRun = new long[2]; // when the fake run was entered and left
 		MacMediaSource.Run slowRun = new MacMediaSource.Run() {
 			@Override
 			public MacMediaSource.Result await(long waitMs) throws InterruptedException {
+				inRun[0] = System.nanoTime();
 				Thread.sleep(400); // osascript took 400 ms to start up, read and answer
+				inRun[1] = System.nanoTime();
 				return new MacMediaSource.Result(0, SPOTIFY_PLAYING, "");
 			}
 
@@ -388,9 +391,13 @@ class MacMediaSourceTest {
 		long before = System.nanoTime();
 		Snapshot s = source.poll();
 		long after = System.nanoTime();
-		assertTrue(s.readAtNanos() >= before, "not before the poll");
-		assertTrue(s.readAtNanos() < before + 300 * ms, "stamped about 200 ms in, not at the end: " + (s.readAtNanos() - before) / ms + " ms");
-		assertTrue(s.readAtNanos() < after);
+		// The stamp is the midpoint of when the source saw the run start (in [before, inRun[0]]) and finish
+		// (in [inRun[1], after]); these bounds need no guess about how slow the machine is.
+		long lowest = (before + inRun[1]) / 2;
+		// the source never stamps more than MAX_LAG_NS before the finish, so a slow run is clamped
+		long highest = Math.max((inRun[0] + after) / 2, after - MacMediaSource.MAX_LAG_NS);
+		assertTrue(s.readAtNanos() >= lowest, "not before the middle: " + (s.readAtNanos() - lowest) / ms + " ms");
+		assertTrue(s.readAtNanos() <= highest, "not after the middle, e.g. at the end: " + (s.readAtNanos() - highest) / ms + " ms");
 	}
 
 	/** The arguments after the main script. */

@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
@@ -63,7 +64,11 @@ class LineInfoTest {
 		assertSame(rtl, LyricsRenderer.Display.of(row, true));
 		assertSame(ltr, LyricsRenderer.Display.of(row, false));
 		assertNotSame(rtl, ltr);
-		assertArrayEquals(rtl.logical(), LyricsRenderer.Display.of(row, true).logical());
+		// The same mixed row really is laid out differently by direction (the comma goes to the other side of שלום)
+		assertFalse(java.util.Arrays.equals(rtl.logical(), ltr.logical()), "orders differ");
+		assertFalse(java.util.Arrays.equals(rtl.cps(), ltr.cps()), "drawn characters differ");
+		assertEquals(',', ltr.cps()[ltr.cps().length - 1], "left to right: the comma ends the row");
+		assertEquals(',', rtl.cps()[0], "right to left: the comma starts it");
 		assertEquals(plain.cps().length, rtl.cps().length);
 	}
 }

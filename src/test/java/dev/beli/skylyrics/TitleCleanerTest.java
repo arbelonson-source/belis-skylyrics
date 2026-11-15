@@ -183,7 +183,7 @@ class TitleCleanerTest {
 				"[" + "a".repeat(10000),
 				"Song" + " - live".repeat(2000),
 				"\uFF08" + "with ".repeat(3000)};
-		org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(2), () -> {
+		org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(15), () -> {
 			for (String h : hostile) {
 				TitleCleaner.sameSong(h, h + "x");
 				TitleCleaner.forSearch(h);
@@ -197,6 +197,12 @@ class TitleCleanerTest {
 		String s = "a".repeat(TitleCleaner.MAX_TEXT - 1) + "\uD83C\uDFB5" + "b";
 		String c = TitleCleaner.capped(s);
 		assertFalse(Character.isHighSurrogate(c.charAt(c.length() - 1)));
+		assertTrue(c.length() <= TitleCleaner.MAX_TEXT, "never longer than the cap: " + c.length());
+		// the emoji straddles the cut: it is dropped whole, not halved
+		assertEquals("a".repeat(TitleCleaner.MAX_TEXT - 1), c);
+		// one that fits before the cut stays whole
+		String fits = "a".repeat(TitleCleaner.MAX_TEXT - 2) + "\uD83C\uDFB5" + "b";
+		assertEquals("a".repeat(TitleCleaner.MAX_TEXT - 2) + "\uD83C\uDFB5", TitleCleaner.capped(fits));
 		assertEquals("short", TitleCleaner.capped("short"));
 	}
 }

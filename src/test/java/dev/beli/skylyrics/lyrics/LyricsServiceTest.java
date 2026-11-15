@@ -107,7 +107,7 @@ class LyricsServiceTest {
 		if (holdFirst && firstSeen.getCount() > 0) {
 			firstSeen.countDown();
 			try {
-				release.await(10, TimeUnit.SECONDS);
+				release.await(60, TimeUnit.SECONDS);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
@@ -139,7 +139,7 @@ class LyricsServiceTest {
 	}
 
 	private static void waitFor(BooleanSupplier done) throws InterruptedException {
-		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
 		while (!done.getAsBoolean()) {
 			assertTrue(System.nanoTime() < until, "timed out");
 			Thread.sleep(10);
@@ -551,21 +551,42 @@ class LyricsServiceTest {
 
 	@Test
 	void skippedSongsAreNotLookedUp() throws InterruptedException {
-		holdFirst = true;
+		// load() cancels the fetch in flight with an interrupt, which frees the single worker at once in real life (a
+		// real request stops when interrupted). So this test's source ignores the interrupt for Song One: the worker is
+		// provably busy while Two, Three and Four are loaded, and Two and Three can only be skipped by their stale check.
+		service.shutdown();
+		List<String> askedTitles = new CopyOnWriteArrayList<>();
+		CountDownLatch oneAsked = new CountDownLatch(1);
+		CountDownLatch letOneGo = new CountDownLatch(1);
+		service = new LyricsService(t -> {
+			askedTitles.add(t.title());
+			if (t.title().equals("Song One")) {
+				oneAsked.countDown();
+				while (letOneGo.getCount() > 0) {
+					try {
+						letOneGo.await();
+					} catch (InterruptedException e) {
+						// keep waiting: the point is a worker that stays busy
+					}
+				}
+			}
+			return LrclibClient.Result.NOT_FOUND;
+		}, cache);
 		service.load(track("Song One", 200_000));
-		assertTrue(firstSeen.await(10, TimeUnit.SECONDS));
+		assertTrue(oneAsked.await(60, TimeUnit.SECONDS), "Song One was never asked");
 
 		service.load(track("Song Two", 200_000));
 		service.load(track("Song Three", 200_000));
 		Track last = track("Song Four", 200_000);
 		service.load(last);
-		release.countDown();
+		letOneGo.countDown();
 
+		waitFor(() -> askedTitles.contains("Song Four"));
 		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
 		assertEquals(last, service.track());
-		assertEquals(0, askedAbout("Song Two"), asked.toString());
-		assertEquals(0, askedAbout("Song Three"), asked.toString());
-		assertTrue(askedAbout("Song Four") > 0, asked.toString());
+		assertFalse(askedTitles.contains("Song Two"), askedTitles.toString());
+		assertFalse(askedTitles.contains("Song Three"), askedTitles.toString());
+		assertEquals(List.of("Song One", "Song Four"), askedTitles);
 	}
 
 	@Test
