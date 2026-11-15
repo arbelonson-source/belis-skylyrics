@@ -127,6 +127,18 @@ class TitleCleanerTest {
 		assertEquals("A", TitleCleaner.mainArtist("A feat. B"));
 	}
 
+	@Test
+	void instrumentalAndKaraokeAreNotTheSungSong() {
+		different("Song (Instrumental)", "Song");
+		different("Song [Karaoke Version]", "Song");
+		different("Song (Backing Track)", "Song");
+		different("Song (A Cappella)", "Song");
+		different("Song (Acapella)", "Song");
+		different("Song (Off Vocal)", "Song");
+		same("Song (Instrumental)", "Song (Instrumental)");
+		same("Song (Remastered)", "Song");
+	}
+
 	private static void same(String a, String b) {
 		assertTrue(TitleCleaner.sameSong(a, b), a + " / " + b);
 		assertTrue(TitleCleaner.sameSong(b, a), b + " / " + a);

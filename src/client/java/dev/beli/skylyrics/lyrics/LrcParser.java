@@ -8,12 +8,12 @@ import java.util.regex.Pattern;
 
 /** Parses LRC text ("[01:23.45]words") into {@link Lyrics}. */
 public final class LrcParser {
-	private static final Pattern TIME = Pattern.compile("\\[(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:](\\d+))?]");
+	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
 	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:]\\d+)?>");
 	// Also old Mac files that end lines with a bare \r
-	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n");
+	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n|\\u2028|\\u2029");
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
 	private static final Pattern SECTION = Pattern.compile("\\[[^\\[\\]]*]");
 	// Whole line that is only an instrumental marker: "(Instrumental)", "[music]", "Instrumental". A bare "Music" stays a
@@ -31,6 +31,10 @@ public final class LrcParser {
 	// Zero-width spaces and stray byte order marks are invisible but would sit inside words
 	private static final Pattern INVISIBLE = Pattern.compile("[\\u200B\\u2060\\uFEFF]");
 
+	// Control characters would show as boxes (tab becomes a space with the other spaces)
+	private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}&&[^\\t]]");
+	private static final Pattern LEADING = Pattern.compile("^[\\s\\p{Zs}\\u200B\\u2060\\uFEFF]+");
+
 	private LrcParser() {
 	}
 
@@ -41,7 +45,7 @@ public final class LrcParser {
 		long offset = 0;
 		List<LyricLine> lines = new ArrayList<>();
 		for (String raw : lines(lrc)) {
-			raw = FULL_WIDTH.matcher(raw.stripLeading()).replaceAll(r -> r.group().replace('［', '[').replace('］', ']').replace('：', ':').replace('．', '.'));
+			raw = FULL_WIDTH.matcher(LEADING.matcher(raw).replaceFirst("")).replaceAll(r -> r.group().replace('［', '[').replace('］', ']').replace('：', ':').replace('．', '.'));
 			// Only a line that starts with the tag sets it; a broken huge number is ignored instead of losing the lyrics
 			Matcher off = OFFSET.matcher(raw);
 			if (off.lookingAt()) {
@@ -128,7 +132,7 @@ public final class LrcParser {
 	}
 
 	static String tidy(String text) {
-		return SPACES.matcher(INVISIBLE.matcher(text).replaceAll("")).replaceAll(" ").strip();
+		return SPACES.matcher(CONTROL.matcher(INVISIBLE.matcher(text).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
 	}
 
 	/** At most this many different lines share one stamp as one line: an original, its romanization and a translation. */

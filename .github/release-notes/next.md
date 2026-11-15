@@ -49,6 +49,10 @@
 - **Last line fades.** In Lines and Arc, a line that ended more than a second and a half ago (the last lyric during the outro, or a line before a long instrumental part) fades out.
 - **Floating distance.** With Floating placement, every step of the **Distance** slider now moves the lyrics (before, 8 to 24 looked the same, and so did 96 to 160). The default looks the same as before.
 - **Faint glow on 1.21.1 to 1.21.5.** A very faint glow (the previous and next lines, the end of the pulse) no longer flashes as solid colour.
+- **Instrumental and karaoke tracks.** "Song (Instrumental)", a karaoke, a backing track or an a cappella version no longer gets the lyrics of the sung song, and the other way round.
+- **Synced lyrics first.** When LRCLIB's best match for a song has only plain lyrics, the mod also looks for a synced copy before settling for the plain one. Lyrics whose track length is more than 20 seconds off your song's are no longer used. A lyrics file with only tags and no lines no longer counts as an answer.
+- **Odd lyric files.** Lines that start with a no-break or invisible space, spaces inside the brackets ("[ 00:12.00 ]"), and stray control characters no longer lose lines or show as boxes.
+- **Lyrics saved by older versions.** Lyrics saved by version 0.8.0 or older are checked again in the background: the ones that were another song's or an "instrumental" placeholder are replaced, or dropped when LRCLIB has nothing.
 
 ### Faster
 

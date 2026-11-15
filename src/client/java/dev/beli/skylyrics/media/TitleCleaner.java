@@ -109,10 +109,26 @@ public final class TitleCleaner {
 	/** Brackets that make it another work, so they are never ignored. */
 	private static final Pattern OTHER_WORK = Pattern.compile("(?i)\\b(remix|part|pt|reprise|interlude|intro|outro|skit|cover)\\b");
 
+	/** Brackets naming a track without the singing (or only the singing): another recording, with other lyrics or none. */
+	private static final Pattern NO_VOCALS = Pattern.compile("(?i)\\b(instrumental|karaoke|backing track|a ?cap+ella|off[ -]vocal)\\b");
+
+	private static boolean noVocals(String title) {
+		Matcher m = ANY_BRACKET.matcher(capped(title));
+		while (m.find()) {
+			if (NO_VOCALS.matcher(m.group(1)).find()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Whether a lyrics result titled {@code found} is the song {@code wanted}. A blank title is never a match. */
 	public static boolean sameSong(String wanted, String found) {
 		if (found.isBlank()) {
 			return false;
+		}
+		if (noVocals(wanted) != noVocals(found)) {
+			return false; // "Song (Instrumental)" is not "Song", whatever else matches
 		}
 		if (songKey(wanted).equals(songKey(found))) {
 			return true;

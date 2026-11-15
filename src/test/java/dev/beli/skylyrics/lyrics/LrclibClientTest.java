@@ -238,6 +238,50 @@ class LrclibClientTest {
 	}
 
 	@Test
+	void aRecordFarOffTheTrackLengthIsNotUsed() throws Exception {
+		assertFalse(findWith(TRACK, hit("A Made-Up Song", BAND, 240, "[00:01.00]x")).found());
+		assertEquals("[00:01.00]x", findWith(TRACK, hit("A Made-Up Song", BAND, 215, "[00:01.00]x")).synced());
+		assertFalse(findWith(TRACK, hit("A Made-Up Song", BAND, 225, "[00:01.00]x")).found());
+	}
+
+	@Test
+	void plainOnlyExactHitLosesToASyncedSearchResult() throws Exception {
+		getCode = 200;
+		getBody = "{\"trackName\":\"A Made-Up Song\",\"duration\":200,\"plainLyrics\":\"plain words\",\"instrumental\":false}";
+		searchBody = HIT;
+		LrclibClient.Result r = client.find(TRACK);
+		assertEquals("[00:01.00]A made-up line", r.synced());
+		assertEquals(2, asked.size());
+	}
+
+	@Test
+	void plainOnlyExactHitStaysWhenSearchHasNothingSynced() throws Exception {
+		getCode = 200;
+		getBody = "{\"trackName\":\"A Made-Up Song\",\"duration\":200,\"plainLyrics\":\"plain words\",\"instrumental\":false}";
+		searchBody = "[]";
+		LrclibClient.Result r = client.find(TRACK);
+		assertEquals("plain words", r.plain());
+		assertEquals(null, r.synced());
+	}
+
+	@Test
+	void syncedExactHitAddsNoSearch() throws Exception {
+		getCode = 200;
+		getBody = "{\"trackName\":\"A Made-Up Song\",\"duration\":200,\"syncedLyrics\":\"[00:01.00]hi\",\"instrumental\":false}";
+		assertEquals("[00:01.00]hi", client.find(TRACK).synced());
+		assertEquals(List.of("/api/get"), asked);
+	}
+
+	@Test
+	void syncedTextOfOnlyTagsIsNotAnAnswer() throws Exception {
+		getCode = 200;
+		getBody = "{\"trackName\":\"A Made-Up Song\",\"duration\":200,\"syncedLyrics\":\"[ar:Someone]\\n[ti:Song]\",\"instrumental\":false}";
+		searchBody = HIT;
+		assertEquals("[00:01.00]A made-up line", client.find(TRACK).synced());
+		assertFalse(new LrclibClient.Result("[ar:x]", null, false).found());
+	}
+
+	@Test
 	void aSlightlyDifferentLengthStillMatches() throws Exception {
 		assertEquals("[00:01.00]x", findWith(TRACK, hit("A Made-Up Song", BAND, 203, "[00:01.00]x")).synced());
 	}
