@@ -36,6 +36,8 @@ import dev.beli.skylyrics.media.Track;
 public final class AlbumArt {
 	private static final Logger LOG = LoggerFactory.getLogger("SkyLyrics");
 	public static final int SIZE = 64;
+	/** The most a cover's body may take to arrive. */
+	private static final long BODY_TIMEOUT_S = 20;
 	public static final Identifier TEXTURE = Identifier.fromNamespaceAndPath("skylyrics", "dynamic/album_art");
 	/** Used when there's no cover, or it's all grey. */
 	public static final int FALLBACK_COLOR = 0xB57BFF;
@@ -191,6 +193,16 @@ public final class AlbumArt {
 			HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
 			HttpResponse<InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
 			try (InputStream in = response.body()) {
+				// The request's timeout only covers the wait for the answer: a server that stalls mid-body would hold
+				// the single worker (and every later cover) forever, so the stream is closed after a while
+				java.util.concurrent.CompletableFuture.delayedExecutor(BODY_TIMEOUT_S, java.util.concurrent.TimeUnit.SECONDS)
+					.execute(() -> {
+						try {
+							in.close();
+						} catch (java.io.IOException ignored) {
+							// already closed
+						}
+					});
 				if (response.statusCode() / 100 != 2
 						|| !CoverCache.acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 					return null;
