@@ -24,7 +24,18 @@ public final class LrcParser {
 	private static final Pattern FULL_WIDTH = Pattern.compile("［[\\d：．.:]+］");
 	private static final char BOM = 0xFEFF;
 	// A timed line of only music notes, like "♪" or "♫ ♫", marks a break in the singing
-	private static final Pattern NOTES = Pattern.compile("[\\s♩♪♫♬]*");
+	private static final String NOTE_CHARS = "[\\s♩♪♫♬\\x{1F3B5}\\x{1F3B6}]";
+	private static final Pattern NOTES = Pattern.compile(NOTE_CHARS + "*");
+	// "♪ instrumental ♪": a marker word framed by notes
+	private static final Pattern NOTES_WORD = Pattern.compile("(?:" + NOTE_CHARS + "*[♩♪♫♬\\x{1F3B5}\\x{1F3B6}]" + NOTE_CHARS + "*(?:instrumental|music)" + NOTE_CHARS
+			+ "*|" + NOTE_CHARS + "*(?:instrumental|music)" + NOTE_CHARS + "*[♩♪♫♬\\x{1F3B5}\\x{1F3B6}]" + NOTE_CHARS + "*)", Pattern.CASE_INSENSITIVE);
+	// "(Intro)", "[Outro]", "(Guitar Solo)": a whole bracketed line naming a part without words
+	private static final Pattern PART_MARKER = Pattern.compile(
+			"[(\\[（【]\\s*(?:intro|outro|interlude|solo|[\\p{L}]+ solo|instrumental(?: break| interlude)?)\\s*[)\\]）】]", Pattern.CASE_INSENSITIVE);
+	// A part tag in front of sung words: "[Chorus] words", "[Verse 1: Someone] words"
+	private static final Pattern LEADING_TAG = Pattern.compile(
+			"^\\[\\s*(?:pre-?chorus|post-?chorus|chorus|verse|bridge|hook|outro|intro|refrain|interlude|breakdown)(?:\\s*\\d+)?(?:\\s*:[^\\[\\]]*)?\\s*]\\s*(?=\\S)",
+			Pattern.CASE_INSENSITIVE);
 	// Lyrics copied from websites often use thin, wide or no-break spaces between words, which the floating words
 	// would not split on; any run of them becomes one plain space
 	private static final Pattern SPACES = Pattern.compile("[\\s\\p{Zs}]+");
@@ -67,7 +78,8 @@ public final class LrcParser {
 				continue;
 			}
 			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
-			if (NOTES.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
+			text = LEADING_TAG.matcher(text).replaceFirst("");
+			if (NOTES.matcher(text).matches() || NOTES_WORD.matcher(text).matches() || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
 				text = "";
 			}
 			for (long t : times) {

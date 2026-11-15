@@ -372,10 +372,18 @@ public final class MprisSource implements MediaSource {
 		}
 	}
 
+	/** Whether the player says it is Stopped (not just Paused). */
+	static boolean stopped(Map<String, Variant<?>> all) {
+		return "Stopped".equals(value(all.get("PlaybackStatus")));
+	}
+
 	private static @Nullable Reading read(DBusConnection conn, String busName) throws Exception {
 		Properties props = conn.getRemoteObject(busName, PATH, Properties.class);
 		Map<String, Variant<?>> all = props.GetAll(PLAYER_IFACE);
 
+		if (stopped(all)) {
+			return null; // a stopped player may keep its old song's data: that isn't playing anything
+		}
 		boolean playing = "Playing".equals(value(all.get("PlaybackStatus")));
 		long positionUs = positionMicros(all, () -> props.Get(PLAYER_IFACE, "Position"));
 		Object metaObj = value(all.get("Metadata"));

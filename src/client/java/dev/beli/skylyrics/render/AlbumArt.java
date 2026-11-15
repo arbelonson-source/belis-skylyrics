@@ -243,9 +243,10 @@ public final class AlbumArt {
 	}
 
 	private @Nullable BufferedImage read(String url) throws Exception {
-		if (url.startsWith("file://")) {
-			Path path = Path.of(URI.create(url));
-			if (!CoverCache.acceptable(Files.size(path))) {
+		Path path = fileUrlPath(url);
+		if (path != null) {
+			// Only a plain file: a pipe, a device or a folder is never read
+			if (!Files.isRegularFile(path) || !CoverCache.acceptable(Files.size(path))) {
 				return null;
 			}
 			try (InputStream in = Files.newInputStream(path)) {
@@ -274,6 +275,52 @@ public final class AlbumArt {
 			}
 		}
 		return null; // data: URIs and other odd schemes aren't worth it
+	}
+
+	/**
+	 * The local path a file cover address points to, or null when it isn't one. Players write these loosely: "file:///a b/c.jpg"
+	 * with raw spaces, "file://localhost/a", "file:/a", percent-encoded or raw unicode. Another host's file is not local.
+	 */
+	static @Nullable Path fileUrlPath(@Nullable String url) {
+		if (url == null || url.length() < 6 || !url.regionMatches(true, 0, "file:", 0, 5)) {
+			return null;
+		}
+		String rest = url.substring(5);
+		if (rest.startsWith("//")) {
+			int slash = rest.indexOf('/', 2);
+			if (slash < 0) {
+				return null;
+			}
+			String host = rest.substring(2, slash);
+			if (!host.isEmpty() && !host.equalsIgnoreCase("localhost")) {
+				return null;
+			}
+			rest = rest.substring(slash);
+		}
+		if (!rest.startsWith("/")) {
+			return null;
+		}
+		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+		for (int i = 0; i < rest.length(); ) {
+			int cp = rest.codePointAt(i);
+			if (cp == '%' && i + 2 < rest.length() && Character.digit(rest.charAt(i + 1), 16) >= 0 && Character.digit(rest.charAt(i + 2), 16) >= 0) {
+				bytes.write(Character.digit(rest.charAt(i + 1), 16) * 16 + Character.digit(rest.charAt(i + 2), 16));
+				i += 3;
+			} else {
+				byte[] b = new String(Character.toChars(cp)).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+				bytes.write(b, 0, b.length);
+				i += Character.charCount(cp);
+			}
+		}
+		String decoded = bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
+		if (decoded.indexOf('\0') >= 0) {
+			return null;
+		}
+		try {
+			return Path.of(decoded);
+		} catch (java.nio.file.InvalidPathException e) {
+			return null;
+		}
 	}
 
 	/** Decodes the bytes unless there are none (over the byte cap) or the picture header announces too many pixels. */
