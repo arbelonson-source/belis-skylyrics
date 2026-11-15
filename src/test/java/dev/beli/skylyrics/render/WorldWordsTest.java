@@ -873,4 +873,28 @@ class WorldWordsTest {
 		assertFalse(LyricsRenderer.lineOver(plain, last, plain.get(last).timeMs() + 1000));
 		assertTrue(LyricsRenderer.lineOver(plain, last, plain.lineEnd(last) + 5000));
 	}
+
+	@Test
+	void aVeryWideCardIsScaledToFitItsShareOfTheView() {
+		// 80 letters about 0.4 blocks each at distance 10 is far more than 30 degrees wide
+		float fitted = WorldWords.fitSize(1f, 32f, 10f, 30f);
+		assertTrue(fitted < 0.2f);
+		float width = 32f * fitted;
+		assertEquals(30f, 2 * (float) Math.toDegrees(Math.atan(width / 2 / 10f)), 0.2f);
+		// A normal word keeps its size
+		assertEquals(1f, WorldWords.fitSize(1f, 3f, 10f, 30f));
+	}
+
+	@Test
+	void aVeryLongPieceIsNeverTheBigWord() {
+		String line = "sing along with " + "a".repeat(80) + " and dance tonight";
+		List<int[]> chunks = WorldWords.chunks(line);
+		int big = WorldWords.bigPiece(line, chunks, 0f);
+		assertTrue(big >= 0, "another piece can still be the big one");
+		assertTrue(chunks.get(big)[1] - chunks.get(big)[0] <= 14);
+		for (float roll = 0; roll < 1; roll += 0.1f) {
+			int pick = WorldWords.bigPiece(line, chunks, roll);
+			assertTrue(chunks.get(pick)[1] - chunks.get(pick)[0] <= 14);
+		}
+	}
 }

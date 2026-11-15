@@ -527,6 +527,19 @@ final class WorldWords {
 		return Mth.lerp(t, SIZE_SHORT, SIZE_LONG) * (1 + (roll * 2 - 1) * SIZE_JITTER);
 	}
 
+	/** The widest a card may look, in degrees of view, and the longest piece that is drawn big. */
+	static final float MAX_CARD_DEGREES = 30;
+	static final int BIG_MAX_LETTERS = 14;
+
+	/**
+	 * A card's size, scaled down if it is {@code width} blocks wide at this {@code size} and so would look wider than
+	 * {@code maxDegrees} of view from {@code distance} blocks away; smaller words keep their size.
+	 */
+	static float fitSize(float size, float width, float distance, float maxDegrees) {
+		float most = 2 * distance * (float) Math.tan(Math.toRadians(maxDegrees / 2));
+		return width <= most || width <= 0 ? size : size * most / width;
+	}
+
 	/**
 	 * Which piece of a line is drawn big, so each line has one word that stands out like a sung highlight: any piece
 	 * but the first with a few letters, picked by {@code roll} (0 to 1). Lines of fewer than three pieces have none.
@@ -544,7 +557,7 @@ final class WorldWords {
 					letters++;
 				}
 			}
-			if (letters >= SHORT_LETTERS) {
+			if (letters >= SHORT_LETTERS && letters <= BIG_MAX_LETTERS) {
 				fits.add(i);
 			}
 		}
@@ -1008,8 +1021,10 @@ final class WorldWords {
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
 		// nor hidden behind one
-		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;
 		float meant = spot[2] * away;
+		// A very long word would stretch right across the view and wipe out the other cards: it is scaled to fit
+		size = fitSize(size, at[at.length - 1] * size * away * wordScale, meant, MAX_CARD_DEGREES);
+		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;
 		// A card brought in is shrunk to match, so it covers just the patch of sky it was given and no more
 		float distance = clearReach(CLOSEST, meant, 1,
 				out -> buried(level, eye.add(dir.scale(out)), dir, halfW * (float) out / meant, halfH * (float) out / meant));
