@@ -68,6 +68,18 @@ import dev.beli.skylyrics.render.AlbumArt;
 /** The settings window. Drawn by hand (no vanilla buttons) so it can look like a modern app. */
 public final class SkyLyricsScreen extends Screen {
 	static final String GITHUB = "https://github.com/arbelonson-source/belis-skylyrics";
+	/**
+	 * Whether the Height setting does anything. World words don't use it, and Arc puts each line where you are looking when
+	 * it starts (Follow, or Floating), so only a compass direction in the sky uses it there.
+	 */
+	static boolean heightApplies(Layout layout, Placement placement, Direction direction) {
+		return switch (layout) {
+			case WORLD -> false;
+			case ARC -> placement == Placement.SKY && direction != Direction.FOLLOW;
+			default -> true;
+		};
+	}
+
 	private static final String LRCLIB = "https://lrclib.net";
 
 	private static final int TAB_COUNT = 5;
@@ -243,7 +255,7 @@ public final class SkyLyricsScreen extends Screen {
 				.when(() -> cfg.placement == Placement.SKY || cfg.layout == Layout.WORLD);
 		Row height = new Slider(Tr.t("Height"), Tr.t("How high above the horizon"), -10, 80, 1,
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°")
-				.when(() -> cfg.layout != Layout.WORLD);
+				.when(() -> heightApplies(cfg.layout, cfg.placement, cfg.direction));
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
 				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)))
 				.when(() -> cfg.layout != Layout.WORLD);

@@ -42,6 +42,10 @@
 - **Hand-edited settings file.** A blank or very long recent search in the settings file no longer breaks the song library, and a hand-typed player name like "Spotify-Web" now picks that player.
 - **Settings scroll.** **Open Music tab** in the song library now takes you down to the Spotify card every time. Settings tabs also keep their place after you visit a shorter tab.
 - **Settings text and sliders.** The **Timing** and **This song** sliders now reach 5 seconds either way, and a sky **Strength** of 0 in the settings file now shows as 10%, where the slider starts. Settings search also finds English words in a Hebrew game, and pasted search text is cleaned up like typed text. A few English and Hebrew texts say what they mean (the previous line, **Preview**, **Aurora**).
+- **Height and Arc.** The **Height** setting is hidden for Arc when it has no effect (Floating, or Direction Follow), but still found by search. Changing Direction, Placement, Height or the view lock moves the Arc lines that use them right away instead of from the next line.
+- **Last line fades.** In Lines and Arc, a line that ended more than a second and a half ago (the last lyric during the outro, or a line before a long instrumental part) fades out.
+- **Floating distance.** With Floating placement, every step of the **Distance** slider now moves the lyrics (before, 8 to 24 looked the same, and so did 96 to 160). The default looks the same as before.
+- **Faint glow on 1.21.1 to 1.21.5.** A very faint glow (the previous and next lines, the end of the pulse) no longer flashes as solid colour.
 
 ### Faster
 
