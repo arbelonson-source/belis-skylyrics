@@ -187,7 +187,7 @@ public final class IntroScreen extends Screen {
 			case 3 -> {
 				heading(g, Tr.t("Where the songs come from"), py + 22);
 				lines(g, py + 42, Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
-						Tr.t("Signing in to Spotify in the Music tab helps with timing and covers."),
+						Tr.t("Signing in to Spotify in the Music tab helps with timing and album covers."),
 						Tr.t("No music right now? Try the demo song."));
 			}
 			case 4 -> {

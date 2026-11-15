@@ -352,7 +352,7 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private List<Card> lookTab() {
-		Row mode = new Segmented(Tr.t("Colour"), Tr.t("From the cover, or your own"),
+		Row mode = new Segmented(Tr.t("Colour"), Tr.t("From the album cover, or your own"),
 				new String[] {Tr.t("Album"), Tr.t("Pick"), Tr.t("Rainbow"), Tr.t("Time of day"), Tr.t("Each line")}, () -> cfg.colorMode.ordinal(),
 				i -> cfg.colorMode = ColorMode.values()[i]);
 		Row swatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES, swatchNames(),
@@ -366,7 +366,7 @@ public final class SkyLyricsScreen extends Screen {
 			if (track == Track.NONE) {
 				return Tr.t("no song playing");
 			}
-			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no cover art");
+			return mod.art().hasTexture() ? String.format(Locale.ROOT, "#%06X", mod.art().color() & 0xFFFFFF) : Tr.t("no album cover");
 		}).when(() -> cfg.colorMode == ColorMode.ALBUM);
 		Row twoTone = new Toggle(Tr.t("Two-tone"), Tr.t("Each line fades into a second colour"),
 				() -> cfg.twoTone, v -> cfg.twoTone = v);
@@ -636,9 +636,9 @@ public final class SkyLyricsScreen extends Screen {
 				c -> { cfg.barAccentColor = c; cfg.barAccent = BarAccent.FIXED; })
 				.narrateAs(Tr.t("Accent colour"))
 				.when(() -> cfg.nowPlayingHud && cfg.barAccent == BarAccent.FIXED);
-		Row barArt = new Toggle(Tr.t("Album picture"), Tr.t("The round cover on the left"),
+		Row barArt = new Toggle(Tr.t("Album cover"), Tr.t("The round album cover on the left"),
 				() -> cfg.barArt, v -> cfg.barArt = v).when(() -> cfg.nowPlayingHud);
-		Row barSpin = new Toggle(Tr.t("Spin like a record"), Tr.t("The cover turns slowly while the song plays"),
+		Row barSpin = new Toggle(Tr.t("Spin like a record"), Tr.t("The album cover turns slowly while the song plays"),
 				() -> cfg.barSpin, v -> cfg.barSpin = v).when(() -> cfg.nowPlayingHud && cfg.barArt);
 		Row barEq = new Toggle(Tr.t("Equaliser"), Tr.t("Bars that move with the music"),
 				() -> cfg.barEqualiser, v -> cfg.barEqualiser = v).when(() -> cfg.nowPlayingHud);
