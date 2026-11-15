@@ -61,7 +61,24 @@ public final class NeteaseClient implements LyricsSource {
 	/** NetEase's placeholder text for instrumentals: "pure music, please enjoy". */
 	private static final String PURE_MUSIC = "纯音乐";
 
-	private final HttpClient http;
+	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
+	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
+
+	private HttpClient http() {
+		HttpClient c = httpClient;
+		if (c == null) {
+			synchronized (this) {
+				c = httpClient;
+				if (c == null) {
+					httpClient = c = HttpClient.newBuilder()
+							.connectTimeout(Duration.ofSeconds(6))
+							.followRedirects(HttpClient.Redirect.NORMAL)
+							.build();
+				}
+			}
+		}
+		return c;
+	}
 	private final String userAgent;
 	private final String base;
 
@@ -70,10 +87,6 @@ public final class NeteaseClient implements LyricsSource {
 	}
 
 	NeteaseClient(String modVersion, String base) {
-		this.http = HttpClient.newBuilder()
-				.connectTimeout(Duration.ofSeconds(6))
-				.followRedirects(HttpClient.Redirect.NORMAL)
-				.build();
 		this.userAgent = "BelisSkyLyrics/" + modVersion + " (https://github.com/arbelonson-source/belis-skylyrics)";
 		this.base = base;
 	}
@@ -215,7 +228,7 @@ public final class NeteaseClient implements LyricsSource {
 				.header("Accept", "application/json")
 				.GET()
 				.build();
-		HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 		if (response.statusCode() / 100 != 2) {
 			throw new IOException("NetEase answered " + response.statusCode());
 		}

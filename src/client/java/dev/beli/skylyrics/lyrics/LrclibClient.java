@@ -74,10 +74,24 @@ public final class LrclibClient implements LyricsSource {
 		}
 	}
 
-	private final HttpClient http = HttpClient.newBuilder()
-			.connectTimeout(Duration.ofSeconds(6))
-			.followRedirects(HttpClient.Redirect.NORMAL)
-			.build();
+	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
+	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
+
+	private HttpClient http() {
+		HttpClient c = httpClient;
+		if (c == null) {
+			synchronized (this) {
+				c = httpClient;
+				if (c == null) {
+					httpClient = c = HttpClient.newBuilder()
+						.connectTimeout(Duration.ofSeconds(6))
+						.followRedirects(HttpClient.Redirect.NORMAL)
+						.build();
+				}
+			}
+		}
+		return c;
+	}
 	private final String userAgent;
 	private final String base;
 
@@ -229,7 +243,7 @@ public final class LrclibClient implements LyricsSource {
 				.header("Accept", "application/json")
 				.GET()
 				.build();
-		HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 		if (response.statusCode() == 404) {
 			return null;
 		}

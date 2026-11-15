@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Rounded rectangles drawn as four textured corners plus at most three flat fills. Drawing the curves row by
@@ -17,8 +18,7 @@ import net.minecraft.resources.Identifier;
 final class RoundRect {
 	/** Quarter-disc sizes; the smallest one at least as big as the radius is used, so it is never shrunk more than 2×. */
 	private static final int[] SIZES = {4, 8, 16, 32, 64, 128};
-	private static final Identifier[] IDS = new Identifier[SIZES.length];
-	private static boolean ready;
+	private static final @Nullable Identifier[] IDS = new Identifier[SIZES.length];
 
 	private RoundRect() {}
 
@@ -29,12 +29,12 @@ final class RoundRect {
 		}
 		int x0 = Math.round(x), y0 = Math.round(y), x1 = Math.round(x + w), y1 = Math.round(y + h);
 		int c = Math.round(Math.min(r, Math.min(x1 - x0, y1 - y0) / 2f));
-		if (c <= 0 || !ensureTextures()) {
+		int i = sizeIndex(c);
+		Identifier id = c <= 0 ? null : texture(i);
+		if (id == null) {
 			g.fill(x0, y0, x1, y1, color);
 			return;
 		}
-		int i = sizeIndex(c);
-		Identifier id = IDS[i];
 		int q = SIZES[i], t = 2 * q;
 		g.blit(RenderPipelines.GUI_TEXTURED, id, x0, y0, 0, 0, c, c, q, q, t, t, color);
 		g.blit(RenderPipelines.GUI_TEXTURED, id, x1 - c, y0, q, 0, c, c, q, q, t, t, color);
@@ -73,30 +73,47 @@ final class RoundRect {
 		return inside / 16f;
 	}
 
-	private static boolean ensureTextures() {
-		if (ready) {
-			return true;
+	/** The ARGB pixels of the corner texture for size index {@code i}, row by row: white with the disc coverage as alpha. */
+	static int[] cornerPixels(int i) {
+		int d = 2 * SIZES[i];
+		int[] pixels = new int[d * d];
+		for (int py = 0; py < d; py++) {
+			for (int px = 0; px < d; px++) {
+				pixels[py * d + px] = Math.round(coverage(px, py, d) * 255) << 24 | 0xFFFFFF;
+			}
+		}
+		return pixels;
+	}
+
+	/** Size count, for tests that check every texture. */
+	static int sizeCount() {
+		return SIZES.length;
+	}
+
+	/** The texture for size index {@code i}, built and registered the first time that size is drawn; null off the render thread. */
+	private static @Nullable Identifier texture(int i) {
+		Identifier id = IDS[i];
+		if (id != null) {
+			return id;
 		}
 		if (!RenderSystem.isOnRenderThread()) {
-			return false;
+			return null;
 		}
-		Minecraft mc = Minecraft.getInstance();
-		for (int i = 0; i < SIZES.length; i++) {
-			int d = 2 * SIZES[i];
-			NativeImage image = new NativeImage(d, d, false);
-			for (int py = 0; py < d; py++) {
-				for (int px = 0; px < d; px++) {
-					image.setPixel(px, py, Math.round(coverage(px, py, d) * 255) << 24 | 0xFFFFFF);
-				}
+		int d = 2 * SIZES[i];
+		int[] pixels = cornerPixels(i);
+		NativeImage image = new NativeImage(d, d, false);
+		for (int py = 0; py < d; py++) {
+			for (int px = 0; px < d; px++) {
+				image.setPixel(px, py, pixels[py * d + px]);
 			}
-			IDS[i] = Identifier.fromNamespaceAndPath("skylyrics", "dynamic/round_" + d);
-			mc.getTextureManager().register(IDS[i], new DynamicTexture(() -> "SkyLyrics round corner", image) {
-				{
-					sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
-				}
-			});
 		}
-		ready = true;
-		return true;
+		id = Identifier.fromNamespaceAndPath("skylyrics", "dynamic/round_" + d);
+		Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(() -> "SkyLyrics round corner", image) {
+			{
+				sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+			}
+		});
+		IDS[i] = id;
+		return id;
 	}
 }

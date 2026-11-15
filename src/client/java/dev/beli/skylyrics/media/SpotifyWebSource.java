@@ -88,9 +88,23 @@ public final class SpotifyWebSource implements MediaSource {
 	private final Supplier<String> clientId;
 	private final Path loginFile;
 	private final SecureRandom random = new SecureRandom();
-	private final HttpClient http = HttpClient.newBuilder()
-			.connectTimeout(Duration.ofSeconds(6))
-			.build();
+	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
+	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
+
+	private HttpClient http() {
+		HttpClient c = httpClient;
+		if (c == null) {
+			synchronized (this) {
+				c = httpClient;
+				if (c == null) {
+					httpClient = c = HttpClient.newBuilder()
+						.connectTimeout(Duration.ofSeconds(6))
+						.build();
+				}
+			}
+		}
+		return c;
+	}
 
 	private volatile @Nullable String refreshToken;
 	/** The Client ID the refresh token was made for; pasting another one means signing in again. */
@@ -428,7 +442,7 @@ public final class SpotifyWebSource implements MediaSource {
 				.header("Content-Type", "application/x-www-form-urlencoded")
 				.POST(HttpRequest.BodyPublishers.ofString(body))
 				.build();
-		HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
 		JsonObject json = object(response.body());
 		if (response.statusCode() == 400 && "invalid_grant".equals(string(json, "error"))) {
 			throw new Refused(string(json, "error_description"));
@@ -608,7 +622,7 @@ public final class SpotifyWebSource implements MediaSource {
 		} else {
 			request.header("Content-Type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(json));
 		}
-		return http.send(request.build(), HttpResponse.BodyHandlers.ofString());
+		return http().send(request.build(), HttpResponse.BodyHandlers.ofString());
 	}
 
 	/** Calls the Web API as the signed-in user, fetching a fresh access token once if Spotify says it went stale. */
