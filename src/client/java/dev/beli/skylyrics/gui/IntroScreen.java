@@ -198,12 +198,12 @@ public final class IntroScreen extends Screen {
 			case 4 -> {
 				heading(g, Tr.t("You're all set"), py + 22);
 				SkyLyricsClient mod = SkyLyricsClient.get();
-				int y = py + 50;
+				int y = lines(g, py + 40,
+						Tr.t("In a world, press these keys. You can change them in Minecraft's Controls settings."));
 				if (mod != null) {
-					y = keyLine(g, Tr.t("Settings"), mod.openSettingsKey(), y);
-					y = keyLine(g, Tr.t("Song library"), mod.libraryKey(), y);
+					y = keyLine(g, Tr.t("Settings"), mod.openSettingsKey(), y + 2);
+					keyLine(g, Tr.t("Song library"), mod.libraryKey(), y);
 				}
-				lines(g, y + 8, Tr.t("You can change the keys in Minecraft's Controls settings."));
 			}
 			default -> {
 			}
@@ -216,7 +216,7 @@ public final class IntroScreen extends Screen {
 	}
 
 	/** Centred paragraphs, wrapped to the panel. */
-	private void lines(GuiGraphics g, int y, String... paragraphs) {
+	private int lines(GuiGraphics g, int y, String... paragraphs) {
 		for (String p : paragraphs) {
 			List<String> wrapped = wrap(p, PANEL_W - 40);
 			for (String line : wrapped) {
@@ -225,6 +225,7 @@ public final class IntroScreen extends Screen {
 			}
 			y += 4;
 		}
+		return y;
 	}
 
 	private int keyLine(GuiGraphics g, String what, @Nullable KeyMapping key, int y) {
