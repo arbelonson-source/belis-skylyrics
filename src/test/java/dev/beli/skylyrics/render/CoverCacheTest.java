@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.render;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -92,5 +93,15 @@ class CoverCacheTest {
 		ByteArrayOutputStream ok = new ByteArrayOutputStream();
 		ImageIO.write(new BufferedImage(40, 40, BufferedImage.TYPE_INT_RGB), "png", ok);
 		assertEquals(40, AlbumArt.decode(ok.toByteArray()).getWidth());
+	}
+
+	@Test
+	void aCoverThatCannotBeCachedStillCountsAsDownloaded(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws IOException {
+		java.nio.file.Path notAFolder = tmp.resolve("blocked");
+		java.nio.file.Files.writeString(notAFolder, "x");
+		assertDoesNotThrow(() -> CoverCache.store(notAFolder, notAFolder.resolve("a.img"), png(8, 8)));
+		java.nio.file.Path ok = tmp.resolve("covers");
+		CoverCache.store(ok, ok.resolve("b.img"), png(8, 8));
+		assertTrue(java.nio.file.Files.isRegularFile(ok.resolve("b.img")));
 	}
 }

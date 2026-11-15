@@ -307,12 +307,21 @@ public final class CoverCache {
 		}
 		BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
 		if (image != null) {
+			store(dir, file, bytes);
+		}
+		return image;
+	}
+
+	/** Keeps a downloaded cover on disk for next time; a full or locked disk only costs the next download. */
+	static void store(Path dir, Path file, byte[] bytes) {
+		try {
 			Files.createDirectories(dir);
 			Path temp = Files.createTempFile(dir, "cover", ".part");
 			Files.write(temp, bytes);
 			dev.beli.skylyrics.util.SafeFile.replace(temp, file);
+		} catch (java.io.IOException | RuntimeException e) {
+			LOG.debug("Could not cache cover {}", file, e);
 		}
-		return image;
 	}
 
 	/** Keeps the folder from growing forever: removes the covers not seen for the longest. */
