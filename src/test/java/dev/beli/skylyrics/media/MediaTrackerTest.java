@@ -150,7 +150,8 @@ class MediaTrackerTest {
 		FakeSource source = new FakeSource();
 		MediaTracker tracker = new MediaTracker(source, () -> false);
 		try {
-			source.then(new Snapshot(song(215_000, ""), 10_000, true, System.nanoTime() - 1_000_000_000L, 2.0));
+			long readAt = System.nanoTime() - 1_000_000_000L;
+			source.then(new Snapshot(song(215_000, ""), 10_000, true, readAt, 2.0));
 			tracker.refresh();
 			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
 			while (source.polls.get() < 1) {
@@ -158,8 +159,13 @@ class MediaTrackerTest {
 				Thread.sleep(5);
 			}
 			Thread.sleep(50);
+			// Twice as fast as the clock since the read, however slow this machine is (1x would be about 1 s short)
+			long before = System.nanoTime();
 			long pos = tracker.positionMs();
-			assertTrue(pos >= 11_950 && pos < 12_500, "position " + pos);
+			long after = System.nanoTime();
+			long lo = 10_000 + 2 * (before - readAt) / 1_000_000 - 50;
+			long hi = 10_000 + 2 * (after - readAt) / 1_000_000 + 50;
+			assertTrue(pos >= lo && pos <= hi, "position " + pos + " not in " + lo + ".." + hi);
 		} finally {
 			tracker.shutdown();
 		}
