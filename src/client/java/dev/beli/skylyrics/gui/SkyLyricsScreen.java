@@ -222,7 +222,7 @@ public final class SkyLyricsScreen extends Screen {
 				i -> cfg.layout = Layout.values()[i])
 				.describe(() -> switch (cfg.layout) {
 					case ARC -> Tr.t("One line on a gentle curve");
-					case LINES -> Tr.t("The last, current and next line");
+					case LINES -> Tr.t("The previous, current and next line");
 					case WORLD -> Tr.t("Words appear around you");
 				});
 		// World words float around you, so sky or floating doesn't apply; the direction says where they gather
@@ -491,9 +491,9 @@ public final class SkyLyricsScreen extends Screen {
 		// The error often says what to allow or install, too long for the Status line
 		Row connectionHelp = new Paragraph(() -> tracker.error())
 				.when(() -> !cfg.demoMode && !tracker.connected() && !tracker.error().isEmpty());
-		Row timing = new Slider(Tr.t("Timing"), Tr.t("Late? Move right. Early? Left"), -3000, 3000, 50,
+		Row timing = new Slider(Tr.t("Timing"), Tr.t("Late? Move right. Early? Left"), -5000, 5000, 50,
 				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds);
-		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -3000, 3000, 50,
+		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -5000, 5000, 50,
 				() -> cfg.songOffset(tracker.track()), v -> cfg.setSongOffset(tracker.track(), (int) Math.round(v)),
 				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE).searchOnlyWhenShown();
 		Row demo = new Toggle(Tr.t("Demo song"), Tr.t("A built-in song for trying things out"),
@@ -1107,7 +1107,8 @@ public final class SkyLyricsScreen extends Screen {
 				List<Row> rows = new ArrayList<>();
 				List<Row> hidden = new ArrayList<>();
 				for (Row row : card.rows()) {
-					String text = card.title() + " " + row.searchText();
+					String text = card.title() + " " + row.searchText() + " "
+							+ dev.beli.skylyrics.Tr.english(card.title()) + " " + row.englishSearchText();
 					if (row instanceof Paragraph || !SettingsSearch.matches(text, query)) {
 						continue;
 					}
@@ -1472,7 +1473,7 @@ public final class SkyLyricsScreen extends Screen {
 			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
 				editSearch(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 			} else if (event.isPaste()) {
-				editSearch(query + minecraft.keyboardHandler.getClipboard().replaceAll("\\s+", " "));
+				editSearch(SettingsSearch.pasted(query, minecraft.keyboardHandler.getClipboard()));
 			}
 			// Letters come in through charTyped; the rest must not close the screen or change a setting
 			return true;

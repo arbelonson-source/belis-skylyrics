@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.gui;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -34,5 +35,19 @@ class SettingsSearchTest {
 	@Test
 	void hebrewWorks() {
 		assertTrue(SettingsSearch.matches("צבע הזוהר", "זוהר"));
+	}
+
+	@Test
+	void anEnglishWordFindsAHebrewLabel() {
+		// the screen hands over the shown label and its English source together
+		assertTrue(SettingsSearch.matches("צבע הזוהר Glow colour", "glow"));
+		assertFalse(SettingsSearch.matches("צבע הזוהר", "glow"));
+	}
+
+	@Test
+	void pastedTextIsFilteredLikeTyping() {
+		assertEquals("ab c", SettingsSearch.pasted("ab", " c"));
+		assertEquals("glow", SettingsSearch.pasted("", "g\u00a7l\u0001o\u007fw"));
+		assertEquals("a b", SettingsSearch.pasted("", "a\n\n  b"));
 	}
 }

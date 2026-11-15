@@ -60,6 +60,11 @@ final class Controls {
 			return label + " " + (desc == null ? "" : desc.get());
 		}
 
+		/** The same words in English, for a game in another language: the search matches either. */
+		String englishSearchText() {
+			return dev.beli.skylyrics.Tr.english(label) + " " + (desc == null ? "" : dev.beli.skylyrics.Tr.english(desc.get()));
+		}
+
 		/** Leave this row out of search results while it's hidden, for rows that need something live, like a playing song. */
 		Row searchOnlyWhenShown() {
 			this.searchWhenHidden = false;
@@ -369,6 +374,11 @@ final class Controls {
 		}
 
 		@Override
+		String englishSearchText() {
+			return super.englishSearchText() + " " + String.join(" ", java.util.Arrays.stream(options).map(dev.beli.skylyrics.Tr::english).toList());
+		}
+
+		@Override
 		String narration() {
 			int i = Mth.clamp(get.getAsInt(), 0, options.length - 1);
 			return Narration.choice(narratedLabel(), Tr.t("choice"), options[i], Tr.t("%s of %s", i + 1, options.length));
@@ -484,6 +494,11 @@ final class Controls {
 		@Override
 		String searchText() {
 			return super.searchText() + " " + String.join(" ", labels);
+		}
+
+		@Override
+		String englishSearchText() {
+			return super.englishSearchText() + " " + String.join(" ", labels.stream().map(dev.beli.skylyrics.Tr::english).toList());
 		}
 
 		@Override

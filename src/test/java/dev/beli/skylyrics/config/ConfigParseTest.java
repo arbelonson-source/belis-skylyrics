@@ -48,6 +48,11 @@ class ConfigParseTest {
 	}
 
 	@Test
+	void skyStrengthNeverGoesBelowWhatTheSliderReaches() {
+		assertEquals(0.1f, SkyLyricsConfig.parse("{\"skyStrength\": 0}").config().skyStrength, 1e-6f);
+	}
+
+	@Test
 	void truncatedFileGivesDefaultsAndIsFlaggedUnreadable() {
 		SkyLyricsConfig.Parsed p = SkyLyricsConfig.parse("{\"glow\": 0.4, \"songOffsets\": {\"a|b\": 25");
 		assertTrue(p.unreadable());
