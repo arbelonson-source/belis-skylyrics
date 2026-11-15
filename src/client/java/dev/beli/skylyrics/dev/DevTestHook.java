@@ -45,6 +45,10 @@ import dev.beli.skylyrics.media.DemoSource;
  * The frames are kept in memory and only written (on another thread) after the last grab, so encoding does not slow
  * the frames being caught. {@code burstat <name> <count> <everyMs>} first waits until the lyrics move to the next line
  * (so the first frame is the crosshair flash's peak, the start of a slide), and gives up after 10 s. One burst at a time.
+ * <p>
+ * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
+ * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
+ * highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -446,6 +450,10 @@ public final class DevTestHook {
 				}
 				case "burst" -> startBurst(arg, false);
 				case "burstat" -> startBurst(arg, true);
+				case "barprobe" -> {
+					dev.beli.skylyrics.render.BarProbe.request();
+					SkyLyricsClient.LOG.info("Test hook: barprobe waits for the next top bar lyric frame");
+				}
 				case "hover" -> {
 					String[] xy = arg.split("\\s+");
 					Screen screen = currentScreen(client);
