@@ -1133,9 +1133,10 @@ public final class LyricsRenderer {
 				int glowByte = Math.round(cfg.glow * alpha * 1.28f / copies * 255);
 				if (glowByte >= 2) {
 					int halo = mix(glowOf(face), 0x000000, 0.75f * daylight);
+					FormattedCharSequence haloSeq = colored(d, halo);
 					for (int k = 0; k < copies; k++) {
 						float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
-						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, colored(d, halo), false, glowByte << 24 | halo, 3);
+						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, haloSeq, false, glowByte << 24 | halo, 3);
 					}
 				}
 			}
