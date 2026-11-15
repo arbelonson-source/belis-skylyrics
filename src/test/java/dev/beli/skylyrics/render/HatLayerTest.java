@@ -119,6 +119,22 @@ class HatLayerTest {
 	}
 
 	@Test
+	void changingTheMotionSettingNeverMakesASpinJump() {
+		float a = 0;
+		for (int i = 0; i < 200; i++) {
+			a = HatLayer.spinTurn(a, 0.016f, HatLayer.FLOWER_SPIN, 1);
+		}
+		float before = a;
+		float after = HatLayer.spinTurn(a, 0.016f, HatLayer.FLOWER_SPIN, 0);
+		assertEquals(before, after, 1e-6, "with motion off it simply stops where it is");
+		float again = HatLayer.spinTurn(after, 0.016f, HatLayer.FLOWER_SPIN, 0.5f);
+		assertEquals(HatLayer.FLOWER_SPIN * 0.5f * 0.016f, again - after, 1e-6, "and resumes from there at the new speed");
+		assertEquals(0.0f, HatLayer.spinTurn(0, 0, HatLayer.NOTE_ORBIT, 1), 0);
+		assertEquals(HatLayer.spinTurn(0, 0.1f, HatLayer.NOTE_ORBIT, 1), HatLayer.spinTurn(0, 30, HatLayer.NOTE_ORBIT, 1), 1e-6,
+				"a long pause never makes it jump");
+	}
+
+	@Test
 	void withoutPulsingThePropellerTurnsAtItsRestingSpeed() {
 		assertEquals(HatLayer.PROP_SPIN * 0.05f, HatLayer.propellerTurn(0, 0.05f, Float.NaN), 1e-6);
 		assertEquals(HatLayer.propellerTurn(0, 0.05f, 10f), HatLayer.propellerTurn(0, 0.05f, Float.NaN), 1e-6,
