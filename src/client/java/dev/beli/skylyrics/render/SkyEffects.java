@@ -56,6 +56,8 @@ public final class SkyEffects {
 	private static final int DEEP_BLUE = 0x2A58E8;
 	private static final int MAGENTA = 0xD24CFF;
 	private static final int RIBBONS = 3;
+	/** Where the sparkles sit on 26.2 and later, in front of every cloud and curtain (see {@link #nearestLayer}). */
+	static final float SPARKLE_FRONT = 0.78f;
 	private static final int SEGMENTS = 80;
 	private static final int BLOBS = 7;
 	private static final int SLICES = 24;
@@ -504,7 +506,7 @@ public final class SkyEffects {
 		}
 		int cloud = nebula ? 0 : BLOBS, curtain = aurora ? 0 : RIBBONS;
 		while (cloud < BLOBS || curtain < RIBBONS) {
-			if (curtain < RIBBONS && (cloud >= BLOBS || 1 - 0.07f * curtain >= 0.97f - 0.025f * cloud)) {
+			if (curtain < RIBBONS && (cloud >= BLOBS || ribbonFraction(curtain) >= blobFraction(cloud))) {
 				ribbon(pose, vc, curtain++);
 			} else {
 				blob(pose, vc, cloud++);
@@ -589,9 +591,24 @@ public final class SkyEffects {
 		point(vc, pose, h * Mth.sin(yaw), r * Mth.sin(elev), -h * Mth.cos(yaw), color);
 	}
 
+	/** A curtain's distance as a share of the sky radius: the first is the farthest. */
+	static float ribbonFraction(int k) {
+		return 1 - 0.07f * k;
+	}
+
+	/** A nebula cloud's distance as a share of the sky radius: the first is the farthest. */
+	static float blobFraction(int k) {
+		return 0.97f - 0.025f * k;
+	}
+
+	/** The share of the sky radius of the nearest cloud or curtain. */
+	static float nearestLayer() {
+		return Math.min(blobFraction(BLOBS - 1), ribbonFraction(RIBBONS - 1));
+	}
+
 	private void ribbon(PoseStack.Pose pose, VertexConsumer vc, int k) {
 		float t = clock;
-		float r = radius * (1 - 0.07f * k);
+		float r = radius * ribbonFraction(k);
 		float centre = (k * 2.1f + 0.6f) + t * 0.004f * (k % 2 == 0 ? 1 : -1);
 		float span = (100 + 20 * k) * DEG;
 		float baseElev = (27 + 9 * k) * DEG;
@@ -635,7 +652,7 @@ public final class SkyEffects {
 		// The clouds lie along a wavy band around the sky, like a galaxy; far ones are drawn first
 		float yaw = k * 0.9f + 0.3f + t * 0.003f;
 		float elev = (38 + 14 * Mth.sin(k * 1.7f + 1)) * DEG + 2 * DEG * Mth.sin(t * 0.04f + k);
-		float dist = radius * (0.97f - 0.025f * k);
+		float dist = radius * blobFraction(k);
 		float cosE = Mth.cos(elev);
 		float dx = cosE * Mth.sin(yaw), dy = Mth.sin(elev), dz = -cosE * Mth.cos(yaw);
 		float ux = -dz, uz = dx;
@@ -714,6 +731,10 @@ public final class SkyEffects {
 	private void sparkles(PoseStack.Pose pose, VertexConsumer vc) {
 		float t = clock;
 		float r = radius * 0.92f;
+		//? if >=26.2 {
+		/*// The added-light pipeline writes depth here, so a nearer cloud would hide a sparkle: put them in front of all
+		r = radius * SPARKLE_FRONT;
+		*///?}
 		float centreYaw = (anchorYaw + 180) * DEG, centreElev = -anchorPitch * DEG;
 		int clear = argb(starColor, 0);
 		for (int i = 0; i < SPARKLES; i++) {

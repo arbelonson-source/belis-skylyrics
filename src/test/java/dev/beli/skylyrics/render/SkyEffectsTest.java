@@ -162,4 +162,11 @@ class SkyEffectsTest {
 		assertEquals(1f, presence);
 		assertTrue(!SkyEffects.waitsForFade(SkyEffect.ECLIPSE, SkyEffect.AURORA, SkyEffect.ECLIPSE, 1));
 	}
+
+	@Test
+	void sparklesSitInFrontOfEveryCloudAndCurtain() {
+		assertTrue(SkyEffects.SPARKLE_FRONT < SkyEffects.nearestLayer());
+		assertTrue(SkyEffects.blobFraction(0) > SkyEffects.blobFraction(1));
+		assertTrue(SkyEffects.ribbonFraction(0) > SkyEffects.ribbonFraction(1));
+	}
 }
