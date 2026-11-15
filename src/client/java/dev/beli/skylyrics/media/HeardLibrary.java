@@ -298,6 +298,10 @@ public final class HeardLibrary implements Library {
 	}
 
 	static Loaded load(Path file, SafeFile.Reader reader, int tries, long pauseMs) {
+		return load(file, reader, tries, pauseMs, Files::isReadable);
+	}
+
+	static Loaded load(Path file, SafeFile.Reader reader, int tries, long pauseMs, java.util.function.Predicate<Path> readable) {
 		List<Entry> out = new ArrayList<>();
 		if (!Files.isRegularFile(file)) {
 			return new Loaded(out, false);
@@ -312,6 +316,16 @@ public final class HeardLibrary implements Library {
 			keepCopy(file);
 			return new Loaded(out, false);
 		} catch (IOException e) {
+			if (!readable.test(file)) {
+				// Not readable by permissions (a sharing lock leaves it readable): it will never read, so move it aside and start a new one.
+				try {
+					Path moved = SafeFile.moveAside(file);
+					LOG.warn("The recently heard file {} can't be read (permissions), so it was moved to {} and a new one will be started.", file, moved);
+					return new Loaded(out, false);
+				} catch (IOException | RuntimeException moveError) {
+					LOG.warn("The recently heard file {} can't be read and couldn't be moved aside: {}", file, moveError.toString());
+				}
+			}
 			LOG.warn("Couldn't read {}; recently heard songs won't be saved this session. Check the file's permissions or whether another program has it open: {}", file, e.toString());
 			return new Loaded(out, true);
 		}

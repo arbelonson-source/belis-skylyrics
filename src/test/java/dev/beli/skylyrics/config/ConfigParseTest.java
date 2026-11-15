@@ -226,4 +226,49 @@ class ConfigParseTest {
 		assertEquals(1, handed[0]);
 		assertEquals(0.4f, c.glow, 1e-6f);
 	}
+
+	@Test
+	void aFileThatIsNeverReadableByPermissionsIsMovedAsideAndSavingStarts() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Path bad = dir.resolve("skylyrics.json.bad");
+		Files.writeString(file, "{\"glow\": 0.4}");
+		Files.writeString(bad, "{\"glow\": 0.3, \"older\": 1}");
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			throw new java.nio.file.AccessDeniedException(f.toString());
+		}, 1, 0);
+		assertTrue(c.saveBlocked);
+		var old = SkyLyricsConfig.readable;
+		SkyLyricsConfig.readable = p -> false;
+		try {
+			SkyLyricsConfig.rereadSoon(c, file, new long[] {1, 1}).join();
+		} finally {
+			SkyLyricsConfig.readable = old;
+		}
+		assertFalse(c.saveBlocked);
+		assertEquals("{\"glow\": 0.4}", Files.readString(dir.resolve("skylyrics.json.bad.1")));
+		assertEquals("{\"glow\": 0.3, \"older\": 1}", Files.readString(bad));
+		assertFalse(Files.exists(file));
+		c.glow = 0.7f;
+		c.save(file);
+		assertTrue(Files.readString(file).contains("0.7"));
+	}
+
+	@Test
+	void aSharingLockThatNeverLetsGoLeavesTheFileAndStaysBlocked() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Files.writeString(file, "{\"glow\": 0.4}");
+		SkyLyricsConfig c = SkyLyricsConfig.load(file, f -> {
+			throw new java.io.IOException("locked");
+		}, 1, 0);
+		var old = SkyLyricsConfig.readable;
+		SkyLyricsConfig.readable = p -> true;
+		try {
+			SkyLyricsConfig.rereadSoon(c, file, new long[] {1, 1}).join();
+		} finally {
+			SkyLyricsConfig.readable = old;
+		}
+		assertTrue(c.saveBlocked);
+		assertEquals("{\"glow\": 0.4}", Files.readString(file));
+		assertFalse(Files.exists(dir.resolve("skylyrics.json.bad")));
+	}
 }

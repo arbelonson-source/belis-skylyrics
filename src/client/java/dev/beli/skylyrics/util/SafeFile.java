@@ -66,6 +66,22 @@ public final class SafeFile {
 	}
 
 	/**
+	 * Moves a file nobody can read aside, to {@code <name>.bad} or, when that exists, the first free {@code <name>.bad.1} to
+	 * {@code .bad.9}, so no earlier copy is destroyed. Returns where it went; throws when it can't be moved.
+	 */
+	public static Path moveAside(Path file) throws IOException {
+		Path target = file.resolveSibling(file.getFileName() + ".bad");
+		for (int i = 1; Files.exists(target) && i <= 9; i++) {
+			target = file.resolveSibling(file.getFileName() + ".bad." + i);
+		}
+		if (Files.exists(target)) {
+			throw new IOException("No free name to move " + file + " aside");
+		}
+		Files.move(file, target);
+		return target;
+	}
+
+	/**
 	 * Copies a damaged file to {@code <name>.bad} so a reset never costs the original. An older copy is replaced only
 	 * by a file at least as big, so an empty or cut-off file can't overwrite a better copy.
 	 */

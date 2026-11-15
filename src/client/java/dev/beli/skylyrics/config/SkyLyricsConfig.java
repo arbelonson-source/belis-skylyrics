@@ -817,7 +817,10 @@ public final class SkyLyricsConfig {
 	/** Waits before each later try at a file that was locked at start. The read is on a helper thread; the loaded settings are applied on the main thread. */
 	static final long[] REREAD_DELAYS_MS = {2_000, 10_000, 60_000};
 
-	static void rereadSoon(SkyLyricsConfig blocked, Path file, long[] delaysMs) {
+	/** Whether the file is readable by permissions (a Windows sharing lock doesn't change that); a seam for tests. */
+	static java.util.function.Predicate<Path> readable = Files::isReadable;
+
+	static Thread rereadSoon(SkyLyricsConfig blocked, Path file, long[] delaysMs) {
 		Thread t = new Thread(() -> {
 			for (long delay : delaysMs) {
 				try {
@@ -839,9 +842,28 @@ public final class SkyLyricsConfig {
 					// still locked: next delay
 				}
 			}
+			blocked.giveUpOnUnreadable(file);
 		}, "SkyLyrics settings reread");
 		t.setDaemon(true);
 		t.start();
+		return t;
+	}
+
+	/**
+	 * After the last re-read failed: a file that isn't readable by permissions (left owned by root, say) will never read, so
+	 * move it aside and let saving start a new one. A sharing lock leaves the file readable and stays blocked.
+	 */
+	private synchronized void giveUpOnUnreadable(Path file) {
+		if (!saveBlocked || readable.test(file)) {
+			return;
+		}
+		try {
+			Path moved = dev.beli.skylyrics.util.SafeFile.moveAside(file);
+			saveBlocked = false;
+			LOG.warn("The settings file {} can't be read (permissions), so it was moved to {} and your settings will be saved to a new one.", file, moved);
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("The settings file {} can't be read and couldn't be moved aside, so settings stay unsaved this session: {}", file, e.toString());
+		}
 	}
 
 	/** Fields that are the player's own data or state, not look/behaviour settings; "Reset all" leaves them alone. */

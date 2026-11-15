@@ -327,4 +327,20 @@ class HeardLibraryTest {
 		List<String> saved = HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList();
 		assertEquals(List.of("Fresh", "A", "B", "C"), saved);
 	}
+
+	@Test
+	void aFileNobodyCanReadIsMovedAsideButALockedOneIsNot() throws IOException {
+		Files.writeString(file(), "{\"songs\": []}");
+		HeardLibrary.Loaded locked = HeardLibrary.load(file(), f -> {
+			throw new IOException("locked");
+		}, 1, 0, p -> true);
+		assertTrue(locked.failed());
+		assertTrue(Files.exists(file()));
+		HeardLibrary.Loaded denied = HeardLibrary.load(file(), f -> {
+			throw new java.nio.file.AccessDeniedException(f.toString());
+		}, 1, 0, p -> false);
+		assertFalse(denied.failed());
+		assertFalse(Files.exists(file()));
+		assertTrue(Files.exists(dir.resolve("heard.json.bad")));
+	}
 }
