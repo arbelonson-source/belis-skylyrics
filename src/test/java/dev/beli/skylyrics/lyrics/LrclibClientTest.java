@@ -150,10 +150,21 @@ class LrclibClientTest {
 		assertFalse(client.find(BARE).found());
 	}
 
+	private static String hit(String name, String artist, String lyric) {
+		return "{\"trackName\":\"" + name + "\",\"artistName\":\"" + artist + "\",\"duration\":200,\"syncedLyrics\":\"" + lyric
+				+ "\",\"instrumental\":false}";
+	}
+
 	@Test
-	void noArtistAndNoLengthWithSeveralSameTitlesPicksNone() throws Exception {
-		searchBody = "[" + hit("Made Up Song", "[00:01.00]one") + "," + hit("Made Up Song", "[00:01.00]two") + "]";
+	void noArtistAndNoLengthWithSameTitlesByDifferentArtistsPicksNone() throws Exception {
+		searchBody = "[" + hit("Made Up Song", "Some Band", "[00:01.00]one") + "," + hit("Made Up Song", "Other Singer", "[00:01.00]two") + "]";
 		assertFalse(client.find(BARE).found());
+	}
+
+	@Test
+	void noArtistAndNoLengthWithSeveralUploadsOfOneArtistsSongStillFinds() throws Exception {
+		searchBody = "[" + hit("Made Up Song", "Some Band", "[00:01.00]one") + "," + hit("Made Up Song", "SOME BAND", "[00:01.00]two") + "]";
+		assertTrue(client.find(BARE).found());
 	}
 
 	@Test

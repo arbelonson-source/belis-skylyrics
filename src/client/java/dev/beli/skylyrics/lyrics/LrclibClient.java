@@ -153,7 +153,7 @@ public final class LrclibClient implements LyricsSource {
 		JsonArray results = json.getAsJsonArray();
 		JsonObject best = null;
 		int bestScore = Integer.MIN_VALUE;
-		int sameTitle = 0;
+		java.util.Set<String> sameTitleArtists = new java.util.HashSet<>();
 		for (JsonElement e : results) {
 			if (!e.isJsonObject()) {
 				continue;
@@ -178,7 +178,9 @@ public final class LrclibClient implements LyricsSource {
 					score -= (int) Math.min(200, diff * 2); // probably a different version (live, remix…)
 				}
 			}
-			sameTitle++;
+			if (exactTitle != null) {
+				sameTitleArtists.add(NeteaseClient.key(string(o, "artistName")));
+			}
 			if (score > bestScore) {
 				bestScore = score;
 				best = o;
@@ -188,8 +190,9 @@ public final class LrclibClient implements LyricsSource {
 		if (best == null || bestScore < 0) {
 			return null;
 		}
-		// Several songs share this title and nothing tells them apart: better no lyrics than another song's
-		if (exactTitle != null && sameTitle > 1) {
+		// Songs by different artists share this title and nothing tells them apart: better no lyrics than another
+		// song's (several uploads of the same artist's song are fine)
+		if (exactTitle != null && sameTitleArtists.size() > 1) {
 			return null;
 		}
 		return toResult(best);
