@@ -190,7 +190,7 @@ If the settings file has a value the mod can't read (a typo, or a value from ano
 
 The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others.
 
-To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`, and an older `.bad` is replaced only by a file at least as big, so a smaller or empty file can't overwrite a better copy. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
+To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`; if a `.bad` already exists it is kept and the new copy goes to `.bad.1` to `.bad.9`, and only when all ten are taken is the oldest one replaced, so no earlier copy is overwritten by a newer one. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
 
 ## Still stuck?
 
