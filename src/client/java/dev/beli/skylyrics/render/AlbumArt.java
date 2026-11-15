@@ -40,10 +40,24 @@ public final class AlbumArt {
 	/** Used when there's no cover, or it's all grey. */
 	public static final int FALLBACK_COLOR = 0xB57BFF;
 
-	private final HttpClient http = HttpClient.newBuilder()
-			.connectTimeout(Duration.ofSeconds(5))
-			.followRedirects(HttpClient.Redirect.NORMAL)
-			.build();
+	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
+	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
+
+	private HttpClient http() {
+		HttpClient c = httpClient;
+		if (c == null) {
+			synchronized (this) {
+				c = httpClient;
+				if (c == null) {
+					httpClient = c = HttpClient.newBuilder()
+						.connectTimeout(Duration.ofSeconds(5))
+						.followRedirects(HttpClient.Redirect.NORMAL)
+						.build();
+				}
+			}
+		}
+		return c;
+	}
 	private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
 		Thread t = new Thread(r, "SkyLyrics album art");
 		t.setDaemon(true);
@@ -140,7 +154,7 @@ public final class AlbumArt {
 		}
 		if (url.startsWith("http://") || url.startsWith("https://")) {
 			HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
-			HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+			HttpResponse<InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
 			try (InputStream in = response.body()) {
 				return response.statusCode() / 100 == 2 ? ImageIO.read(in) : null;
 			}

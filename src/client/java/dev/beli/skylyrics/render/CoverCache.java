@@ -95,10 +95,24 @@ public final class CoverCache {
 	}
 
 	private final Path dir;
-	private final HttpClient http = HttpClient.newBuilder()
-			.connectTimeout(Duration.ofSeconds(5))
-			.followRedirects(HttpClient.Redirect.NORMAL)
-			.build();
+	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
+	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
+
+	private HttpClient http() {
+		HttpClient c = httpClient;
+		if (c == null) {
+			synchronized (this) {
+				c = httpClient;
+				if (c == null) {
+					httpClient = c = HttpClient.newBuilder()
+						.connectTimeout(Duration.ofSeconds(5))
+						.followRedirects(HttpClient.Redirect.NORMAL)
+						.build();
+				}
+			}
+		}
+		return c;
+	}
 	/** Most recently drawn last. */
 	private final LinkedHashMap<String, Cover> covers = new LinkedHashMap<>(16, 0.75f, true);
 	/** Newest request first, so what's on screen now loads before what scrolled past. */
@@ -280,7 +294,7 @@ public final class CoverCache {
 			}
 		}
 		HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
-		HttpResponse<java.io.InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
 		byte[] bytes;
 		try (java.io.InputStream body = response.body()) {
 			if (response.statusCode() / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
