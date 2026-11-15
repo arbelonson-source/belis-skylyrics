@@ -82,6 +82,20 @@ class FallbackSourceTest {
 			throw new IOException("backup down");
 		}).find(TRACK);
 		assertFalse(result.found());
+		assertTrue(result.stopgap()); // a backup that timed out says nothing about the song, so it isn't kept
+	}
+
+	@Test
+	void backupTimeoutIsNotAKeptNotFound() throws Exception {
+		LrclibClient.Result result = fallback(t -> LrclibClient.Result.NOT_FOUND, track -> {
+			throw new java.net.http.HttpTimeoutException("timed out");
+		}).find(TRACK);
+		assertTrue(result.stopgap());
+	}
+
+	@Test
+	void realNotFoundFromBothIsStillKept() throws Exception {
+		assertFalse(fallback(t -> LrclibClient.Result.NOT_FOUND, t -> LrclibClient.Result.NOT_FOUND).find(TRACK).stopgap());
 	}
 
 	@Test
