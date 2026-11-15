@@ -152,6 +152,8 @@ public final class SkyLyricsScreen extends Screen {
 	private int px, py, pw, ph;
 	private int viewX, viewY, viewW, viewH;
 	private int contentH;
+	/** Set by {@link #showSpotify}: the Music tab scrolls to its bottom the next time it is laid out. */
+	private boolean scrollToEnd;
 	private float indicatorY = Float.NaN;
 	private float openAnim;
 	private float tabAnim = 1;
@@ -752,8 +754,6 @@ public final class SkyLyricsScreen extends Screen {
 		viewY = py + HEADER_H;
 		viewH = ph - HEADER_H - FOOTER_H;
 
-		float target = Mth.clamp(scrollTarget[tab], 0, maxScroll());
-		scrollTarget[tab] = target;
 		int y = viewY + 2 - Math.round(scroll[tab]);
 		int x = viewX + Math.round((1 - tabAnim) * 8);
 		int start = y;
@@ -775,13 +775,18 @@ public final class SkyLyricsScreen extends Screen {
 			y += 9;
 		}
 		contentH = y - start;
+		// Only now is this tab's height known (the last frame's belongs to another tab, or is 0 on the first frame)
+		scrollTarget[tab] = Focus.settleScroll(scrollTarget[tab], scrollToEnd && tab == MUSIC_TAB, contentH, viewH);
+		if (tab == MUSIC_TAB) {
+			scrollToEnd = false;
+		}
 		masterToggle.x = px + 4;
 		masterToggle.w = SIDEBAR_W - 8;
 		masterToggle.y = py + ph - 30;
 	}
 
 	private float maxScroll() {
-		return Math.max(0, contentH - viewH + 4);
+		return Focus.maxScroll(contentH, viewH);
 	}
 
 	private List<Row> shownRows(Card card) {
@@ -1564,8 +1569,8 @@ public final class SkyLyricsScreen extends Screen {
 	/** Opens the Music tab scrolled down to the Spotify card, where you sign in. */
 	public void showSpotify() {
 		selectTab(MUSIC_TAB);
-		// Clamped to the real bottom on the next frame; the Spotify card is the last one
-		scrollTarget[MUSIC_TAB] = Float.MAX_VALUE;
+		// The tab's height isn't known until it is laid out, so layout() scrolls to the bottom (the Spotify card is the last)
+		scrollToEnd = true;
 	}
 
 	@Override

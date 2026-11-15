@@ -48,4 +48,14 @@ final class Focus {
 	static float page(float scroll, int dir, int viewH, float max) {
 		return Mth.clamp(scroll + dir * Math.max(1, viewH - 24), 0, Math.max(0, max));
 	}
+
+	static float maxScroll(int contentH, int viewH) {
+		return Math.max(0, contentH - viewH + 4);
+	}
+
+	/** Where a tab's scroll wants to be once its height is known: the bottom when asked, else kept within the content. */
+	static float settleScroll(float target, boolean toEnd, int contentH, int viewH) {
+		float max = maxScroll(contentH, viewH);
+		return toEnd ? max : Mth.clamp(target, 0, max);
+	}
 }
