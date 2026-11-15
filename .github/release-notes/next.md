@@ -1,5 +1,6 @@
 ### Fixed
 
+- **Settings file with odd recent searches.** A settings file with a blank or very long recent search no longer breaks the song library, and a hand-typed player name like "Spotify-Web" now picks that player.
 - **No more lyrics from the wrong song.** When LRCLIB doesn't have the song, the mod no longer shows the lyrics of another song by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title from a player or a lyrics site no longer makes the lyrics lookup hang.
 - **Lyrics on time on a Mac.** On a Mac, lyrics no longer run a little late.

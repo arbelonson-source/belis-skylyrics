@@ -713,7 +713,7 @@ public final class LibraryScreen extends Screen {
 		return out;
 	}
 
-	static final int RECENT = 6;
+	static final int RECENT = SkyLyricsConfig.MAX_RECENT_SEARCHES;
 
 	/** Where each recent search chip sits: x, y, width. */
 	private List<int[]> recentChips() {

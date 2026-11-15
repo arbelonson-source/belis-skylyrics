@@ -576,9 +576,9 @@ public final class SkyLyricsConfig {
 		if (worldLeave == null) worldLeave = d.worldLeave;
 		if (crosshair == null) crosshair = d.crosshair;
 		if (libraryView == null) libraryView = d.libraryView;
-		if (recentSearches == null) recentSearches = d.recentSearches;
-		if (preferredPlayer == null) preferredPlayer = "";
-		if (spotifyClientId == null) spotifyClientId = "";
+		recentSearches = cleanSearches(recentSearches);
+		preferredPlayer = preferredPlayer == null ? "" : preferredPlayer.strip().toLowerCase(Locale.ROOT);
+		spotifyClientId = spotifyClientId == null ? "" : spotifyClientId.strip();
 		glow = clamp(glow, 0, 1);
 		opacity = clamp(opacity, 0.2f, 1);
 		skyStrength = clamp(skyStrength, 0, 1);
@@ -600,10 +600,49 @@ public final class SkyLyricsConfig {
 		}
 		songOffsets.values().removeIf(v -> v == null || v == 0);
 		songOffsets.replaceAll((k, v) -> Math.max(-MAX_SONG_OFFSET, Math.min(MAX_SONG_OFFSET, v)));
+		// Like setSongOffset, the oldest (first in the file) go; the last MAX_SONGS stay.
+		Iterator<String> oldest = songOffsets.keySet().iterator();
+		for (int extra = songOffsets.size() - MAX_SONGS; extra > 0 && oldest.hasNext(); extra--) {
+			oldest.next();
+			oldest.remove();
+		}
 		color &= 0xFFFFFF;
 		barAccentColor &= 0xFFFFFF;
 		glowColor &= 0xFFFFFF;
 		toneColor &= 0xFFFFFF;
+	}
+
+	/** How many recent library searches are kept, here and when the library remembers a new one. */
+	public static final int MAX_RECENT_SEARCHES = 6;
+	private static final int MAX_SEARCH_CHARS = 100;
+
+	/** A hand-edited list made safe: no null or blank entries, trimmed and capped, no case-insensitive repeats, newest {@link #MAX_RECENT_SEARCHES} only. */
+	static java.util.List<String> cleanSearches(java.util.List<String> raw) {
+		java.util.List<String> out = new java.util.ArrayList<>();
+		if (raw == null) {
+			return out;
+		}
+		for (String s : raw) {
+			if (s == null) continue;
+			s = s.strip();
+			if (s.length() > MAX_SEARCH_CHARS) {
+				int end = Character.isHighSurrogate(s.charAt(MAX_SEARCH_CHARS - 1)) ? MAX_SEARCH_CHARS - 1 : MAX_SEARCH_CHARS;
+				s = s.substring(0, end).strip();
+			}
+			if (s.isEmpty()) continue;
+			boolean seen = false;
+			for (String o : out) {
+				if (o.equalsIgnoreCase(s)) {
+					seen = true;
+					break;
+				}
+			}
+			if (!seen) {
+				out.add(s);
+				if (out.size() >= MAX_RECENT_SEARCHES) break;
+			}
+		}
+		return out;
 	}
 
 	private static Path file() {
