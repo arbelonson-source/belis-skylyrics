@@ -13,8 +13,8 @@
 - With Follow, the sky sparkles and shooting stars move with the lyrics again.
 - Show underground too also works in the Nether.
 - Diving deep no longer counts as being underground.
-- A cover the game can't read no longer leaves the last song's colour.
-- A cover that stalls while downloading is cut off instead of blocking the next song's cover.
+- An album cover the game can't read no longer leaves the last song's colour.
+- An album cover that stalls while downloading is cut off instead of blocking the next song's cover.
 - The Record card in a top corner moves below the boss bars on a narrow screen.
 - The top bar hides while the debug screen (F3) is showing.
 - The bottom bar sits above the held item's name and the armour row, and a bigger bar grows upward instead of off the screen.
