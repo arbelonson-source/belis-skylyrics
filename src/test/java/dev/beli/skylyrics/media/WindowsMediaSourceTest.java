@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -246,19 +247,18 @@ class WindowsMediaSourceTest {
 	void explainsWhenWindowsMediaIsMissing() {
 		String shell = powershell();
 		assumeTrue(shell != null && !WINDOWS, "needs PowerShell on a system without the Windows media API");
+		AtomicInteger starts = new AtomicInteger();
 		// Started the way the game starts it on Windows
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir,
-				(script, covers) -> WindowsMediaSource.command(shell, script, covers), START_MS, REPLY_MS);
-		long t0 = System.nanoTime();
+				(script, covers) -> {
+					starts.incrementAndGet();
+					return WindowsMediaSource.command(shell, script, covers);
+				}, START_MS, REPLY_MS);
 		IOException first = assertThrows(IOException.class, source::poll);
-		long firstNs = System.nanoTime() - t0;
 		assertTrue(first.getMessage().contains("media controls aren't available"), first.getMessage());
-		long before = System.nanoTime();
 		IOException again = assertThrows(IOException.class, source::poll);
 		assertEquals(first.getMessage(), again.getMessage());
-		// Starting PowerShell again would cost about what the first poll did, so scale with this machine
-		long limit = Math.max(2_000_000_000L, firstNs / 2);
-		assertTrue(System.nanoTime() - before < limit, "waits before starting PowerShell again");
+		assertEquals(1, starts.get(), "started once, then waited instead of starting PowerShell again");
 		source.close();
 	}
 
