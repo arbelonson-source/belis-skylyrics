@@ -531,7 +531,9 @@ public final class LyricsRenderer {
 		float fixedYaw = lock != null ? lock[0] : cfg.direction.yaw;
 		float fixedPitch = lock != null ? lock[1] : Float.NaN;
 		Track track = tracker.track();
-		if (!dead && !track.isNone() && !sameSong(track, announced)) {
+		float alpha = visibility * cfg.opacity;
+		// Not while the lyrics are still loading (nothing is visible yet, and the title's few seconds would pass unseen)
+		if (!dead && !track.isNone() && !sameSong(track, announced) && titleCanShow(hasLyrics, alpha)) {
 			announced = track;
 			if (cfg.worldTitle) {
 				worldWords.announce(shownTitle(track.title()), TitleCleaner.shownArtist(track.artist()), fixedYaw, fixedPitch, camera, mc.font, style, now);
@@ -546,7 +548,6 @@ public final class LyricsRenderer {
 		if (!dead) {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
-		float alpha = visibility * cfg.opacity;
 		if (alpha <= 0.01f) {
 			return;
 		}
@@ -557,6 +558,11 @@ public final class LyricsRenderer {
 		*///?} else {
 		worldWords.render(context.matrices(), context.commandQueue(), camera, mode, style, wordsRgb, alpha, cfg.glow, daylight, cfg.size, light, now);
 		//?}
+	}
+
+	/** Whether a new song's title can be announced now: its lyrics are in and the words are visible, so it isn't used up unseen. */
+	static boolean titleCanShow(boolean hasLyrics, float alpha) {
+		return hasLyrics && alpha > 0.01f;
 	}
 
 	/** Same title and artist as the track already announced; the same Track object is the common case and costs nothing. */

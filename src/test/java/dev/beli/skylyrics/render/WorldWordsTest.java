@@ -932,4 +932,11 @@ class WorldWordsTest {
 			}
 		}
 	}
+
+	@Test
+	void aTitleIsNotAnnouncedWhileTheLyricsLoad() {
+		assertFalse(LyricsRenderer.titleCanShow(false, 0.9f), "the old song's words still fading out, new lyrics not in");
+		assertFalse(LyricsRenderer.titleCanShow(true, 0f), "lyrics in but nothing visible yet");
+		assertTrue(LyricsRenderer.titleCanShow(true, 0.5f));
+	}
 }
