@@ -1484,18 +1484,34 @@ public final class LyricsRenderer {
 		return RANKS.computeIfAbsent(row, LyricsRenderer::computeWordRanks);
 	}
 
-	private static int[] computeWordRanks(String row) {
+	/** Chinese and Japanese stretches count one word per character, as in {@link #arcWords}. */
+	static int[] computeWordRanks(String row) {
 		int[] cps = row.codePoints().toArray();
 		int[] rank = new int[cps.length];
 		int w = -1;
-		boolean inWord = false;
-		for (int i = 0; i < cps.length; i++) {
-			boolean space = cps[i] == ' ';
-			if (!space && !inWord) {
-				w++;
+		for (int i = 0; i < cps.length; ) {
+			if (cps[i] == ' ') {
+				rank[i++] = Math.max(0, w);
+				continue;
 			}
-			inWord = !space;
-			rank[i] = Math.max(0, w);
+			int start = i;
+			boolean cjk = false;
+			while (i < cps.length && cps[i] != ' ') {
+				cjk |= WorldWords.cjk(cps[i]);
+				i++;
+			}
+			if (!cjk) {
+				w++;
+				Arrays.fill(rank, start, i, w);
+				continue;
+			}
+			int at = start;
+			for (int[] unit : WorldWords.cjkUnits(cps, start, i)) {
+				w++;
+				Arrays.fill(rank, at, unit[1], w);
+				at = unit[1];
+			}
+			Arrays.fill(rank, at, i, w);
 		}
 		return rank;
 	}
@@ -1525,7 +1541,7 @@ public final class LyricsRenderer {
 		});
 	}
 
-	private static int wordCount(String row) {
+	static int wordCount(String row) {
 		int[] rank = wordRanks(row);
 		boolean any = row.chars().anyMatch(c -> c != ' ');
 		return any ? rank[rank.length - 1] + 1 : 0;
