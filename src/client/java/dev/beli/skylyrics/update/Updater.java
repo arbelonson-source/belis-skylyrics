@@ -30,7 +30,13 @@ import net.fabricmc.loader.api.ModContainer;
 
 /** Looks for a newer release once at start and, if asked to, swaps the mod's jar for it. Never blocks the game. */
 public final class Updater {
-	private static final String LATEST = "https://api.github.com/repos/arbelonson-source/belis-skylyrics/releases/latest";
+	private static final String REPO = "arbelonson-source/belis-skylyrics";
+	private static final String LATEST = "https://api.github.com/repos/" + REPO + "/releases/latest";
+	/** The only place a release jar may come from; GitHub then redirects it to its asset hosts. */
+	private static final String DOWNLOAD_PREFIX = "https://github.com/" + REPO + "/releases/download/";
+	/** The real jar is about 1.5 MB. */
+	static final long MAX_DOWNLOAD = 20L * 1024 * 1024;
+	private static final int MAX_HOPS = 5;
 	private static final Logger LOG = LoggerFactory.getLogger("SkyLyrics");
 	private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
@@ -72,8 +78,10 @@ public final class Updater {
 		if (mcKey == null || jar == null) {
 			return;
 		}
-		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
-		HttpResponse<String> response = http.send(request(LATEST).header("Accept", "application/vnd.github+json").build(),
+		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
+		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
+		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
+		HttpResponse<String> response = api.send(request(LATEST).header("Accept", "application/vnd.github+json").build(),
 				HttpResponse.BodyHandlers.ofString());
 		if (response.statusCode() != 200) {
 			LOG.info("Update check got HTTP {}", response.statusCode());
@@ -151,6 +159,10 @@ public final class Updater {
 		if (!target.getFileName().toString().equals(asset.name()) || Files.exists(target)) {
 			return false;
 		}
+		if (!allowedDownload(asset.url())) {
+			LOG.warn("Update not downloaded: {} is not a release file of this mod", asset.url());
+			return false;
+		}
 		if (windows() && !(batchSafe(oldJar.toString()) && batchSafe(target.toString() + ".new"))) {
 			// The swap script could not handle this folder, so don't download a jar that would only be thrown away
 			LOG.info("Update not downloaded: the mods folder path is not plain ASCII");
@@ -159,9 +171,7 @@ public final class Updater {
 		// The download keeps a name Fabric ignores until it is checked
 		Path part = dir.resolve(asset.name() + ".part");
 		try {
-			HttpResponse<Path> response = http.send(request(asset.url()).build(), HttpResponse.BodyHandlers.ofFile(part));
-			if (response.statusCode() != 200) {
-				LOG.info("Update download got HTTP {}", response.statusCode());
+			if (!fetch(http, asset.url(), part, MAX_DOWNLOAD, Updater::allowedRedirect)) {
 				Files.deleteIfExists(part);
 				return false;
 			}
@@ -189,6 +199,105 @@ public final class Updater {
 				Files.deleteIfExists(part);
 			} catch (IOException ignored) {
 				// leftover .part files are ignored by the game
+			}
+		}
+	}
+
+	/** True when the address is a release download of this mod on github.com, and nothing else. */
+	static boolean allowedDownload(String url) {
+		if (url == null || !url.startsWith(DOWNLOAD_PREFIX)) {
+			return false;
+		}
+		try {
+			URI uri = new URI(url);
+			String path = uri.getPath();
+			return allowedRedirect(uri) && "github.com".equalsIgnoreCase(uri.getHost()) && path != null
+					&& path.startsWith("/" + REPO + "/releases/download/") && !path.contains("..");
+		} catch (java.net.URISyntaxException e) {
+			return false;
+		}
+	}
+
+	/** True for https to github.com or a *.githubusercontent.com host: no user info, no odd port. */
+	static boolean allowedRedirect(URI uri) {
+		if (uri == null || !"https".equalsIgnoreCase(uri.getScheme()) || uri.getRawUserInfo() != null
+				|| uri.getPort() != -1 && uri.getPort() != 443) {
+			return false;
+		}
+		String host = uri.getHost();
+		if (host == null) {
+			return false;
+		}
+		host = host.toLowerCase(Locale.ROOT);
+		return host.equals("github.com") || host.endsWith(".githubusercontent.com");
+	}
+
+	/**
+	 * Downloads the address to a file, following redirects by hand (at most 5) and only to places redirectOk accepts.
+	 * True when the file holds a complete 200 body of at most max bytes; otherwise logs why, leaves no file, and is false.
+	 */
+	static boolean fetch(HttpClient http, String url, Path file, long max, java.util.function.Predicate<URI> redirectOk)
+			throws IOException, InterruptedException {
+		if (http.followRedirects() != HttpClient.Redirect.NEVER) {
+			throw new IllegalArgumentException("the download client must not follow redirects by itself");
+		}
+		URI uri = URI.create(url);
+		for (int hop = 0; hop <= MAX_HOPS; hop++) {
+			HttpResponse<InputStream> response = http.send(request(uri.toString()).build(), HttpResponse.BodyHandlers.ofInputStream());
+			try (InputStream body = response.body()) {
+				int status = response.statusCode();
+				if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
+					String location = response.headers().firstValue("Location").orElse(null);
+					URI next;
+					try {
+						next = location == null ? null : uri.resolve(location);
+					} catch (IllegalArgumentException e) {
+						next = null;
+					}
+					if (next == null || !redirectOk.test(next)) {
+						LOG.warn("Update download refused a redirect to {}", next == null ? "nowhere" : next.getHost());
+						return false;
+					}
+					uri = next;
+					continue;
+				}
+				if (status != 200) {
+					LOG.info("Update download got HTTP {}", status);
+					return false;
+				}
+				if (response.headers().firstValueAsLong("Content-Length").orElse(-1) > max) {
+					LOG.warn("Update download refused: it announces more than {} bytes", max);
+					return false;
+				}
+				if (!copyCapped(body, file, max)) {
+					LOG.warn("Update download refused: it is bigger than {} bytes", max);
+					return false;
+				}
+				return true;
+			}
+		}
+		LOG.warn("Update download refused: too many redirects");
+		return false;
+	}
+
+	/** Copies the stream to the file; past max bytes it stops, deletes the partial file and returns false. */
+	static boolean copyCapped(InputStream in, Path file, long max) throws IOException {
+		long total = 0;
+		boolean ok = false;
+		try (java.io.OutputStream out = Files.newOutputStream(file)) {
+			byte[] buffer = new byte[65536];
+			for (int n; (n = in.read(buffer)) > 0; ) {
+				total += n;
+				if (total > max) {
+					return false;
+				}
+				out.write(buffer, 0, n);
+			}
+			ok = true;
+			return true;
+		} finally {
+			if (!ok) {
+				Files.deleteIfExists(file);
 			}
 		}
 	}

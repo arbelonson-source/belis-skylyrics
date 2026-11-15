@@ -110,4 +110,123 @@ class UpdaterTest {
 		assertNull(Updater.ownJar(tmp, List.of(Files.writeString(tmp.resolve("a.txt"), "x"))));
 		assertNull(Updater.ownJar(tmp.resolve("missing"), List.of(jar)));
 	}
+
+	private static final String OK = "https://github.com/arbelonson-source/belis-skylyrics/releases/download/v1/a.jar";
+
+	@Test
+	void onlyThisModsReleaseDownloadsAreAllowed() {
+		assertTrue(Updater.allowedDownload(OK));
+		assertFalse(Updater.allowedDownload("https://github.com/someone-else/belis-skylyrics/releases/download/v1/a.jar"));
+		assertFalse(Updater.allowedDownload("http://github.com/arbelonson-source/belis-skylyrics/releases/download/v1/a.jar"));
+		assertFalse(Updater.allowedDownload("https://github.com.evil.example/arbelonson-source/belis-skylyrics/releases/download/v1/a.jar"));
+		assertFalse(Updater.allowedDownload("https://github.com@evil.example/"));
+		assertFalse(Updater.allowedDownload("https://github.com@evil.example/arbelonson-source/belis-skylyrics/releases/download/a.jar"));
+		assertFalse(Updater.allowedDownload("https://github.com/arbelonson-source/belis-skylyrics/releases/download/../../../x"));
+		assertFalse(Updater.allowedDownload(null));
+	}
+
+	@Test
+	void onlyGithubHostsAreAllowedAsRedirects() {
+		assertTrue(Updater.allowedRedirect(java.net.URI.create("https://github.com/x")));
+		assertTrue(Updater.allowedRedirect(java.net.URI.create("https://objects.githubusercontent.com/x")));
+		assertTrue(Updater.allowedRedirect(java.net.URI.create("https://release-assets.githubusercontent.com/x")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("http://github.com/x")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("https://github.com.evil.example/")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("https://evilgithubusercontent.com/x")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("https://github.com@evil.example/")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("https://user@github.com/")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("https://github.com:8443/x")));
+		assertFalse(Updater.allowedRedirect(java.net.URI.create("file:///etc/passwd")));
+	}
+
+	@Test
+	void anAddressOutsideTheReleasesIsNotDownloaded() throws Exception {
+		Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
+		var asset = new UpdateCheck.Asset("belis-skylyrics-0.2.0+1.21.11.jar", "http://127.0.0.1:1/a.jar", null);
+		assertFalse(Updater.install(HttpClient.newHttpClient(), old, asset));
+		assertFalse(Files.exists(dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.part")));
+	}
+
+	private static final java.util.function.Predicate<java.net.URI> LOCAL = u -> "127.0.0.1".equals(u.getHost());
+
+	@Test
+	void redirectsAreFollowedByHandAndChecked() throws Exception {
+		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		server.createContext("/ok", ex -> {
+			ex.getResponseHeaders().add("Location", "/body");
+			ex.sendResponseHeaders(302, -1);
+			ex.close();
+		});
+		server.createContext("/body", ex -> {
+			byte[] b = new byte[100];
+			ex.sendResponseHeaders(200, b.length);
+			ex.getResponseBody().write(b);
+			ex.close();
+		});
+		server.createContext("/evil", ex -> {
+			ex.getResponseHeaders().add("Location", "https://evil.example/a.jar");
+			ex.sendResponseHeaders(302, -1);
+			ex.close();
+		});
+		server.createContext("/loop", ex -> {
+			ex.getResponseHeaders().add("Location", "/loop");
+			ex.sendResponseHeaders(302, -1);
+			ex.close();
+		});
+		server.start();
+		try {
+			String base = "http://127.0.0.1:" + server.getAddress().getPort();
+			HttpClient http = HttpClient.newHttpClient();
+			Path f = dir.resolve("r.part");
+			assertTrue(Updater.fetch(http, base + "/ok", f, 1000, LOCAL));
+			assertEquals(100, Files.size(f));
+			Path g = dir.resolve("g.part");
+			assertFalse(Updater.fetch(http, base + "/evil", g, 1000, LOCAL));
+			assertFalse(Files.exists(g));
+			assertFalse(Updater.fetch(http, base + "/loop", g, 1000, LOCAL));
+			assertFalse(Files.exists(g));
+		} finally {
+			server.stop(0);
+		}
+	}
+
+	@Test
+	void anOversizedDownloadIsRefusedAndLeavesNoFile() throws Exception {
+		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		// Announces too much up front
+		server.createContext("/announced", ex -> {
+			ex.sendResponseHeaders(200, 5000);
+			ex.getResponseBody().write(new byte[5000]);
+			ex.close();
+		});
+		// Chunked, so only the copy can notice
+		server.createContext("/chunked", ex -> {
+			ex.sendResponseHeaders(200, 0);
+			ex.getResponseBody().write(new byte[5000]);
+			ex.close();
+		});
+		server.start();
+		try {
+			String base = "http://127.0.0.1:" + server.getAddress().getPort();
+			HttpClient http = HttpClient.newHttpClient();
+			Path f = dir.resolve("big.part");
+			assertFalse(Updater.fetch(http, base + "/announced", f, 1000, LOCAL));
+			assertFalse(Files.exists(f));
+			assertFalse(Updater.fetch(http, base + "/chunked", f, 1000, LOCAL));
+			assertFalse(Files.exists(f));
+			assertTrue(Updater.fetch(http, base + "/chunked", f, 5000, LOCAL));
+			assertEquals(5000, Files.size(f));
+		} finally {
+			server.stop(0);
+		}
+	}
+
+	@Test
+	void copyCappedStopsAndDeletesPastTheLimit() throws IOException {
+		Path f = dir.resolve("c.part");
+		assertTrue(Updater.copyCapped(new java.io.ByteArrayInputStream(new byte[100]), f, 100));
+		assertEquals(100, Files.size(f));
+		assertFalse(Updater.copyCapped(new java.io.ByteArrayInputStream(new byte[101]), f, 100));
+		assertFalse(Files.exists(f));
+	}
 }

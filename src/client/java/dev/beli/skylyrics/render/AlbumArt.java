@@ -114,7 +114,7 @@ public final class AlbumArt {
 				if (old != null) {
 					old.close();
 				}
-			} catch (Exception e) {
+			} catch (Exception | OutOfMemoryError e) {
 				LOG.debug("Couldn't load album art {}: {}", url, e.toString());
 				if (generation.get() == gen) {
 					color = FALLBACK_COLOR;
@@ -148,18 +148,33 @@ public final class AlbumArt {
 	private @Nullable BufferedImage read(String url) throws Exception {
 		if (url.startsWith("file://")) {
 			Path path = Path.of(URI.create(url));
+			if (!CoverCache.acceptable(Files.size(path))) {
+				return null;
+			}
 			try (InputStream in = Files.newInputStream(path)) {
-				return ImageIO.read(in);
+				return decode(CoverCache.readCapped(in, CoverCache.MAX_BYTES));
 			}
 		}
 		if (url.startsWith("http://") || url.startsWith("https://")) {
 			HttpRequest request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(10)).GET().build();
 			HttpResponse<InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
 			try (InputStream in = response.body()) {
-				return response.statusCode() / 100 == 2 ? ImageIO.read(in) : null;
+				if (response.statusCode() / 100 != 2
+						|| !CoverCache.acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
+					return null;
+				}
+				return decode(CoverCache.readCapped(in, CoverCache.MAX_BYTES));
 			}
 		}
 		return null; // data: URIs and other odd schemes aren't worth it
+	}
+
+	/** Decodes the bytes unless there are none (over the byte cap) or the picture header announces too many pixels. */
+	static @Nullable BufferedImage decode(byte @Nullable [] bytes) throws java.io.IOException {
+		if (bytes == null || !CoverCache.dimensionsOk(bytes)) {
+			return null;
+		}
+		return ImageIO.read(new java.io.ByteArrayInputStream(bytes));
 	}
 
 	/** Center-crops to a square, scales to {@code size} and rounds the corners ({@code size / 2} makes a circle). */

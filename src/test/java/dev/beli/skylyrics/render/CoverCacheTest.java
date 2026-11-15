@@ -81,4 +81,16 @@ class CoverCacheTest {
 		ImageIO.write(new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB), "png", out);
 		return out.toByteArray();
 	}
+
+	@Test
+	void albumArtAppliesTheSameByteAndSizeLimits() throws IOException {
+		assertNull(AlbumArt.decode(null));
+		assertNull(AlbumArt.decode(new byte[] {1, 2, 3}));
+		ByteArrayOutputStream big = new ByteArrayOutputStream();
+		ImageIO.write(new BufferedImage(5000, 8, BufferedImage.TYPE_INT_RGB), "png", big);
+		assertNull(AlbumArt.decode(big.toByteArray()));
+		ByteArrayOutputStream ok = new ByteArrayOutputStream();
+		ImageIO.write(new BufferedImage(40, 40, BufferedImage.TYPE_INT_RGB), "png", ok);
+		assertEquals(40, AlbumArt.decode(ok.toByteArray()).getWidth());
+	}
 }
