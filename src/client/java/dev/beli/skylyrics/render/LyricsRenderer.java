@@ -433,7 +433,7 @@ public final class LyricsRenderer {
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
 		// A resource reload (its loading screen is up) or a shader switch stalls the game: don't count it as a slow game
-		boolean reloading = mc.getOverlay() != null;
+		boolean reloading = loadingScreenUp(mc);
 		if (reloading || wasReloading || ScreenLayer.takeShaderFlip()) {
 			budget.forgive();
 		}
@@ -441,6 +441,15 @@ public final class LyricsRenderer {
 		budget.update(dt, mc.getFramerateLimitTracker().getFramerateLimit());
 		light = cfg.effects == SkyLyricsConfig.Effects.LIGHT || cfg.effects == SkyLyricsConfig.Effects.AUTO && budget.light();
 		return dt;
+	}
+
+	/** Whether the resource loading screen is up. */
+	private static boolean loadingScreenUp(Minecraft mc) {
+		//? if >=26.2 {
+		/*return mc.gui.overlay() != null;
+		*///?} else {
+		return mc.getOverlay() != null;
+		//?}
 	}
 
 	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
