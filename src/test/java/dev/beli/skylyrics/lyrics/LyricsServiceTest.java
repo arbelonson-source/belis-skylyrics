@@ -382,13 +382,31 @@ class LyricsServiceTest {
 	}
 
 	@Test
-	void versionlessLyricsAreKeptAndStampedWhenTheMainSiteAnswersWithAnotherStandIn() throws Exception {
+	void versionlessLyricsStayAsTheyAreWhenTheMainSiteAnswersWithAnotherStandIn() throws Exception {
 		Path file = saveOldVersionFile(OLD_SONG, STANDIN);
-		service = new LyricsService(x -> BETTER.asStopgap(), cache);
+		String before = readFile(file);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return BETTER.asStopgap(); // the main site is down again
+		}, cache);
 		service.load(OLD_SONG);
-		waitFor(() -> readFile(file).contains("\"v\":2"));
-		assertTrue(readFile(file).contains("Backup version"));
+		waitFor(() -> asks.get() == 1);
+		Thread.sleep(300);
+		assertEquals(before, readFile(file), "not stamped, so a later play asks again");
 		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
+	}
+
+	@Test
+	void versionlessLyricsThatAreTheSameAreStampedButNotShownAgain() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, BETTER);
+		service = new LyricsService(x -> BETTER, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		Lyrics shown = service.lyrics();
+		waitFor(() -> readFile(file).contains("\"v\":2"));
+		Thread.sleep(100);
+		assertTrue(shown == service.lyrics(), "the same lyrics were applied again");
 	}
 
 	@Test

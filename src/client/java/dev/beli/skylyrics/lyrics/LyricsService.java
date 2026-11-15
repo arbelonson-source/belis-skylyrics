@@ -245,9 +245,9 @@ public final class LyricsService {
 
 	/**
 	 * Asks the main site once more about a song saved by an older version, whose lyrics may have been the backup's
-	 * stand-in. Better lyrics replace the file (and the shown lyrics, if the song is still playing); nothing or another
-	 * stand-in keeps the old ones and stamps the file so it isn't asked again; a temporary failure leaves the file as it
-	 * is, so the next play tries again.
+	 * stand-in. Other lyrics replace the file (and the shown lyrics, if the song is still playing); nothing, or the same
+	 * lyrics, keeps the old ones and stamps the file so it isn't asked again. Another stand-in means the main site is down
+	 * again, so that, like a failure, leaves the file as it is and the next play tries again.
 	 */
 	private void recheck(Track t, long gen, Path file, CacheEntry old) {
 		if (generation.get() != gen) {
@@ -255,8 +255,13 @@ public final class LyricsService {
 		}
 		try {
 			LrclibClient.Result result = client.find(t);
-			boolean better = !result.stopgap() && found(parse(result, t.lengthMs()));
-			if (better) {
+			if (result.stopgap()) {
+				return;
+			}
+			boolean same = java.util.Objects.equals(result.synced(), old.synced) && java.util.Objects.equals(result.plain(), old.plain)
+					&& result.instrumental() == old.instrumental;
+			// The same lyrics again (most songs) aren't applied again, which would start the shown line over
+			if (!same && found(parse(result, t.lengthMs()))) {
 				writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis(), CACHE_VERSION));
 				if (generation.get() == gen) {
 					apply(t, result);
