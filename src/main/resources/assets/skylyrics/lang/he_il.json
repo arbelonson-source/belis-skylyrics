@@ -504,7 +504,7 @@
   "skylyrics.ui.each_line_fades_into_a_second_colour": "כל שורה עוברת בהדרגה לצבע שני",
   "skylyrics.ui.second_colour": "צבע שני",
   "skylyrics.ui.couldn_t_read_your_music_player": "לא הצלחנו לקרוא את נגן המוזיקה",
-  "skylyrics.ui.can_t_reach_the_internet_or_spotify": "לא ניתן להתחבר לאינטרנט או לספוטיפיי",
+  "skylyrics.ui.can_t_reach_the_internet_or_spotify": "אין גישה לאינטרנט או לספוטיפיי",
   "skylyrics.ui.couldn_t_start_the_windows_music_reader_check_th": "לא הצלחנו להפעיל את קורא המוזיקה של Windows. ודאו ש-Windows PowerShell מותקן והפעילו מחדש את המשחק. (%s)",
   "skylyrics.ui.the_windows_music_reader_took_too_long_to_start": "קורא המוזיקה של Windows לא התחיל בזמן. הפעילו מחדש את המשחק והמתינו רגע.",
   "skylyrics.ui.the_windows_music_reader_stopped_right_away_chec": "קורא המוזיקה של Windows נעצר מיד. ודאו ש-Windows PowerShell מותקן והפעילו מחדש את המשחק.",
@@ -524,5 +524,5 @@
   "skylyrics.ui.skylyrics_s_needs_s_update_s_to_get_it": "SkyLyrics %s דורשת %s: עדכנו את %s כדי לקבל אותה",
   "skylyrics.ui.s_or_newer": "%s ומעלה",
   "skylyrics.ui.s_or_s": "%s או %s",
-  "skylyrics.ui.a_version_it_can_t_tell": "גרסה שלא ניתן לזהות"
+  "skylyrics.ui.a_version_it_can_t_tell": "גרסה לא מזוהה"
 }
