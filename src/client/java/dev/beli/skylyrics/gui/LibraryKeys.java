@@ -25,4 +25,17 @@ final class LibraryKeys {
 	static int afterHover(int selected, int hit) {
 		return hit >= 0 ? hit : selected;
 	}
+
+	/** How long after a click opened a playlist a second click is still part of the same double-click. */
+	static final long DOUBLE_CLICK_NS = 400_000_000L;
+
+	/** The search shelf still shows the answer to an older query while a new one is being typed: it can't be chosen. */
+	static boolean staleResults(boolean searchView, boolean searchDirty) {
+		return searchView && searchDirty;
+	}
+
+	/** A click this soon after one opened a playlist is the double-click's second half and must not pick a song of it. */
+	static boolean tooSoonAfterOpen(long sinceOpenNs) {
+		return sinceOpenNs >= 0 && sinceOpenNs < DOUBLE_CLICK_NS;
+	}
 }
