@@ -252,7 +252,10 @@ class TitleCleanerTest {
 		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song - Official Audio", "x", "firefox")).title());
 		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song | Lyrics", "x", "firefox")).title());
 		assertEquals("Cool Song | Part 2", TitleCleaner.clean(track("Some Band - Cool Song | Part 2", "x", "firefox")).title());
-		assertEquals("Some Band - Cool Song | Official Remix", TitleCleaner.clean(track("Some Band - Cool Song | Official Remix", "x", "firefox")).title());
+		// "Official Remix" is not all noise, so it stays; the first dash is still "Artist - Song"
+		Track remix = TitleCleaner.clean(track("Some Band - Cool Song | Official Remix", "x", "firefox"));
+		assertEquals("Some Band", remix.artist());
+		assertEquals("Cool Song | Official Remix", remix.title());
 		assertEquals("Song", TitleCleaner.forSearch("Song | Official Music Video"));
 		assertEquals("Song", TitleCleaner.forSearch("Song - 4K Visualizer"));
 		assertEquals("Song | Part 2", TitleCleaner.forSearch("Song | Part 2"));
