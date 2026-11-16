@@ -32,8 +32,8 @@ class SkyEffectsTest {
 	}
 
 	@Test
-	void skyPulseStaysFullWithNoLineBeingSung() {
-		assertEquals(1, SkyEffects.beat(5, false), 1e-6f, "unsynced, instrumental or hidden lyrics: as with the pulse off");
+	void skyPulseStaysFullWithoutSyncedLyricsShown() {
+		assertEquals(1, SkyEffects.beat(5, false), 1e-6f, "unsynced, none, an instrumental track or hidden lyrics: as with the pulse off");
 		assertEquals(1, SkyEffects.beat(0.1f, false), 1e-6f);
 	}
 

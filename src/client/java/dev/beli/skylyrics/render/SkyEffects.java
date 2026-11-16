@@ -171,11 +171,12 @@ public final class SkyEffects {
 	 * between lines and full for a moment as each one starts.
 	 *
 	 * @param since seconds since the lyrics moved to a new line, or NaN with the pulse off
-	 * @param lineActive whether a lyric line is being sung: with none (unsynced or instrumental lyrics, lyrics hidden)
-	 *                   there is nothing to pulse with, so the sky stays at full strength
+	 * @param syncedShown whether synced lyrics are on show: with none (unsynced lyrics, no lyrics, an instrumental
+	 *                    track, lyrics hidden) there is nothing to pulse with, so the sky stays at full strength.
+	 *                    A break inside synced lyrics still counts as shown, so the sky doesn't jump there.
 	 */
-	static float beat(float since, boolean lineActive) {
-		return Float.isNaN(since) || !lineActive ? 1 : BEAT_REST + (1 - BEAT_REST) * LyricsRenderer.pulse(since);
+	static float beat(float since, boolean syncedShown) {
+		return Float.isNaN(since) || !syncedShown ? 1 : BEAT_REST + (1 - BEAT_REST) * LyricsRenderer.pulse(since);
 	}
 
 	/**
@@ -393,9 +394,9 @@ public final class SkyEffects {
 		}
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		skyStars = easeStars(skyStars, starBrightness(level, camera, partial), dt);
-		boolean lineActive = cfg.skyPulse && lyrics.visible() && lineSeconds(cfg) > 0;
+		boolean syncedShown = cfg.skyPulse && lyrics.visible() && syncedLyricsShown();
 		fade = visibility(skyStars, level.getRainLevel(partial), cfg.skyStrength, STARS_DIM_WITH_RAIN) * smooth(presence)
-				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, lineActive);
+				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, syncedShown);
 		if (fade < 0.01f) {
 			return;
 		}
@@ -598,6 +599,12 @@ public final class SkyEffects {
 			launch(free);
 			meteorsAlive++;
 		}
+	}
+
+	/** Whether the playing song has synced lyrics to show (not unsynced, none, or an instrumental track). */
+	private boolean syncedLyricsShown() {
+		Lyrics shown = service.snapshot().forSong(tracker.track()).lyrics();
+		return shown != null && shown.synced() && !shown.isEmpty();
 	}
 
 	/** How long the line being sung lasts, or 0 between lines and without synced lyrics. */
