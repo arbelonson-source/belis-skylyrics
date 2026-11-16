@@ -20,6 +20,10 @@ final class SkyMesh {
 	/** For round patches: the unit direction of the middle and the angular radius (radians) that holds every point. */
 	/** Scratch for one draw (the render thread only): which columns are in view. */
 	private boolean[] columnShown;
+	/** Scratch for one draw: each corner after turning, and which rows have been turned yet. */
+	private final float[] outX, outY, outZ;
+	private final int[] outArgb;
+	private final boolean[] turned;
 	private float capX, capY, capZ, capRadius = -1;
 
 	SkyMesh(int rows, int cols) {
@@ -29,6 +33,11 @@ final class SkyMesh {
 		y = new float[rows * cols];
 		z = new float[rows * cols];
 		rgb = new int[rows * cols];
+		outX = new float[rows * cols];
+		outY = new float[rows * cols];
+		outZ = new float[rows * cols];
+		outArgb = new int[rows * cols];
+		turned = new boolean[rows];
 	}
 
 	void set(int i, int j, float px, float py, float pz, int color) {
@@ -59,32 +68,61 @@ final class SkyMesh {
 		if (capRadius >= 0 && !view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius)) {
 			return;
 		}
-		boolean[] column = null;
-		if (columnYaw != null) {
-			float turn = (float) Math.toDegrees(Math.atan2(sin, cos));
-			column = columnShown;
-			for (int j = 0; j + 1 < cols; j++) {
-				column[j] = view.yawVisible(columnYaw[j] + turn, columnYaw[j + 1] + turn);
-			}
-		}
+		boolean[] column = columnsInView(cos, sin, view);
+		// What every corner shares is worked out once; each corner is then turned once, however many quads use it
+		int alpha = SkyColors.argb(0, level);
+		java.util.Arrays.fill(turned, false);
 		for (int i = 0; i + 1 < rows; i++) {
 			if (rowHeight != null && !view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]))) {
 				continue;
 			}
+			turnRow(i, column, cos, sin, r, alpha);
+			turnRow(i + 1, column, cos, sin, r, alpha);
 			for (int j = 0; j + 1 < cols; j++) {
 				if (column != null && !column[j]) {
 					continue;
 				}
-				corner(c, i * cols + j, cos, sin, r, level);
-				corner(c, i * cols + j + 1, cos, sin, r, level);
-				corner(c, (i + 1) * cols + j + 1, cos, sin, r, level);
-				corner(c, (i + 1) * cols + j, cos, sin, r, level);
+				int k = i * cols + j;
+				emit(c, k);
+				emit(c, k + 1);
+				emit(c, k + cols + 1);
+				emit(c, k + cols);
 			}
 		}
 	}
 
-	private void corner(SkyCanvas c, int k, float cos, float sin, float r, float level) {
-		c.vertex((x[k] * cos - z[k] * sin) * r, y[k] * r, (z[k] * cos + x[k] * sin) * r, SkyColors.argb(rgb[k], level));
+	/** Which columns (domes) or segments (polar meshes) can be on screen; null when every one is drawn. */
+	private boolean[] columnsInView(float cos, float sin, SkyView view) {
+		if (columnYaw != null) {
+			float turn = (float) Math.toDegrees(Math.atan2(sin, cos));
+			for (int j = 0; j + 1 < cols; j++) {
+				columnShown[j] = view.yawVisible(columnYaw[j] + turn, columnYaw[j + 1] + turn);
+			}
+			return columnShown;
+		}
+		return null;
+	}
+
+	/** Turns and pushes out the corners of one row that a drawn quad uses, once per draw. */
+	private void turnRow(int i, boolean[] column, float cos, float sin, float r, int alpha) {
+		if (turned[i]) {
+			return;
+		}
+		turned[i] = true;
+		for (int j = 0; j < cols; j++) {
+			if (column != null && !(j + 1 < cols && column[j]) && !(j > 0 && column[j - 1])) {
+				continue;
+			}
+			int k = i * cols + j;
+			outX[k] = (x[k] * cos - z[k] * sin) * r;
+			outY[k] = y[k] * r;
+			outZ[k] = (z[k] * cos + x[k] * sin) * r;
+			outArgb[k] = alpha | rgb[k] & 0xFFFFFF;
+		}
+	}
+
+	private void emit(SkyCanvas c, int k) {
+		c.vertex(outX[k], outY[k], outZ[k], outArgb[k]);
 	}
 
 	/** Marks this as a dome (rows of height in degrees, {@code columns} equal steps of yaw round) so the draw can skip what's out of view. */
