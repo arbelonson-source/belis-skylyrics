@@ -50,7 +50,7 @@ jobs:
             "$py" - "$report" $must <<'PY'
           import sys, xml.etree.ElementTree as ET
           root = ET.parse(sys.argv[1]).getroot()
-          cases = {c.get('name'): c for c in root.iter('testcase')}
+          cases = {c.get('name').split('(')[0]: c for c in root.iter('testcase')}  # reports say "name()"
           bad = [n for n in sys.argv[2:] if n not in cases or cases[n].find('skipped') is not None]
           broken = [n for n, c in cases.items() if c.find('failure') is not None or c.find('error') is not None]
           if bad or broken:
