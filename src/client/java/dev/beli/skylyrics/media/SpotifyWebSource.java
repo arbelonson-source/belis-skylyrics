@@ -17,7 +17,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -603,15 +602,12 @@ public final class SpotifyWebSource implements MediaSource {
 		json.addProperty("scopes", grantedScopes);
 		try {
 			Files.createDirectories(loginFile.getParent());
-			Path tmp = loginFile.resolveSibling(loginFile.getFileName() + ".tmp");
+			// A temp file of our own: a second game saving at the same moment must not write to or delete it
+			Path tmp = Files.createTempFile(loginFile.getParent(), loginFile.getFileName() + ".", ".tmp");
 			boolean done = false;
 			try {
-				Files.deleteIfExists(tmp);
-				try {
-					Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-				} catch (UnsupportedOperationException e) {
-					Files.createFile(tmp);
-					// Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
+				// Owner-only already on Linux and macOS; Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
+				if (Files.getFileAttributeView(tmp, java.nio.file.attribute.PosixFileAttributeView.class) == null) {
 					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 				}
 				Files.writeString(tmp, json.toString(), StandardCharsets.UTF_8);

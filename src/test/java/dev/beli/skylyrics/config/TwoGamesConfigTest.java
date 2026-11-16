@@ -101,4 +101,18 @@ class TwoGamesConfigTest {
 		b.save(file);
 		assertEquals(0.6f, open(file).glow, 1e-6f);
 	}
+
+	@Test
+	void savingLeavesAnotherGamesTempFileAlone() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Path other = dir.resolve("skylyrics.json.tmp"); // the other game is writing its own copy right now
+		Files.writeString(other, "half");
+		SkyLyricsConfig a = open(file);
+		a.glow = 0.5f;
+		a.save(file);
+		assertEquals("half", Files.readString(other));
+		try (var files = Files.list(dir)) {
+			assertEquals(java.util.Set.of("skylyrics.json", "skylyrics.json.tmp"), files.map(f -> f.getFileName().toString()).collect(java.util.stream.Collectors.toSet()));
+		}
+	}
 }
