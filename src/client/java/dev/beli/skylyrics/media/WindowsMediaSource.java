@@ -471,6 +471,7 @@ public final class WindowsMediaSource implements MediaSource {
 		try {
 			Files.createDirectories(covers);
 			deleteStaleCovers(covers); // left over from a game that has closed
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(dir, SCRIPT, System.currentTimeMillis()); // a killed game's script temp
 			byte[] bytes;
 			try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
 				if (in == null) {
