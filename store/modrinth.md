@@ -11,7 +11,7 @@ Ready-to-paste text for the Modrinth project. Nothing here is published automati
 | Summary (80 characters max) | Synced lyrics for the song you're playing, glowing in the Minecraft sky. |
 | Project type | Mod |
 | Loader | Fabric |
-| Game versions | 1.21.1, 1.21.4, 1.21.5, 1.21.6, 1.21.7, 1.21.8, 1.21.9, 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2, 26.3 (one jar per version, see the README) |
+| Game versions | 1.21.1, 1.21.4, 1.21.5, 1.21.6, 1.21.7, 1.21.8, 1.21.10, 1.21.11, 26.1, 26.1.1, 26.1.2, 26.2, 26.3 (one jar per version, see the README) |
 | Client side | Required |
 | Server side | Unsupported |
 | Categories | Utility (main), Decoration |

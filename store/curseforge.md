@@ -20,7 +20,7 @@ When uploading each file:
 
 | Field | Value |
 | --- | --- |
-| Game version | the one the jar is for: 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8 (one jar), 1.21.9 and 1.21.10 (one jar), 1.21.11, 26.1 (26.1 to 26.1.2, one jar), 26.2 or 26.3 |
+| Game version | the one the jar is for: 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8 (one jar), 1.21.10, 1.21.11, 26.1 (26.1 to 26.1.2, one jar), 26.2 or 26.3 |
 | Mod loader | Fabric |
 | Environment | Client |
 | Java | 21 for Minecraft 1.21.x, 25 for 26.x |
