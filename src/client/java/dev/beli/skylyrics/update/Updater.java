@@ -470,12 +470,12 @@ public final class Updater {
 
 	/**
 	 * Deletes this mod's own leftovers in a folder: downloads (.part), Windows staged jars (.new) and the old jar set aside
-	 * by a swap (.old), whose name starts with belis-skylyrics-, and the swap scripts (skylyrics-update-*.bat) that versions
+	 * by a swap (.skylyrics-old), whose name starts with belis-skylyrics-, and the swap scripts (skylyrics-update-*.bat) that versions
 	 * before 0.9 left in the temp or mods folder when the game was killed before they ran. Only those over a day old go:
 	 * a fresh one may be another game's running download. Returns how many were deleted.
 	 */
 	static int cleanLeftovers(Path dir, long nowMs) {
-		return cleanLeftovers(dir, nowMs, "belis-skylyrics-*", ".part", ".new", ".old")
+		return cleanLeftovers(dir, nowMs, "belis-skylyrics-*", ".part", ".new", ".skylyrics-old")
 				+ cleanLeftovers(dir, nowMs, "skylyrics-update-*", ".bat");
 	}
 
@@ -556,7 +556,11 @@ public final class Updater {
 	 * Waits for the game to quit, then: no staged jar, nothing is touched. The old jar is first set aside (renamed, tried for
 	 * about a minute while Windows still holds it), then the new one moved into its place (tried again for ten seconds if an
 	 * antivirus holds it); only when that worked is the old one deleted. If the new one can't be put in place, the old one
-	 * is put back, so the folder never ends up without a SkyLyrics jar. One line, single quotes only, so it travels as one
+	 * is put back, so the folder never ends up without a SkyLyrics jar. The set-aside file is named
+	 * {@code <old jar>.skylyrics-old}, so a player's own backup (.old) is never touched. Two games sharing one mods folder
+	 * can each have an update staged: if the old jar is already gone and the target exists, another game's swap did the job,
+	 * so this one deletes only its own staged jar and leaves everything else; and the set-aside file is only deleted or put
+	 * back by the script that made it. One line, single quotes only, so it travels as one
 	 * command-line argument.
 	 */
 	static String swapScript() {
@@ -565,15 +569,16 @@ public final class Updater {
 				"$o=$env:SKYLYRICS_OLD",
 				"$w=$env:SKYLYRICS_NEW",
 				"$t=$env:SKYLYRICS_TARGET",
-				"$a=$o+'.old'",
+				"$a=$o+'.skylyrics-old'",
 				"if($env:SKYLYRICS_PID){try{Wait-Process -Id ([int]$env:SKYLYRICS_PID) -Timeout 120}catch{}}",
 				"if(-not [IO.File]::Exists($w)){exit}",
 				"$aside=$false",
-				"for($i=0;$i -lt 20 -and -not $aside;$i++){if(-not [IO.File]::Exists($o)){$aside=$true}else{try{[IO.File]::Delete($a);[IO.File]::Move($o,$a);$aside=$true}catch{Start-Sleep -Seconds 3}}}",
+				"$mine=$false",
+				"for($i=0;$i -lt 20 -and -not $aside;$i++){if(-not [IO.File]::Exists($o)){if([IO.File]::Exists($t)){[IO.File]::Delete($w);exit};$aside=$true}else{try{[IO.File]::Delete($a);[IO.File]::Move($o,$a);$aside=$true;$mine=$true}catch{Start-Sleep -Seconds 3}}}",
 				"if(-not $aside){[IO.File]::Delete($w);exit}",
 				"$done=$false",
 				"for($i=0;$i -lt 10 -and -not $done;$i++){try{[IO.File]::Delete($t);[IO.File]::Move($w,$t);$done=$true}catch{Start-Sleep -Seconds 1}}",
-				"if($done){try{[IO.File]::Delete($a)}catch{}}else{try{[IO.File]::Move($a,$o)}catch{}}");
+				"if($done){if($mine){try{[IO.File]::Delete($a)}catch{}}}elseif($mine){try{[IO.File]::Move($a,$o)}catch{}}");
 	}
 
 	private static boolean windows() {
