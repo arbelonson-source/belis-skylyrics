@@ -46,6 +46,12 @@ public final class ChosenSource implements MediaSource {
 		current().seek(positionMs);
 	}
 
+	/** The chosen source's own failing streak, so its quiet retries count as the same outage (see {@link MediaTracker}). */
+	@Override
+	public @org.jspecify.annotations.Nullable Throwable failing() {
+		return current().failing();
+	}
+
 	@Override
 	public String displayName() {
 		return current().displayName();

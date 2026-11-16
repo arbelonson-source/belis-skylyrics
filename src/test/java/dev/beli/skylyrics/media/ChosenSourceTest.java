@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +22,12 @@ class ChosenSourceTest {
 		final List<String> calls = new ArrayList<>();
 		boolean closed;
 		boolean failOnClose;
+		Throwable failure;
+
+		@Override
+		public Throwable failing() {
+			return failure;
+		}
 
 		@Override
 		public Snapshot poll() {
@@ -115,6 +122,21 @@ class ChosenSourceTest {
 		setting.set("");
 		source.playPause();
 		assertEquals(List.of("poll", "playPause"), local.calls);
+	}
+
+	@Test
+	void aFailingStreakIsTheChosenSourcesOwn() {
+		Local local = new Local();
+		local.failure = new java.io.IOException("can't read the player");
+		AtomicReference<String> setting = new AtomicReference<>("");
+		ChosenSource source = new ChosenSource(local, web(), setting::get);
+		// without this the tracker saw every quiet retry between failures as a working read
+		assertSame(local.failure, source.failing());
+		local.failure = null;
+		assertNull(source.failing());
+		local.failure = new java.io.IOException("still failing");
+		setting.set(SpotifyWebSource.KEY);
+		assertNull(source.failing(), "Spotify Web has its own streak, not the local player's");
 	}
 
 	@Test
