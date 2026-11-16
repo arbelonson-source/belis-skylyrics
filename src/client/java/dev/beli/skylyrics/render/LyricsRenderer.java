@@ -39,6 +39,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
+import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
@@ -175,7 +176,7 @@ public final class LyricsRenderer {
 	/** Scratch for {@code Draw.line}, reused so a row doesn't allocate its per-character arrays every frame. Render thread only. */
 	private float[] scratchReveal = new float[64], scratchFlare = new float[64], scratchSpread = new float[65];
 	/** The instrumental song's note line, translated once per language. */
-	private final LangText instrumentalText = new LangText("♪  Instrumental  ♪");
+	private final LangText instrumentalText = new LangText(() -> Tr.t("♪  Instrumental  ♪"));
 	private float wrapCacheWidth;
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */

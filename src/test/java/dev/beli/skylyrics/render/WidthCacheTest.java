@@ -84,20 +84,16 @@ class WidthCacheTest {
 
 	@Test
 	void aTranslatedTextIsMadeOncePerLanguage() {
-		LangText text = new LangText("Unknown song");
 		AtomicInteger made = new AtomicInteger();
-		java.util.function.UnaryOperator<String> tr = en -> {
-			made.incrementAndGet();
-			return en + "!";
-		};
+		LangText text = new LangText(() -> made.incrementAndGet() > 0 ? "Unknown song!" : "");
 		Object english = new Object(), hebrew = new Object();
 		for (int i = 0; i < 50; i++) {
-			assertEquals("Unknown song!", text.get(english, tr));
+			assertEquals("Unknown song!", text.get(english));
 		}
 		assertEquals(1, made.get());
-		text.get(hebrew, tr);
+		text.get(hebrew);
 		assertEquals(2, made.get());
-		text.get(hebrew, tr);
+		text.get(hebrew);
 		assertEquals(2, made.get());
 	}
 }

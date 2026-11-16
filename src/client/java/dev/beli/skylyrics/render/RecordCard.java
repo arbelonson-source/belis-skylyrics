@@ -15,6 +15,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.HumanoidArm;
 
 import dev.beli.skylyrics.SkyLyricsClient;
+import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
 import dev.beli.skylyrics.media.MediaTracker;
@@ -70,7 +71,7 @@ public final class RecordCard {
 	/** The line on the strip and how far it has faded in, so a new line eases in instead of popping. */
 	private String lyric = "";
 	/** The placeholder title, translated once per language. */
-	private final LangText unknownSong = new LangText("Unknown song");
+	private final LangText unknownSong = new LangText(() -> Tr.t("Unknown song"));
 	private float lyricIn;
 	private float spin;
 	private float spinSpeed;
