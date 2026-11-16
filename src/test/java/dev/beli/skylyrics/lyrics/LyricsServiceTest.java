@@ -533,7 +533,8 @@ class LyricsServiceTest {
 		failCode = 400;
 		failures.set(1_000);
 		service.load(track("Song One", 200_000));
-		waitFor(() -> service.state() == LyricsService.State.ERROR);
+		// The site answered: that is "no lyrics", not "check your internet"
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
 		Thread.sleep(300);
 		assertEquals(1, asked.size(), asked.toString());
 	}

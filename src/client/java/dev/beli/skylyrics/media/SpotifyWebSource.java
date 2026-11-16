@@ -83,6 +83,18 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
+	/** Setup isn't finished (no Client ID yet, or not signed in): the player has a step to do, nothing is broken. */
+	static final class NotSetUp extends IOException {
+		NotSetUp(String message) {
+			super(message);
+		}
+	}
+
+	/** What to tell a player whose Spotify source can't ask yet: the first missing step. */
+	static NotSetUp notSetUp(String clientId) {
+		return new NotSetUp(validClientId(clientId) ? Tr.t("Sign in to Spotify below") : Tr.t("Paste your Client ID first"));
+	}
+
 	private final Supplier<String> clientId;
 	private final Path loginFile;
 	private final SecureRandom random = new SecureRandom();
@@ -376,8 +388,11 @@ public final class SpotifyWebSource implements MediaSource {
 		return true;
 	}
 
-	/** What to show for a failure: its message, or its class name when it has none (never "null"). */
+	/** What to show for a failure: the internet's fault when it is, else its message, or its class name when it has none (never "null"). */
 	static String failureText(Throwable e) {
+		if (MediaTracker.networkFailure(e)) {
+			return Tr.t("Can't reach the internet or Spotify");
+		}
 		String message = e.getMessage();
 		return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
 	}
@@ -421,7 +436,7 @@ public final class SpotifyWebSource implements MediaSource {
 		byte[] body = ("<!doctype html><meta charset=utf-8><title>Beli's SkyLyrics</title>"
 				+ "<body style=\"background:#14111f;color:#ece8f8;font:18px system-ui,sans-serif;display:grid;place-items:center;height:90vh\">"
 				+ "<div style=\"text-align:center\"><div style=\"color:#b79cff;font-weight:700;margin-bottom:12px\">Beli's SkyLyrics</div>"
-				+ safe + "</div>").getBytes(StandardCharsets.UTF_8);
+				+ "<div dir=auto>" + safe + "</div></div>").getBytes(StandardCharsets.UTF_8);
 		out.write(("HTTP/1.1 " + status + "\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: " + body.length
 				+ "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
 		out.write(body);
@@ -534,7 +549,7 @@ public final class SpotifyWebSource implements MediaSource {
 			synchronized (this) {
 				refresh = refreshToken;
 				if (refresh == null || !id.equals(tokenClient)) {
-					throw new IOException(Tr.t("Sign in to Spotify below"));
+					throw notSetUp(id);
 				}
 				if (accessToken != null && System.nanoTime() < accessUntilNs) {
 					return accessToken;
@@ -563,7 +578,7 @@ public final class SpotifyWebSource implements MediaSource {
 			}
 			synchronized (this) {
 				if (!keepRefresh(started, signInGeneration)) {
-					throw new IOException(Tr.t("Sign in to Spotify below"));
+					throw notSetUp(id);
 				}
 				if (refused) {
 					signOut();

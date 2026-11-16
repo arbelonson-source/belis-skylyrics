@@ -1,7 +1,6 @@
 package dev.beli.skylyrics.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
@@ -35,6 +34,7 @@ import dev.beli.skylyrics.media.Library;
 import dev.beli.skylyrics.media.LibraryItem;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.media.LibraryPlaylist;
+import dev.beli.skylyrics.media.SpotifyLibrary;
 import dev.beli.skylyrics.media.SpotifyLibrary.Page;
 import dev.beli.skylyrics.render.CoverCache;
 
@@ -234,8 +234,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private static String message(@Nullable Throwable error) {
-		return error instanceof IOException && error.getMessage() != null ? error.getMessage()
-				: Tr.t("Something went wrong, try again");
+		return SpotifyLibrary.errorText(error);
 	}
 
 	private void layout() {
