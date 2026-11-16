@@ -65,7 +65,9 @@ class RecordCardTest {
 		assertArrayEquals(new String[] {"0:01", "-3:39"}, RecordCard.times(1_500, 220_400));
 		assertArrayEquals(new String[] {"1:05", "-2:35"}, RecordCard.times(65_999, 219_600));
 		// A player that reports a little past the end, or a time before the start
-		assertArrayEquals(new String[] {"3:40", "-0:00"}, RecordCard.times(221_000, 220_000));
+		assertArrayEquals(new String[] {"3:40", "0:00"}, RecordCard.times(221_000, 220_000));
+		assertArrayEquals(new String[] {"3:40", "0:00"}, RecordCard.times(220_000, 220_000));
+		assertArrayEquals(new String[] {"3:39", "-0:01"}, RecordCard.times(219_000, 220_000));
 		assertArrayEquals(new String[] {"0:00", "-3:40"}, RecordCard.times(-300, 220_000));
 	}
 

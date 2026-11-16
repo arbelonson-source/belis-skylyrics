@@ -563,7 +563,8 @@ public final class RecordCard {
 	static String[] times(long playedMs, long lengthMs) {
 		long length = Math.round(Math.max(0, lengthMs) / 1000.0);
 		long played = Math.min(Math.max(0, playedMs) / 1000, length);
-		return new String[] {clock(played * 1000), "-" + clock((length - played) * 1000)};
+		long left = length - played;
+		return new String[] {clock(played * 1000), (left > 0 ? "-" : "") + clock(left * 1000)};
 	}
 
 	/** "3:07" for minutes and seconds, "1:02:05" past an hour; never below zero. */
