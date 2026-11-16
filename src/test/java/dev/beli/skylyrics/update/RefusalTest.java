@@ -120,6 +120,42 @@ class RefusalTest {
 	}
 
 	@Test
+	void aReleaseWithoutAChecksumIsNeverRemembered() throws Exception {
+		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
+		UpdateCheck.Asset noDigest = new UpdateCheck.Asset(NAME, URL, null);
+		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(data);
+		assertRefusal(check(net, noDigest, running("0.139.0")));
+		assertRefusal(check(net, noDigest, running("0.139.0")));
+		assertEquals(2, net.requests.size(), "without a checksum the same name could be another jar, so it downloads again");
+	}
+
+	@Test
+	void theSameNameWithAnotherChecksumDownloadsAgain() throws Exception {
+		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
+		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(data);
+		check(net, asset(data), running("0.139.0"));
+		byte[] reuploaded = jar("{\"fabric-api\":\">=0.130.0\"}");
+		UpdaterChecksTest.Net again = new UpdaterChecksTest.Net(reuploaded);
+		Updater.Notice n = check(again, asset(reuploaded), running("0.139.0"));
+		assertEquals(1, again.requests.size(), "a fixed re-upload under the same name is fetched");
+		assertTrue(n.downloaded(), "and installed");
+		assertFalse(Files.exists(memory));
+	}
+
+	@Test
+	void tellMeAndOffLeaveTheMemoryAlone() throws Exception {
+		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
+		check(new UpdaterChecksTest.Net(data), asset(data), running("0.139.0"));
+		String before = Files.readString(memory);
+		for (Updates mode : new Updates[] {Updates.NOTIFY, Updates.OFF}) {
+			UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(data);
+			Updater.update(mode, net, old, new UpdateCheck.Release("0.2.0", List.of(asset(data))), asset(data), memory, running("0.139.0"));
+			assertEquals(0, net.requests.size(), mode + " downloads nothing");
+			assertEquals(before, Files.readString(memory), mode + " leaves the memory as it was");
+		}
+	}
+
+	@Test
 	void anUnwritableMemoryNeverStopsTheCheck() throws Exception {
 		Files.writeString(dir.resolve("cache"), "a file where the folder should be");
 		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
