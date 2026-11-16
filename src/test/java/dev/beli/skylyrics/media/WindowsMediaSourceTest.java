@@ -512,4 +512,15 @@ class WindowsMediaSourceTest {
 		assertEquals(61_000, p[0]);
 		assertEquals(63_000, p[1]);
 	}
+
+	@Test
+	void onlyACoverWhoseHelperIsGoneIsStale() {
+		java.util.function.LongPredicate runs = pid -> pid == 4242;
+		assertFalse(WindowsMediaSource.staleCover("cover-4242-3.img", runs, 0), "another game's helper still runs");
+		assertTrue(WindowsMediaSource.staleCover("cover-777-1.img", runs, 0), "its helper is gone");
+		assertTrue(WindowsMediaSource.staleCover("cover-777-1.img", runs, 0));
+		assertFalse(WindowsMediaSource.staleCover("other.img", runs, 60_000), "not ours and not old: left alone");
+		assertTrue(WindowsMediaSource.staleCover("other.img", runs, 25L * 3600 * 1000), "a day old");
+		assertFalse(WindowsMediaSource.staleCover("cover-99999999999999999999-1.img", runs, 1000));
+	}
 }

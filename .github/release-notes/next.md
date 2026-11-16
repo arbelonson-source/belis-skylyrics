@@ -6,6 +6,7 @@
 
 ### Fixed
 
+- **Windows covers with two games.** On Windows, starting a second game no longer deletes the first game's album cover files.
 - **Spotify with two games.** When two games share one Spotify sign-in and renew it at the same moment, the second one now waits a moment for the first one's new sign-in instead of signing you out.
 - **Saving with two games open.** Two games saving at the same moment can no longer break each other's settings file or lose a renewed Spotify sign-in.
 - **Two games at once.** Two Minecraft games open at the same time no longer undo each other's settings or song timings: when one saves, it keeps what the other changed, and shows it too.
