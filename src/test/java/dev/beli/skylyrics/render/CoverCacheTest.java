@@ -101,13 +101,13 @@ class CoverCacheTest {
 	}
 
 	@Test
-	void aHugeCoverDecodesToAboutTwiceTheTargetKeepingItsAspect() throws IOException {
+	void aHugeCoverDecodesToTwoToFourTimesTheTargetKeepingItsAspect() throws IOException {
 		BufferedImage src = bigPicture(4000, 3000);
 		for (String format : new String[] {"png", "jpg"}) {
 			for (int target : new int[] {64, 128}) {
 				BufferedImage out = CoverCache.decodeSmall(encode(src, format), target);
 				int longer = Math.max(out.getWidth(), out.getHeight());
-				assertTrue(longer <= 2 * target && longer >= target, format + " " + target + " -> " + out.getWidth() + "x" + out.getHeight());
+				assertTrue(longer <= 4 * target && longer >= 2 * target, format + " " + target + " -> " + out.getWidth() + "x" + out.getHeight());
 				assertEquals(4000 / 3000.0, out.getWidth() / (double) out.getHeight(), 1.5 / out.getHeight(), format);
 			}
 		}
@@ -120,6 +120,8 @@ class CoverCacheTest {
 		assertEquals(300, out.getHeight());
 		BufferedImage tiny = CoverCache.decodeSmall(encode(bigPicture(40, 40), "png"), 128);
 		assertEquals(40, tiny.getWidth());
+		// 300 is over 4 x 64, so at the AlbumArt target it is halved
+		assertEquals(150, CoverCache.decodeSmall(encode(bigPicture(300, 300), "png"), 64).getWidth());
 	}
 
 	@Test

@@ -303,8 +303,8 @@ public final class CoverCache {
 
 	/**
 	 * Decodes a cover no bigger than needed: the reader skips pixels while reading (source subsampling), so a huge
-	 * cover never sits whole on the heap. The result's longer side is at most about twice {@code target} (and the
-	 * shorter one stays at least {@code target} where the picture allows); pictures under 3 * target decode as they are.
+	 * cover never sits whole on the heap. The result's longer side lands in [2 * target, 4 * target] (and the
+	 * shorter one stays at least {@code target} where the picture allows); pictures up to 4 * target decode as they are.
 	 * Falls back to a plain {@link ImageIO#read} when no reader takes the bytes or subsampling fails.
 	 */
 	static @Nullable BufferedImage decodeSmall(byte[] bytes, int target) throws java.io.IOException {
@@ -331,13 +331,13 @@ public final class CoverCache {
 		return ImageIO.read(new ByteArrayInputStream(bytes));
 	}
 
-	/** Every how many pixels to read so the longer side lands in [target, 2 * target]; 1 for a picture under 3 * target. */
+	/** Every how many pixels to read so the longer side lands in [2 * target, 4 * target] (the shrink's box filter needs a few samples per output pixel); 1 up to 4 * target. */
 	static int subsampling(int width, int height, int target) {
 		int longer = Math.max(width, height), shorter = Math.min(width, height);
-		if (longer < 3 * target) {
-			return 1; // halving a picture this close to the target saves little: decode as is
+		if (longer <= 4 * target) {
+			return 1; // already small: decode as is
 		}
-		int step = (longer + 2 * target - 1) / (2 * target);
+		int step = (longer + 4 * target - 1) / (4 * target);
 		return Math.max(1, Math.min(step, shorter / target));
 	}
 
