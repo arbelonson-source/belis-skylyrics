@@ -2,7 +2,9 @@ package dev.beli.skylyrics;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import net.minecraft.client.resources.language.I18n;
 
@@ -10,7 +12,7 @@ public final class Tr {
 	private static final Map<String, String> KEYS = new ConcurrentHashMap<>();
 
 	/** What each translated text was written as in English, so a search can match the English words too. */
-	private static final Map<String, String> SOURCE = new ConcurrentHashMap<>();
+	private static final Map<String, Set<String>> SOURCE = new ConcurrentHashMap<>();
 
 	private Tr() {
 	}
@@ -25,16 +27,28 @@ public final class Tr {
 		//?}
 			String shown = I18n.get(key, args);
 			if (args.length == 0 && !shown.equals(english)) {
-				SOURCE.put(shown, english);
+				remember(shown, english);
 			}
 			return shown;
 		}
 		return args.length == 0 ? english : String.format(Locale.ROOT, english, args);
 	}
 
-	/** The English a shown text was translated from, or the text itself when it is English or not from {@link #t}. */
+	/** Notes that {@code shown} is how {@code english} reads in this language; several English texts may share one. */
+	static void remember(String shown, String english) {
+		SOURCE.computeIfAbsent(shown, k -> new ConcurrentSkipListSet<>()).add(english);
+	}
+
+	/**
+	 * Every English a shown text was translated from, joined by a space in a stable order, or the text itself when it
+	 * is English or not from {@link #t}.
+	 */
 	public static String english(String shown) {
-		return shown == null ? "" : SOURCE.getOrDefault(shown, shown);
+		if (shown == null) {
+			return "";
+		}
+		Set<String> all = SOURCE.get(shown);
+		return all == null || all.isEmpty() ? shown : String.join(" ", all);
 	}
 
 	private static final java.util.regex.Pattern NON_ALNUM = java.util.regex.Pattern.compile("[^a-z0-9]+");

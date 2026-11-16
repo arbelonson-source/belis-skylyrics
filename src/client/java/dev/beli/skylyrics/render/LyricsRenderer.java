@@ -542,11 +542,16 @@ public final class LyricsRenderer {
 	 * Title screen: no world is drawn there, so the lines go flat in the gap between the lowest button
 	 * ({@code top}) and the copyright text ({@code bottom}), sized to fit it.
 	 */
-	public void renderMenu(GuiGraphics g, float top, float bottom) {
-		Guard.run("lyrics on the title screen", () -> drawMenu(g, top, bottom));
+	public void renderMenu(GuiGraphics g, float top, float bottom, float maxWidth) {
+		Guard.run("lyrics on the title screen", () -> drawMenu(g, top, bottom, maxWidth));
 	}
 
-	private void drawMenu(GuiGraphics g, float top, float bottom) {
+	/** The title screen lyrics' size: what fits the height under the buttons and the width beside them, at most 1.5 x Size. */
+	static float menuScale(float height, float maxWidth, float size) {
+		return Math.min(Math.min(height / MENU_ROWS, MENU_MAX_SCALE * size), maxWidth / MENU_WRAP);
+	}
+
+	private void drawMenu(GuiGraphics g, float top, float bottom, float maxWidth) {
 		Minecraft mc = Minecraft.getInstance();
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		long now = System.nanoTime();
@@ -556,7 +561,7 @@ public final class LyricsRenderer {
 		visibility = approach(visibility, want ? 1 : 0, dt * 3f);
 		updateColor(cfg, dt, now, shown.indexAt(time));
 		daylight = approach(daylight, 1, dt * 2f); // menus have no time of day, and the dark halo reads on any backdrop
-		float scale = Math.min((bottom - top) / MENU_ROWS, MENU_MAX_SCALE * cfg.size);
+		float scale = menuScale(bottom - top, maxWidth, cfg.size);
 		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental() || scale < MENU_MIN_SCALE) {
 			return;
 		}
