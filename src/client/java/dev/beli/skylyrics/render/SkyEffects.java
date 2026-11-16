@@ -201,7 +201,32 @@ public final class SkyEffects {
 	 * strength, all 0..1.
 	 */
 	static float visibility(float starBrightness, float rainLevel, float strength) {
-		return clamp01(starBrightness / NIGHT_STARS) * (1 - clamp01(rainLevel)) * clamp01(strength);
+		return visibility(starBrightness, rainLevel, strength, false);
+	}
+
+	/**
+	 * Like {@link #visibility(float, float, float)}; with {@code rainInStars} (the star value already dims with rain, as
+	 * on 1.21.11 and newer) the rain level is not applied a second time.
+	 */
+	static float visibility(float starBrightness, float rainLevel, float strength, boolean rainInStars) {
+		return clamp01(starBrightness / NIGHT_STARS) * (rainInStars ? 1 : 1 - clamp01(rainLevel)) * clamp01(strength);
+	}
+
+	/** Whether {@link #readStarBrightness} already fades the stars with rain and thunder (vanilla's environment attribute does). */
+	static final boolean STARS_DIM_WITH_RAIN =
+			//? if >=1.21.11 {
+			true;
+			//?} else {
+			/*false;
+			*///?}
+
+	/** Whether vanilla pulls the sky fog in for a boss fight (Wither, Ender Dragon), which hides the sky effects. */
+	private static boolean bossFog(Minecraft mc) {
+		//? if >=26.2 {
+		/*return mc.gui.hud.getBossOverlay().shouldCreateWorldFog();
+		*///?} else {
+		return mc.gui.getBossOverlay().shouldCreateWorldFog();
+		//?}
 	}
 
 	/** Whether the sky should be on: wanted, not waiting for the old sky to fade out, and the camera seeing an open sky. */
@@ -355,7 +380,7 @@ public final class SkyEffects {
 		//?}
 		// The nether, the end, water and a blinding effect count as off, so the sky fades back in when they end
 		boolean open = level != null && overworldSky(level) && camera.getFluidInCamera() == FogType.NONE
-				&& !skyBlocked(mc);
+				&& !skyBlocked(mc) && !bossFog(mc);
 		boolean on = presenceTarget(wanted && cfg.enabled && tracker.playing() && !Visibility.hidden(mc, cfg), swapping, open);
 		presence = step(presence, on, dt);
 		// Swap once the old sky is gone; it has to happen here, as nothing below runs while the sky is hidden
@@ -369,7 +394,7 @@ public final class SkyEffects {
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		skyStars = easeStars(skyStars, starBrightness(level, camera, partial), dt);
 		boolean lineActive = cfg.skyPulse && lyrics.visible() && lineSeconds(cfg) > 0;
-		fade = visibility(skyStars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
+		fade = visibility(skyStars, level.getRainLevel(partial), cfg.skyStrength, STARS_DIM_WITH_RAIN) * smooth(presence)
 				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, lineActive);
 		if (fade < 0.01f) {
 			return;

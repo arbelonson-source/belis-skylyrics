@@ -65,6 +65,14 @@ class SkyEffectsTest {
 	}
 
 	@Test
+	void rainIsNotAppliedTwiceWhereTheStarValueAlreadyHasIt() {
+		// 1.21.11 and newer: the star value is already 0.5 of full in half rain, so visibility must not halve it again
+		assertEquals(0.5f, SkyEffects.visibility(0.25f, 0.5f, 1, true), 1e-6f);
+		assertEquals(0.25f, SkyEffects.visibility(0.25f, 0.5f, 1, false), 1e-6f);
+		assertEquals(0.5f, SkyEffects.visibility(0.25f, 0.5f, 1, SkyEffects.STARS_DIM_WITH_RAIN) * (SkyEffects.STARS_DIM_WITH_RAIN ? 1 : 2), 1e-6f);
+	}
+
+	@Test
 	void visibilityClampsOddInputs() {
 		assertEquals(1, SkyEffects.visibility(5, -2, 9), 1e-6f);
 		assertEquals(0, SkyEffects.visibility(-1, 0, 1));
