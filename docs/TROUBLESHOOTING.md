@@ -14,7 +14,7 @@ Go through these in order:
 4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" (on a Mac: "No Spotify or Music playing") or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen). With **Spotify Web**, "Can't reach the internet or Spotify" means your internet (or Spotify) isn't answering: check that a web page opens. The mod keeps asking and carries on by itself once it is back. If the mod can't read your music player (or reach the internet, with **Spotify Web**) for 10 seconds, a pop-up says so once per game start; the **Music** tab shows why.
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
    - **Looking for lyrics…**: wait a moment.
-   - **No lyrics found for this song. Try Retry.**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
+   - **No lyrics found for this song. Try Retry.**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**. If a lyrics site answers with something odd, this is what you see too (not a message about your internet), and **Retry** asks again.
    - **Couldn't reach the lyrics sites. Check your internet, then press Retry.**: the mod uses two sites, LRCLIB first and NetEase Cloud Music as a backup, and it couldn't get lyrics from either. Try these in order:
      1. Check that your internet works (open a web page).
      2. Press **Retry**.
@@ -30,7 +30,7 @@ Go through these in order:
 - **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want. The choices are different on Linux, Windows and macOS (see the [FAQ](FAQ.md#can-i-choose-which-player-it-follows)).
 - **A browser tab is playing something else.** A muted video in another tab still counts as playing. Pause it or close it.
 - **The song has no artist.** Browser audio often comes without an artist and without a length. Then the mod only accepts a lyrics match whose title is the same, and when different artists have a song with that title, it shows no lyrics rather than guess and show another song's words. If you play the song in a player that shows the artist (like Spotify), the lyrics are found.
-- **The song name is messy.** Video titles like "Artist - Song (Official Video)" or "Artist - Song | Official Video" are cleaned up before looking for lyrics, and a title like "Song - Skrillex Remix" is no longer taken for "Artist - Song". Some titles are still too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. If the words are only early or late, use the **This song** slider on the Music tab.
+- **The song name is messy.** Video titles like "Artist - Song (Official Video)" or "Artist - Song | Official Video" are cleaned up before looking for lyrics, and a title like "Song - Skrillex Remix" is no longer taken for "Artist - Song". A title with a version tag in brackets, like "Song (2011 Remaster)", is looked up again without the tag when nothing is found. Some titles are still too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. If the words are only early or late, use the **This song** slider on the Music tab.
 
 ## Lyrics come early or late
 
@@ -155,6 +155,16 @@ Exordium redraws the HUD less often than the game draws frames, and the lyrics a
 ## The top bar covers another mod's info (Jade, WTHIT, a minimap)
 
 The song bar sits at the top centre of the screen, where Jade and WTHIT show what you're looking at, and a wide bar can reach a minimap in the top right corner. On the **Display** tab, set **Bar position** to **Bottom** (it sits just above the hotbar), or make it smaller with **Bar size**, or turn off **Clock**, **Ping** and **FPS** to make it narrower.
+
+## The top bar and the player list (Tab)
+
+While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays.
+
+## Spotify sign-in doesn't start
+
+- **"Paste your Client ID first"** (the **Status** line on the **Music** tab): **Sign in** needs your Spotify app's Client ID. Press **Paste** next to **Client ID**. Steps are in the [FAQ](FAQ.md#can-it-follow-spotify-on-my-phone-or-another-computer).
+- **"Spotify sign-in needs port ... but another program is using it"**: close the other program or Minecraft game that holds that port (often a second game with SkyLyrics), then press **Sign in** again. The red line goes away when you press **Sign in** or **Sign out**.
+- **"Can't reach the internet or Spotify"**: your internet (or Spotify) isn't answering. Check that a web page opens, then try again.
 
 ## The mod says a new version is out, but won't install it
 
