@@ -435,7 +435,6 @@
   "skylyrics.ui.where_should_the_lyrics_go": "איפה יופיעו המילים?",
   "skylyrics.ui.where_the_songs_come_from": "מאיפה מגיעים השירים",
   "skylyrics.ui.play_a_song_in_spotify_or_your_music_player_and": "נגנו שיר בספוטיפיי או בנגן שלכם והמילים יופיעו מעצמן.",
-  "skylyrics.ui.signing_in_to_spotify_in_the_music_tab_helps_wit": "התחברות לספוטיפיי בלשונית המוזיקה עוזרת עם התזמון והעטיפות.",
   "skylyrics.ui.no_music_right_now_try_the_demo_song": "אין מוזיקה כרגע? נסו את שיר ההדגמה.",
   "skylyrics.ui.you_re_all_set": "הכול מוכן",
   "skylyrics.ui.settings": "הגדרות",
@@ -524,5 +523,11 @@
   "skylyrics.ui.skylyrics_s_needs_s_update_s_to_get_it": "SkyLyrics %s דורשת %s: עדכנו את %s כדי לקבל אותה",
   "skylyrics.ui.s_or_newer": "%s ומעלה",
   "skylyrics.ui.s_or_s": "%s או %s",
-  "skylyrics.ui.a_version_it_can_t_tell": "גרסה לא מזוהה"
+  "skylyrics.ui.a_version_it_can_t_tell": "גרסה לא מזוהה",
+  "skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers": "נגן שיר באפליקציית \"מוזיקה\" או Spotify (ב-Mac אי אפשר לקרוא דפדפנים) והמילים שלו יופיעו. אם macOS שואל אם Minecraft רשאי לשלוט בהן, לחץ על אישור.",
+  "skylyrics.ui.optional_signing_in_to_spotify_needs_premium_and": "אופציונלי: התחברות ל-Spotify (דורשת Premium ואפליקציית מפתחים חינמית) יכולה לעזור עם התזמון.",
+  "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics לא מצליח לקרוא את נגן המוזיקה שלך",
+  "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics לא מצליח להתחבר לאינטרנט או ל-Spotify",
+  "skylyrics.ui.open_the_settings_s_music_to_see_why": "פתח את ההגדרות (%s) ובחר מוזיקה כדי לראות למה",
+  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "אין שיר מתנגן ב-Spotify או ב\"מוזיקה\" (ב-Mac אי אפשר לקרוא דפדפנים)"
 }

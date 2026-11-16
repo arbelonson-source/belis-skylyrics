@@ -435,7 +435,6 @@
   "skylyrics.ui.where_should_the_lyrics_go": "Where should the lyrics go?",
   "skylyrics.ui.where_the_songs_come_from": "Where the songs come from",
   "skylyrics.ui.play_a_song_in_spotify_or_your_music_player_and": "Play a song in Spotify or your music player and its lyrics show up by themselves.",
-  "skylyrics.ui.signing_in_to_spotify_in_the_music_tab_helps_wit": "Signing in to Spotify in the Music tab helps with timing and album covers.",
   "skylyrics.ui.no_music_right_now_try_the_demo_song": "No music right now? Try the demo song.",
   "skylyrics.ui.you_re_all_set": "You're all set",
   "skylyrics.ui.settings": "Settings",
@@ -524,5 +523,11 @@
   "skylyrics.ui.skylyrics_s_needs_s_update_s_to_get_it": "SkyLyrics %s needs %s: update %s to get it",
   "skylyrics.ui.s_or_newer": "%s or newer",
   "skylyrics.ui.s_or_s": "%s or %s",
-  "skylyrics.ui.a_version_it_can_t_tell": "a version it can't tell"
+  "skylyrics.ui.a_version_it_can_t_tell": "a version it can't tell",
+  "skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers": "Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if Minecraft may control them, click OK.",
+  "skylyrics.ui.optional_signing_in_to_spotify_needs_premium_and": "Optional: signing in to Spotify (needs Premium and a free developer app) can help with timing.",
+  "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics can't read your music player",
+  "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics can't reach the internet or Spotify",
+  "skylyrics.ui.open_the_settings_s_music_to_see_why": "Open the settings (%s) → Music to see why",
+  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "No Spotify or Music playing (browsers can't be read on a Mac)"
 }
