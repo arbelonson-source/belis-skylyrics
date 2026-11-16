@@ -113,7 +113,7 @@ public final class LyricsRenderer {
 	/** How far it drifts up meanwhile, and how far a new word rises as it fades in (text units, about 2 % and 0.75 % of the screen height). */
 	private static final float ARC_LEAVE_RISE = 7.4f, ARC_APPEAR_RISE = 2.6f;
 	/** A word fades in over this long once it's sung, starting this long after, so the old line is gone first. */
-	private static final long ARC_WORD_FADE_MS = 300, ARC_WORD_DELAY_MS = 100;
+	private static final long ARC_WORD_FADE_MS = 300, ARC_WORD_DELAY_MS = 100, ARC_LEAVE_RAMP_MS = 80;
 	/** The word being sung is a little whiter, and settles to the normal colour over this long. */
 	private static final long ARC_CURRENT_MS = 250;
 	private static final float CURRENT_WHITE = 0.3f;
@@ -724,6 +724,14 @@ public final class LyricsRenderer {
 		// A short line is on show for little longer than it takes to sing, so its words start as it comes in
 		long first = start - (long) (LEAD_MS * Mth.clamp(1 - (end - start) / (float) FAST_LINE_MS, 0, 1));
 		return progress(time - LEAD_MS, first, Math.max(last, first + MIN_REVEAL_MS)) * total;
+	}
+
+	/**
+	 * How far a word is out while its line leaves, {@code leave} (0 to 1) of the way: its own {@code reveal}, or more
+	 * as the leaving goes on, so a word not out yet fades in over {@link #ARC_LEAVE_RAMP_MS} and nothing flashes.
+	 */
+	static float leaveReveal(float reveal, float leave) {
+		return Math.max(reveal, Mth.clamp(leave * (ARC_LEAVE_NS / 1_000_000f) / ARC_LEAVE_RAMP_MS, 0, 1));
 	}
 
 	/** Lines shorter than this have their words start before their stamp; the earlier the shorter the line is. */
@@ -1351,7 +1359,10 @@ public final class LyricsRenderer {
 				canvas.push(g.x(), g.y() - focus, g.scale(), g.angle());
 				for (int w = g.from(); w < g.to(); w++) {
 					float e = 1, current = 0, ahead = 0;
-					if (!leaving && timed) {
+					if (leaving && timed) {
+						// A word not out yet comes in over a moment as the line fades, instead of popping up in full
+						e = leaveReveal(Mth.clamp((sungAt - wordAt(arc, w, start, end)) / (float) ARC_WORD_FADE_MS, 0, 1), leave);
+					} else if (!leaving && timed) {
 						long at = wordAt(arc, w, start, end);
 						long next = w + 1 < words ? wordAt(arc, w + 1, start, end) : end;
 						e = Mth.clamp((sungAt - at) / (float) ARC_WORD_FADE_MS, 0, 1);

@@ -56,4 +56,15 @@ class FastLinesTest {
 		assertTrue(LyricsRenderer.sungChars(lyrics, 0, 14_000 + LyricsRenderer.LEAD_MS - 200, total) >= total * 0.99f);
 	}
 
+	@Test
+	void aWordNotOutYetFadesInWhileItsLineLeavesInsteadOfFlashing() {
+		assertEquals(0f, LyricsRenderer.leaveReveal(0f, 0f), 1e-6f, "no pop at the start of the leaving");
+		float some = LyricsRenderer.leaveReveal(0f, 0.1f);
+		assertTrue(some > 0f && some < 1f, "ramping: " + some);
+		assertTrue(LyricsRenderer.leaveReveal(0f, 0.2f) > some);
+		assertEquals(1f, LyricsRenderer.leaveReveal(0f, 0.5f), 1e-6f, "all out before the line is gone");
+		assertEquals(1f, LyricsRenderer.leaveReveal(1f, 0f), 1e-6f, "a word already out stays out");
+		assertEquals(0.6f, LyricsRenderer.leaveReveal(0.6f, 0f), 1e-6f);
+	}
+
 }
