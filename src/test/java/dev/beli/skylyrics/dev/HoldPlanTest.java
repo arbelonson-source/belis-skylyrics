@@ -70,7 +70,9 @@ class HoldPlanTest {
 		DevKeys.HoldSchedule<String> schedule = new DevKeys.HoldSchedule<>();
 		schedule.hold("a", 0, 100);
 		schedule.hold("b", 0, 200);
-		assertTrue(schedule.releaseAll().containsAll(List.of("a", "b")));
+		List<String> released = schedule.releaseAll();
+		assertEquals(2, released.size());
+		assertEquals(java.util.Set.of("a", "b"), new java.util.HashSet<>(released));
 		assertEquals(List.of(), schedule.held());
 	}
 }

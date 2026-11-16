@@ -33,8 +33,43 @@ final class Ui {
 	 * skips this, which wrote the Hebrew settings backwards.
 	 */
 	static FormattedCharSequence visual(String text) {
+		return visual(text, baseRtl(Language.getInstance().isDefaultRightToLeft(), text));
+	}
+
+	/** One line of a wrapped paragraph, laid out in the direction decided for the whole paragraph ({@link #paragraphRtl}). */
+	static FormattedCharSequence visual(String line, boolean rtl) {
 		// Direction marks (LRM and the like) steer the order, then are dropped: vanilla would draw each as a box
-		return LyricsFont.dropMarks(Language.getInstance().getVisualOrder(FormattedText.of(text)));
+		return LyricsFont.dropMarks(Language.getInstance().getVisualOrder(FormattedText.of(marked(line, rtl))));
+	}
+
+	/** The base direction for a whole paragraph in the current game language. */
+	static boolean paragraphRtl(String paragraph) {
+		return baseRtl(Language.getInstance().isDefaultRightToLeft(), paragraph);
+	}
+
+	/**
+	 * Right-to-left base direction for a piece of UI text: when the game language is right-to-left and the text has any
+	 * right-to-left letter, otherwise when its first strong letter is right-to-left (what vanilla does by itself).
+	 */
+	static boolean baseRtl(boolean languageRtl, String text) {
+		for (int i = 0; i < text.length(); ) {
+			int cp = text.codePointAt(i);
+			i += Character.charCount(cp);
+			byte d = Character.getDirectionality(cp);
+			boolean r = d == Character.DIRECTIONALITY_RIGHT_TO_LEFT || d == Character.DIRECTIONALITY_RIGHT_TO_LEFT_ARABIC;
+			if (r && languageRtl) {
+				return true;
+			}
+			if (!languageRtl && (r || d == Character.DIRECTIONALITY_LEFT_TO_RIGHT)) {
+				return r; // the first strong letter decides
+			}
+		}
+		return false;
+	}
+
+	/** The text with the mark that sets its base direction in front (RLM for right-to-left, LRM otherwise). */
+	static String marked(String text, boolean rtl) {
+		return (rtl ? "\u200F" : "\u200E") + text;
 	}
 
 	/** Filled rectangle with rounded corners, drawn without overlapping fills so alpha stays even. */

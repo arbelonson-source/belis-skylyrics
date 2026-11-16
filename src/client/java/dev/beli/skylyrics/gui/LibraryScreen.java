@@ -129,18 +129,26 @@ public final class LibraryScreen extends Screen {
 		this.parent = parent;
 	}
 
+	/**
+	 * Whether "Try made-up songs" still holds when the library opens again: until Spotify can be browsed. The Demo song
+	 * setting is read on its own each time, so turning it off brings the real library back.
+	 */
+	static boolean stillTrying(boolean tried, boolean canBrowse) {
+		return tried && !canBrowse;
+	}
+
 	@Override
 	protected void init() {
 		// Runs again after coming back from the settings, so signing in there takes effect right away
-		boolean wantDemo = demo || SkyLyricsConfig.get().demoMode;
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		demo = stillTrying(demo, mod.spotify().canBrowse());
+		boolean wantDemo = demo || cfg.demoMode;
 		// Without Spotify the library shows the songs heard lately, unless that is switched off
 		Library next = wantDemo ? new DemoLibrary() : mod.spotify().canBrowse() ? mod.library()
 				: cfg.recentSongs ? mod.heard() : null;
 		boolean same = next instanceof DemoLibrary ? library instanceof DemoLibrary : next == library;
 		if (!same && (next != null || library != null)) {
 			library = next;
-			demo = wantDemo;
 			shelves.values().forEach(Shelf::cancel);
 			shelves.clear();
 			closeOpened();
@@ -388,7 +396,7 @@ public final class LibraryScreen extends Screen {
 		int textRoom = Ui.headerRoom(px + 31, library != null ? searchX() : px + pw - 22);
 		g.drawString(font, Ui.visual(Ui.clip(font, Tr.t("Song library"), textRoom)), px + 31, py + 8, Ui.TEXT, false);
 		String subtitle = library == null ? Tr.t("Your Spotify songs")
-				: demo ? Tr.t("Made-up songs, for trying it out")
+				: library instanceof DemoLibrary ? Tr.t("Made-up songs, for trying it out")
 				: heardMode() ? Tr.t("Songs you've played lately") : Tr.t("From your Spotify");
 		g.drawString(font, Ui.visual(Ui.clip(font, subtitle, textRoom)), px + 31, py + 18, Ui.DIM, false);
 
@@ -975,9 +983,10 @@ public final class LibraryScreen extends Screen {
 		String text = signInText();
 		int w = Math.min(300, pw - 40), x = px + (pw - w) / 2, y = viewY + viewH / 2 - 44;
 		Ui.rect(g, x, y, w, 80, 8, Ui.CARD);
-		List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(text), w - 24);
+		List<net.minecraft.network.chat.FormattedText> lines = font.getSplitter().splitLines(text, w - 24, net.minecraft.network.chat.Style.EMPTY);
+		boolean rtl = Ui.paragraphRtl(text);
 		for (int i = 0; i < Math.min(2, lines.size()); i++) {
-			g.drawCenteredString(font, lines.get(i), x + w / 2, y + 14 + i * 11, Ui.TEXT);
+			g.drawCenteredString(font, Ui.visual(lines.get(i).getString(), rtl), x + w / 2, y + 14 + i * 11, Ui.TEXT);
 		}
 		int by = y + 50;
 		Controls.drawButton(f, x + w / 2 - 104, by, 100, 18, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), x + w / 2 - 104, by, 100, 18), true, true);

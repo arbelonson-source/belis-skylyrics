@@ -519,10 +519,13 @@ class HeardLibraryTest {
 
 	@Test
 	void saveTempFollowsTheCleanedNamePattern() throws IOException {
+		int[] calls = {0};
 		HeardLibrary.write(file(), List.of(new HeardLibrary.Entry("T", "A", "B", 1, "", "u", "mpv")), (from, to, opts) -> {
+			calls[0]++;
 			assertTrue(from.getFileName().toString().matches("heard\\.json\\.\\d+\\.tmp"), from.getFileName().toString());
 			Files.move(from, to, opts);
 		});
+		assertEquals(1, calls[0], "the save goes through the temp mover exactly once");
 		assertEquals(1, HeardLibrary.read(file()).size());
 	}
 }

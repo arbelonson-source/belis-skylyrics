@@ -335,11 +335,12 @@ public final class IntroScreen extends Screen {
 	private int lines(GuiGraphics g, int y, String... paragraphs) {
 		for (String p : paragraphs) {
 			List<String> wrapped = wrap(p, pw - 40);
+			boolean rtl = Ui.paragraphRtl(p);
 			for (String line : wrapped) {
 				if (y + 8 > textLimit()) {
 					return y; // no room left: stop rather than run into the buttons
 				}
-				g.drawCenteredString(font, Ui.visual(line), px + pw / 2, y, Ui.MUTED);
+				g.drawCenteredString(font, Ui.visual(line, rtl), px + pw / 2, y, Ui.MUTED);
 				y += 11;
 			}
 			y += 4;

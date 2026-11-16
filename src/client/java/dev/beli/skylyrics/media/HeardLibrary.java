@@ -28,6 +28,9 @@ import org.slf4j.LoggerFactory;
  * can (Linux, over MPRIS). Nothing leaves the computer.
  */
 public final class HeardLibrary implements Library {
+	/** The temp name 0.8.0 and earlier saved through ("heard" + a number + ".tmp"); a killed game's copy is cleaned up too. */
+	static final java.util.regex.Pattern OLD_TEMP = java.util.regex.Pattern.compile("heard\\d+\\.tmp");
+
 	private static final Logger LOG = LoggerFactory.getLogger("SkyLyrics");
 	/** The oldest songs fall off the end after this many. */
 	public static final int CAP = 200;
@@ -340,6 +343,7 @@ public final class HeardLibrary implements Library {
 		List<Entry> out = new ArrayList<>();
 		if (file.toAbsolutePath().getParent() != null) {
 			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.toAbsolutePath().getParent(), file.getFileName().toString(), System.currentTimeMillis());
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.toAbsolutePath().getParent(), OLD_TEMP, System.currentTimeMillis());
 		}
 		if (!Files.isRegularFile(file)) {
 			return new Loaded(out, false);

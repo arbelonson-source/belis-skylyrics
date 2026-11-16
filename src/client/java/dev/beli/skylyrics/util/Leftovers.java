@@ -18,7 +18,11 @@ public final class Leftovers {
 	 * another game's save in progress, and nothing else is touched. Returns how many were deleted; never throws.
 	 */
 	public static int cleanTemps(Path dir, String base, long nowMs) {
-		Pattern name = Pattern.compile(Pattern.quote(base) + "\\.\\d+\\.tmp");
+		return cleanTemps(dir, Pattern.compile(Pattern.quote(base) + "\\.\\d+\\.tmp"), nowMs);
+	}
+
+	/** {@link #cleanTemps(Path, String, long)} for files whose whole name matches {@code name}, for temp names used before. */
+	public static int cleanTemps(Path dir, Pattern name, long nowMs) {
 		int deleted = 0;
 		try (var files = Files.newDirectoryStream(dir)) {
 			for (Path f : files) {

@@ -118,4 +118,13 @@ class TrTest {
 			assertEquals(g[1], Tr.key(g[0]), g[0]);
 		}
 	}
+
+	@Test
+	void everyEnglishBehindOneShownTextIsKept() {
+		Tr.remember("\u05de\u05d9\u05dc\u05d9\u05dd test", "Words test");
+		Tr.remember("\u05de\u05d9\u05dc\u05d9\u05dd test", "Lyrics test");
+		Tr.remember("\u05de\u05d9\u05dc\u05d9\u05dd test", "Lyrics test");
+		assertEquals("Lyrics test Words test", Tr.english("\u05de\u05d9\u05dc\u05d9\u05dd test"));
+		assertEquals("plain", Tr.english("plain"));
+	}
 }

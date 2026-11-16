@@ -2,6 +2,7 @@ package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
@@ -73,6 +74,9 @@ class IntroPageTest {
 	@Test
 	void theLookPageSaysCustomWhenNoLookMatches() {
 		IntroPage custom = IntroScreen.content(1, false, null, Layout.ARC, null, null);
-		assertEquals(dev.beli.skylyrics.Tr.t("Custom"), custom.chosen());
+		assertEquals("Custom", custom.chosen());
+		IntroPage themed = IntroScreen.content(1, false, Themes.ALL.get(1), Layout.ARC, null, null);
+		assertNotEquals("Custom", themed.chosen());
+		assertEquals(Themes.ALL.get(1).name().get(), themed.chosen());
 	}
 }

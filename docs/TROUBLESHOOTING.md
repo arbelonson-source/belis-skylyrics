@@ -136,17 +136,17 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 ## Lyrics vanish in caves
 
-With the Arc and Lines layouts, the lyrics stay visible underground as long as **Show underground too** (Display tab) is on, **Draw on top** (Look tab) is on **Auto**, and **Hide in caves** (Display tab) is off. **Hide in caves** hides them on purpose when there is no open sky above you. See [the FAQ](FAQ.md#why-dont-i-see-lyrics-in-caves) for more.
+With the Arc and Lines layouts, and **Hide in caves** (Display tab) off, the lyrics stay visible underground when **See through blocks** (Look tab) is on, when **Draw on top** (Look tab) is on **Always**, or, on **Auto**, when **Show underground too** (Display tab) is on. **Hide in caves** hides them on purpose when there is no open sky above you. See [the FAQ](FAQ.md#why-dont-i-see-lyrics-in-caves) for more.
 
 ## Shaders make the lyrics dim
 
 Shader packs darken the sky and draw clouds and fog over it. Open the settings, go to **Look** and set **Draw on top** to **Always**. Then the lyrics are drawn on top of the finished picture, so shaders, clouds, rain and fog can't dim them.
 
-**Draw on top** and **Shadow** only show with the Arc and Lines layouts. The World layout always draws its words in the world itself (it has **Soft edges** instead of Shadow), so for shaders it helps to try Arc or Lines.
+**Draw on top** only shows with the Arc and Lines layouts. **Shadow** shows with Lines, and with Arc when **Depth** is off. The World layout always draws its words in the world itself (it has **Soft edges** instead of Shadow), so for shaders it helps to try Arc or Lines.
 
 On **Auto** (the starting setting), the mod already draws on top when a shader pack is on, when it rains, when **See through blocks** is on, or when you are in a cave or under a roof (with **Show underground too** on). **Never** keeps the lyrics inside the world, so hills and buildings can hide them.
 
-In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). It gives the words a dark edge that makes them easier to read against a pale sky.
+In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). It gives the words a dark edge that makes them easier to read against a pale sky. In the Arc layout, **Shadow** only shows when **Depth** is off, because Depth already gives the letters a solid edge.
 
 ## Lyrics trail behind when I turn (Exordium)
 
@@ -162,7 +162,7 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 
 ## Spotify sign-in doesn't start
 
-- **"Paste your Client ID first"** (the **Status** line on the **Music** tab): **Sign in** needs your Spotify app's Client ID. Press **Paste** next to **Client ID**. Steps are in the [FAQ](FAQ.md#can-it-follow-spotify-on-my-phone-or-another-computer).
+- **"Paste your Client ID first"** (under **Account** in the **Spotify account** card on the **Music** tab): **Sign in** needs your Spotify app's Client ID. Press **Paste** next to **Client ID**. Steps are in the [FAQ](FAQ.md#can-it-follow-spotify-on-my-phone-or-another-computer).
 - **"Spotify sign-in needs port ... but another program is using it"**: close the other program or Minecraft game that holds that port (often a second game with SkyLyrics), then press **Sign in** again. The red line goes away when you press **Sign in** or **Sign out**.
 - **"Can't reach the internet or Spotify"**: your internet (or Spotify) isn't answering. Check that a web page opens, then try again.
 
