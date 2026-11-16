@@ -62,58 +62,89 @@ class UpdaterTest {
 		}
 	}
 
+	/** Hebrew, Cyrillic or accented user names are fine: the paths travel as environment variables, not quoted text. */
 	@Test
-	void nonAsciiPathsSkipTheBatchSwap() throws Exception {
-		Path home = dir.resolve("Jos\u00e9").resolve("mods");
+	void nonAsciiAndOddPathsAreAcceptedForTheSwap() throws Exception {
+		Path home = dir.resolve("Jos\u00e9 \u05de\u05d5\u05d3\u2019s & (1) 100% ^!").resolve("mods");
 		Files.createDirectories(home);
 		Path old = Files.createFile(home.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
-		Path part = Files.createFile(home.resolve("belis-skylyrics-0.2.0+1.21.11.jar.part"));
+		Path part = Files.createFile(home.resolve("belis-skylyrics-0.2.0+1.21.11.jar.1.part"));
 		Path target = home.resolve("belis-skylyrics-0.2.0+1.21.11.jar");
-		assertFalse(Updater.installLater(old, part, target));
-		assertTrue(Files.exists(part), "nothing is moved when the swap is refused");
-		assertFalse(Updater.batchSafe("C:\\Users\\Jos\u00e9\\mods"));
-		assertFalse(Updater.batchSafe("C:\\a&b"));
-		assertTrue(Updater.batchSafe("C:\\Users\\Jose\\mods\\a-1.jar"));
-	}
-
-	/** Checked before the download, so an update is not fetched at every launch only to be thrown away. */
-	@Test
-	void swapPlacesAreCheckedBeforeDownloading() {
-		Path ok = Path.of("/Games/mods/belis-skylyrics-0.1.0+1.21.11.jar");
-		assertTrue(Updater.swapPathsSafe(ok, Path.of("/Games/mods/belis-skylyrics-0.2.0+1.21.11.jar")));
-		assertFalse(Updater.swapPathsSafe(Path.of("/Jos\u00e9/mods/a.jar"), Path.of("/Jos\u00e9/mods/b.jar")));
-		assertFalse(Updater.swapPathsSafe(ok, Path.of("/Games/mods/b&c.jar")));
-	}
-
-	/** The script goes in the temp folder, out of sight, unless cmd couldn't read that path (accents); then beside the jar. */
-	@Test
-	void swapScriptGoesToTheTempFolderUnlessItsNameHasAccents() {
-		Path mods = dir.resolve("mods");
-		Path old = mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar");
-		Path plain = dir.resolve("Temp");
-		Path accented = dir.resolve("Jos\u00e9").resolve("Temp");
-		assertEquals(Updater.batchSafe(plain.toAbsolutePath().toString()) ? plain : mods, Updater.scriptFolder(plain, old));
-		assertEquals(mods, Updater.scriptFolder(accented, old));
-	}
-
-	@Test
-	void swapScriptIsWrittenWhereItsPathIsSafe() throws Exception {
-		Path mods = Files.createDirectories(dir.resolve("mods"));
-		Path old = Files.createFile(mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
-		Path target = mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar");
-		Path waiting = mods.resolve(target.getFileName() + ".new");
-		Path part = Files.createFile(mods.resolve(target.getFileName() + ".part"));
-		Path bat = Updater.writeSwapScript(old, waiting, target, part);
-		assertEquals(Updater.scriptFolder(Path.of(System.getProperty("java.io.tmpdir")), old), bat.getParent());
-		String written = Files.readString(bat, java.nio.charset.StandardCharsets.US_ASCII);
-		Files.deleteIfExists(bat);
-		assertTrue(bat.getFileName().toString().endsWith(".bat"));
+		assertTrue(Updater.swapPathsSafe(old, target));
+		assertTrue(Updater.pathSafe("C:\\Users\\\u05d9\u05d5\u05d6\u05e8\\\u0418\u0432\u0430\u043d\\mods"));
+		assertFalse(Updater.pathSafe("C:\\a\nb"));
+		assertFalse(Updater.pathSafe("C:\\a\"b"));
+		Path waiting = Updater.waitingFor(part, target);
+		Updater.stage(part, waiting, Files::move);
 		assertTrue(Files.exists(waiting));
 		assertFalse(Files.exists(part));
-		assertEquals(Updater.swapScript(old, waiting, target), written);
-		assertTrue(written.contains("move /y \"" + waiting + "\" \"" + target + "\""));
-		assertTrue(written.contains("del /f /q \"" + old + "\""));
-		assertTrue(written.endsWith("del \"%~f0\"\r\n"));
+	}
+
+	/** The swap's text has no path and no double quote, and the paths reach it unchanged in the environment. */
+	@Test
+	void swapScriptHasNoPathsAndTheEnvironmentCarriesThemUnchanged() {
+		Path old = Path.of("C:\\Users\\\u05d9\u05d5\u05d6\u05e8 & \u2019s\\mods\\belis-skylyrics-0.1.0+1.21.11.jar");
+		Path waiting = Path.of(old + ".new");
+		Path target = Path.of("C:\\Users\\x\\mods\\belis-skylyrics-0.2.0+1.21.11.jar");
+		ProcessBuilder builder = Updater.swapProcess("powershell.exe", old, waiting, target, 4242);
+		String script = Updater.swapScript();
+		assertTrue(script.chars().allMatch(c -> c >= 0x20 && c < 0x7f), "plain ASCII");
+		assertFalse(script.contains("\""));
+		assertFalse(script.contains("\n"));
+		assertFalse(script.contains("Users"));
+		assertEquals(List.of("powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script),
+				builder.command());
+		assertEquals(old.toString(), builder.environment().get("SKYLYRICS_OLD"));
+		assertEquals(waiting.toString(), builder.environment().get("SKYLYRICS_NEW"));
+		assertEquals(target.toString(), builder.environment().get("SKYLYRICS_TARGET"));
+		assertEquals("4242", builder.environment().get("SKYLYRICS_PID"));
+	}
+
+	/** Nothing is touched when the staged jar is missing, and the old jar is only deleted after the new one is in place. */
+	@Test
+	void swapScriptChecksTheStagedJarFirstAndDeletesTheOldOneLast() {
+		String script = Updater.swapScript();
+		int exists = script.indexOf("if(-not [IO.File]::Exists($w)){exit}");
+		int aside = script.indexOf("[IO.File]::Move($o,$a)");
+		int moveNew = script.indexOf("[IO.File]::Move($w,$t)");
+		int deleteOld = script.indexOf("$done){try{[IO.File]::Delete($a)}");
+		int restore = script.indexOf("[IO.File]::Move($a,$o)");
+		assertTrue(exists > 0 && exists < aside && aside < moveNew && moveNew < deleteOld && deleteOld < restore, script);
+		assertFalse(script.contains("Delete($o)"), "the old jar is never deleted outright");
+	}
+
+	@Test
+	void stagingTriesAgainWhenWindowsHoldsTheFreshJar() throws Exception {
+		Path part = Files.writeString(dir.resolve("a.jar.1.part"), "jar");
+		Path waiting = dir.resolve("a.jar.1.new");
+		int[] calls = {0};
+		Updater.stage(part, waiting, (from, to, opts) -> {
+			if (++calls[0] <= 3) {
+				throw new java.nio.file.AccessDeniedException(to.toString());
+			}
+			Files.move(from, to, opts);
+		});
+		assertEquals(4, calls[0]);
+		assertEquals("jar", Files.readString(waiting));
+		assertFalse(Files.exists(part));
+	}
+
+	@Test
+	void oldSwapScriptsLeftByEarlierVersionsAreCleanedAfterADay() throws Exception {
+		long now = System.currentTimeMillis();
+		java.nio.file.attribute.FileTime old = java.nio.file.attribute.FileTime.fromMillis(now - 2 * 24L * 3600 * 1000);
+		Path stale = Files.createFile(dir.resolve("skylyrics-update-123456.bat"));
+		Path fresh = Files.createFile(dir.resolve("skylyrics-update-654321.bat"));
+		Path other = Files.createFile(dir.resolve("someone-else.bat"));
+		Path aside = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar.old"));
+		for (Path p : List.of(stale, other, aside)) {
+			Files.setLastModifiedTime(p, old);
+		}
+		assertEquals(2, Updater.cleanLeftovers(dir, now));
+		assertFalse(Files.exists(stale));
+		assertFalse(Files.exists(aside));
+		assertTrue(Files.exists(fresh), "may belong to a script about to run");
+		assertTrue(Files.exists(other), "not ours");
 	}
 
 	@Test
@@ -303,7 +334,7 @@ class UpdaterTest {
 		assertEquals(dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.111.new"), Updater.waitingFor(a, target));
 		assertFalse(Updater.waitingFor(a, target).equals(Updater.waitingFor(b, target)));
 		assertTrue(Updater.swapPathsSafe(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"), target));
-		assertTrue(Updater.batchSafe(Updater.waitingFor(a, target).toString()));
+		assertTrue(Updater.pathSafe(Updater.waitingFor(a, target).toString()));
 	}
 
 	/** The server sends the headers and a few bytes, then goes quiet: the download is abandoned and no file stays. */

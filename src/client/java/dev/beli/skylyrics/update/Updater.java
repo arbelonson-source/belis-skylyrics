@@ -9,7 +9,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
@@ -92,7 +91,9 @@ public final class Updater {
 		if (mcKey == null || jar == null) {
 			return;
 		}
-		cleanLeftovers(jar.getParent(), System.currentTimeMillis());
+		long now = System.currentTimeMillis();
+		cleanLeftovers(jar.getParent(), now);
+		cleanLeftovers(Path.of(System.getProperty("java.io.tmpdir")), now);
 		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
 		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
 		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
@@ -187,8 +188,8 @@ public final class Updater {
 			return false;
 		}
 		if (windows() && !swapPathsSafe(oldJar, target)) {
-			// The swap script could not handle this folder, so don't download a jar that would only be thrown away
-			LOG.info("Update not downloaded: the mods folder path is not plain ASCII");
+			// The swap could not handle this folder, so don't download a jar that would only be thrown away
+			LOG.info("Update not downloaded: the mods folder path has a character the swap cannot carry");
 			return false;
 		}
 		// The download keeps a name Fabric ignores until it is checked, and one of its own: a second game sharing this folder may be updating too
@@ -413,11 +414,15 @@ public final class Updater {
 		return o.has(key) && o.get(key).isJsonPrimitive() ? o.get(key).getAsString() : null;
 	}
 
-	/** True when the text is plain ASCII with nothing that means something to a batch file. */
-	static boolean batchSafe(String s) {
+	/**
+	 * True when the swap can carry this path: the paths travel to the script as environment variables (no quoting, so
+	 * spaces, accents, Hebrew, curly apostrophes, &, %, ^, ! and brackets are all fine), so only what no Windows path
+	 * can hold is refused: a control character (a new line) or a quote.
+	 */
+	static boolean pathSafe(String s) {
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
-			if (c < 0x20 || c > 0x7e || "%\"^&!|<>".indexOf(c) >= 0) {
+			if (c < 0x20 || c == '"') {
 				return false;
 			}
 		}
@@ -434,13 +439,11 @@ public final class Updater {
 			return false;
 		}
 		Path waiting = waitingFor(part, target);
-		Path bat = writeSwapScript(oldJar, waiting, target, part);
+		stage(part, waiting, Files::move);
+		ProcessBuilder swap = swapProcess(powershell(), oldJar, waiting, target, ProcessHandle.current().pid());
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
-				new ProcessBuilder("cmd", "/c", bat.toString())
-						.redirectOutput(ProcessBuilder.Redirect.DISCARD)
-						.redirectError(ProcessBuilder.Redirect.DISCARD)
-						.start();
+				swap.start();
 			} catch (IOException e) {
 				// the old jar stays, and the .new file is ignored by the game
 			}
@@ -466,16 +469,22 @@ public final class Updater {
 	static final long LEFTOVER_AGE_MS = 24L * 60 * 60 * 1000;
 
 	/**
-	 * Deletes this mod's own leftovers in the mods folder: downloads (.part) and Windows staged jars (.new) whose
-	 * name starts with belis-skylyrics- and that are over a day old. A fresh one may be another game's running download.
-	 * Returns how many were deleted.
+	 * Deletes this mod's own leftovers in a folder: downloads (.part), Windows staged jars (.new) and the old jar set aside
+	 * by a swap (.old), whose name starts with belis-skylyrics-, and the swap scripts (skylyrics-update-*.bat) that versions
+	 * before 0.9 left in the temp or mods folder when the game was killed before they ran. Only those over a day old go:
+	 * a fresh one may be another game's running download. Returns how many were deleted.
 	 */
 	static int cleanLeftovers(Path dir, long nowMs) {
+		return cleanLeftovers(dir, nowMs, "belis-skylyrics-*", ".part", ".new", ".old")
+				+ cleanLeftovers(dir, nowMs, "skylyrics-update-*", ".bat");
+	}
+
+	private static int cleanLeftovers(Path dir, long nowMs, String glob, String... endings) {
 		int deleted = 0;
-		try (var files = Files.newDirectoryStream(dir, "belis-skylyrics-*")) {
+		try (var files = Files.newDirectoryStream(dir, glob)) {
 			for (Path f : files) {
 				String name = f.getFileName().toString();
-				if (!name.endsWith(".part") && !name.endsWith(".new")) {
+				if (java.util.Arrays.stream(endings).noneMatch(name::endsWith)) {
 					continue;
 				}
 				try {
@@ -493,62 +502,78 @@ public final class Updater {
 		return deleted;
 	}
 
-	/**
-	 * Whether the swap script can handle these places. cmd reads a .bat in the OEM code page, so any non-ASCII
-	 * character (C:\Users\José) would be mangled and the swap would fail without a word. Characters with a meaning
-	 * in a batch file are not worth the risk either. The script goes where its path is safe too (see
-	 * {@link #scriptFolder}), so all of this can be checked before anything is downloaded.
-	 */
+	/** Whether the swap can handle these places (see {@link #pathSafe}); checked before anything is downloaded. */
 	static boolean swapPathsSafe(Path oldJar, Path target) {
 		for (Path p : List.of(oldJar, waitingName(target), target)) {
-			if (!batchSafe(p.toString())) {
+			if (!pathSafe(p.toString())) {
 				return false;
 			}
 		}
 		return true;
 	}
 
-	/**
-	 * Where the swap script goes: the temp folder, out of sight, unless cmd couldn't read its name there (C:\\Users\\José
-	 * puts accents in it); then next to the old jar, whose place {@link #swapPathsSafe} has already checked. The script's
-	 * own name is plain ASCII either way, and it deletes itself when it has run.
-	 */
-	static Path scriptFolder(Path temp, Path oldJar) {
-		return batchSafe(temp.toAbsolutePath().toString()) ? temp : oldJar.getParent();
+	/** Moves the downloaded jar to its waiting name, trying again when Windows (an antivirus scanning the fresh file) briefly holds it. */
+	static void stage(Path part, Path waiting, dev.beli.skylyrics.util.SafeFile.Mover mover) throws IOException {
+		dev.beli.skylyrics.util.SafeFile.replace(part, waiting, mover, dev.beli.skylyrics.util.SafeFile.TRIES,
+				dev.beli.skylyrics.util.SafeFile.PAUSE_MS);
 	}
 
-	/** Moves the new jar to its waiting name and writes the script that swaps it in (see {@link #scriptFolder}). */
-	static Path writeSwapScript(Path oldJar, Path waiting, Path target, Path part) throws IOException {
-		Path temp = Path.of(System.getProperty("java.io.tmpdir"));
-		Path bat = Files.createTempFile(scriptFolder(temp, oldJar), "skylyrics-update-", ".bat");
-		try {
-			Files.move(part, waiting, StandardCopyOption.REPLACE_EXISTING);
-			Files.write(bat, swapScript(oldJar, waiting, target).getBytes(StandardCharsets.US_ASCII));
-		} catch (IOException | RuntimeException e) {
-			Files.deleteIfExists(bat);
-			throw e;
+	/** Windows PowerShell 5.1, which comes with every Windows 10 and 11 (the music reader uses it too). */
+	static String powershell() {
+		String root = System.getenv("SystemRoot");
+		if (root != null) {
+			Path full = Path.of(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
+			if (Files.isRegularFile(full)) {
+				return full.toString();
+			}
 		}
-		return bat;
+		return "powershell.exe";
 	}
 
-	static String swapScript(Path oldJar, Path waiting, Path target) {
-		String script = String.join("\r\n",
-				"@echo off",
-				"ping -n 6 127.0.0.1 >nul",
-				"set n=0",
-				":retry",
-				"del /f /q \"" + oldJar + "\" 2>nul",
-				"if not exist \"" + oldJar + "\" goto swap",
-				"set /a n+=1",
-				"if %n% lss 20 (ping -n 4 127.0.0.1 >nul & goto retry)",
-				"del /f /q \"" + waiting + "\"",
-				"goto end",
-				":swap",
-				"move /y \"" + waiting + "\" \"" + target + "\" >nul",
-				":end",
-				"(goto) 2>nul & del \"%~f0\"",
-				"");
-		return script;
+	/**
+	 * The swap as a process to start when the game has quit. The script is plain ASCII with no path in it: the paths come
+	 * in the environment, so no name (Hebrew, accents, spaces, a curly apostrophe, &amp; % ^ !) can be mangled or break
+	 * the quoting, and no file is left behind. It is run as a command, not a script file, so a signed-scripts-only
+	 * policy doesn't stop it.
+	 */
+	static ProcessBuilder swapProcess(String exe, Path oldJar, Path waiting, Path target, long gamePid) {
+		ProcessBuilder builder = new ProcessBuilder(swapCommand(exe));
+		var env = builder.environment();
+		env.remove("PSModulePath"); // a game started from PowerShell 7 hands down a path that confuses Windows PowerShell 5.1
+		env.put("SKYLYRICS_OLD", oldJar.toString());
+		env.put("SKYLYRICS_NEW", waiting.toString());
+		env.put("SKYLYRICS_TARGET", target.toString());
+		env.put("SKYLYRICS_PID", Long.toString(gamePid));
+		builder.redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD);
+		return builder;
+	}
+
+	static List<String> swapCommand(String exe) {
+		return List.of(exe, "-NoLogo", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", swapScript());
+	}
+
+	/**
+	 * Waits for the game to quit, then: no staged jar, nothing is touched. The old jar is first set aside (renamed, tried for
+	 * about a minute while Windows still holds it), then the new one moved into its place (tried again for ten seconds if an
+	 * antivirus holds it); only when that worked is the old one deleted. If the new one can't be put in place, the old one
+	 * is put back, so the folder never ends up without a SkyLyrics jar. One line, single quotes only, so it travels as one
+	 * command-line argument.
+	 */
+	static String swapScript() {
+		return String.join(";",
+				"$ErrorActionPreference='SilentlyContinue'",
+				"$o=$env:SKYLYRICS_OLD",
+				"$w=$env:SKYLYRICS_NEW",
+				"$t=$env:SKYLYRICS_TARGET",
+				"$a=$o+'.old'",
+				"if($env:SKYLYRICS_PID){try{Wait-Process -Id ([int]$env:SKYLYRICS_PID) -Timeout 120}catch{}}",
+				"if(-not [IO.File]::Exists($w)){exit}",
+				"$aside=$false",
+				"for($i=0;$i -lt 20 -and -not $aside;$i++){if(-not [IO.File]::Exists($o)){$aside=$true}else{try{[IO.File]::Delete($a);[IO.File]::Move($o,$a);$aside=$true}catch{Start-Sleep -Seconds 3}}}",
+				"if(-not $aside){[IO.File]::Delete($w);exit}",
+				"$done=$false",
+				"for($i=0;$i -lt 10 -and -not $done;$i++){try{[IO.File]::Delete($t);[IO.File]::Move($w,$t);$done=$true}catch{Start-Sleep -Seconds 1}}",
+				"if($done){try{[IO.File]::Delete($a)}catch{}}else{try{[IO.File]::Move($a,$o)}catch{}}");
 	}
 
 	private static boolean windows() {
