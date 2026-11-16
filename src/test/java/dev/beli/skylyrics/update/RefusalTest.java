@@ -161,4 +161,14 @@ class RefusalTest {
 		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
 		assertRefusal(check(new UpdaterChecksTest.Net(data), asset(data), running("0.139.0")));
 	}
+
+	@Test
+	void staleTempOfAKilledGameIsCleanedWhenTheRefusalIsRead() throws IOException {
+		Files.createDirectories(memory.getParent());
+		Path stale = memory.resolveSibling("update-refused.json.99.tmp");
+		Files.writeString(stale, "x");
+		Files.setLastModifiedTime(stale, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 2 * dev.beli.skylyrics.util.Leftovers.AGE_MS));
+		Refusal.read(memory);
+		assertFalse(Files.exists(stale));
+	}
 }

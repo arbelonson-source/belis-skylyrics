@@ -113,7 +113,7 @@ public final class LyricsRenderer {
 	/** How far it drifts up meanwhile, and how far a new word rises as it fades in (text units, about 2 % and 0.75 % of the screen height). */
 	private static final float ARC_LEAVE_RISE = 7.4f, ARC_APPEAR_RISE = 2.6f;
 	/** A word fades in over this long once it's sung, starting this long after, so the old line is gone first. */
-	private static final long ARC_WORD_FADE_MS = 300, ARC_WORD_DELAY_MS = 100;
+	private static final long ARC_WORD_FADE_MS = 300, ARC_WORD_DELAY_MS = 100, ARC_LEAVE_RAMP_MS = 80;
 	/** The word being sung is a little whiter, and settles to the normal colour over this long. */
 	private static final long ARC_CURRENT_MS = 250;
 	private static final float CURRENT_WHITE = 0.3f;
@@ -717,8 +717,27 @@ public final class LyricsRenderer {
 	 * (unsynced) lyrics have estimated slots too, so their words come out one by one the same way instead of all at once.
 	 */
 	static float sungChars(Lyrics lyrics, int index, long time, int total) {
-		return progress(time - LEAD_MS, lyrics.get(index).timeMs(), lyrics.sungEnd(index)) * total;
+		long start = lyrics.get(index).timeMs(), end = lyrics.sungEnd(index);
+		// The next line takes over LEAD_MS early, and the cards of this one are let go then: the words must all be out
+		// by then (a little before, for a frame to land in), or the last ones of a short line never show
+		long last = Math.min(end, lyrics.lineEnd(index) - LEAD_MS - FLIP_SLACK_MS);
+		// A short line is on show for little longer than it takes to sing, so its words start as it comes in
+		long first = start - (long) (LEAD_MS * Mth.clamp(1 - (end - start) / (float) FAST_LINE_MS, 0, 1));
+		return progress(time - LEAD_MS, first, Math.max(last, first + MIN_REVEAL_MS)) * total;
 	}
+
+	/**
+	 * How far a word is out while its line leaves, {@code leave} (0 to 1) of the way: its own {@code reveal}, or more
+	 * as the leaving goes on, so a word not out yet fades in over {@link #ARC_LEAVE_RAMP_MS} and nothing flashes.
+	 */
+	static float leaveReveal(float reveal, float leave) {
+		return Math.max(reveal, Mth.clamp(leave * (ARC_LEAVE_NS / 1_000_000f) / ARC_LEAVE_RAMP_MS, 0, 1));
+	}
+
+	/** Lines shorter than this have their words start before their stamp; the earlier the shorter the line is. */
+	static final long FAST_LINE_MS = 1000;
+	/** How long before the next line takes over a line's last word is out, and the least time its words get. */
+	static final long FLIP_SLACK_MS = 50, MIN_REVEAL_MS = 40;
 
 	/** Whether a line's slot ended a moment ago, so its last words can leave (also for the last line, which has no next one). */
 	static boolean lineOver(Lyrics lyrics, int index, long time) {
@@ -1340,7 +1359,10 @@ public final class LyricsRenderer {
 				canvas.push(g.x(), g.y() - focus, g.scale(), g.angle());
 				for (int w = g.from(); w < g.to(); w++) {
 					float e = 1, current = 0, ahead = 0;
-					if (!leaving && timed) {
+					if (leaving && timed) {
+						// A word not out yet comes in over a moment as the line fades, instead of popping up in full
+						e = leaveReveal(Mth.clamp((sungAt - wordAt(arc, w, start, end)) / (float) ARC_WORD_FADE_MS, 0, 1), leave);
+					} else if (!leaving && timed) {
 						long at = wordAt(arc, w, start, end);
 						long next = w + 1 < words ? wordAt(arc, w + 1, start, end) : end;
 						e = Mth.clamp((sungAt - at) / (float) ARC_WORD_FADE_MS, 0, 1);
@@ -1733,7 +1755,7 @@ public final class LyricsRenderer {
 				logical[i] = i;
 			}
 			if (!Bidi.requiresBidi(row.toCharArray(), 0, row.length())) {
-				return new Display(cps, logical);
+				return dropMarks(new Display(cps, logical));
 			}
 			int[] charToCp = new int[row.length() + 1];
 			for (int off = 0, i = 0; off < row.length(); i++) {
@@ -1771,6 +1793,10 @@ public final class LyricsRenderer {
 						// Vowel marks would need stacking on the letter, which the font can't do; they'd leave a gap
 						continue;
 					}
+					if (directionMark(cps[i])) {
+						// Steered the order above; never drawn (the font would show a box)
+						continue;
+					}
 					outCps[v] = rtl ? mirror(shaped[i]) : shaped[i];
 					outLogical[v++] = i;
 				}
@@ -1788,6 +1814,36 @@ public final class LyricsRenderer {
 			} catch (ArabicShapingException e) {
 				return row;
 			}
+		}
+
+		/** LRM, RLM, ALM, the embeddings and overrides, and the isolates: invisible, but they steer the order. */
+		static boolean directionMark(int cp) {
+			return cp == 0x200E || cp == 0x200F || cp == 0x061C
+				|| (cp >= 0x202A && cp <= 0x202E) || (cp >= 0x2066 && cp <= 0x2069);
+		}
+
+		/** The same display without the direction marks; {@code logical} keeps pointing at the raw text. */
+		private static Display dropMarks(Display d) {
+			int[] cps = d.cps();
+			int v = 0;
+			for (int cp : cps) {
+				if (!directionMark(cp)) {
+					v++;
+				}
+			}
+			if (v == cps.length) {
+				return d;
+			}
+			int[] outCps = new int[v];
+			int[] outLogical = new int[v];
+			v = 0;
+			for (int i = 0; i < cps.length; i++) {
+				if (!directionMark(cps[i])) {
+					outCps[v] = cps[i];
+					outLogical[v++] = d.logical()[i];
+				}
+			}
+			return new Display(outCps, outLogical);
 		}
 
 		static boolean arabicMark(int cp) {
@@ -1915,7 +1971,11 @@ public final class LyricsRenderer {
 
 	/** Whether a word ends with a mark where a row may nicely end. */
 	static boolean endsWithPause(String word) {
-		return !word.isEmpty() && ",.;:!?…،؟。、，！？".indexOf(word.charAt(word.length() - 1)) >= 0;
+		int end = word.length();
+		while (end > 0 && Display.directionMark(word.charAt(end - 1))) {
+			end--;
+		}
+		return end > 0 && ",.;:!?…،؟。、，！？".indexOf(word.charAt(end - 1)) >= 0;
 	}
 
 	/** A line cut into arc words: each word's text, where it starts (code points), and whether it runs straight into the next. */

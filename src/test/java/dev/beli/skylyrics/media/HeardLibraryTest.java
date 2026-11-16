@@ -505,4 +505,24 @@ class HeardLibraryTest {
 		assertEquals(0, HeardLibrary.page(all, -5).offset());
 		assertEquals(3, HeardLibrary.page(all, -5).items().size());
 	}
+
+	@Test
+	void staleTempOfAKilledGameIsCleanedAtStartButAFreshOneStays() throws IOException {
+		Path stale = dir.resolve("heard.json.123.tmp"), fresh = dir.resolve("heard.json.456.tmp");
+		Files.writeString(stale, "x");
+		Files.writeString(fresh, "x");
+		Files.setLastModifiedTime(stale, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 2 * dev.beli.skylyrics.util.Leftovers.AGE_MS));
+		HeardLibrary.read(file());
+		assertFalse(Files.exists(stale));
+		assertTrue(Files.exists(fresh));
+	}
+
+	@Test
+	void saveTempFollowsTheCleanedNamePattern() throws IOException {
+		HeardLibrary.write(file(), List.of(new HeardLibrary.Entry("T", "A", "B", 1, "", "u", "mpv")), (from, to, opts) -> {
+			assertTrue(from.getFileName().toString().matches("heard\\.json\\.\\d+\\.tmp"), from.getFileName().toString());
+			Files.move(from, to, opts);
+		});
+		assertEquals(1, HeardLibrary.read(file()).size());
+	}
 }

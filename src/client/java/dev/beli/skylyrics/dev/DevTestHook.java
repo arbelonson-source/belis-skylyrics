@@ -309,12 +309,14 @@ public final class DevTestHook {
 	 * song, so other scripts (Arabic, Hebrew) can be checked. Only for short test phrases, never real lyrics.
 	 */
 	private static void lines(Minecraft client, String arg) {
-		String[] parts = arg.split("\\s*\\|\\s*");
-		StringBuilder lrc = new StringBuilder();
-		for (int i = 0, ms = 0; ms < DemoSource.TRACK.lengthMs(); i++, ms += 4000) {
-			lrc.append(String.format("[%02d:%02d.00]%s%n", ms / 60000, ms / 1000 % 60, parts[i % parts.length]));
-		}
-		swapLyrics(LrcParser.parseSynced(lrc.toString()));
+		swapLyrics(LrcParser.parseSynced(TimedLrc.of(arg, 4000, DemoSource.TRACK.lengthMs())));
+	}
+
+	/** "fastlines ms a | b | c": like "lines", but one line every {@code ms} milliseconds (fast songs, rap). */
+	private static void fastLines(String arg) {
+		String[] stepAndLines = arg.split("\\s+", 2);
+		swapLyrics(LrcParser.parseSynced(TimedLrc.of(stepAndLines.length > 1 ? stepAndLines[1] : "", Integer.parseInt(stepAndLines[0]),
+				DemoSource.TRACK.lengthMs())));
 	}
 
 	/** "plain a | b | c": like "lines", but as lyrics without timing, spread over the demo song the way plain lyrics are. */
@@ -344,7 +346,7 @@ public final class DevTestHook {
 						.filter(c -> ((Enum<?>) c).name().equals(kv[1]))
 						.findFirst().orElseThrow();
 			} else {
-				value = kv[1];
+				value = SetValue.string(kv[1]);
 			}
 			field.set(SkyLyricsConfig.get(), value);
 		} catch (ReflectiveOperationException e) {
@@ -632,6 +634,7 @@ public final class DevTestHook {
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
 				case "lines" -> lines(client, arg);
+				case "fastlines" -> fastLines(arg);
 			case "plain" -> plain(arg);
 				case "uncap" -> {
 					client.options.enableVsync().set(false);

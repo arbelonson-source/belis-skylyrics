@@ -55,6 +55,9 @@ record Refusal(String asset, String sha256, Map<String, String> running, String 
 		if (file == null) {
 			return null;
 		}
+		if (file.toAbsolutePath().getParent() != null) {
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.toAbsolutePath().getParent(), file.getFileName().toString(), System.currentTimeMillis());
+		}
 		try {
 			if (!Files.isRegularFile(file) || Files.size(file) > 16 * 1024) {
 				return null;

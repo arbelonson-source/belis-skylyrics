@@ -148,4 +148,75 @@ class DisplayOrderTest {
 		assertArrayEquals(new int[] {0, 4}, LyricsRenderer.rowStarts("aa  bb", java.util.List.of("aa", "bb")));
 		assertArrayEquals(new int[] {0}, LyricsRenderer.rowStarts("aa  bb", java.util.List.of("aa  bb")));
 	}
+	private static boolean hasMark(int[] cps) {
+		for (int cp : cps) {
+			if (LyricsRenderer.Display.directionMark(cp)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Test
+	void marksSteerTheOrderButAreNotDrawn() {
+		// An RLM at the start makes an English-first line right to left: the Hebrew ends up on the left, and no box is drawn
+		LyricsRenderer.Display d = LyricsRenderer.Display.of("\u200Fhello \u05E9\u05DC\u05D5\u05DD");
+		assertEquals("\u05DD\u05D5\u05DC\u05E9 hello", new String(d.cps(), 0, d.cps().length));
+		// Letters still count the raw text: the RLM is letter 0
+		assertArrayEquals(new int[] {10, 9, 8, 7, 6, 1, 2, 3, 4, 5}, d.logical());
+		// Without the mark the same line reads left to right
+		assertEquals("hello \u05DD\u05D5\u05DC\u05E9", visual("hello \u05E9\u05DC\u05D5\u05DD"));
+	}
+
+	@Test
+	void leftToRightMarkOnlyLineHasNoMarkInIt() {
+		// requiresBidi is false for these, so the early return has to drop them too
+		for (String mark : new String[] {"\u200E", "\u202A", "\u202D", "\u2066", "\u2067", "\u2068"}) {
+			LyricsRenderer.Display d = LyricsRenderer.Display.of(mark + "hi" + mark);
+			assertEquals("hi", new String(d.cps(), 0, d.cps().length), mark);
+			assertArrayEquals(new int[] {1, 2}, d.logical(), mark);
+		}
+	}
+
+	@Test
+	void embeddingsAndIsolatesAreNotDrawnAndKeepTheirIndices() {
+		String row = "\u202B\u05D0\u05D1\u202C x \u2067\u05D2\u2069";
+		LyricsRenderer.Display d = LyricsRenderer.Display.of(row);
+		assertTrue(!hasMark(d.cps()));
+		for (int i : d.logical()) {
+			assertTrue(!LyricsRenderer.Display.directionMark(row.charAt(i)));
+		}
+		assertEquals(row.length() - 4, d.cps().length);
+	}
+
+	@Test
+	void arabicLetterMarkInsideAWordStillJoinsLikeTheUnmarkedWord() {
+		String plain = visual("\u0645\u0631\u062D\u0628\u0627");
+		for (String mark : new String[] {"\u061C", "\u200F"}) {
+			String marked = mark + "\u0645\u0631" + mark + "\u062D\u0628\u0627" + mark;
+			LyricsRenderer.Display d = LyricsRenderer.Display.of(marked);
+			assertTrue(!hasMark(d.cps()));
+			assertEquals(plain, new String(d.cps(), 0, d.cps().length));
+		}
+		// An LRM splits the word into two runs in a left-to-right line, but the letters are still the joined forms
+		LyricsRenderer.Display lrm = LyricsRenderer.Display.of("\u0645\u0631\u200E\u062D\u0628\u0627");
+		assertTrue(!hasMark(lrm.cps()));
+		assertEquals(plain.codePoints().sorted().boxed().toList(), java.util.Arrays.stream(lrm.cps()).sorted().boxed().toList());
+	}
+
+	@Test
+	void aRowOfOnlyMarksIsEmptyAndSafe() {
+		LyricsRenderer.Display d = LyricsRenderer.Display.of("\u200F\u200E");
+		assertEquals(0, d.cps().length);
+		assertEquals(0, d.logical().length);
+		assertEquals(0, LyricsRenderer.Display.of("\u200F", true).cps().length);
+	}
+
+	@Test
+	void endsWithPauseSkipsTrailingMarks() {
+		assertTrue(LyricsRenderer.endsWithPause("\u05E9\u05DC\u05D5\u05DD,\u200F"));
+		assertTrue(LyricsRenderer.endsWithPause("word.\u200E\u200F"));
+		assertEquals(false, LyricsRenderer.endsWithPause("word\u200F"));
+		assertEquals(false, LyricsRenderer.endsWithPause("\u200F"));
+	}
 }

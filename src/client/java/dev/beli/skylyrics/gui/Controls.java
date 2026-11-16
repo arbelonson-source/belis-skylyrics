@@ -17,6 +17,7 @@ import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.Tr;
+import dev.beli.skylyrics.render.LyricsFont;
 
 /** The rows and controls used on the settings screen. All drawing is custom so it can match the mod's look. */
 final class Controls {
@@ -320,7 +321,8 @@ final class Controls {
 			int kh = 10 + Math.round(knobAnim * 2);
 			Ui.rect(f.g(), sx + filled - kw / 2, cy - kh / 2, kw, kh, 2, 0xFFFFFFFF);
 			String text = format.apply(v);
-			f.g().drawString(f.font(), Ui.visual(text), sx - 8 - f.font().width(text), cy - 4, dragging ? Ui.TEXT : Ui.MUTED, false);
+			// A number keeps its order in a Hebrew or Arabic game ("-10°" would read "°10-")
+			f.g().drawString(f.font(), Ui.visual(LyricsFont.ltrNumber(text)), sx - 8 - f.font().width(text), cy - 4, dragging ? Ui.TEXT : Ui.MUTED, false);
 		}
 
 		@Override
