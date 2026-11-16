@@ -108,6 +108,9 @@ tasks.test {
 	useJUnitPlatform()
 	// Some tests read the lang files and sources from src/
 	workingDir = rootProject.projectDir
+	// Each version's test JVM unpacks LWJGL's native libraries into its own folder: all 9 run at once, and on Windows
+	// two of them writing the same shared lwjgl.dll left a half-written file ("not a valid Win32 application")
+	systemProperty("org.lwjgl.system.SharedLibraryExtractPath", layout.buildDirectory.dir("lwjgl-natives").get().asFile.absolutePath)
 	// Name every test in the log, so CI shows that the Windows ones really ran there
 	testLogging {
 		events("passed", "skipped", "failed")
