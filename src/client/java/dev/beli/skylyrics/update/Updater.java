@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.UnaryOperator;
 import java.util.zip.ZipFile;
 
 import org.slf4j.Logger;
@@ -41,7 +42,20 @@ public final class Updater {
 	private static final Duration TIMEOUT = Duration.ofSeconds(10);
 
 	/** What to tell the player: a new version is out, or it is already downloaded and needs a restart. */
-	public record Notice(String version, boolean downloaded) {
+	public record Notice(String version, boolean downloaded, String needs, String what) {
+		public Notice(String version, boolean downloaded) {
+			this(version, downloaded, null, null);
+		}
+	}
+
+	/** The downloaded jar would not load on this game, so it was not installed. */
+	static final class Incompatible extends Exception {
+		final transient Needs.Unmet unmet;
+
+		Incompatible(Needs.Unmet unmet) {
+			super(unmet.text());
+			this.unmet = unmet;
+		}
 	}
 
 	private static volatile Notice notice;
@@ -109,6 +123,9 @@ public final class Updater {
 		if (mode == Updates.INSTALL) {
 			try {
 				installed = install(http, jar, asset);
+			} catch (Incompatible e) {
+				LOG.info("Update {} not installed: it needs {}", release.version(), e.unmet.text());
+				return new Notice(release.version(), false, e.unmet.text(), e.unmet.name());
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			} catch (Exception e) {
@@ -155,6 +172,11 @@ public final class Updater {
 
 	/** Downloads the new jar next to the old one and makes sure only one of them is left. True when it is in place. */
 	static boolean install(HttpClient http, Path oldJar, UpdateCheck.Asset asset) throws Exception {
+		return install(http, oldJar, asset, Updater::running);
+	}
+
+	/** As above, with the running versions given (see {@link Needs#unmet}): the jar is refused when it would not load on them. */
+	static boolean install(HttpClient http, Path oldJar, UpdateCheck.Asset asset, UnaryOperator<String> running) throws Exception {
 		Path dir = oldJar.getParent();
 		Path target = dir.resolve(asset.name());
 		if (!target.getFileName().toString().equals(asset.name()) || Files.exists(target)) {
@@ -180,6 +202,11 @@ public final class Updater {
 				LOG.warn("Downloaded update {} failed its check, discarding it", asset.name());
 				Files.deleteIfExists(part);
 				return false;
+			}
+			Needs.Unmet unmet = Needs.unmet(dependsOf(part), running);
+			if (unmet != null) {
+				Files.deleteIfExists(part);
+				throw new Incompatible(unmet);
 			}
 			if (windows()) {
 				return installLater(oldJar, part, target);
@@ -353,6 +380,33 @@ public final class Updater {
 			}
 		}
 		return HexFormat.of().formatHex(digest.digest()).equals(sha256);
+	}
+
+	/** The "depends" of the jar's fabric.mod.json, or null when it has none or can't be read. */
+	static JsonObject dependsOf(Path file) throws IOException {
+		try (ZipFile zip = new ZipFile(file.toFile())) {
+			var entry = zip.getEntry("fabric.mod.json");
+			if (entry == null) {
+				return null;
+			}
+			try (InputStream in = zip.getInputStream(entry)) {
+				JsonObject json = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				return json.has("depends") && json.get("depends").isJsonObject() ? json.getAsJsonObject("depends") : null;
+			}
+		}
+	}
+
+	/** The version of what is running now, as Fabric Loader knows it; null when it isn't there. */
+	static String running(String id) {
+		if (id.equals("java")) {
+			return String.valueOf(Runtime.version().feature());
+		}
+		FabricLoader loader = FabricLoader.getInstance();
+		var container = loader.getModContainer(id);
+		if (container.isEmpty() && id.equals("fabric-api")) {
+			container = loader.getModContainer("fabric"); // Fabric API's id on old setups
+		}
+		return container.map(c -> c.getMetadata().getVersion().getFriendlyString()).orElse(null);
 	}
 
 	private static String string(JsonObject o, String key) {

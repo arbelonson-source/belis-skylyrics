@@ -61,7 +61,7 @@ class UpdaterChecksTest {
 	}
 
 	/** A network that answers every request with the same 200 body and counts the requests. */
-	private static final class Net extends HttpClient {
+	static final class Net extends HttpClient {
 		final byte[] body;
 		final List<String> requests = new java.util.ArrayList<>();
 
