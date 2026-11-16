@@ -525,5 +525,6 @@
   "skylyrics.ui.s_or_s": "%s או %s",
   "skylyrics.ui.a_version_it_can_t_tell": "גרסה שלא ניתן לזהות",
   "skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers": "נגן שיר באפליקציית \"מוזיקה\" או Spotify (ב-Mac אי אפשר לקרוא דפדפנים) והמילים שלו יופיעו. אם macOS שואל אם Minecraft רשאי לשלוט בהן, לחץ על אישור.",
-  "skylyrics.ui.optional_signing_in_to_spotify_needs_premium_and": "אופציונלי: התחברות ל-Spotify (דורשת Premium ואפליקציית מפתחים חינמית) יכולה לעזור עם התזמון."
+  "skylyrics.ui.optional_signing_in_to_spotify_needs_premium_and": "אופציונלי: התחברות ל-Spotify (דורשת Premium ואפליקציית מפתחים חינמית) יכולה לעזור עם התזמון.",
+  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "אין שיר מתנגן ב-Spotify או ב\"מוזיקה\" (ב-Mac אי אפשר לקרוא דפדפנים)"
 }

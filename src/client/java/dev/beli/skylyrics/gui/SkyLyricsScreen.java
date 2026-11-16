@@ -526,7 +526,8 @@ public final class SkyLyricsScreen extends Screen {
 				String error = tracker.error();
 				return error == null || error.isEmpty() ? Tr.t("Can't reach music players") : error;
 			}
-			return tracker.track() == Track.NONE ? Tr.t("No music playing") : Tr.t("Following %s", tracker.sourceName());
+			return tracker.track() == Track.NONE
+					? (SkyLyricsClient.mac() ? Tr.t("No Spotify or Music playing (browsers can't be read on a Mac)") : Tr.t("No music playing")) : Tr.t("Following %s", tracker.sourceName());
 		});
 		// The error often says what to allow or install, too long for the Status line
 		Row connectionHelp = new Paragraph(() -> tracker.error())
