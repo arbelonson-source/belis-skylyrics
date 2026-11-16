@@ -388,6 +388,16 @@ public final class SkyLyricsClient implements ClientModInitializer {
 					? Tr.t("SkyLyrics %s is downloaded — restart Minecraft to use it", update.version())
 					: Tr.t("SkyLyrics %s is out", update.version()));
 		}
+		if (tracker.takeReadFailure()) {
+			KeyMapping settingsKey = openSettingsKey();
+			Component title = Component.literal(tracker.networkDown() ? Tr.t("SkyLyrics can't reach the internet or Spotify") : Tr.t("SkyLyrics can't read your music player"));
+			Component body = Component.literal(Tr.t("Open the settings (%s) → Music to see why", settingsKey == null ? "J" : settingsKey.getTranslatedKeyMessage().getString()));
+			//? if >=26.2 {
+			/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
+			*///?} else {
+			SystemToast.addOrUpdate(client.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
+			//?}
+		}
 		if (client.player != null && updateLine != null) {
 			Component line = updateLine;
 			updateLine = null;

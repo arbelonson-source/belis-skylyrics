@@ -33,6 +33,12 @@ public final class MediaTracker {
 	private volatile String sourceName = "";
 	private volatile boolean connected;
 	private volatile String error = "";
+	/** When the reads started failing (System.nanoTime), or NOT_FAILING while they work. */
+	private volatile long failingSince = NOT_FAILING;
+	private volatile boolean networkDown;
+	private static final long NOT_FAILING = Long.MIN_VALUE;
+	/** How long reads must fail without a break before the player is told (once). */
+	static final long TOAST_AFTER_NS = 10_000_000_000L;
 	private Consumer<Track> onTrackChange = t -> {
 	};
 	private boolean loggedError;
@@ -146,6 +152,10 @@ public final class MediaTracker {
 		if (failure != null) {
 			connected = false;
 			error = failureText(failure);
+			networkDown = networkFailure(failure);
+			if (failingSince == NOT_FAILING) {
+				failingSince = System.nanoTime();
+			}
 			if (!loggedError) {
 				LOG.warn("Couldn't read the music player: {}", error);
 				loggedError = true;
@@ -154,6 +164,8 @@ public final class MediaTracker {
 		} else {
 			connected = true;
 			error = "";
+			failingSince = NOT_FAILING;
+			networkDown = false;
 			if (loggedError) {
 				LOG.info("The music player can be read again");
 				loggedError = false;
@@ -262,6 +274,28 @@ public final class MediaTracker {
 	public boolean playing() {
 		return snapshot.playing();
 	}
+
+	/** Whether to tell the player once that the music player can't be read: reads have failed for a while, no toast yet. */
+	static boolean toastDue(long failingForNs, boolean alreadyShown) {
+		return !alreadyShown && failingForNs >= TOAST_AFTER_NS;
+	}
+
+	/** True once, when reads have been failing for about 10 seconds straight (never for "nothing playing"). */
+	public boolean takeReadFailure() {
+		long since = failingSince;
+		if (since == NOT_FAILING || !toastDue(System.nanoTime() - since, readFailureShown)) {
+			return false;
+		}
+		readFailureShown = true;
+		return true;
+	}
+
+	/** Whether the failing reads are the internet's fault, not the player's. */
+	public boolean networkDown() {
+		return networkDown;
+	}
+
+	private volatile boolean readFailureShown;
 
 	public boolean connected() {
 		return connected;
