@@ -39,4 +39,26 @@ class SettingsRowsTest {
 		cfg.constellations = true;
 		assertTrue(SkyLyricsScreen.anySkyEffect(cfg));
 	}
+
+	@Test
+	void skySpeedShowsForEveryEffectOnItsClock() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.sky = SkyEffect.OFF;
+		cfg.shootingStars = false;
+		cfg.twinkle = false;
+		cfg.constellations = false;
+		assertFalse(SkyLyricsScreen.skySpeedApplies(cfg));
+		cfg.constellations = true;
+		assertTrue(SkyLyricsScreen.skySpeedApplies(cfg));
+		cfg.constellations = false;
+		cfg.twinkle = true;
+		assertTrue(SkyLyricsScreen.skySpeedApplies(cfg));
+		cfg.twinkle = false;
+		cfg.sky = SkyEffect.AURORA;
+		assertTrue(SkyLyricsScreen.skySpeedApplies(cfg));
+		// shooting stars age by real time, not the sky clock
+		cfg.sky = SkyEffect.OFF;
+		cfg.shootingStars = true;
+		assertFalse(SkyLyricsScreen.skySpeedApplies(cfg));
+	}
 }
