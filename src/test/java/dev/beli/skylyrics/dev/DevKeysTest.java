@@ -7,31 +7,38 @@ import org.junit.jupiter.api.Test;
 
 class DevKeysTest {
 	@Test
-	void namedKeysUseGlfwCodes() {
-		assertEquals(258, DevKeys.parse("TAB").code());
-		assertEquals(257, DevKeys.parse("ENTER").code());
-		assertEquals(32, DevKeys.parse("SPACE").code());
-		assertEquals(256, DevKeys.parse("ESCAPE").code());
-		assertEquals(265, DevKeys.parse("UP").code());
-		assertEquals(264, DevKeys.parse("DOWN").code());
-		assertEquals(263, DevKeys.parse("LEFT").code());
-		assertEquals(262, DevKeys.parse("RIGHT").code());
-		assertEquals(266, DevKeys.parse("PAGE_UP").code());
-		assertEquals(267, DevKeys.parse("PAGE_DOWN").code());
-		assertEquals(268, DevKeys.parse("HOME").code());
-		assertEquals(269, DevKeys.parse("END").code());
-		assertEquals(259, DevKeys.parse("BACKSPACE").code());
+	void namedKeysAreNormalised() {
+		assertEquals("tab", DevKeys.parse("TAB").name());
+		assertEquals("enter", DevKeys.parse("ENTER").name());
+		assertEquals("space", DevKeys.parse("SPACE").name());
+		assertEquals("escape", DevKeys.parse("ESCAPE").name());
+		assertEquals("up", DevKeys.parse("UP").name());
+		assertEquals("down", DevKeys.parse("DOWN").name());
+		assertEquals("left", DevKeys.parse("LEFT").name());
+		assertEquals("right", DevKeys.parse("RIGHT").name());
+		assertEquals("page_up", DevKeys.parse("PAGE_UP").name());
+		assertEquals("page_down", DevKeys.parse("PAGE_DOWN").name());
+		assertEquals("home", DevKeys.parse("HOME").name());
+		assertEquals("end", DevKeys.parse("END").name());
+		assertEquals("backspace", DevKeys.parse("BACKSPACE").name());
 	}
 
 	@Test
 	void lettersDigitsAndFunctionKeys() {
-		assertEquals(65, DevKeys.parse("A").code());
-		assertEquals(70, DevKeys.parse("f").code());
-		assertEquals(90, DevKeys.parse("Z").code());
-		assertEquals(48, DevKeys.parse("0").code());
-		assertEquals(57, DevKeys.parse("9").code());
-		assertEquals(290, DevKeys.parse("F1").code());
-		assertEquals(301, DevKeys.parse("F12").code());
+		assertEquals("a", DevKeys.parse("A").name());
+		assertEquals("f", DevKeys.parse("f").name());
+		assertEquals("z", DevKeys.parse("Z").name());
+		assertEquals("0", DevKeys.parse("0").name());
+		assertEquals("9", DevKeys.parse("9").name());
+		assertEquals("f1", DevKeys.parse("F1").name());
+		assertEquals("f12", DevKeys.parse("F12").name());
+	}
+
+	@Test
+	void aliasesAndCaseMapToOneName() {
+		assertEquals("escape", DevKeys.parse("ESC").name());
+		assertEquals("enter", DevKeys.parse("Return").name());
+		assertEquals("f24", DevKeys.parse("F24").name());
 	}
 
 	@Test
@@ -50,6 +57,7 @@ class DevKeysTest {
 		assertThrows(IllegalArgumentException.class, () -> DevKeys.parse("TAB hyper"));
 		assertThrows(IllegalArgumentException.class, () -> DevKeys.parse(""));
 		assertThrows(IllegalArgumentException.class, () -> DevKeys.parse("F13x"));
+		assertThrows(IllegalArgumentException.class, () -> DevKeys.parse("F25"));
 	}
 
 	@Test
@@ -67,5 +75,19 @@ class DevKeysTest {
 		assertEquals(0, DevKeys.charFor(DevKeys.parse("F ctrl")));
 		assertEquals(0, DevKeys.charFor(DevKeys.parse("F alt")));
 		assertEquals(0, DevKeys.charFor(DevKeys.parse("F5")));
+	}
+
+	@Test
+	void sdlKeycodesAndModifiers() {
+		assertEquals('j', DevKeys.sdlKeycode(DevKeys.parse("J"), 13));
+		assertEquals(9, DevKeys.sdlKeycode(DevKeys.parse("TAB"), 43));
+		assertEquals(27, DevKeys.sdlKeycode(DevKeys.parse("ESC"), 41));
+		assertEquals(0x4000004F, DevKeys.sdlKeycode(DevKeys.parse("RIGHT"), 79));
+		assertEquals(0x40000050, DevKeys.sdlKeycode(DevKeys.parse("LEFT"), 80));
+		assertEquals(0x40000051, DevKeys.sdlKeycode(DevKeys.parse("DOWN"), 81));
+		assertEquals(0x40000052, DevKeys.sdlKeycode(DevKeys.parse("UP"), 82));
+		assertEquals(1, DevKeys.sdlModifiers(DevKeys.parse("A shift")));
+		assertEquals(0x1 | 0x40 | 0x100, DevKeys.sdlModifiers(DevKeys.parse("A shift ctrl alt")));
+		assertEquals(7, DevKeys.glfwModifiers(DevKeys.parse("A shift ctrl alt")));
 	}
 }
