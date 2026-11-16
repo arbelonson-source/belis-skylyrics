@@ -96,7 +96,30 @@ class SafeFileTest {
 
 	@Test
 	void totalPausesStayShortForTheGameThread() {
-		assertTrue((SafeFile.TRIES - 1) * SafeFile.PAUSE_MS <= 100);
+		long total = 0;
+		for (int i = 0; i < SafeFile.TRIES - 1; i++) {
+			total += SafeFile.PAUSE_MS << i;
+		}
+		assertTrue(total <= 1000, "total pause " + total);
+		assertTrue(total >= 500, "long enough for an antivirus scan: " + total);
+	}
+
+	/** A scan that holds the file for about half a second must not make the save fail (it gave up after 40 ms before). */
+	@Test
+	void defaultsRideOutAHoldOfHalfASecond() throws IOException {
+		Path tmp = tmp();
+		long start = System.nanoTime();
+		int[] calls = {0};
+		SafeFile.replace(tmp, dir.resolve("a.json"), (from, to, opts) -> {
+			if (++calls[0] <= 5) {
+				throw new AccessDeniedException(to.toString());
+			}
+			Files.move(from, to, opts);
+		}, SafeFile.TRIES, SafeFile.PAUSE_MS);
+		long ms = (System.nanoTime() - start) / 1_000_000;
+		assertEquals(6, calls[0]);
+		assertTrue(ms >= 700, "the pauses grow 25, 50, 100, 200, 400: " + ms);
+		assertEquals("new", Files.readString(dir.resolve("a.json")));
 	}
 
 	@Test

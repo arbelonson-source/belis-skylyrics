@@ -10,15 +10,15 @@ import java.nio.file.StandardCopyOption;
 
 /**
  * Moves a finished temp file over its real file. On Windows, antivirus, the search indexer or
- * OneDrive often hold the target open for a moment, which makes the move fail; trying again a
- * few times a few milliseconds later nearly always works. Some file systems (network drives,
+ * OneDrive often hold the target open for a moment (a scan can take half a second), which makes the move fail; trying
+ * again a few times with growing pauses nearly always works. Some file systems (network drives,
  * FAT/exFAT sticks) can't do atomic moves at all, so those get a plain replace instead.
  */
 public final class SafeFile {
 	/** Total tries, including the first. */
-	public static final int TRIES = 3;
-	/** Pause between tries; the worst case is (TRIES - 1) pauses, about 40 ms. */
-	public static final long PAUSE_MS = 20;
+	public static final int TRIES = 6;
+	/** The first pause between tries; each later one is twice as long (25, 50, 100, 200, 400 ms), under a second in all. */
+	public static final long PAUSE_MS = 25;
 
 	/** The move itself, so tests can make it fail. */
 	@FunctionalInterface
@@ -158,7 +158,7 @@ public final class SafeFile {
 				failures++;
 				if (failures < tries && pauseMs > 0) {
 					try {
-						Thread.sleep(pauseMs);
+						Thread.sleep(pauseMs << Math.min(failures - 1, 10));
 					} catch (InterruptedException ie) {
 						Thread.currentThread().interrupt();
 						break;
