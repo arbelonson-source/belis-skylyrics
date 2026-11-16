@@ -94,5 +94,8 @@ class LibraryKeysTest {
 		assertTrue(LibraryKeys.atTop(shelf, 4, 4, 2));
 		assertFalse(LibraryKeys.atTop(shelf, 5, 4, 2));
 		assertTrue(LibraryKeys.atTop(carousel, 7, 4, 2));
+		// nothing chosen is at the top in every view
+		assertTrue(LibraryKeys.atTop(shelf, -1, 4, 2));
+		assertTrue(LibraryKeys.atTop(carousel, -1, 4, 2));
 	}
 }

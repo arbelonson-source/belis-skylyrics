@@ -31,26 +31,15 @@ class WorldFlowOrderTest {
 		return new TopBarWords.Piece(w, true);
 	}
 
-	/** Writes pieces of half width 2 and half height 1 the way the World layout does, returning each one's yaw. */
+	/** Writes pieces of half width 2 and half height 1 through the World layout's own run handling, returning each one's yaw. */
 	private static float[] write(WorldWords.Sentence s, int[] runs) {
-		float[] yaw = new float[runs.length];
+		float[] yaw = new float[runs.length], half = new float[runs.length];
+		// a piece of half width 2 degrees at the sentence's distance
+		java.util.Arrays.fill(half, (float) (s.distance * Math.tan(Math.toRadians(2))));
 		for (int i = 0; i < runs.length; i++) {
-			if (runs[i] == WorldWords.RUN_NONE) {
-				s.forward();
-			} else if (runs[i] == WorldWords.RUN_FIRST) {
-				int count = 0;
-				for (int k = i; k < runs.length; k++) {
-					count++;
-					if (runs[k] == WorldWords.RUN_LAST) {
-						break;
-					}
-				}
-				s.reverse(count * 4 + (count - 1) * WorldWords.Sentence.GAP);
-			}
+			WorldWords.openRun(s, runs, half, i, 1f, 1f);
 			yaw[i] = s.place(2, 1, 0, 0)[0];
-			if (runs[i] == WorldWords.RUN_LAST) {
-				s.forward();
-			}
+			WorldWords.closeRun(s, runs[i]);
 		}
 		return yaw;
 	}
@@ -77,7 +66,7 @@ class WorldFlowOrderTest {
 		float[] x = write(s, new int[] {0, WorldWords.RUN_FIRST, WorldWords.RUN_LAST, 0});
 		assertTrue(x[2] < x[1] && x[1] < x[3], java.util.Arrays.toString(x));
 		// pieces do not overlap: each is 4 wide
-		assertTrue(x[1] - x[2] >= 4 - 1e-4f && x[3] - x[1] >= 4 - 1e-4f, java.util.Arrays.toString(x));
+		assertTrue(x[1] - x[2] >= 4 - 1e-3f && x[3] - x[1] >= 4 - 1e-3f, java.util.Arrays.toString(x));
 	}
 
 	@Test

@@ -307,6 +307,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void threeFastFramesMakeTheCardsTravelLikeGliding() {
+		Vec3 last = new Vec3(10, 80, 10), step = new Vec3(11, 80, 10);
+		int run = 0;
+		for (int frame = 1; frame <= 4; frame++) {
+			run = WorldWords.fastRun(run, last, step, 0.016f);
+			assertEquals(frame >= 3, WorldWords.travelling(false, run), "frame " + frame);
+		}
+		assertEquals(true, WorldWords.travelling(true, 0));
+		assertEquals(false, WorldWords.travelling(false, 2));
+		// travelling carries the cards the whole step
+		assertEquals(step.subtract(last), WorldWords.carry(last, step, WorldWords.travelling(false, run), 0.016f));
+	}
+
+	@Test
 	void wordsFlyAlongOnlyWhileYouGlide() {
 		Vec3 last = new Vec3(10, 80, 10), eye = new Vec3(12, 79, 10.5);
 		Vec3 moved = WorldWords.carry(last, eye, true, 0.016f);
