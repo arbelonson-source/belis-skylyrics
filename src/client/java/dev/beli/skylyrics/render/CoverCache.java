@@ -62,6 +62,8 @@ public final class CoverCache {
 		private volatile int color = AlbumArt.FALLBACK_COLOR;
 		/** When the download last failed, or 0 while it hasn't. */
 		private volatile long failedAt;
+		/** How many loads have failed; after {@link #MAX_FAILURES} it isn't tried again this session. */
+		private volatile int failures;
 		private boolean uploaded;
 		private long shownAt;
 
@@ -91,12 +93,21 @@ public final class CoverCache {
 	/** A cover whose download failed is tried again after this long. */
 	static final long RETRY_NS = 120_000_000_000L;
 
+	/** A cover that failed this many times shows the no-cover tile for the rest of the session. */
+	static final int MAX_FAILURES = 3;
+
 	/** Whether a download that failed at {@code failedAt} (nanoTime, 0 for never) is due another go. */
 	public static boolean retryDue(long failedAt, long now) {
 		return failedAt != 0 && now - failedAt >= RETRY_NS;
 	}
 
+	/** Fetches and decodes one cover; tests swap it. */
+	interface Reader {
+		@Nullable BufferedImage read(String url) throws Exception;
+	}
+
 	private final Path dir;
+	private final Reader reader;
 	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
 	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
 
@@ -125,10 +136,20 @@ public final class CoverCache {
 
 	public CoverCache(Path dir) {
 		this.dir = dir;
+		this.reader = this::read;
+	}
+
+	CoverCache(Path dir, Reader reader) {
+		this.dir = dir;
+		this.reader = reader;
 	}
 
 	/** The cover at this address if it's ready to draw; otherwise starts loading it and returns null. */
 	public @Nullable Cover get(String url) {
+		return get(url, System.nanoTime());
+	}
+
+	@Nullable Cover get(String url, long now) {
 		if (!url.startsWith("https://") && !url.startsWith("http://")) {
 			return null;
 		}
@@ -147,7 +168,7 @@ public final class CoverCache {
 			}
 			trim();
 		}
-		if (!cover.uploaded && cover.image == null && retryDue(cover.failedAt, System.nanoTime())) {
+		if (!cover.uploaded && cover.image == null && cover.failures < MAX_FAILURES && retryDue(cover.failedAt, now)) {
 			cover.failedAt = 0;
 			waiting.offerFirst(cover);
 		}
@@ -231,21 +252,34 @@ public final class CoverCache {
 
 	private void load(Cover cover) {
 		try {
-			BufferedImage image = read(cover.url);
+			BufferedImage image = reader.read(cover.url);
 			if (cover.dropped) {
 				return;
 			}
 			if (image == null) {
-				cover.failedAt = Math.max(1, System.nanoTime());
+				fail(cover);
 				return;
 			}
 			cover.color = AlbumArt.pickColor(image);
 			cover.image = AlbumArt.shrink(image, SIZE, CORNER);
 			ready.add(cover);
-		} catch (Exception | OutOfMemoryError e) {
+		} catch (InterruptedException e) {
+			// shutting down: keep the flag so work() ends
+			Thread.currentThread().interrupt();
+		} catch (java.io.IOException e) {
+			// Network trouble (offline, timeout): retried later, and not counted against the cover
 			cover.failedAt = Math.max(1, System.nanoTime());
 			LOG.debug("Couldn't load cover {}: {}", cover.url, e.toString());
+		} catch (Throwable e) {
+			// Not just Exception: a decoder's LinkageError or a StackOverflowError must not kill the worker thread
+			fail(cover);
+			LOG.debug("Couldn't load cover {}: {}", cover.url, e.toString());
 		}
+	}
+
+	private static void fail(Cover cover) {
+		cover.failures++;
+		cover.failedAt = Math.max(1, System.nanoTime());
 	}
 
 	/** The biggest cover body taken, and the biggest picture decoded; real covers are 300-640 px and well under 1 MB. */
@@ -286,6 +320,11 @@ public final class CoverCache {
 		}
 	}
 
+	/** Whether a non-2xx answer counts against the cover; one that may pass (5xx, 429, 408) is retried like network trouble instead. */
+	static boolean countsAsFailure(int status) {
+		return !CoverRetry.temporaryStatus(status);
+	}
+
 	private @Nullable BufferedImage read(String url) throws Exception {
 		Path file = dir.resolve(fileName(url));
 		BufferedImage cached = readCached(file);
@@ -297,7 +336,11 @@ public final class CoverCache {
 		try (java.io.InputStream body = response.body()) {
 			// A server that stalls mid-body would hold this worker for ever, so the stream is closed after a while
 			dev.beli.skylyrics.util.Net.closeAfter(body, Duration.ofSeconds(BODY_TIMEOUT_S));
-			if (response.statusCode() / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
+			int status = response.statusCode();
+			if (status / 100 != 2 && !countsAsFailure(status)) {
+				throw new java.io.IOException("HTTP " + status);
+			}
+			if (status / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 				return null;
 			}
 			bytes = readCapped(body, MAX_BYTES);
