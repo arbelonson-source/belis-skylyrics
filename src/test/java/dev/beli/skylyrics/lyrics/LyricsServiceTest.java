@@ -467,6 +467,7 @@ class LyricsServiceTest {
 		CountDownLatch go = new CountDownLatch(1);
 		CountDownLatch songTwoAsked = new CountDownLatch(1);
 		CountDownLatch songTwoGo = new CountDownLatch(1);
+		CountDownLatch skipSeen = new CountDownLatch(1);
 		service = new LyricsService(t -> {
 			if (!t.title().equals("Song One")) {
 				// Song Two's own lookup waits too, so nothing else can reset the lyrics while the stale check lands
@@ -480,7 +481,7 @@ class LyricsServiceTest {
 					go.await();
 					break;
 				} catch (InterruptedException ignored) {
-					// keep waiting
+					skipSeen.countDown(); // the await threw, so the interrupt flag is cleared again
 				}
 			}
 			return BETTER;
@@ -488,6 +489,9 @@ class LyricsServiceTest {
 		service.load(OLD_SONG);
 		assertTrue(asked.await(10, TimeUnit.SECONDS));
 		service.load(track("Song Two", 100_000));
+		// Release only once the skip's interrupt has been taken: an answer that comes back in the same instant keeps the
+		// flag set, and writeCache then (rightly) skips the write, so the check would never land and this wait would time out.
+		assertTrue(skipSeen.await(10, TimeUnit.SECONDS));
 		go.countDown();
 		waitFor(() -> readFile(file).contains("Main version"));
 		// the single worker is now stuck in Song Two's lookup, so only the stale check could have changed the lyrics
