@@ -811,7 +811,7 @@ public final class LyricsRenderer {
 	 * How far in front of you the lyrics float with Placement Floating: the Distance slider's range (8 to 160) spread
 	 * over 4 to 16 blocks, with the default 64 on the same 10.7 blocks as before, so every step moves the lyrics.
 	 */
-	static float floatingDistance(float distance) {
+	public static float floatingDistance(float distance) {
 		float d = Mth.clamp(distance, 8, 160);
 		return d <= 64 ? Mth.lerp((d - 8) / 56f, 4f, 32f / 3f) : Mth.lerp((d - 64) / 96f, 32f / 3f, 16f);
 	}

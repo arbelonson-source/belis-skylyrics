@@ -11,6 +11,7 @@ import java.util.function.BooleanSupplier;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -28,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
@@ -78,6 +80,27 @@ public final class SkyLyricsScreen extends Screen {
 			case ARC -> placement == Placement.SKY && direction != Direction.FOLLOW;
 			default -> true;
 		};
+	}
+
+	/** Whether a layout is drawn by the flat lyrics code. The World layout has its own, which skips Draw on top, Depth, Shadow, Pulse, Karaoke fill and Bigger current word. */
+	static boolean flatLayout(Layout layout) {
+		return layout != Layout.WORLD;
+	}
+
+	/** Whether any sky effect is on, so the sky settings (Strength and the rest) show. */
+	static boolean anySkyEffect(SkyLyricsConfig cfg) {
+		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
+	}
+
+	/**
+	 * What the Distance slider reads, in real blocks. The stored value stays as it is: in the sky it is blocks (kept
+	 * under 80% of the render distance, which {@code renderChunks} gives), floating it is a setting that maps to 4 to 16 blocks.
+	 */
+	static String distanceBlocks(Placement placement, double value, int renderChunks) {
+		if (placement == Placement.SKY) {
+			return String.valueOf(Math.round(Math.max(8, Math.min(value, renderChunks * 16 * 0.8f))));
+		}
+		return String.format(Locale.ROOT, "%.1f", LyricsRenderer.floatingDistance((float) value));
 	}
 
 	private static final String LRCLIB = "https://lrclib.net";
@@ -257,7 +280,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°")
 				.when(() -> heightApplies(cfg.layout, cfg.placement, cfg.direction));
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
-				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)))
+				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", distanceBlocks(cfg.placement, v, Minecraft.getInstance().options.getEffectiveRenderDistance())))
 				.when(() -> cfg.layout != Layout.WORLD);
 		// World words float at a mix of distances, so their setting is times the usual instead of blocks
 		Row worldDistance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 0.5, 2, 0.05,
@@ -318,10 +341,11 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.showNext, v -> cfg.showNext = v)
 				.when(() -> cfg.layout == Layout.LINES);
 		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung"),
-				() -> cfg.karaoke, v -> cfg.karaoke = v);
+				() -> cfg.karaoke, v -> cfg.karaoke = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row grow = new Toggle(Tr.t("Bigger current word"), Tr.t("The word being sung grows a little"),
 				() -> cfg.growWord, v -> cfg.growWord = v)
-				.when(() -> cfg.karaoke);
+				.when(() -> flatLayout(cfg.layout) && cfg.karaoke);
 		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
 				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type"), Tr.t("Slide")}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i])
@@ -356,7 +380,8 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.worldBig, v -> cfg.worldBig = v)
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),
-				() -> cfg.pulse, v -> cfg.pulse = v);
+				() -> cfg.pulse, v -> cfg.pulse = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row capitals = new Toggle(Tr.t("CAPITALS"), Tr.t("Write every lyric in capital letters"),
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
@@ -400,7 +425,8 @@ public final class SkyLyricsScreen extends Screen {
 					}
 				});
 		Row depth = new Toggle(Tr.t("Depth"), Tr.t("A solid edge that makes the letters look 3D"),
-				() -> cfg.depth, v -> cfg.depth = v);
+				() -> cfg.depth, v -> cfg.depth = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
 		Row glowMode = new Segmented(Tr.t("Glow colour"), Tr.t("The words' colour, or one of its own"),
@@ -412,7 +438,8 @@ public final class SkyLyricsScreen extends Screen {
 				.narrateAs(Tr.t("Glow colour"))
 				.when(() -> cfg.glow > 0.01f && cfg.glowPick);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
-				() -> cfg.shadow, v -> cfg.shadow = v);
+				() -> cfg.shadow, v -> cfg.shadow = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row opacity = new Slider(Tr.t("Opacity"), null, 0.2, 1, 0.05,
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle(Tr.t("See through blocks"), Tr.t("Stay visible behind hills and walls"),
@@ -422,11 +449,12 @@ public final class SkyLyricsScreen extends Screen {
 					case AUTO -> 0;
 					case SCREEN -> 1;
 					case WORLD -> 2;
-				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD);
+				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD)
+				.when(() -> flatLayout(cfg.layout));
 
 		Row night = new Cycle(Tr.t("Night sky"), Tr.t("Shows at night with music"), skyNames(),
 				() -> cfg.sky.ordinal(), i -> cfg.sky = SkyEffect.values()[i]);
-		BooleanSupplier anySky = () -> cfg.sky != SkyEffect.OFF || cfg.shootingStars || cfg.twinkle;
+		BooleanSupplier anySky = () -> anySkyEffect(cfg);
 		Row shootingStars = new Toggle(Tr.t("Shooting stars"), Tr.t("Now and then, more when the lyrics are busy"),
 				() -> cfg.shootingStars, v -> cfg.shootingStars = v);
 		Row twinkle = new Toggle(Tr.t("Twinkling stars"), Tr.t("Soft sparkles around the lyrics"),
