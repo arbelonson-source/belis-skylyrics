@@ -86,6 +86,10 @@ public final class SkyEffects {
 	private final AlbumArt art;
 	private final MediaTracker tracker;
 	private final SubmitNodeCollector.CustomGeometryRenderer drawer = this::draw;
+	// Stored, not written as this::name where they are used, which would allocate a new object every frame
+	private final SubmitNodeCollector.CustomGeometryRenderer painter = this::drawPainted;
+	private final SubmitNodeCollector.CustomGeometryRenderer discDrawer = this::drawEclipseDisc;
+	private final SubmitNodeCollector.CustomGeometryRenderer frontDrawer = this::drawFront;
 	private final Random random = new Random();
 	private float presence;
 	private float clock;
@@ -113,6 +117,8 @@ public final class SkyEffects {
 	private float pixel;
 	/** Where the camera looks this frame, so the painted skies can leave out what is off screen. */
 	private final SkyView view = new SkyView();
+	/** The world frame {@link #view} was last pointed for; see {@link #look}. */
+	private long viewFrame = -1;
 	private int tint;
 
 	private final SynthwaveSky synthwave = new SynthwaveSky();
@@ -379,16 +385,16 @@ public final class SkyEffects {
 		//?}
 		pose.pushPose();
 		if (painted()) {
-			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawPainted);
+			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), painter);
 		}
 		if (!painted() || sparkles || meteorsAlive > 0) {
 			sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), drawer);
 		}
 		if (effect == SkyEffect.ECLIPSE) {
-			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), this::drawEclipseDisc);
+			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), discDrawer);
 			// Shooting stars and sparkles come after the disc, or it would black them out where they cross the sun
 			if (sparkles || meteorsAlive > 0) {
-				sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), this::drawFront);
+				sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), frontDrawer);
 			}
 		}
 		pose.popPose();
@@ -399,10 +405,23 @@ public final class SkyEffects {
 		return effect == SkyEffect.SYNTHWAVE || effect == SkyEffect.MOONLIGHT;
 	}
 
+	/**
+	 * Points {@link #view} at where the camera looked this frame. The three draw callbacks of a frame all want the same
+	 * answer (it only changes when the world frame captures a new camera), so it is worked out for the first one only.
+	 */
+	private SkyView look() {
+		long frame = ScreenLayer.frames();
+		if (frame != viewFrame) {
+			ScreenLayer.lookInto(view);
+			viewFrame = frame;
+		}
+		return view;
+	}
+
 	/** Normally blended: the synthwave or moonlit sky and its constellations. */
 	private void drawPainted(PoseStack.Pose pose, VertexConsumer vc) {
 		paint.begin(pose, vc);
-		ScreenLayer.lookInto(view);
+		look();
 		if (effect == SkyEffect.MOONLIGHT) {
 			moonlit.draw(paint, far, baseYaw, amount, clock, pixel, view);
 		} else {
@@ -415,7 +434,7 @@ public final class SkyEffects {
 
 	private void drawEclipseDisc(PoseStack.Pose pose, VertexConsumer vc) {
 		paint.begin(pose, vc);
-		eclipse.drawDisc(paint, far, baseYaw, amount, ScreenLayer.lookInto(view));
+		eclipse.drawDisc(paint, far, baseYaw, amount, look());
 	}
 
 
@@ -539,7 +558,7 @@ public final class SkyEffects {
 	/** Added light, far to near: the eclipse, galaxy or comet, the constellations, the nebula and aurora, sparkles, shooting stars. */
 	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
 		light.begin(pose, vc);
-		ScreenLayer.lookInto(view);
+		look();
 		if (effect == SkyEffect.ECLIPSE) {
 			eclipse.draw(light, far, baseYaw, amount, clock, view);
 		}

@@ -66,6 +66,11 @@ public final class ScreenLayer {
 		return captured ? view.set(lookX, lookY, lookZ, tanHalfH, tanHalfV) : view.clear();
 	}
 
+	/** World frames captured so far: what changes when {@link #lookInto} would give a different answer. */
+	static long frames() {
+		return frames;
+	}
+
 	/** Tangent of half the vertical field of view the world was drawn with this frame, or 0 before the first frame. */
 	static float tanHalfV() {
 		return captured ? tanHalfV : 0;
