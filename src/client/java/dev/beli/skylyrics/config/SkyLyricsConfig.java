@@ -638,6 +638,7 @@ public final class SkyLyricsConfig {
 			songOffsets = new LinkedHashMap<>();
 		}
 		songOffsets.values().removeIf(v -> v == null || v == 0);
+		songOffsets = rekeyed(songOffsets);
 		songOffsets.replaceAll((k, v) -> Math.max(-MAX_SONG_OFFSET, Math.min(MAX_SONG_OFFSET, v)));
 		// Like setSongOffset, the oldest (first in the file) go; the last MAX_SONGS stay.
 		Iterator<String> oldest = songOffsets.keySet().iterator();
@@ -649,6 +650,23 @@ public final class SkyLyricsConfig {
 		barAccentColor &= 0xFFFFFF;
 		glowColor &= 0xFFFFFF;
 		toneColor &= 0xFFFFFF;
+	}
+
+	/**
+	 * Saved keys made through today's title cleaning, so a timing saved before a change in what {@link Track#clean} strips is still found.
+	 * Order is kept, a later entry wins a collision, and a key that is already clean stays as it is.
+	 */
+	private static Map<String, Integer> rekeyed(Map<String, Integer> old) {
+		Map<String, Integer> out = new LinkedHashMap<>();
+		for (var e : old.entrySet()) {
+			String key = Track.clean(e.getKey()).toLowerCase(Locale.ROOT).strip();
+			if (key.isEmpty()) {
+				continue;
+			}
+			out.remove(key); // the later entry wins and takes the later place
+			out.put(key, e.getValue());
+		}
+		return out;
 	}
 
 	/** How many recent library searches are kept, here and when the library remembers a new one. */
@@ -802,10 +820,7 @@ public final class SkyLyricsConfig {
 		} catch (IOException | RuntimeException e) {
 			return null;
 		}
-		if (disk.equals(baseText)) {
-			return null;
-		}
-		JsonObject theirs;
+		JsonObject theirs; // also when the file is unchanged since load: it may hold settings only a newer version knows
 		try {
 			theirs = JsonParser.parseString(disk).getAsJsonObject();
 		} catch (RuntimeException e) {
