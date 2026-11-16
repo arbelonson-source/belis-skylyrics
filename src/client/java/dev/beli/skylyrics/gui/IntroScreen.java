@@ -35,7 +35,8 @@ public final class IntroScreen extends Screen {
 	private final @Nullable Screen parent;
 	private final SkyLyricsConfig cfg = SkyLyricsConfig.get();
 	private int page;
-	private int theme;
+	/** The look being shown: an index into {@link Themes#ALL}, or -1 for Custom (the player's own settings, no theme matches). */
+	private int theme = startLook(cfg);
 	private int px, py;
 	/** The panel, fitted to the window (300 x 190 when there is room). */
 	private int pw = PANEL_W, ph = PANEL_H;
@@ -61,6 +62,17 @@ public final class IntroScreen extends Screen {
 	/** A button width, narrowed when the panel is narrower than usual. */
 	static int bw(int wanted, int panelW) {
 		return panelW >= PANEL_W ? wanted : Math.max(20, Math.round(wanted * (float) panelW / PANEL_W));
+	}
+
+	/** The look the page starts on: the theme the settings match, or -1 (Custom) when none does. */
+	static int startLook(SkyLyricsConfig cfg) {
+		Theme active = Themes.active(cfg);
+		return active == null ? -1 : Themes.ALL.indexOf(active);
+	}
+
+	/** The look one step on from {@code at}; from Custom (-1) the first going on and the last going back. */
+	static int stepLook(int at, int step) {
+		return LibraryKeys.nextButton(at, Themes.ALL.size(), step);
 	}
 
 	/** Whether to open the tour: only over the very title screen that asked, and not over a tour already open. */
@@ -166,7 +178,7 @@ public final class IntroScreen extends Screen {
 	}
 
 	private void pickTheme(int step) {
-		theme = Math.floorMod(theme + step, Themes.ALL.size());
+		theme = stepLook(theme, step);
 		Themes.apply(Themes.ALL.get(theme), cfg);
 	}
 
@@ -179,12 +191,12 @@ public final class IntroScreen extends Screen {
 	}
 
 	/** The words of a page, for drawing and for the Narrator. {@code keys} are the settings and library keys' names (null when unbound). */
-	static IntroPage content(int page, boolean mac, Theme look, Layout layout, @Nullable String settingsKey, @Nullable String libraryKey) {
+	static IntroPage content(int page, boolean mac, @Nullable Theme look, Layout layout, @Nullable String settingsKey, @Nullable String libraryKey) {
 		return switch (page) {
 			case 0 -> new IntroPage("Beli's SkyLyrics", List.of(
 					Tr.t("The lyrics of the song you're playing, floating in the sky and sung along in time."),
 					Tr.t("Let's set it up. It takes a few seconds.")), List.of(), "");
-			case 1 -> new IntroPage(Tr.t("Pick a look"), List.of(Tr.t("You can change every part of it later.")), List.of(), look.name().get());
+			case 1 -> new IntroPage(Tr.t("Pick a look"), List.of(Tr.t("You can change every part of it later.")), List.of(), look == null ? Tr.t("Custom") : look.name().get());
 			case 2 -> new IntroPage(Tr.t("Where should the lyrics go?"), List.of(), List.of(), Narration.join(layoutName(layout), layoutText(layout)));
 			case 3 -> new IntroPage(Tr.t("Where the songs come from"), List.of(mac
 					? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if your launcher may control them, click OK.")
@@ -201,7 +213,7 @@ public final class IntroScreen extends Screen {
 
 	private IntroPage content() {
 		SkyLyricsClient mod = SkyLyricsClient.get();
-		return content(page, SkyLyricsClient.mac(), Themes.ALL.get(theme), cfg.layout,
+		return content(page, SkyLyricsClient.mac(), theme < 0 ? null : Themes.ALL.get(theme), cfg.layout,
 				mod == null || mod.openSettingsKey() == null ? null : mod.openSettingsKey().getTranslatedKeyMessage().getString(),
 				mod == null || mod.libraryKey() == null ? null : mod.libraryKey().getTranslatedKeyMessage().getString());
 	}
@@ -280,6 +292,11 @@ public final class IntroScreen extends Screen {
 			case 1 -> {
 				heading(g, text.heading(), py + vy(22, ph));
 				lines(g, py + vy(42, ph), text.paragraphs().toArray(new String[0]));
+				if (theme < 0) {
+					String name = Ui.clip(font, Tr.t("Custom"), pw - 140 * pw / PANEL_W);
+					g.drawString(font, Ui.visual(name), cx - font.width(name) / 2, py + vy(106, ph), Ui.MUTED, false);
+					break;
+				}
 				Theme t = Themes.ALL.get(theme);
 				SkyLyricsConfig look = t.preview();
 				String name = Ui.clip(font, t.name().get(), pw - 140 * pw / PANEL_W);
