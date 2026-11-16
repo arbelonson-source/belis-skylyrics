@@ -76,7 +76,7 @@ public final class TitleCleaner {
 			// "Artist - Song" video titles; the channel name is usually not the real artist.
 			// "Topic" channels already give the real artist and song.
 			if (parts.length == 2 && !parts[0].isBlank() && !parts[1].isBlank()
-					&& !TOPIC.matcher(track.artist()).matches() && !VERSION_TAG.matcher(parts[1].trim()).matches() && !VERSION_END.matcher(parts[1].trim()).matches()) {
+					&& !TOPIC.matcher(track.artist()).matches() && !VERSION_TAG.matcher(parts[1].trim()).matches() && !versionEnd(parts[1].trim())) {
 				artist = parts[0].trim();
 				title = parts[1].trim();
 			}
@@ -85,6 +85,14 @@ public final class TitleCleaner {
 			return track;
 		}
 		return new Track(title, artist, track.album(), track.lengthMs(), track.artUrl(), track.player(), track.uri());
+	}
+
+	/**
+	 * "Skrillex Remix" after the dash names a version, not a song; "Smells Like Teen Spirit - Remastered 2011" (a second dash)
+	 * is still "Song - version", so the first dash is "Artist - Song" as usual.
+	 */
+	private static boolean versionEnd(String afterDash) {
+		return !DASH.matcher(afterDash).find() && VERSION_END.matcher(afterDash).matches();
 	}
 
 	/** A stricter version used only for looking lyrics up: "Song - Remastered 2011" -> "Song". */

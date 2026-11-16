@@ -260,6 +260,19 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void aSecondDashKeepsTheArtistSongSplit() {
+		Track t = TitleCleaner.clean(track("Nirvana - Smells Like Teen Spirit - Remastered 2011", "NirvanaVEVO", "firefox"));
+		assertEquals("Nirvana", t.artist());
+		assertEquals("Smells Like Teen Spirit - Remastered 2011", t.title());
+		Track r = TitleCleaner.clean(track("Avicii - Levels - Skrillex Remix", "AviciiVEVO", "firefox"));
+		assertEquals("Avicii", r.artist());
+		assertEquals("Levels - Skrillex Remix", r.title());
+		Track web = TitleCleaner.clean(track("Levels - Skrillex Remix", "Avicii", "firefox"));
+		assertEquals("Avicii", web.artist());
+		assertEquals("Levels - Skrillex Remix", web.title());
+	}
+
+	@Test
 	void aOneWordSongNamedLikeANoiseWordKeepsItsName() {
 		Track t = TitleCleaner.clean(track("Madonna - Music", "MadonnaVEVO", "firefox"));
 		assertEquals("Madonna", t.artist());
