@@ -15,7 +15,6 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.HumanoidArm;
 
 import dev.beli.skylyrics.SkyLyricsClient;
-import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
 import dev.beli.skylyrics.media.MediaTracker;
@@ -70,6 +69,8 @@ public final class RecordCard {
 	private float alpha;
 	/** The line on the strip and how far it has faded in, so a new line eases in instead of popping. */
 	private String lyric = "";
+	/** The placeholder title, translated once per language. */
+	private final LangText unknownSong = new LangText("Unknown song");
 	private float lyricIn;
 	private float spin;
 	private float spinSpeed;
@@ -139,7 +140,7 @@ public final class RecordCard {
 		Style bold = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
 		float scale = cfg.smoothFont ? TEXT_SCALE : 1;
 		float tx = x + PAD + DISC + 6, room = (x + W - PAD - 2 - tx) / scale;
-		String title = track.title().isEmpty() ? Tr.t("Unknown song") : track.title();
+		String title = track.title().isEmpty() ? unknownSong.get() : track.title();
 		String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
 		text(g, font, bold, NowPlayingHud.clip(font, bold, title, room), tx, y + 11, scale, fade(TITLE));
 		if (!sub.isEmpty()) {
@@ -159,7 +160,7 @@ public final class RecordCard {
 			String[] times = timesShown(played, length);
 			text(g, font, style, times[0], tx, lineY + 7, small, fade(SUB));
 			String left = times[1];
-			float leftW = LyricsFont.width(font, style, left) * small;
+			float leftW = LyricsFont.cachedWidth(font, style, left) * small;
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
 		if (cfg.cardLyrics) {
@@ -191,11 +192,11 @@ public final class RecordCard {
 			dimLine(g, font, style, hud.singingNeighbour(cfg, 1), x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
 		}
 		if (lyric.isEmpty()) {
-			float noteW = LyricsFont.width(font, style, REST) * scale;
+			float noteW = LyricsFont.cachedWidth(font, style, REST) * scale;
 			text(g, font, style, REST, x + (W - noteW) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 160)), SUB));
 			return;
 		}
-		float lineW = LyricsFont.width(font, style, lyric) * scale;
+		float lineW = LyricsFont.cachedWidth(font, style, lyric) * scale;
 		int color = ARGB.color(Math.max(4, Math.round(a * 255)), SkyLyricsClient.get().renderer().color());
 		if (lineW <= room) {
 			text(g, font, style, lyric, x + (W - lineW) / 2, midY, scale, color);
@@ -218,7 +219,7 @@ public final class RecordCard {
 			return;
 		}
 		String cut = NowPlayingHud.clip(font, style, line, room / scale);
-		float w = LyricsFont.width(font, style, cut) * scale;
+		float w = LyricsFont.cachedWidth(font, style, cut) * scale;
 		text(g, font, style, cut, x + (W - w) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 110)), SUB));
 	}
 

@@ -96,7 +96,7 @@ class TopBarCacheTest {
 	private static final Object FONT = new Object(), STYLE = new Object(), LANG = new Object();
 
 	private static LineKey key() {
-		return new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 3, 40.5f, 0);
+		return new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 3, 0);
 	}
 
 	@Test
@@ -114,14 +114,13 @@ class TopBarCacheTest {
 	void eachChangedInputGivesANewLayout() {
 		LineKey base = key();
 		LineKey[] changed = {
-				new LineKey("hello there!", FONT, STYLE, 0.75f, LANG, 3, 40.5f, 0),
-				new LineKey("hello there", new Object(), STYLE, 0.75f, LANG, 3, 40.5f, 0),
-				new LineKey("hello there", FONT, new Object(), 0.75f, LANG, 3, 40.5f, 0),
-				new LineKey("hello there", FONT, STYLE, 1f, LANG, 3, 40.5f, 0),
-				new LineKey("hello there", FONT, STYLE, 0.75f, new Object(), 3, 40.5f, 0),
-				new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 4, 40.5f, 0),
-				new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 3, 41f, 0),
-				new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 3, 40.5f, 1),
+				new LineKey("hello there!", FONT, STYLE, 0.75f, LANG, 3, 0),
+				new LineKey("hello there", new Object(), STYLE, 0.75f, LANG, 3, 0),
+				new LineKey("hello there", FONT, new Object(), 0.75f, LANG, 3, 0),
+				new LineKey("hello there", FONT, STYLE, 1f, LANG, 3, 0),
+				new LineKey("hello there", FONT, STYLE, 0.75f, new Object(), 3, 0),
+				new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 4, 0),
+				new LineKey("hello there", FONT, STYLE, 0.75f, LANG, 3, 1),
 		};
 		for (LineKey other : changed) {
 			assertNotEquals(base, other);

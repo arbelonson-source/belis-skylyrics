@@ -180,8 +180,14 @@ public final class NowPlayingHud {
 	/** The game's visual order of short texts (the clock, the frame rate, a title), kept while they stay the same. */
 	private static final SmallCache<VisualKey, FormattedCharSequence> VISUAL = new SmallCache<>(12);
 	/** Cut texts, by everything the cut depends on. */
-	private record ClipKey(Object font, Style style, String text, float maxW, float width, float ellipsis) {}
+	private record ClipKey(Object font, Style style, String str, int maxW, Object language, long reloads) {}
 	private static final SmallCache<ClipKey, String> CLIPS = new SmallCache<>(8);
+	/** The song's name and what follows it, cut to the room there is; see {@link #titleCut}. */
+	private record TitleKey(Object font, Style style, String title, String sub, int limit, Object language, long reloads) {}
+	private record TitleCut(String title, float used, @Nullable String sub) {}
+	private static final SmallCache<TitleKey, TitleCut> TITLES = new SmallCache<>(3);
+	/** The sub text with its separator in front, so the joined string isn't built again every frame. */
+	private static final SmallCache<String, String> DOTTED = new SmallCache<>(4);
 
 	public NowPlayingHud(MediaTracker tracker, LyricsService service, AlbumArt art) {
 		this.tracker = tracker;
@@ -211,6 +217,7 @@ public final class NowPlayingHud {
 		boolean loading = loadingScreenUp(mc);
 		if (loading || wasLoading) {
 			reloads++;
+			LyricsFont.fontsReloaded();
 		}
 		wasLoading = loading;
 		guiScale = mc.getWindow().getGuiScale();
@@ -266,7 +273,7 @@ public final class NowPlayingHud {
 		float clockScale = cfg.smoothFont ? CLOCK_SCALE : PIXEL_FONT_SCALE;
 
 		String clock = cfg.barClock ? clock() : "";
-		float clockW = clock.isEmpty() ? 0 : LyricsFont.width(font, clockStyle, clock) * clockScale;
+		float clockW = clock.isEmpty() ? 0 : LyricsFont.cachedWidth(font, clockStyle, clock) * clockScale;
 		float statsW = statsWidth(cfg, font, style, textScale);
 		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), cfg.barSize, clockW, statsW);
 
@@ -527,7 +534,7 @@ public final class NowPlayingHud {
 	private float statsWidth(SkyLyricsConfig cfg, Font font, Style style, float textScale) {
 		float w = cfg.barPing ? SIGNAL_W : 0;
 		if (cfg.barStats) {
-			w += (cfg.barPing ? SIGNAL_TEXT_GAP : 0) + LyricsFont.width(font, style, FPS_SAMPLE) * textScale;
+			w += (cfg.barPing ? SIGNAL_TEXT_GAP : 0) + LyricsFont.cachedWidth(font, style, FPS_SAMPLE) * textScale;
 		}
 		return w;
 	}
@@ -609,14 +616,13 @@ public final class NowPlayingHud {
 			// The song's name doesn't scroll: while the pill is narrow it ends in "…"
 			float limit = room / scale;
 			//? if >=26.1 {
-			/*String title = clip(font, style, c.drawString(), limit);
+			/*TitleCut cut = titleCut(font, style, c.drawString(), c.sub(), limit);
 			*///?} else {
-			String title = clip(font, style, c.text(), limit);
+			TitleCut cut = titleCut(font, style, c.text(), c.sub(), limit);
 			//?}
-			text(g, font, style, title, x, midY, scale, fade(a, SUNG));
-			float used = LyricsFont.width(font, style, title);
-			if (!c.sub().isEmpty() && used < limit - 12) {
-				text(g, font, style, clip(font, style, "  ·  " + c.sub(), limit - used), x + used * scale, midY, scale, fade(a, UPCOMING));
+			text(g, font, style, cut.title(), x, midY, scale, fade(a, SUNG));
+			if (cut.sub() != null) {
+				text(g, font, style, cut.sub(), x + cut.used() * scale, midY, scale, fade(a, UPCOMING));
 			}
 			return;
 		}
@@ -703,6 +709,41 @@ public final class NowPlayingHud {
 		}
 	}
 
+	/**
+	 * The song's name cut to {@code limit} and, when there is room left, what follows it ({@code "  ·  " + sub}) cut
+	 * to the rest. Worked out once per whole GUI unit of room: the pill's width animation changes the limit every
+	 * frame for a moment, and a text is never measured or cut again for a sub-unit change. The room is rounded up, so a
+	 * text that fit before still does; the drawing is clipped to the pill anyway.
+	 */
+	private static TitleCut titleCut(Font font, Style style, String title, String sub, float limit) {
+		TitleKey key = new TitleKey(font, style, title, sub, titleRoom(limit), Language.getInstance(), LyricsFont.reloadCount());
+		return TITLES.get(key, k -> {
+			Font f = (Font) k.font();
+			float room = k.limit();
+			String t = clip(f, k.style(), k.title(), room);
+			float used = LyricsFont.cachedWidth(f, k.style(), t);
+			String s = null;
+			if (!k.sub().isEmpty() && used < room - 12) {
+				s = clip(f, k.style(), dotted(k.sub()), room - used);
+			}
+			return new TitleCut(t, used, s);
+		});
+	}
+
+	/** The room a cut is worked out for, in whole GUI units, rounded down so a cut never overflows. */
+	static int clipRoom(float maxW) {
+		return (int) Math.floor(maxW);
+	}
+
+	/** The room the title and what follows it are laid out for, in whole GUI units, rounded up so a text that fit still does. */
+	static int titleRoom(float limit) {
+		return (int) Math.ceil(limit);
+	}
+
+	private static String dotted(String sub) {
+		return DOTTED.get(sub, x -> "  ·  " + x);
+	}
+
 	/** The gap between the line's words, in GUI units. */
 	private static float wordGap(Font font, Style style, float scale) {
 		return LyricsFont.width(font, style, " ") * scale + WORD_EXTRA;
@@ -714,7 +755,7 @@ public final class NowPlayingHud {
 	 * only changes with its {@link LineKey}, so it is kept while the line is on screen.
 	 */
 	private Laid laid(Font font, Style style, float scale, String text) {
-		LineKey key = new LineKey(text, font, style, scale, Language.getInstance(), guiScale, LyricsFont.width(font, style, text), reloads);
+		LineKey key = new LineKey(text, font, style, scale, Language.getInstance(), guiScale, reloads);
 		return laid.get(key, NowPlayingHud::lay);
 	}
 
@@ -944,12 +985,12 @@ public final class NowPlayingHud {
 			//?}
 		}
 		//? if >=26.1 {
-		/*float w = LyricsFont.width(font, style, c.drawString());
+		/*float w = LyricsFont.cachedWidth(font, style, c.drawString());
 		*///?} else {
-		float w = LyricsFont.width(font, style, c.text());
+		float w = LyricsFont.cachedWidth(font, style, c.text());
 		//?}
 		if (!c.sub().isEmpty()) {
-			w += LyricsFont.width(font, style, "  ·  " + c.sub());
+			w += LyricsFont.cachedWidth(font, style, dotted(c.sub()));
 		}
 		return w * scale;
 	}
@@ -967,20 +1008,24 @@ public final class NowPlayingHud {
 		return false;
 	}
 
-	/** Cuts the text to fit, ending with "…". The cut is kept while the same text is cut to the same room. */
+	/**
+	 * Cuts the text to fit, ending with "…". Whether it fits is exact; the cut is kept while the same text is cut to
+	 * the same room in whole GUI units (rounded down, so it never overflows), because the room moves every frame while
+	 * the pill changes width and a cut worked out for each of those would never be found again.
+	 */
 	static String clip(Font font, Style style, String text, float maxW) {
-		float w = LyricsFont.width(font, style, text);
-		if (w <= maxW) {
+		if (LyricsFont.cachedWidth(font, style, text) <= maxW) {
 			return text;
 		}
-		return CLIPS.get(new ClipKey(font, style, text, maxW, w, LyricsFont.width(font, style, "…")), NowPlayingHud::cut);
+		return CLIPS.get(new ClipKey(font, style, text, clipRoom(maxW), Language.getInstance(), LyricsFont.reloadCount()),
+				NowPlayingHud::cut);
 	}
 
 	private static String cut(ClipKey k) {
 		Font font = (Font) k.font();
 		Style style = k.style();
-		float room = k.maxW() - k.ellipsis();
-		return dev.beli.skylyrics.util.TextCut.prefix(k.text(), t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
+		float room = k.maxW() - LyricsFont.width(font, style, "…");
+		return dev.beli.skylyrics.util.TextCut.prefix(k.str(), t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */

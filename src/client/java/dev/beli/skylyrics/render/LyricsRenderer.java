@@ -39,7 +39,6 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.jspecify.annotations.Nullable;
 
-import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Animation;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
@@ -175,6 +174,8 @@ public final class LyricsRenderer {
 	private final Map<String, LineInfo> infoCache = new HashMap<>();
 	/** Scratch for {@code Draw.line}, reused so a row doesn't allocate its per-character arrays every frame. Render thread only. */
 	private float[] scratchReveal = new float[64], scratchFlare = new float[64], scratchSpread = new float[65];
+	/** The instrumental song's note line, translated once per language. */
+	private final LangText instrumentalText = new LangText("♪  Instrumental  ♪");
 	private float wrapCacheWidth;
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
@@ -453,6 +454,9 @@ public final class LyricsRenderer {
 		// A resource reload (its loading screen is up), a shader switch or a second without lyrics frames (a reload this
 		// path doesn't see, world loading) stalls the game: don't count it as a slow game
 		boolean reloading = loadingScreenUp(mc);
+		if (reloading || wasReloading) {
+			LyricsFont.fontsReloaded();
+		}
 		if (reloading || wasReloading || gap > GAP_FORGIVE_NS || ScreenLayer.takeShaderFlip()) {
 			budget.forgive();
 		}
@@ -506,7 +510,8 @@ public final class LyricsRenderer {
 	/** Lines are wrapped once and kept; this drops them when the width or the font changes. */
 	private void wrapAt(Minecraft mc, SkyLyricsConfig cfg, float wrapWidth) {
 		Style wrapStyle = LyricsFont.sky(cfg);
-		float probe = LyricsFont.width(mc.font, wrapStyle, "Mw0♪漢א ع");
+		// Remembered until a resource reload, which is what can change it; measured again only then
+		float probe = LyricsFont.cachedWidth(mc.font, wrapStyle, "Mw0♪漢א ع");
 		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
 			wrapCacheProbe = probe;
 			wrapCache.clear();
@@ -866,7 +871,7 @@ public final class LyricsRenderer {
 
 	private void drawContent(Draw draw, SkyLyricsConfig cfg, long time, long now) {
 		if (shown.instrumental()) {
-			draw.line(Tr.t("♪  Instrumental  ♪"), 0, 1, visibility, 0.6f, 1, -1, Float.NaN, Float.NaN);
+			draw.line(instrumentalText.get(), 0, 1, visibility, 0.6f, 1, -1, Float.NaN, Float.NaN);
 		} else {
 			drawLines(draw, cfg, time, now);
 		}
