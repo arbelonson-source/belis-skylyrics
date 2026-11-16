@@ -529,5 +529,11 @@
   "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics can't read your music player",
   "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics can't reach the internet or Spotify",
   "skylyrics.ui.open_the_settings_s_music_to_see_why": "Open the settings (%s) → Music to see why",
-  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "No Spotify or Music playing (browsers can't be read on a Mac)"
+  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "No Spotify or Music playing (browsers can't be read on a Mac)",
+  "skylyrics.ui.seconds": "seconds",
+  "skylyrics.ui.previous_look": "Previous look",
+  "skylyrics.ui.next_look": "Next look",
+  "skylyrics.ui.press_enter_to_open": "Press Enter to open",
+  "skylyrics.ui.1_result": "1 result",
+  "skylyrics.ui.s_results": "%s results"
 }

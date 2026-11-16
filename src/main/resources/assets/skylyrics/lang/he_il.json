@@ -529,5 +529,11 @@
   "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics לא מצליח לקרוא את נגן המוזיקה שלכם",
   "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics לא מצליח להתחבר לאינטרנט או לספוטיפיי",
   "skylyrics.ui.open_the_settings_s_music_to_see_why": "פתחו את ההגדרות (%s) ובחרו \"מוזיקה\" כדי לראות למה",
-  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "אין שיר מתנגן בספוטיפיי או ב\"מוזיקה\" (ב-Mac אי אפשר לקרוא דפדפנים)"
+  "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "אין שיר מתנגן בספוטיפיי או ב\"מוזיקה\" (ב-Mac אי אפשר לקרוא דפדפנים)",
+  "skylyrics.ui.seconds": "שניות",
+  "skylyrics.ui.previous_look": "המראה הקודם",
+  "skylyrics.ui.next_look": "המראה הבא",
+  "skylyrics.ui.press_enter_to_open": "לחצו Enter כדי לפתוח",
+  "skylyrics.ui.1_result": "תוצאה אחת",
+  "skylyrics.ui.s_results": "%s תוצאות"
 }
