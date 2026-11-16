@@ -251,14 +251,16 @@ final class TopBarLayout {
 	/**
 	 * How far a line too long for the pill moves left, in reading order, so the word being sung (with its
 	 * highlight) stays in view before the equaliser. A line that fits never moves, and a long one moves no
-	 * further than to show its end.
+	 * further than to show its end. A word wider than the room keeps its start in view (never shifted past
+	 * {@code curLeft}), since it is sung from its first letter.
 	 *
 	 * @param total the whole line's width
+	 * @param curLeft where the current word starts, from the line's start
 	 * @param curRight where the current word ends, from the line's start
 	 * @param room {@link #textRoom}
 	 */
-	static float lineShift(float total, float curRight, float room, float pad) {
-		float most = Math.max(0, total + pad - room);
+	static float lineShift(float total, float curLeft, float curRight, float room, float pad) {
+		float most = Math.max(0, Math.min(total + pad - room, curLeft));
 		return Math.clamp(curRight + pad - room, 0, most);
 	}
 

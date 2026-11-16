@@ -699,7 +699,7 @@ public final class NowPlayingHud {
 		float pad = TopBarLayout.highlightPad(wordGap);
 
 		// Long lines scroll, in reading order, to keep the word being sung in view
-		float target = TopBarLayout.lineShift(total, words.x[current] + words.w[current], room, pad);
+		float target = TopBarLayout.lineShift(total, words.x[current], words.x[current] + words.w[current], room, pad);
 		float k = 1 - (float) Math.exp(-dt * SCROLL_RATE);
 		float shift;
 		if (live) {
