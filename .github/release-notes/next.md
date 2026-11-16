@@ -59,6 +59,10 @@
 - **Update downloads.** An update download that stops halfway is now given up after 5 minutes, instead of holding the update for the rest of the session. The unfinished download is removed from your mods folder, and so is one left over from an earlier run.
 - **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
 - **Lyrics site errors.** An error for one odd song title no longer switches the lyrics site (LRCLIB) off for two minutes. Only a site that is really down or too busy does, and even then a song the backup site (NetEase) doesn't have is still asked from LRCLIB. When LRCLIB says it is too busy, the mod now waits as long as it asks before asking again, even if it names a time instead of a number of seconds.
+- **First start on a Mac.** The welcome tour now says which apps SkyLyrics can read on a Mac (Music and Spotify, not browsers) and that macOS will ask for permission. The Music tab says "No Spotify or Music playing" instead of "No music playing" on a Mac.
+- **Can't read your music player.** If SkyLyrics can't read your music player (or can't reach the internet for Spotify) for 10 seconds, it now tells you once with a pop-up, and where to look.
+- **Demo song.** While the demo song plays, the top bar shows "Demo" next to the song, so you can tell it from your own music.
+- **Spotify sign-in.** The welcome tour now says that signing in to Spotify is optional and needs Premium and a free developer app.
 
 ### Faster
 
