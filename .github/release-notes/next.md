@@ -74,6 +74,7 @@
 - **Cut-off updates.** Update downloads that were cut off are cleaned up from your mods folder.
 - **Left-over save files.** A settings or Spotify sign-in file that was half-written when the game was killed is cleaned up the next time the game starts, once it is a day old.
 - **Spotify without internet.** When Spotify can't be reached, the settings show one steady message that says the internet can't be reached (it used to blink on and off and blame the player), and the log gets one warning instead of one a minute. Spotify is asked again at least every 30 seconds, so a song change shows up sooner once the connection is back.
+- **Stalled update download.** An update download that stops halfway is now given up after 5 minutes instead of holding the update for the rest of the session, and its half file is removed.
 - **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
 
 ### Faster

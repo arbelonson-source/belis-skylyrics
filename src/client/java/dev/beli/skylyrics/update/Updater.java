@@ -240,12 +240,21 @@ public final class Updater {
 		return host.equals("github.com") || host.endsWith(".githubusercontent.com");
 	}
 
+	/** The request timeout covers only the headers; the whole body gets this long (a jar takes seconds on a bad line too). */
+	private static final java.time.Duration BODY_TIMEOUT = java.time.Duration.ofMinutes(5);
+
 	/**
 	 * Downloads the address to a file, following redirects by hand (at most 5) and only to places redirectOk accepts.
 	 * True when the file holds a complete 200 body of at most max bytes; otherwise logs why, leaves no file, and is false.
 	 */
 	static boolean fetch(HttpClient http, String url, Path file, long max, java.util.function.Predicate<URI> redirectOk)
 			throws IOException, InterruptedException {
+		return fetch(http, url, file, max, redirectOk, BODY_TIMEOUT);
+	}
+
+	/** As above; a body still coming after {@code bodyLimit} is cut off (an IOException), so a stalled download can't hold the thread. */
+	static boolean fetch(HttpClient http, String url, Path file, long max, java.util.function.Predicate<URI> redirectOk,
+			java.time.Duration bodyLimit) throws IOException, InterruptedException {
 		if (http.followRedirects() != HttpClient.Redirect.NEVER) {
 			throw new IllegalArgumentException("the download client must not follow redirects by itself");
 		}
@@ -277,6 +286,7 @@ public final class Updater {
 					LOG.warn("Update download refused: it announces more than {} bytes", max);
 					return false;
 				}
+				dev.beli.skylyrics.util.Net.closeAfter(body, bodyLimit);
 				if (!copyCapped(body, file, max)) {
 					LOG.warn("Update download refused: it is bigger than {} bytes", max);
 					return false;
