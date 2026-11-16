@@ -269,4 +269,39 @@ class UpdaterTest {
 		assertFalse(Updater.copyCapped(new java.io.ByteArrayInputStream(new byte[101]), f, 100));
 		assertFalse(Files.exists(f));
 	}
+
+	@Test
+	void oldLeftoverDownloadsOfOursAreCleanedButFreshOnesAndOtherFilesStay() throws Exception {
+		long now = System.currentTimeMillis();
+		java.nio.file.attribute.FileTime old = java.nio.file.attribute.FileTime.fromMillis(now - 2 * 24L * 3600 * 1000);
+		java.nio.file.attribute.FileTime fresh = java.nio.file.attribute.FileTime.fromMillis(now - 3600 * 1000L);
+		Path unique = Files.createFile(dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.123456.part"));
+		Path fixed = Files.createFile(dir.resolve("belis-skylyrics-0.1.9+1.21.11.jar.part")); // the name earlier versions used
+		Path staged = Files.createFile(dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.987.new"));
+		Path young = Files.createFile(dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.555.part"));
+		Path otherMod = Files.createFile(dir.resolve("othermod-1.0.jar.777.part"));
+		Path jar = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
+		for (Path p : List.of(unique, fixed, staged, otherMod, jar)) {
+			Files.setLastModifiedTime(p, old);
+		}
+		Files.setLastModifiedTime(young, fresh);
+		assertEquals(3, Updater.cleanLeftovers(dir, now));
+		assertFalse(Files.exists(unique));
+		assertFalse(Files.exists(fixed));
+		assertFalse(Files.exists(staged));
+		assertTrue(Files.exists(young), "another game may still be downloading it");
+		assertTrue(Files.exists(otherMod), "not ours");
+		assertTrue(Files.exists(jar), "never a jar");
+	}
+
+	@Test
+	void eachDownloadGetsItsOwnWaitingNameOnWindows() {
+		Path target = dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar");
+		Path a = dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.111.part");
+		Path b = dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.222.part");
+		assertEquals(dir.resolve("belis-skylyrics-0.2.0+1.21.11.jar.111.new"), Updater.waitingFor(a, target));
+		assertFalse(Updater.waitingFor(a, target).equals(Updater.waitingFor(b, target)));
+		assertTrue(Updater.swapPathsSafe(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"), target));
+		assertTrue(Updater.batchSafe(Updater.waitingFor(a, target).toString()));
+	}
 }

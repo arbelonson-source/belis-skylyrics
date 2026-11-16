@@ -78,6 +78,7 @@ public final class Updater {
 		if (mcKey == null || jar == null) {
 			return;
 		}
+		cleanLeftovers(jar.getParent(), System.currentTimeMillis());
 		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
 		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
 		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
@@ -368,7 +369,7 @@ public final class Updater {
 		if (!swapPathsSafe(oldJar, target)) {
 			return false;
 		}
-		Path waiting = waitingName(target);
+		Path waiting = waitingFor(part, target);
 		Path bat = writeSwapScript(oldJar, waiting, target, part);
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
@@ -386,6 +387,46 @@ public final class Updater {
 
 	private static Path waitingName(Path target) {
 		return target.resolveSibling(target.getFileName() + ".new");
+	}
+
+	/**
+	 * The waiting name of one game's download: the download's own unique name with .new in place of .part, so two games
+	 * sharing a mods folder never stage over each other. It only adds digits to {@link #waitingName}, so that name's
+	 * path check covers it.
+	 */
+	static Path waitingFor(Path part, Path target) {
+		String name = part.getFileName().toString();
+		return name.endsWith(".part") ? part.resolveSibling(name.substring(0, name.length() - 5) + ".new") : waitingName(target);
+	}
+
+	static final long LEFTOVER_AGE_MS = 24L * 60 * 60 * 1000;
+
+	/**
+	 * Deletes this mod's own leftovers in the mods folder: downloads (.part) and Windows staged jars (.new) whose
+	 * name starts with belis-skylyrics- and that are over a day old. A fresh one may be another game's running download.
+	 * Returns how many were deleted.
+	 */
+	static int cleanLeftovers(Path dir, long nowMs) {
+		int deleted = 0;
+		try (var files = Files.newDirectoryStream(dir, "belis-skylyrics-*")) {
+			for (Path f : files) {
+				String name = f.getFileName().toString();
+				if (!name.endsWith(".part") && !name.endsWith(".new")) {
+					continue;
+				}
+				try {
+					if (Files.isRegularFile(f, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+							&& nowMs - Files.getLastModifiedTime(f).toMillis() > LEFTOVER_AGE_MS && Files.deleteIfExists(f)) {
+						deleted++;
+					}
+				} catch (IOException | RuntimeException e) {
+					LOG.info("Could not remove the old leftover {}: {}", name, e.toString());
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			LOG.info("Could not look for old update leftovers: {}", e.toString());
+		}
+		return deleted;
 	}
 
 	/**
