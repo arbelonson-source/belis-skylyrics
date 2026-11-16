@@ -106,6 +106,8 @@ public final class SkyEffects {
 
 	private boolean aurora, nebula, sparkles;
 	private float sparkleShow, sparkleSpread;
+	/** The star brightness the sky effects use: the real one eased, NaN to snap to the real one next frame. */
+	private float skyStars = Float.NaN;
 	private float radius;
 	private float far;
 	private float fade;
@@ -169,9 +171,29 @@ public final class SkyEffects {
 	 * between lines and full for a moment as each one starts.
 	 *
 	 * @param since seconds since the lyrics moved to a new line, or NaN with the pulse off
+	 * @param lineActive whether a lyric line is being sung: with none (unsynced or instrumental lyrics, lyrics hidden)
+	 *                   there is nothing to pulse with, so the sky stays at full strength
 	 */
-	static float beat(float since) {
-		return Float.isNaN(since) ? 1 : BEAT_REST + (1 - BEAT_REST) * LyricsRenderer.pulse(since);
+	static float beat(float since, boolean lineActive) {
+		return Float.isNaN(since) || !lineActive ? 1 : BEAT_REST + (1 - BEAT_REST) * LyricsRenderer.pulse(since);
+	}
+
+	/**
+	 * Moves the sky's star brightness towards the real one, so a time jump (/time set, a server skipping the night)
+	 * fades over about half a second like the lyrics' daylight does, and normal dusk and dawn, which are slower, look
+	 * as before. NaN {@code current} (nothing shown yet) snaps.
+	 */
+	static float easeStars(float current, float target, float dt) {
+		if (!Float.isFinite(current)) {
+			return target;
+		}
+		float step = dt * 2 * NIGHT_STARS;
+		return current < target ? Math.min(target, current + step) : Math.max(target, current - step);
+	}
+
+	/** Whether the sparkles have just come back from off, so their anchor must snap to where the lyrics are now. */
+	static boolean sparklesStarting(float before, float after) {
+		return before <= 0 && after > 0;
 	}
 
 	/**
@@ -232,9 +254,9 @@ public final class SkyEffects {
 		return RANDOM_SKIES[Math.floorMod(seed * 0x9E3779B9, RANDOM_SKIES.length)];
 	}
 
-	/** Whether the sky shown has to fade out before Random's pick for the new song can fade in. */
-	static boolean waitsForFade(SkyEffect chosen, SkyEffect shown, SkyEffect next, float presence) {
-		return chosen == SkyEffect.RANDOM && shown != null && next != shown && presence > 0;
+	/** Whether the sky shown has to fade out before another one (Random's pick for a new song, or a changed setting) can fade in. */
+	static boolean waitsForFade(SkyEffect shown, SkyEffect next, float presence) {
+		return shown != null && next != shown && presence > 0;
 	}
 
 	/** Compass direction the lyrics face, which the suns and constellations are placed around. */
@@ -323,8 +345,8 @@ public final class SkyEffects {
 		SkyTint.painted(0, 0);
 		boolean wanted = cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
 		SkyEffect next = pick(cfg.sky, tracker.track());
-		// A new song's random sky waits for the old one to fade out
-		boolean swapping = waitsForFade(cfg.sky, effect, next, presence);
+		// A new sky (a new song's random pick or a changed setting) waits for the old one to fade out
+		boolean swapping = waitsForFade(effect, next, presence);
 		ClientLevel level = mc.level;
 		//? if >=26.2 {
 		/*Camera camera = mc.gameRenderer.mainCamera();
@@ -341,12 +363,14 @@ public final class SkyEffects {
 			effect = next;
 		}
 		if (presence <= 0 || !wanted || !open) {
+			skyStars = Float.NaN;
 			return;
 		}
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-		float stars = starBrightness(level, camera, partial);
-		fade = visibility(stars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
-				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
+		skyStars = easeStars(skyStars, starBrightness(level, camera, partial), dt);
+		boolean lineActive = cfg.skyPulse && lyrics.visible() && lineSeconds(cfg) > 0;
+		fade = visibility(skyStars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
+				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, lineActive);
 		if (fade < 0.01f) {
 			return;
 		}
@@ -371,11 +395,20 @@ public final class SkyEffects {
 		// Under an aurora the clouds step back so the two together don't wash out
 		cloudAlpha = aurora ? 0.55f : 1;
 		// Sparkles gather round the lyrics, so they come and go with them
+		float sparkleBefore = sparkleShow;
 		sparkleShow = step(sparkleShow, cfg.twinkle && lyrics.visible(), dt);
 		sparkles = sparkleShow > 0;
 		updateColors(cfg, dt);
 		if (sparkles) {
+			// The anchor isn't followed while sparkles are off: start from where the lyrics hang now, not a stale spot
+			if (sparklesStarting(sparkleBefore, sparkleShow)) {
+				resetAnchor();
+			}
 			updateAnchor(cfg, camera, dt);
+			// A bad first camera yaw leaves no anchor yet: draw no sparkles rather than ones at NaN
+			sparkles = !anchorNeedsInit();
+		}
+		if (sparkles) {
 			sparkleSpread = Mth.clamp(cfg.size, 0.6f, 1.6f) * (cfg.placement == Placement.SKY ? 1 : 0.8f);
 		}
 		updateMeteors(cfg, dt);

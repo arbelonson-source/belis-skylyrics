@@ -7,6 +7,7 @@
 
 ### Fixed
 
+- **Sky effects fade.** The sky effects now fade in and out smoothly when the time of day jumps (/time set, or a server skipping the night) instead of cutting in a single frame, and changing the **Sky** setting while it is night fades the old sky out before the new one comes in. With **Pulse** on and no line being sung (unsynced or instrumental lyrics, or lyrics hidden), the sky is no longer a little dimmer than with Pulse off. The sparkles no longer drift in from a stale spot when they come back.
 - **Pick a look crash.** Pressing Left or Right on **Pick a look** while the look is Custom (after changing any look setting) no longer crashes the game: Right picks the first look and Left the last.
 - **Updates on Windows.** Automatic updates now install for players whose Windows user name has letters beyond plain English ones (Hebrew, Cyrillic, accented) or spaces and signs. An update can no longer leave you without SkyLyrics: the old file is only deleted once the new one is in place, and it is put back if the new one can't be. A download that Windows briefly holds is tried again, and old update leftovers are cleaned up.
 - **Saving on Windows.** Settings, the recently heard list, the Spotify sign-in and saved covers are read and saved even when Windows, an antivirus or OneDrive holds the file for a moment (the mod tries again), and the Windows music reader's helper file is written the same careful way.
