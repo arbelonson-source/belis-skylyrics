@@ -26,6 +26,15 @@ public final class TitleCleaner {
 			"(?i)(\\d{4}\\s+)?(digital\\s+)?remaster(ed)?(\\s+(\\d{4}|version))?|(\\d{4}\\s+)?(mono|stereo)(\\s+(version|mix))?"
 					+ "|live|live (at|from|in) .+|radio edit|(single|album|live|acoustic|demo) version|demo|acoustic|instrumental");
 
+	/** A version word ending the part after the dash ("Levels - Skrillex Remix"): that part is not a song name, so the dash is not "Artist - Song". */
+	private static final Pattern VERSION_END = Pattern.compile(
+			"(?i).*\\b(remix|mix|edit|version|reverb|sped up|slowed(\\s+down)?|remaster(ed)?(\\s+\\d{4})?)$");
+
+	private static final String NOISE_WORD = "(?:official|music|video|audio|lyrics?|visuali[sz]er|hd|4k|mv|clip)";
+	/** " | Official Music Video" or " - Lyrics" at the end: only when every word of it is a noise word. */
+	private static final Pattern NOISE_TAIL = Pattern.compile(
+			"(?i)\\s+[|\\-\u2013\u2014]\\s+" + NOISE_WORD + "(?:\\s+" + NOISE_WORD + ")*$");
+
 	/** "(feat. X)", "[ft. X]", "(with X)", "(prod. X)", also in fullwidth brackets and 【】. */
 	private static final Pattern GUEST_BRACKETS = Pattern.compile(
 			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014]\\s*(feat\\.?|ft\\.?|featuring|with|prod\\.?)[\\s\uFF1A:][^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
@@ -57,11 +66,12 @@ public final class TitleCleaner {
 
 		if (BROWSERS.contains(track.player().toLowerCase(Locale.ROOT))) {
 			title = NOISE.matcher(capped(title)).replaceAll("").trim();
+			title = NOISE_TAIL.matcher(title).replaceFirst("").trim();
 			String[] parts = DASH.split(title, 2);
 			// "Artist - Song" video titles; the channel name is usually not the real artist.
 			// "Topic" channels already give the real artist and song.
 			if (parts.length == 2 && !parts[0].isBlank() && !parts[1].isBlank()
-					&& !TOPIC.matcher(track.artist()).matches() && !VERSION_TAG.matcher(parts[1].trim()).matches()) {
+					&& !TOPIC.matcher(track.artist()).matches() && !VERSION_TAG.matcher(parts[1].trim()).matches() && !VERSION_END.matcher(parts[1].trim()).matches()) {
 				artist = parts[0].trim();
 				title = parts[1].trim();
 			}
@@ -75,6 +85,7 @@ public final class TitleCleaner {
 	/** A stricter version used only for looking lyrics up: "Song - Remastered 2011" -> "Song". */
 	public static String forSearch(String title) {
 		String t = NOISE.matcher(capped(title)).replaceAll("");
+		t = NOISE_TAIL.matcher(t.trim()).replaceFirst("");
 		t = t.replaceAll("(?i)\\s+[-\u2013\u2014]\\s+(\\d{4}\\s*)?(remaster(ed)?|mono|stereo|single|radio edit|live|version|edit|from .*)\\b.*$", "");
 		String bracketed = GUEST_BRACKETS.matcher(t).replaceAll("");
 		// A title that is only a credit ("(feat. X)") is all there is to search for.
@@ -98,7 +109,7 @@ public final class TitleCleaner {
 	/** What identifies the song: no version tags or credits, no case, accents or punctuation; "&" means "and". */
 	static String songKey(String title) {
 		String t = VERSION_BRACKET.matcher(forSearch(title)).replaceAll("").replace("&", " and ");
-		t = Normalizer.normalize(t, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+		t = Normalizer.normalize(t, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "");
 		String k = key(t);
 		return k.isEmpty() ? title.strip().toLowerCase(Locale.ROOT) : k; // "!!!" must not equal "???"
 	}

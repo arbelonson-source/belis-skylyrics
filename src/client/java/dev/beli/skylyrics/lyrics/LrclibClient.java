@@ -183,6 +183,9 @@ public final class LrclibClient implements LyricsSource {
 	 *                   where nothing else ties the result to the artist)
 	 * @param titleOnly nothing but the title identifies the song: several artists sharing it means no match
 	 */
+	/** Added to a hit whose title matches exactly (version brackets aside) when the song's length is unknown. */
+	private static final int EXACT_TITLE_BONUS = 5;
+
 	private @Nullable Result searchBest(Map<String, String> query, double seconds, String title, @Nullable String mainArtist, boolean titleOnly) throws IOException, InterruptedException {
 		if (query.values().stream().allMatch(String::isBlank)) {
 			return null;
@@ -211,6 +214,7 @@ public final class LrclibClient implements LyricsSource {
 				}
 			}
 			int score = 0;
+			boolean lengthScored = false;
 			if (hasText(o, "syncedLyrics")) {
 				score += 100;
 			} else if (hasText(o, "plainLyrics")) {
@@ -219,6 +223,7 @@ public final class LrclibClient implements LyricsSource {
 				continue;
 			}
 			if (seconds > 0 && o.has("duration") && !o.get("duration").isJsonNull()) {
+				lengthScored = true;
 				double diff = Math.abs(o.get("duration").getAsDouble() - seconds);
 				if (diff > DURATION_MAX_S) {
 					continue; // showing another recording's timing is worse than none
@@ -228,6 +233,12 @@ public final class LrclibClient implements LyricsSource {
 				} else {
 					score -= (int) Math.min(200, diff * 2); // probably a different version (live, remix…)
 				}
+			}
+			// With no length to compare, every synced hit scores the same: an exact title beats "Song (Live)". Small
+			// enough to never outweigh synced over plain (100 vs 20); never added when the length scoring ran (its
+			// steps are 5 per second off).
+			if (!lengthScored && TitleCleaner.key(TitleCleaner.forSearch(string(o, "trackName"))).equals(TitleCleaner.key(TitleCleaner.forSearch(title)))) {
+				score += EXACT_TITLE_BONUS;
 			}
 			if (titleOnly) {
 				sameTitleArtists.add(TitleCleaner.key(string(o, "artistName")));

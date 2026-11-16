@@ -109,19 +109,22 @@ public final class NeteaseClient implements LyricsSource {
 		return id < 0 ? LrclibClient.Result.NOT_FOUND : lyrics(id);
 	}
 
+	/** Added to the rank (seconds off) of a song whose title only matches through its version brackets. */
+	private static final double EXACT_TITLE_RANK = 0.25;
+
 	private long bestMatch(String query, Track track) throws IOException, InterruptedException {
 		JsonObject answer = get("/search/get?type=1&limit=20&s=" + URLEncoder.encode(query.strip(), StandardCharsets.UTF_8));
 		JsonObject result = object(answer, "result");
 		if (result == null || !(result.get("songs") instanceof JsonArray songs)) {
 			return -1;
 		}
-		String wantTitle = key(TitleCleaner.forSearch(track.title()));
 		String wantArtist = key(TitleCleaner.mainArtist(track.artist()));
+		String wantTitle = key(TitleCleaner.forSearch(track.title()));
 		double seconds = track.lengthMs() / 1000.0;
 		long best = -1;
 		double bestDiff = Double.MAX_VALUE;
 		for (JsonElement el : songs) {
-			if (!(el instanceof JsonObject song) || !key(TitleCleaner.forSearch(string(song, "name"))).equals(wantTitle)) {
+			if (!(el instanceof JsonObject song) || !TitleCleaner.sameSong(track.title(), string(song, "name"))) {
 				continue;
 			}
 			Long songId = number(song, "id");
@@ -133,6 +136,10 @@ public final class NeteaseClient implements LyricsSource {
 			boolean sameArtist = sameArtist(song, wantArtist);
 			boolean ok = diff < 0 ? sameArtist : sameArtist ? diff <= DURATION_SLACK_S : diff <= STRICT_SLACK_S;
 			double rank = diff < 0 ? 0 : diff + (sameArtist ? 0 : DURATION_SLACK_S);
+			// equal otherwise, the exact title beats "Song (Live)"
+			if (!key(TitleCleaner.forSearch(string(song, "name"))).equals(wantTitle)) {
+				rank += EXACT_TITLE_RANK;
+			}
 			if (ok && rank < bestDiff) {
 				best = songId;
 				bestDiff = rank;

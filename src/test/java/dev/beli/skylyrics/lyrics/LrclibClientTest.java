@@ -340,4 +340,19 @@ class LrclibClientTest {
 		IOException e = assertThrows(IOException.class, () -> client.find(TRACK));
 		assertFalse(e instanceof LrclibClient.StatusException);
 	}
+
+
+	@Test
+	void withoutALengthTheExactTitleBeatsAVersionBracketedOne() throws Exception {
+		Track noLength = song("Made Song", BAND, 0);
+		assertEquals("[00:01.00]studio", findWith(noLength,
+				hit("Made Song (Live)", BAND, 200, "[00:01.00]live"), hit("Made Song", BAND, 200, "[00:01.00]studio")).synced());
+	}
+
+	@Test
+	void theTitleTieBreakNeverBeatsSyncedOverPlain() throws Exception {
+		Track noLength = song("Made Song", BAND, 0);
+		String plain = "{\"trackName\":\"Made Song\",\"artistName\":\"" + BAND + "\",\"duration\":200,\"plainLyrics\":\"plain words\",\"instrumental\":false}";
+		assertEquals("[00:01.00]live", findWith(noLength, plain, hit("Made Song (Live)", BAND, 200, "[00:01.00]live")).synced());
+	}
 }
