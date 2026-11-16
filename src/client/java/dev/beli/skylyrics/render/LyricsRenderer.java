@@ -717,8 +717,19 @@ public final class LyricsRenderer {
 	 * (unsynced) lyrics have estimated slots too, so their words come out one by one the same way instead of all at once.
 	 */
 	static float sungChars(Lyrics lyrics, int index, long time, int total) {
-		return progress(time - LEAD_MS, lyrics.get(index).timeMs(), lyrics.sungEnd(index)) * total;
+		long start = lyrics.get(index).timeMs(), end = lyrics.sungEnd(index);
+		// The next line takes over LEAD_MS early, and the cards of this one are let go then: the words must all be out
+		// by then (a little before, for a frame to land in), or the last ones of a short line never show
+		long last = Math.min(end, lyrics.lineEnd(index) - LEAD_MS - FLIP_SLACK_MS);
+		// A short line is on show for little longer than it takes to sing, so its words start as it comes in
+		long first = start - (long) (LEAD_MS * Mth.clamp(1 - (end - start) / (float) FAST_LINE_MS, 0, 1));
+		return progress(time - LEAD_MS, first, Math.max(last, first + MIN_REVEAL_MS)) * total;
 	}
+
+	/** Lines shorter than this have their words start before their stamp; the earlier the shorter the line is. */
+	static final long FAST_LINE_MS = 1000;
+	/** How long before the next line takes over a line's last word is out, and the least time its words get. */
+	static final long FLIP_SLACK_MS = 50, MIN_REVEAL_MS = 40;
 
 	/** Whether a line's slot ended a moment ago, so its last words can leave (also for the last line, which has no next one). */
 	static boolean lineOver(Lyrics lyrics, int index, long time) {
