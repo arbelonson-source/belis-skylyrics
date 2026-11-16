@@ -92,6 +92,11 @@ public final class SkyLyricsScreen extends Screen {
 		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
 	}
 
+	/** Whether Sky speed does anything: the night sky, the constellations and the sparkles run on its clock; shooting stars don't. */
+	static boolean skySpeedApplies(SkyLyricsConfig cfg) {
+		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.twinkle;
+	}
+
 	/**
 	 * What the Distance slider reads, in real blocks. The stored value stays as it is: in the sky it is blocks (kept
 	 * under 80% of the render distance, which {@code renderChunks} gives), floating it is a setting that maps to 4 to 16 blocks.
@@ -464,12 +469,12 @@ public final class SkyLyricsScreen extends Screen {
 				i -> cfg.skyColors = SkyColors.values()[i]).when(anySky);
 		Row skySpeed = new Segmented(Tr.t("Sky speed"), null,
 				new String[] {Tr.t("Slow"), Tr.t("Normal"), Tr.t("Fast")}, () -> cfg.skySpeed.ordinal(),
-				i -> cfg.skySpeed = SkySpeed.values()[i]).when(() -> cfg.sky != SkyEffect.OFF || cfg.twinkle);
+				i -> cfg.skySpeed = SkySpeed.values()[i]).when(() -> skySpeedApplies(cfg));
 		Row skyStrength = new Slider(Tr.t("Strength"), null, 0.1, 1, 0.05,
 				() -> cfg.skyStrength, v -> cfg.skyStrength = (float) v, SkyLyricsScreen::percent)
 				.when(anySky);
 		Row skyPulse = new Toggle(Tr.t("Pulse with the lyrics"), Tr.t("Brightens as each new line starts"),
-				() -> cfg.skyPulse, v -> cfg.skyPulse = v).when(() -> cfg.sky != SkyEffect.OFF);
+				() -> cfg.skyPulse, v -> cfg.skyPulse = v).when(anySky);
 		Row constellations = new Toggle(Tr.t("Constellations"), Tr.t("Star patterns joined by thin lines"),
 				() -> cfg.constellations, v -> cfg.constellations = v);
 		Row hat = new Cycle(Tr.t("Hat"), Tr.t("See it in third person (F5). Only you can see it"),
