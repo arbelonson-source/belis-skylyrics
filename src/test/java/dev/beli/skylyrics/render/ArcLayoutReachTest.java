@@ -65,4 +65,34 @@ class ArcLayoutReachTest {
 			assertEquals(0f, ArcLayout.focus(normal, w), 0f);
 		}
 	}
+
+	@Test
+	void theScrollOfATallLineNeverHopsBetweenNeighbouringMoments() {
+		float[] widths = new float[400];
+		Arrays.fill(widths, 30f);
+		List<ArcLayout.Group> tall = ArcLayout.place(widths, ArcLayout.rows(widths, new boolean[400]), 3f, 5L, false);
+		float smooth = 0, stepped = 0, previous = ArcLayout.focus(tall, 0f), previousStep = previous;
+		for (int i = 1; i <= 399 * 20; i++) {
+			float word = i / 20f;
+			float now = ArcLayout.focus(tall, word);
+			smooth = Math.max(smooth, Math.abs(now - previous));
+			previous = now;
+			float old = ArcLayout.focus(tall, (float) Math.floor(word)); // what the whole-word stepping gave
+			stepped = Math.max(stepped, Math.abs(old - previousStep));
+			previousStep = old;
+		}
+		assertTrue(smooth < 0.5f, "a twentieth of a word moves the scroll by at most half a unit, not " + smooth);
+		assertTrue(stepped > 1f, "the whole-word stepping did hop, by " + stepped);
+		assertEquals(ArcLayout.focus(tall, 100f), ArcLayout.focus(tall, 100), 0f);
+	}
+
+	@Test
+	void aNormalLineStaysAtZeroForFractionalPositionsToo() {
+		float[] few = new float[30];
+		Arrays.fill(few, 30f);
+		List<ArcLayout.Group> normal = ArcLayout.place(few, ArcLayout.rows(few, new boolean[30]), 3f, 5L, false);
+		for (int i = 0; i <= 600; i++) {
+			assertEquals(0f, ArcLayout.focus(normal, i / 20f), 0f);
+		}
+	}
 }

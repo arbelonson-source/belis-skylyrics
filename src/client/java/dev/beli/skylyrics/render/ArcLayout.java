@@ -84,10 +84,12 @@ final class ArcLayout {
 
 	/**
 	 * How far down the block's middle should sit so the words being sung stay in view: 0 for a normal line, and for a tall
-	 * one the average height of the groups around the one holding word {@code word}. Words come out from the top, so
-	 * without this a line of hundreds of words would be sung above the view, with only its middle in front of you.
+	 * one the average height of the groups around the one holding the word at position {@code word}. The position is
+	 * fractional (the sung word plus how far through it the singing is), and the result slides between one group's
+	 * average and the next one's, so the scroll never hops. Words come out from the top, so without this a line of
+	 * hundreds of words would be sung above the view, with only its middle in front of you.
 	 */
-	static float focus(List<Group> groups, int word) {
+	static float focus(List<Group> groups, float word) {
 		if (groups.size() < 2) {
 			return 0;
 		}
@@ -99,16 +101,25 @@ final class ArcLayout {
 		if (bottom - top <= TALL) {
 			return 0;
 		}
+		int whole = (int) Math.floor(word);
 		int lo = 0, hi = groups.size() - 1;
 		while (lo < hi) { // the last group starting at or before the word
 			int mid = (lo + hi + 1) >>> 1;
-			if (groups.get(mid).from() <= word) {
+			if (groups.get(mid).from() <= whole) {
 				lo = mid;
 			} else {
 				hi = mid - 1;
 			}
 		}
-		int from = Math.max(0, lo - FOCUS_SPAN), to = Math.min(groups.size() - 1, lo + FOCUS_SPAN);
+		Group g = groups.get(lo);
+		float t = Math.max(0, Math.min(1, (word - g.from()) / Math.max(1, g.to() - g.from())));
+		float here = focusAround(groups, lo);
+		return t == 0 || lo + 1 >= groups.size() ? here : here + (focusAround(groups, lo + 1) - here) * t;
+	}
+
+	/** The average height of the groups around group {@code index}. */
+	private static float focusAround(List<Group> groups, int index) {
+		int from = Math.max(0, index - FOCUS_SPAN), to = Math.min(groups.size() - 1, index + FOCUS_SPAN);
 		float sum = 0;
 		for (int i = from; i <= to; i++) {
 			sum += groups.get(i).y();
