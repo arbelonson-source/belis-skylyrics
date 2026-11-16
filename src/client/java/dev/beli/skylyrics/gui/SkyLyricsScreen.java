@@ -1365,7 +1365,9 @@ public final class SkyLyricsScreen extends Screen {
 		boolean hoverDone = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), dx, fy, dw, 16);
 		Controls.drawButton(f, dx, fy, dw, 16, Tr.t("Done"), hoverDone, true, true);
 
-		String hint = Tr.t("%s or Esc to close", keyName(mod.openSettingsKey()));
+		KeyMapping openKey = mod.openSettingsKey();
+		// With the key unbound, "not set or Esc to close" reads wrong: say only the Esc part
+		String hint = openKey == null || openKey.isUnbound() ? Tr.t("Esc to close") : Tr.t("%s or Esc to close", keyName(openKey));
 		int hintX = (viewX + rw + dx) / 2 - font.width(hint) / 2;
 		if (hintX > viewX + rw + 6 && hintX + font.width(hint) < dx - 6) {
 			g.drawString(font, Ui.visual(hint), hintX, fy + 4, Ui.DIM, false);

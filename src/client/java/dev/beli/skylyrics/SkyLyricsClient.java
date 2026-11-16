@@ -454,6 +454,12 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			SkyLyricsConfig cfg = SkyLyricsConfig.get();
 			cfg.enabled = !cfg.enabled;
 			cfg.save();
+			String message = cfg.enabled ? "skylyrics.lyrics.on" : "skylyrics.lyrics.off";
+			//? if >=26.2 {
+			/*client.gui.hud.setOverlayMessage(Component.translatable(message), false);
+			*///?} else {
+			client.gui.setOverlayMessage(Component.translatable(message), false);
+			//?}
 		}
 		while (showNowPlaying.consumeClick()) {
 			hud.toggleForced();
