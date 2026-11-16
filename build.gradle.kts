@@ -118,6 +118,7 @@ tasks.test {
 val resourceProps = mapOf(
 	"version" to project.version.toString(),
 	"minecraft" to property("mod.mc_compat").toString(),
+	"fabric_api" to property("mod.fabric_api_min").toString(),
 	"java" to requiredJava.majorVersion,
 )
 

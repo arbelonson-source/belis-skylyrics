@@ -6,6 +6,7 @@
 
 ### Fixed
 
+- **Fabric API too old.** With a Fabric API that's too old for SkyLyrics, Minecraft now says which version to install instead of crashing at start. The 1.21.10 jar no longer says it works on 1.21.9: no Fabric API for 1.21.9 has what it needs, so it could only crash there.
 - **Two games at once.** Two Minecraft games open at the same time (sharing one game folder) no longer undo each other's settings or song timings: when one saves, it keeps what the other changed, and shows it too. Saving at the same moment can't break the settings file or lose a renewed Spotify sign-in, a second game on Windows no longer deletes the first one's album covers, and when both update, neither deletes the new jar the other just installed (on Windows too).
 - **Spotify with two games.** When two games share one Spotify sign-in and renew it at the same moment, the second one now waits a moment for the first one's new sign-in instead of signing you out.
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.

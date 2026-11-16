@@ -32,7 +32,7 @@
 		"fabricloader": ">=0.17.0",
 		"minecraft": "${minecraft}",
 		"java": ">=${java}",
-		"fabric-api": "*"
+		"fabric-api": "${fabric_api}"
 	},
 	"suggests": {
 		"modmenu": "*",
