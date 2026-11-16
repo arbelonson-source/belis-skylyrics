@@ -40,7 +40,7 @@ final class SettingsSearch {
 		return out.toString();
 	}
 
-	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("[\\s\u00a0\u2007\u202f\u3000]+");
+	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("[\\s\\p{Z}\u0085]+");
 	private static final java.util.regex.Pattern INVISIBLE = java.util.regex.Pattern.compile("\\p{Cf}");
 	private static final java.util.regex.Pattern MARKS = java.util.regex.Pattern.compile("\\p{M}");
 

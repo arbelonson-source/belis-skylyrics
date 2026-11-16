@@ -408,11 +408,14 @@ final class Controls {
 
 		/**
 		 * Room around each option's name in a row {@code rowW} wide: the usual 12 when everything fits, less when it
-		 * doesn't, so the label keeps at least {@link #LABEL_KEEP} of its width, but never under {@link #MIN_PAD}.
+		 * doesn't, so the label keeps at least {@link #LABEL_KEEP} of its width, and {@link #MIN_PAD} so names don't touch;
+		 * only when even that won't fit the row (the control on its own line) as much as fits, never under 4.
 		 */
 		static int pad(int rowW, int labelW, int namesW, int count) {
 			int room = rowW - 20 - 8 - Math.min(labelW, LABEL_KEEP) - 4 - namesW;
-			return Math.max(MIN_PAD, Math.min(12, room / count));
+			int pad = Math.max(MIN_PAD, Math.min(12, room / count));
+			int fit = rowW > 0 ? (rowW - 20 - 4 - namesW) / count : pad;
+			return pad > fit ? Math.max(4, fit) : pad;
 		}
 
 		static final int LABEL_KEEP = 56;
@@ -847,6 +850,7 @@ final class Controls {
 		private int linesProbe;
 		private int linesWidth = -1;
 		private String linesText = "";
+		private boolean linesRtl;
 
 		Paragraph(Supplier<String> text) {
 			super("", null);
@@ -868,10 +872,12 @@ final class Controls {
 			String t = text.get();
 			// the probe notices a font change (a resource pack reload) that would move the line breaks
 			int probe = font.width(FONT_PROBE);
-			if (width != linesWidth || !t.equals(linesText) || probe != linesProbe) {
+			// the direction depends on the game language too: a switch with the same text and width re-orders the lines
+			boolean rtl = Ui.paragraphRtl(t);
+			if (width != linesWidth || !t.equals(linesText) || probe != linesProbe || rtl != linesRtl) {
 				linesProbe = probe;
+				linesRtl = rtl;
 				// split logically, then order every line in the direction of the whole paragraph
-				boolean rtl = Ui.paragraphRtl(t);
 				lines = font.getSplitter().splitLines(t, Math.max(1, width - 20), net.minecraft.network.chat.Style.EMPTY).stream()
 						.map(l -> Ui.visual(l.getString(), rtl)).toList();
 				linesWidth = width;
