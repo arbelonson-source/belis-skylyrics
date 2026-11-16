@@ -136,7 +136,7 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 ## Lyrics vanish in caves
 
-With the Arc and Lines layouts, the lyrics stay visible underground as long as **Show underground too** (Display tab) is on, **Draw on top** (Look tab) is on **Auto**, and **Hide in caves** (Display tab) is off. **Hide in caves** hides them on purpose when there is no open sky above you. See [the FAQ](FAQ.md#why-dont-i-see-lyrics-in-caves) for more.
+With the Arc and Lines layouts, the lyrics stay visible underground as long as **Show underground too** (Display tab) is on, **Draw on top** (Look tab) is on **Auto**, **See through blocks** is off (with it on, the lyrics are on top everywhere anyway), and **Hide in caves** (Display tab) is off. **Hide in caves** hides them on purpose when there is no open sky above you. See [the FAQ](FAQ.md#why-dont-i-see-lyrics-in-caves) for more.
 
 ## Shaders make the lyrics dim
 

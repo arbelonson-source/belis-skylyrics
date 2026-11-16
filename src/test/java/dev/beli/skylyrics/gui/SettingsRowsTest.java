@@ -61,4 +61,57 @@ class SettingsRowsTest {
 		cfg.shootingStars = true;
 		assertFalse(SkyLyricsScreen.skySpeedApplies(cfg));
 	}
+
+	@Test
+	void karaokeStaysForTheTopBarInWorld() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.layout = Layout.WORLD;
+		cfg.nowPlayingHud = true;
+		cfg.barLyrics = true;
+		assertTrue(SkyLyricsScreen.karaokeApplies(cfg));
+		cfg.barLyrics = false;
+		assertFalse(SkyLyricsScreen.karaokeApplies(cfg));
+		cfg.barLyrics = true;
+		cfg.nowPlayingHud = false;
+		assertFalse(SkyLyricsScreen.karaokeApplies(cfg));
+		cfg.layout = Layout.LINES;
+		assertTrue(SkyLyricsScreen.karaokeApplies(cfg));
+	}
+
+	@Test
+	void shadowIsHiddenWhereDepthReplacesIt() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.layout = Layout.ARC;
+		cfg.depth = true;
+		assertFalse(SkyLyricsScreen.shadowApplies(cfg));
+		cfg.depth = false;
+		assertTrue(SkyLyricsScreen.shadowApplies(cfg));
+		// Lines draws its shadow whatever Depth says
+		cfg.layout = Layout.LINES;
+		cfg.depth = true;
+		assertTrue(SkyLyricsScreen.shadowApplies(cfg));
+		cfg.layout = Layout.WORLD;
+		assertFalse(SkyLyricsScreen.shadowApplies(cfg));
+	}
+
+	@Test
+	void showUndergroundOnlyShowsWhenItMatters() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.layout = Layout.ARC;
+		cfg.layer = SkyLyricsConfig.Layer.AUTO;
+		cfg.hideInCaves = false;
+		cfg.seeThroughBlocks = false;
+		assertTrue(SkyLyricsScreen.showUndergroundApplies(cfg));
+		cfg.seeThroughBlocks = true;
+		assertFalse(SkyLyricsScreen.showUndergroundApplies(cfg));
+		cfg.seeThroughBlocks = false;
+		cfg.hideInCaves = true;
+		assertFalse(SkyLyricsScreen.showUndergroundApplies(cfg));
+		cfg.hideInCaves = false;
+		cfg.layer = SkyLyricsConfig.Layer.SCREEN;
+		assertFalse(SkyLyricsScreen.showUndergroundApplies(cfg));
+		cfg.layer = SkyLyricsConfig.Layer.AUTO;
+		cfg.layout = Layout.WORLD;
+		assertFalse(SkyLyricsScreen.showUndergroundApplies(cfg));
+	}
 }

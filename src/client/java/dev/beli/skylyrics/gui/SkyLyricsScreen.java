@@ -82,9 +82,30 @@ public final class SkyLyricsScreen extends Screen {
 		};
 	}
 
-	/** Whether a layout is drawn by the flat lyrics code. The World layout has its own, which skips Draw on top, Depth, Shadow, Pulse, Karaoke fill and Bigger current word. */
+	/** Whether a layout is drawn by the flat lyrics code. The World layout has its own, which skips Draw on top, Depth, Shadow, Pulse and Bigger current word (and Karaoke fill, except for the top bar's line). */
 	static boolean flatLayout(Layout layout) {
 		return layout != Layout.WORLD;
+	}
+
+	/**
+	 * Whether Karaoke fill does anything: the flat layouts use it for their words, and the top bar for its line, so World
+	 * still has it while the bar shows lyrics.
+	 */
+	static boolean karaokeApplies(SkyLyricsConfig cfg) {
+		return flatLayout(cfg.layout) || cfg.nowPlayingHud && cfg.barLyrics;
+	}
+
+	/** Whether Shadow does anything: Arc leaves it off while Depth draws its solid edge, and World has no Shadow. */
+	static boolean shadowApplies(SkyLyricsConfig cfg) {
+		return flatLayout(cfg.layout) && !(cfg.layout == Layout.ARC && cfg.depth);
+	}
+
+	/**
+	 * Whether Show underground too does anything: it only matters on Auto, with Hide in caves off, in the flat layouts, and
+	 * See through blocks already puts the lyrics on the screen layer wherever you are.
+	 */
+	static boolean showUndergroundApplies(SkyLyricsConfig cfg) {
+		return cfg.layer == Layer.AUTO && !cfg.hideInCaves && flatLayout(cfg.layout) && !cfg.seeThroughBlocks;
 	}
 
 	/** Whether any sky effect is on, so the sky settings (Strength and the rest) show. */
@@ -348,9 +369,9 @@ public final class SkyLyricsScreen extends Screen {
 		Row next = new Toggle(Tr.t("Next line"), Tr.t("What's coming up, dimmed"),
 				() -> cfg.showNext, v -> cfg.showNext = v)
 				.when(() -> cfg.layout == Layout.LINES);
-		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung"),
+		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung, in the lyrics and in the top bar"),
 				() -> cfg.karaoke, v -> cfg.karaoke = v)
-				.when(() -> flatLayout(cfg.layout));
+				.when(() -> karaokeApplies(cfg));
 		Row grow = new Toggle(Tr.t("Bigger current word"), Tr.t("The word being sung grows a little"),
 				() -> cfg.growWord, v -> cfg.growWord = v)
 				.when(() -> flatLayout(cfg.layout) && cfg.karaoke);
@@ -447,12 +468,12 @@ public final class SkyLyricsScreen extends Screen {
 				.when(() -> cfg.glow > 0.01f && cfg.glowPick);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
 				() -> cfg.shadow, v -> cfg.shadow = v)
-				.when(() -> flatLayout(cfg.layout));
+				.when(() -> shadowApplies(cfg));
 		Row opacity = new Slider(Tr.t("Opacity"), null, 0.2, 1, 0.05,
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle(Tr.t("See through blocks"), Tr.t("Stay visible behind hills and walls"),
 				() -> cfg.seeThroughBlocks, v -> cfg.seeThroughBlocks = v);
-		Row layer = new Segmented(Tr.t("Draw on top"), Tr.t("Stays bright with shaders"),
+		Row layer = new Segmented(Tr.t("Draw on top"), Tr.t("Always: stays bright with shaders and rain. Never: drawn in the world"),
 				new String[] {Tr.t("Auto"), Tr.t("Always"), Tr.t("Never")}, () -> switch (cfg.layer) {
 					case AUTO -> 0;
 					case SCREEN -> 1;
@@ -543,7 +564,7 @@ public final class SkyLyricsScreen extends Screen {
 				.when(() -> !cfg.demoMode && !tracker.connected() && !tracker.error().isEmpty());
 		Row timing = new Slider(Tr.t("Timing"), Tr.t("Late? Move right. Early? Left"), -5000, 5000, 50,
 				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds).narrateHint();
-		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -5000, 5000, 50,
+		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Added to Timing, for this song only"), -5000, 5000, 50,
 				() -> cfg.songOffset(tracker.track()), v -> cfg.setSongOffset(tracker.track(), (int) Math.round(v)),
 				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE).searchOnlyWhenShown();
 		Row demo = new Toggle(Tr.t("Demo song"), Tr.t("A built-in song for trying things out"),
@@ -655,13 +676,13 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.hideUnderwater, v -> cfg.hideUnderwater = v);
 		Row caves = new Toggle(Tr.t("Hide in caves"), Tr.t("When there's no open sky above you"),
 				() -> cfg.hideInCaves, v -> cfg.hideInCaves = v);
-		Row underground = new Toggle(Tr.t("Show underground too"), Tr.t("Lyrics stay visible in caves and under roofs"),
+		Row underground = new Toggle(Tr.t("Show underground too"), Tr.t("With See through blocks off, lyrics stay visible in caves and under roofs"),
 				() -> cfg.showUnderground, v -> cfg.showUnderground = v)
-				.when(() -> cfg.layer == Layer.AUTO && !cfg.hideInCaves && cfg.layout != Layout.WORLD);
-		Row multiplayer = new Toggle(Tr.t("Hide in multiplayer"), Tr.t("Only show them in your own worlds"),
+				.when(() -> showUndergroundApplies(cfg));
+		Row multiplayer = new Toggle(Tr.t("Hide in multiplayer"), Tr.t("Only show things in your own worlds"),
 				() -> cfg.hideInMultiplayer, v -> cfg.hideInMultiplayer = v);
 
-		Row card = new Toggle(Tr.t("Top bar"), Tr.t("Song and lyrics at the top of the screen"),
+		Row card = new Toggle(Tr.t("Top bar"), Tr.t("Song and lyrics in a bar on screen"),
 				() -> cfg.nowPlayingHud, v -> cfg.nowPlayingHud = v);
 		Row barLyrics = new Toggle(Tr.t("Lyrics in the bar"), Tr.t("The line being sung, word by word"),
 				() -> cfg.barLyrics, v -> cfg.barLyrics = v)
@@ -675,7 +696,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row frameRate = new Toggle(Tr.t("FPS"), Tr.t("Frames per second, right of the bar"),
 				() -> cfg.barStats, v -> cfg.barStats = v)
 				.when(() -> cfg.nowPlayingHud);
-		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("Shows for a few seconds, then hides"),
+		Row onlyOnChange = new Toggle(Tr.t("Song name only on change"), Tr.t("The song name shows for a few seconds, then hides"),
 				() -> cfg.hudOnlyOnChange, v -> cfg.hudOnlyOnChange = v)
 				.when(() -> cfg.nowPlayingHud);
 		Row showBar = new Segmented(Tr.t("Show bar"), Tr.t("Can hide while you see the lyrics in the world"),
@@ -690,7 +711,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row barBackground = new Slider(Tr.t("Background"), Tr.t("How dark the bar and the Record card are"), 0, 1, 0.05,
 				() -> cfg.barBackground, v -> cfg.barBackground = (float) v, SkyLyricsScreen::percent)
 				.when(() -> cfg.nowPlayingHud || cfg.recordCard);
-		Row barAccent = new Segmented(Tr.t("Accent colour"), Tr.t("Word highlight and equaliser"),
+		Row barAccent = new Segmented(Tr.t("Accent colour"), Tr.t("Highlight, equaliser, progress and signal bars"),
 				new String[] {Tr.t("Album"), Tr.t("Lyrics"), Tr.t("Pick")}, () -> cfg.barAccent.ordinal(),
 				i -> cfg.barAccent = BarAccent.values()[i]).when(() -> cfg.nowPlayingHud);
 		Row barSwatches = new Swatches(Tr.t("Pick a colour"), null, SWATCHES, swatchNames(),
@@ -739,7 +760,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.cardLines >= 3 ? 1 : 0, i -> cfg.cardLines = i == 1 ? 3 : 1).when(() -> cfg.recordCard && cfg.cardLyrics);
 
 		return List.of(
-				new Card(Tr.t("Hide lyrics"), f1, menus, paused, nether, end, water, caves, underground, multiplayer),
+				new Card(Tr.t("Hide"), f1, menus, paused, nether, end, water, caves, underground, multiplayer),
 				new Card(Tr.t("Top bar"), card, barLyrics, clock, ping, frameRate, onlyOnChange, showBar, barPosition, barSize,
 						barBackground, barAccent, barSwatches, barArt, barSpin, barEq, barProgress),
 				new Card(Tr.t("Record card"), record, recordCorner, recordLyrics, recordLines),
