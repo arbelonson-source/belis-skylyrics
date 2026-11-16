@@ -695,6 +695,12 @@ final class Controls {
 			return perLine(w, colors.length, stacked());
 		}
 
+		/** Room for every line of swatches when they sit under the label (a narrow row wraps them). */
+		@Override
+		int controlHeight() {
+			return lines(w, colors.length, true) * LINE + 3;
+		}
+
 		private int swatchX(int cw, int i, int per) {
 			if (per >= colors.length) {
 				return x + w - 10 - cw + 1 + i * LINE;
