@@ -61,6 +61,9 @@ final class EclipseSky {
 	private static final int BAND_SEGMENTS = 144, BAND_ROWS = 12;
 	private static final float BAND_HALF = 16;
 
+	/** For each corona segment, a round patch round the sun that holds all its corners: the direction in the sun's frame (forward, right, up) and the angular radius. */
+	private static final float[] WEDGE_FWD = new float[SEGMENTS], WEDGE_RIGHT = new float[SEGMENTS], WEDGE_UP = new float[SEGMENTS],
+			WEDGE_RADIUS = new float[SEGMENTS];
 	private static final int[] CORONA_GRID = new int[RINGS.length * (SEGMENTS + 1)];
 	private static final float[] RING_COS = new float[SEGMENTS + 1], RING_SIN = new float[SEGMENTS + 1];
 	private static final float[] BAND_GRID = new float[(BAND_ROWS + 1) * (BAND_SEGMENTS + 1)];
@@ -78,6 +81,7 @@ final class EclipseSky {
 				CORONA_GRID[i * (SEGMENTS + 1) + j] = light(RINGS[i] * RING_COS[j], RINGS[i] * RING_SIN[j]);
 			}
 		}
+		wedges();
 		for (int j = 0; j <= BAND_SEGMENTS; j++) {
 			double a = 2 * Math.PI * j / BAND_SEGMENTS;
 			ALONG_COS[j] = (float) Math.cos(a);
@@ -94,6 +98,50 @@ final class EclipseSky {
 		}
 	}
 
+	/** A corona corner as a unit direction in the sun's frame: forward, right, up. */
+	private static float[] cornerAt(int ring, int j) {
+		float a = RINGS[ring] * (float) Math.tan(SUN_RADIUS * DEG) * RING_COS[j], b = RINGS[ring] * (float) Math.tan(SUN_RADIUS * DEG) * RING_SIN[j];
+		float l = (float) Math.sqrt(1 + a * a + b * b);
+		return new float[] {1 / l, a / l, b / l};
+	}
+
+	private static void wedges() {
+		for (int j = 0; j < SEGMENTS; j++) {
+			float sx = 0, sy = 0, sz = 0;
+			for (int i = 0; i < RINGS.length; i++) {
+				for (int k = j; k <= j + 1; k++) {
+					float[] p = cornerAt(i, k);
+					sx += p[0];
+					sy += p[1];
+					sz += p[2];
+				}
+			}
+			float l = (float) Math.sqrt(sx * sx + sy * sy + sz * sz);
+			sx /= l;
+			sy /= l;
+			sz /= l;
+			float least = 1;
+			for (int i = 0; i < RINGS.length; i++) {
+				for (int k = j; k <= j + 1; k++) {
+					float[] p = cornerAt(i, k);
+					least = Math.min(least, sx * p[0] + sy * p[1] + sz * p[2]);
+				}
+			}
+			WEDGE_FWD[j] = sx;
+			WEDGE_RIGHT[j] = sy;
+			WEDGE_UP[j] = sz;
+			// A hair wider than the farthest corner; the corona is a few degrees, far under a half sphere
+			WEDGE_RADIUS[j] = (float) Math.acos(Math.max(-1, least)) + 0.005f;
+		}
+	}
+
+	/** Whether corona segment {@code j} can be on screen, when the sun's frame is in {@link #frame}. */
+	private boolean wedgeVisible(int j, SkyView view) {
+		float f = WEDGE_FWD[j], r = WEDGE_RIGHT[j], u = WEDGE_UP[j];
+		return view.capVisible(f * frame.dx + r * frame.ux + u * frame.vx, f * frame.dy + r * frame.uy + u * frame.vy,
+				f * frame.dz + r * frame.uz + u * frame.vz, WEDGE_RADIUS[j]);
+	}
+
 	/** Angular radius (radians) round the sun that holds the corona, flare and rays: the outermost ring, a little wide. */
 	private static final float CORONA_REACH = (float) Math.atan(RINGS[RINGS.length - 1] * Math.tan(SUN_RADIUS * DEG)) + 0.02f;
 	/** The black disc, with a little to spare. */
@@ -102,6 +150,7 @@ final class EclipseSky {
 	private static final float BAND_REACH = (BAND_HALF + 360f / BAND_SEGMENTS) * DEG * 1.05f;
 
 	private final SkyFrame frame = new SkyFrame();
+	private final boolean[] wedgeShown = new boolean[SEGMENTS];
 	private final boolean[] bandShown = new boolean[BAND_SEGMENTS];
 	private final float[] axisA = new float[3], axisB = new float[3], pole = new float[3];
 
@@ -205,10 +254,16 @@ final class EclipseSky {
 		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
 		// A slow, slight breathing so the corona feels alive
 		float alpha = level * (0.94f + 0.06f * (float) Math.sin(time * 0.8f));
+		for (int j = 0; j < SEGMENTS; j++) {
+			wedgeShown[j] = wedgeVisible(j, view);
+		}
 		for (int i = 0; i + 1 < RINGS.length; i++) {
 			float a0 = RINGS[i] * tanR, a1 = RINGS[i + 1] * tanR;
 			int row0 = i * (SEGMENTS + 1), row1 = row0 + SEGMENTS + 1;
 			for (int j = 0; j < SEGMENTS; j++) {
+				if (!wedgeShown[j]) {
+					continue;
+				}
 				c.at(frame, a0 * RING_COS[j], a0 * RING_SIN[j], r, SkyColors.argb(CORONA_GRID[row0 + j], alpha));
 				c.at(frame, a0 * RING_COS[j + 1], a0 * RING_SIN[j + 1], r, SkyColors.argb(CORONA_GRID[row0 + j + 1], alpha));
 				c.at(frame, a1 * RING_COS[j + 1], a1 * RING_SIN[j + 1], r, SkyColors.argb(CORONA_GRID[row1 + j + 1], alpha));

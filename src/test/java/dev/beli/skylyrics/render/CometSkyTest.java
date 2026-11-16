@@ -55,4 +55,13 @@ class CometSkyTest {
 		assertEquals(r[0], r[1]);
 		assertEquals(r[0], r[2]);
 	}
+
+	@Test
+	void streamersAreDueAfterAThirtiethOfASecondOrAJump() {
+		org.junit.jupiter.api.Assertions.assertTrue(CometSky.streamersDue(Float.NaN, 5));
+		org.junit.jupiter.api.Assertions.assertFalse(CometSky.streamersDue(5, 5.02f));
+		org.junit.jupiter.api.Assertions.assertTrue(CometSky.streamersDue(5, 5.04f));
+		org.junit.jupiter.api.Assertions.assertTrue(CometSky.streamersDue(5, 4));
+		org.junit.jupiter.api.Assertions.assertTrue(CometSky.streamersDue(5, 500));
+	}
 }

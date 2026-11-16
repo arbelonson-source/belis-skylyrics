@@ -20,6 +20,12 @@ final class SkyMesh {
 	/** For round patches: the unit direction of the middle and the angular radius (radians) that holds every point. */
 	/** Scratch for one draw (the render thread only): which columns are in view. */
 	private boolean[] columnShown;
+	/** For polar meshes: a round patch (unit direction, angular radius in radians) holding each segment, so one can be skipped alone. */
+	private float[] wedgeX, wedgeY, wedgeZ, wedgeRadius;
+	/** Scratch for one draw: each corner after turning, and which rows have been turned yet. */
+	private final float[] outX, outY, outZ;
+	private final int[] outArgb;
+	private final boolean[] turned;
 	private float capX, capY, capZ, capRadius = -1;
 
 	SkyMesh(int rows, int cols) {
@@ -29,6 +35,11 @@ final class SkyMesh {
 		y = new float[rows * cols];
 		z = new float[rows * cols];
 		rgb = new int[rows * cols];
+		outX = new float[rows * cols];
+		outY = new float[rows * cols];
+		outZ = new float[rows * cols];
+		outArgb = new int[rows * cols];
+		turned = new boolean[rows];
 	}
 
 	void set(int i, int j, float px, float py, float pz, int color) {
@@ -46,6 +57,13 @@ final class SkyMesh {
 		}
 	}
 
+	/** Works out the colour of rows {@code from} up to (not including) {@code to} again. */
+	void repaintRows(Paint paint, int from, int to) {
+		for (int k = from * cols; k < to * cols; k++) {
+			rgb[k] = paint.at(x[k], y[k], z[k]);
+		}
+	}
+
 	/** Turned by the yaw (given as cosine and sine) and pushed out to {@code r}. */
 	void draw(SkyCanvas c, float cos, float sin, float r, float level) {
 		draw(c, cos, sin, r, level, SkyView.ALL);
@@ -59,32 +77,88 @@ final class SkyMesh {
 		if (capRadius >= 0 && !view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius)) {
 			return;
 		}
-		boolean[] column = null;
-		if (columnYaw != null) {
-			float turn = (float) Math.toDegrees(Math.atan2(sin, cos));
-			column = columnShown;
-			for (int j = 0; j + 1 < cols; j++) {
-				column[j] = view.yawVisible(columnYaw[j] + turn, columnYaw[j + 1] + turn);
-			}
-		}
+		boolean[] column = columnsInView(cos, sin, view);
+		// What every corner shares is worked out once; each corner is then turned once, however many quads use it
+		int alpha = SkyColors.argb(0, level);
+		java.util.Arrays.fill(turned, false);
 		for (int i = 0; i + 1 < rows; i++) {
 			if (rowHeight != null && !view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]))) {
 				continue;
 			}
+			turnRow(i, column, cos, sin, r, alpha);
+			turnRow(i + 1, column, cos, sin, r, alpha);
 			for (int j = 0; j + 1 < cols; j++) {
 				if (column != null && !column[j]) {
 					continue;
 				}
-				corner(c, i * cols + j, cos, sin, r, level);
-				corner(c, i * cols + j + 1, cos, sin, r, level);
-				corner(c, (i + 1) * cols + j + 1, cos, sin, r, level);
-				corner(c, (i + 1) * cols + j, cos, sin, r, level);
+				int k = i * cols + j;
+				emit(c, k);
+				emit(c, k + 1);
+				emit(c, k + cols + 1);
+				emit(c, k + cols);
 			}
 		}
 	}
 
-	private void corner(SkyCanvas c, int k, float cos, float sin, float r, float level) {
-		c.vertex((x[k] * cos - z[k] * sin) * r, y[k] * r, (z[k] * cos + x[k] * sin) * r, SkyColors.argb(rgb[k], level));
+	/** Which columns (domes) or segments (polar meshes) can be on screen; null when every one is drawn. */
+	private boolean[] columnsInView(float cos, float sin, SkyView view) {
+		if (columnYaw != null) {
+			float turn = (float) Math.toDegrees(Math.atan2(sin, cos));
+			for (int j = 0; j + 1 < cols; j++) {
+				columnShown[j] = view.yawVisible(columnYaw[j] + turn, columnYaw[j + 1] + turn);
+			}
+			return columnShown;
+		}
+		if (wedgeRadius != null) {
+			for (int j = 0; j + 1 < cols; j++) {
+				columnShown[j] = view.capVisibleTurned(wedgeX[j], wedgeY[j], wedgeZ[j], cos, sin, wedgeRadius[j]);
+			}
+			return columnShown;
+		}
+		return null;
+	}
+
+	/** Whether {@link #draw} would hand on any quad for this view (the same tests, nothing drawn). */
+	boolean anyVisible(float cos, float sin, SkyView view) {
+		if (capRadius >= 0 && !view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius)) {
+			return false;
+		}
+		boolean[] column = columnsInView(cos, sin, view);
+		boolean anyColumn = column == null;
+		for (int j = 0; column != null && j + 1 < cols; j++) {
+			anyColumn |= column[j];
+		}
+		if (!anyColumn) {
+			return false;
+		}
+		for (int i = 0; i + 1 < rows; i++) {
+			if (rowHeight == null || view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Turns and pushes out the corners of one row that a drawn quad uses, once per draw. */
+	private void turnRow(int i, boolean[] column, float cos, float sin, float r, int alpha) {
+		if (turned[i]) {
+			return;
+		}
+		turned[i] = true;
+		for (int j = 0; j < cols; j++) {
+			if (column != null && !(j + 1 < cols && column[j]) && !(j > 0 && column[j - 1])) {
+				continue;
+			}
+			int k = i * cols + j;
+			outX[k] = (x[k] * cos - z[k] * sin) * r;
+			outY[k] = y[k] * r;
+			outZ[k] = (z[k] * cos + x[k] * sin) * r;
+			outArgb[k] = alpha | rgb[k] & 0xFFFFFF;
+		}
+	}
+
+	private void emit(SkyCanvas c, int k) {
+		c.vertex(outX[k], outY[k], outZ[k], outArgb[k]);
 	}
 
 	/** Marks this as a dome (rows of height in degrees, {@code columns} equal steps of yaw round) so the draw can skip what's out of view. */
@@ -125,7 +199,46 @@ final class SkyMesh {
 			}
 		}
 		mesh.capAround(f);
+		mesh.wedges();
 		return mesh;
+	}
+
+	/** Remembers, for each segment of a polar mesh, a round patch that holds all of its corners (and so every quad between them). */
+	private void wedges() {
+		int n = cols - 1;
+		wedgeX = new float[n];
+		wedgeY = new float[n];
+		wedgeZ = new float[n];
+		wedgeRadius = new float[n];
+		columnShown = new boolean[n];
+		for (int j = 0; j < n; j++) {
+			float sx = 0, sy = 0, sz = 0;
+			for (int i = 0; i < rows; i++) {
+				for (int k = i * cols + j; k <= i * cols + j + 1; k++) {
+					sx += x[k];
+					sy += y[k];
+					sz += z[k];
+				}
+			}
+			float l = (float) Math.sqrt(sx * sx + sy * sy + sz * sz);
+			float least = 1;
+			if (l > 1e-3f) {
+				sx /= l;
+				sy /= l;
+				sz /= l;
+				for (int i = 0; i < rows; i++) {
+					for (int k = i * cols + j; k <= i * cols + j + 1; k++) {
+						least = Math.min(least, sx * x[k] + sy * y[k] + sz * z[k]);
+					}
+				}
+			}
+			wedgeX[j] = sx;
+			wedgeY[j] = sy;
+			wedgeZ[j] = sz;
+			// A flat quad between corners stays inside a patch smaller than a half sphere; a wider one is never skipped
+			float radius = l > 1e-3f ? (float) Math.acos(Math.max(-1, least)) + 0.005f : (float) Math.PI;
+			wedgeRadius[j] = radius < 1.5f ? radius : (float) Math.PI;
+		}
 	}
 
 	/** Remembers the round patch round the middle of {@code f} that holds every point, so it can be skipped whole. */
