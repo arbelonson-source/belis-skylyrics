@@ -787,12 +787,17 @@ public final class SkyLyricsConfig {
 	}
 
 	/** What a queued save needs: where to write, the settings as they were, and the file state they were changed from. */
-	private record Pending(Path file, JsonObject snapshot, JsonObject base) {}
+	private record Pending(Path file, JsonObject snapshot, JsonObject base, long baseGen) {}
 
 	/** The queue between the game thread and the writer; one field so the settings class keeps a single piece of such state. */
 	private static final class Queue {
 		Pending pending;
 		boolean draining;
+		/** Numbers every base (load, adopt, each write), so the newest is known whichever thread saw it. */
+		final java.util.concurrent.atomic.AtomicLong gens = new java.util.concurrent.atomic.AtomicLong();
+		/** The snapshot of this game's last successful write and its number; only the writer (under the config's lock) touches them. */
+		JsonObject lastSnapshot;
+		long lastGen;
 	}
 
 	final transient Queue queue = new Queue();
@@ -812,7 +817,7 @@ public final class SkyLyricsConfig {
 	};
 
 	void saveLater(Path file) {
-		Pending now = new Pending(file, GSON.toJsonTree(this).getAsJsonObject(), baseTree);
+		Pending now = new Pending(file, GSON.toJsonTree(this).getAsJsonObject(), baseTree, baseGen);
 		boolean start;
 		synchronized (queue) {
 			queue.pending = now;
@@ -845,7 +850,7 @@ public final class SkyLyricsConfig {
 				}
 			}
 			try {
-				write(next.file(), next.snapshot(), next.base(), task -> mainThread.accept(task));
+				write(next.file(), next.snapshot(), next.base(), next.baseGen(), task -> mainThread.accept(task));
 			} catch (RuntimeException e) {
 				LOG.warn("Couldn't save settings: {}", e.toString());
 			}
@@ -874,14 +879,14 @@ public final class SkyLyricsConfig {
 
 	/** Saves now, on this thread (tests, and anything that must be on disk before it goes on). */
 	void save(Path file) {
-		write(file, GSON.toJsonTree(this).getAsJsonObject(), baseTree, Runnable::run);
+		write(file, GSON.toJsonTree(this).getAsJsonObject(), baseTree, baseGen, Runnable::run);
 	}
 
 	/**
 	 * Reads, merges and writes the file for a snapshot. {@code applier} runs what changes the live settings (on the game's
 	 * main thread when saving later): the other game's changes come in only for fields still equal to the snapshot.
 	 */
-	private void write(Path file, JsonObject mine, JsonObject base, java.util.function.Consumer<Runnable> applier) {
+	private void write(Path file, JsonObject mine, JsonObject base, long baseGen, java.util.function.Consumer<Runnable> applier) {
 		synchronized (this) {
 			if (saveBlocked && !reread(file, mine, applier)) {
 				return; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
@@ -889,7 +894,10 @@ public final class SkyLyricsConfig {
 			Path tmp = null;
 			try {
 				Files.createDirectories(file.getParent());
-				JsonObject out = mergeWithDisk(file, mine, base);
+				// A write of this game's own that the client thread hasn't taken over yet is newer than the snapshot's base: what the
+				// player changed since is measured against that write's snapshot, else a change made and undone is lost to the file.
+				JsonObject from = queue.lastSnapshot != null && queue.lastGen > baseGen ? queue.lastSnapshot : base;
+				JsonObject out = mergeWithDisk(file, mine, from);
 				String text = GSON.toJson(out == null ? mine : out);
 				tmp = Files.createTempFile(file.getParent(), file.getFileName() + ".", ".tmp");
 				Files.writeString(tmp, text, StandardCharsets.UTF_8);
@@ -898,13 +906,15 @@ public final class SkyLyricsConfig {
 				Parsed parsed = parse(text); // once, for the base and for what this game takes over
 				JsonObject tree = GSON.toJsonTree(parsed.config()).getAsJsonObject();
 				boolean merged = out != null;
+				long gen = queue.gens.incrementAndGet();
+				queue.lastSnapshot = mine;
+				queue.lastGen = gen;
 				// The base moves with the apply, on the same thread as the snapshots, so a snapshot and its base always agree.
 				applier.accept(() -> {
 					if (merged) {
 						copyFrom(parsed.config(), mine); // this game now also sees the other game's changes
 					}
-					baseText = text;
-					baseTree = tree;
+					setBase(text, tree, gen);
 				});
 			} catch (IOException e) {
 				LOG.warn("Couldn't save settings: {}", e.toString());
@@ -922,10 +932,19 @@ public final class SkyLyricsConfig {
 	/** The exact text this game last read from or wrote to the settings file, and its settings as a normalised JSON tree. */
 	transient volatile String baseText;
 	transient volatile JsonObject baseTree;
+	transient volatile long baseGen;
+
+	/** Moves the base forward; an older one (a slow apply arriving late) never replaces a newer. */
+	private void setBase(String text, JsonObject tree, long gen) {
+		if (gen > baseGen) {
+			baseText = text;
+			baseTree = tree;
+			baseGen = gen;
+		}
+	}
 
 	private void remember(String text) {
-		baseText = text;
-		baseTree = GSON.toJsonTree(parse(text).config()).getAsJsonObject();
+		setBase(text, GSON.toJsonTree(parse(text).config()).getAsJsonObject(), queue.gens.incrementAndGet());
 	}
 
 	/**
@@ -1018,10 +1037,10 @@ public final class SkyLyricsConfig {
 			keepCopy(file);
 		}
 		JsonObject tree = GSON.toJsonTree(parsed.config()).getAsJsonObject();
+		long gen = queue.gens.incrementAndGet();
 		applier.accept(() -> {
 			copyFrom(parsed.config(), snapshot);
-			baseText = text;
-			baseTree = tree;
+			setBase(text, tree, gen);
 		});
 		saveBlocked = false;
 		LOG.info("The settings file could be read again and was loaded.");
