@@ -136,4 +136,22 @@ class TwoGamesConfigTest {
 		assertEquals(0.2f, open(file).glow, 1e-6f, "the other game's change is still kept");
 		assertEquals(123, open(file).syncOffsetMs);
 	}
+
+	@Test
+	void oldTempFilesOfOurNameAreRemovedAtLoad() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		java.nio.file.attribute.FileTime old = java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 2 * 24L * 3600 * 1000);
+		Path stale = Files.writeString(dir.resolve("skylyrics.json.8812345.tmp"), "x");
+		Path fresh = Files.writeString(dir.resolve("skylyrics.json.555.tmp"), "y");
+		Path odd = Files.writeString(dir.resolve("skylyrics.json.bad.tmp"), "z");
+		Path unrelated = Files.writeString(dir.resolve("other.json.99.tmp"), "w");
+		for (Path p : java.util.List.of(stale, odd, unrelated)) {
+			Files.setLastModifiedTime(p, old);
+		}
+		open(file);
+		assertFalse(Files.exists(stale));
+		assertTrue(Files.exists(fresh), "another game may be saving it");
+		assertTrue(Files.exists(odd));
+		assertTrue(Files.exists(unrelated));
+	}
 }

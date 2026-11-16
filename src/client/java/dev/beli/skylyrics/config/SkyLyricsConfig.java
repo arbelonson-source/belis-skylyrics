@@ -461,6 +461,9 @@ public final class SkyLyricsConfig {
 	}
 
 	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader, int tries, long pauseMs) {
+		if (file.getParent() != null) {
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.getParent(), file.getFileName().toString(), System.currentTimeMillis());
+		}
 		if (!Files.isRegularFile(file)) {
 			return new SkyLyricsConfig();
 		}

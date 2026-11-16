@@ -604,6 +604,9 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	private void load() {
+		if (loginFile.getParent() != null) {
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(loginFile.getParent(), loginFile.getFileName().toString(), System.currentTimeMillis());
+		}
 		try {
 			if (Files.exists(loginFile)) {
 				JsonObject json = object(Files.readString(loginFile, StandardCharsets.UTF_8));
