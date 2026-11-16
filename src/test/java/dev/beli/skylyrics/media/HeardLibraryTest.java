@@ -357,6 +357,115 @@ class HeardLibraryTest {
 	}
 
 	@Test
+	void twoGamesOnOneFileKeepEachOthersSongs() {
+		HeardLibrary a = library();
+		HeardLibrary b = library();
+		a.record(song("X", "Me"));
+		b.record(song("Y", "Me"));
+		a.flush();
+		b.flush();
+		a.record(song("X2", "Me"));
+		a.flush();
+		b.record(song("Y2", "Me"));
+		b.flush();
+		List<String> saved = HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList();
+		assertEquals(java.util.Set.of("X", "Y", "X2", "Y2"), new java.util.HashSet<>(saved));
+		assertEquals(4, saved.size());
+		assertEquals("Y2", saved.get(0));
+	}
+
+	@Test
+	void aSongTheOtherGameAddedComesAfterOursAndTheFilesOrderHolds() {
+		HeardLibrary a = library();
+		HeardLibrary b = library();
+		b.record(song("P", "Me"));
+		b.record(song("Q", "Me"));
+		b.flush();
+		a.record(song("X", "Me"));
+		a.flush();
+		assertEquals(List.of("X", "Q", "P"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+		assertEquals(List.of("X", "Q", "P"), titles(a));
+	}
+
+	@Test
+	void clearStaysEffectiveWhileTheFileStillListsTheSongs() {
+		HeardLibrary b = library();
+		b.record(song("X", "Me"));
+		b.flush();
+		HeardLibrary a = library(); // read x at start
+		a.clear();
+		a.flush();
+		assertTrue(HeardLibrary.read(file()).isEmpty());
+		assertTrue(titles(a).isEmpty());
+	}
+
+	@Test
+	void clearedSongsDoNotComeBackFromTheFileButTheOtherGamesNewOnesDo() throws IOException {
+		HeardLibrary a = library();
+		a.record(song("X", "Me"));
+		a.record(song("W", "Me"));
+		a.flush();
+		// Another game wrote the file: still x and w, plus its own new n
+		HeardLibrary.write(file(), List.of(new HeardLibrary.Entry("X", "Me", "Album", 1, "", "u", "mpv"),
+				new HeardLibrary.Entry("N", "Me", "Album", 1, "", "u", "mpv"),
+				new HeardLibrary.Entry("W", "Me", "Album", 1, "", "u", "mpv")));
+		a.clear();
+		a.flush();
+		assertEquals(List.of("N"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+	}
+
+	@Test
+	void aFailedWriteDoesNotLetClearedSongsComeBackOnTheNextSave() {
+		HeardLibrary b = library();
+		b.record(song("X", "Me"));
+		b.record(song("W", "Me"));
+		b.flush();
+		boolean[] failing = {false};
+		HeardLibrary a = make2(failing);
+		failing[0] = true;
+		a.clear();
+		a.flush(); // this save's write fails: the file still lists x and w
+		assertEquals(2, HeardLibrary.read(file()).size());
+		failing[0] = false;
+		a.record(song("N", "Me"));
+		a.flush();
+		assertEquals(List.of("N"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+		assertEquals(List.of("N"), titles(a));
+	}
+
+	private HeardLibrary make2(boolean[] failing) {
+		HeardLibrary lib = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, dev.beli.skylyrics.util.SafeFile::readText,
+				(from, to, opts) -> {
+					if (failing[0]) throw new IOException("locked");
+					Files.move(from, to, opts);
+				});
+		made.add(lib);
+		return lib;
+	}
+
+	@Test
+	void aDamagedFileAtSaveTimeDoesNotLoseOurList() throws IOException {
+		HeardLibrary a = library();
+		a.record(song("X", "Me"));
+		a.flush();
+		Files.writeString(file(), "{\"songs\": [");
+		a.record(song("Y", "Me"));
+		a.flush();
+		assertEquals(List.of("Y", "X"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+	}
+
+	@Test
+	void aMissingFileAtSaveTimeIsWrittenAgain() throws IOException {
+		HeardLibrary a = library();
+		a.record(song("X", "Me"));
+		a.flush();
+		Files.delete(file());
+		a.record(song("Y", "Me"));
+		a.flush();
+		assertEquals(List.of("Y", "X"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+	}
+
+	@Test
 	void aFileNobodyCanReadIsMovedAsideButALockedOneIsNot() throws IOException {
 		Files.writeString(file(), "{\"songs\": []}");
 		HeardLibrary.Loaded locked = HeardLibrary.load(file(), f -> {

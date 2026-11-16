@@ -102,9 +102,14 @@ public final class HeardLibrary implements Library {
 		return t;
 	});
 
-	/** True when the file exists but couldn't be read at start: nothing is written over it this session. */
-	private volatile boolean readFailed;
+	/**
+	 * The keys of the list as last read from or written to the file. A song in the file that is in neither this nor our
+	 * list is new from another game on the same folder; one that is in this but no longer in our list we removed. Only the
+	 * writer thread touches it after the constructor.
+	 */
+	private final java.util.Set<String> baseline = new java.util.HashSet<>();
 	private final SafeFile.Reader reader;
+	private final SafeFile.Mover mover;
 	private volatile boolean blockedLogged;
 
 	public HeardLibrary(Path file, BooleanSupplier enabled, Opener opener) {
@@ -112,13 +117,20 @@ public final class HeardLibrary implements Library {
 	}
 
 	HeardLibrary(Path file, BooleanSupplier enabled, Opener opener, SafeFile.Reader reader) {
+		this(file, enabled, opener, reader, Files::move);
+	}
+
+	HeardLibrary(Path file, BooleanSupplier enabled, Opener opener, SafeFile.Reader reader, SafeFile.Mover mover) {
+		this.mover = mover;
 		this.file = file;
 		this.enabled = enabled;
 		this.opener = opener;
 		this.reader = reader;
 		Loaded loaded = load(file, reader, SafeFile.READ_TRIES, SafeFile.READ_PAUSE_MS);
 		songs.addAll(loaded.songs());
-		this.readFailed = loaded.failed();
+		for (Entry e : loaded.songs()) {
+			baseline.add(e.key());
+		}
 	}
 
 	public boolean enabled() {
@@ -202,8 +214,10 @@ public final class HeardLibrary implements Library {
 	// ---- file ----
 
 	/**
-	 * Looks once more at a file that couldn't be read at start. When it reads now, its songs are merged with the ones
-	 * recorded since (newest first, no repeats, up to the cap) and writing is fine again. False while it is still unreadable.
+	 * Reads the file again and adds the songs another game (or a file that couldn't be read at start) put there since we
+	 * last read or wrote it: those whose key is neither in our list nor in the baseline. They go after ours (the file holds
+	 * no heard times), in the file's order, up to the cap. Songs we removed are in the baseline, so they stay gone.
+	 * False when the file can't be read right now: writing then would replace what we couldn't see. Writer thread only.
 	 */
 	private boolean mergeFile() {
 		List<Entry> old = new ArrayList<>();
@@ -217,7 +231,7 @@ public final class HeardLibrary implements Library {
 		} catch (IOException e) {
 			if (!blockedLogged) {
 				blockedLogged = true;
-				LOG.warn("Recently heard songs not saved: {} still can't be read ({})", file, e.toString());
+				LOG.warn("Recently heard songs not saved: {} can't be read right now ({})", file, e.toString());
 			}
 			return false;
 		} catch (RuntimeException e) {
@@ -230,7 +244,7 @@ public final class HeardLibrary implements Library {
 				seen.add(e.key());
 			}
 			for (Entry e : old) {
-				if (seen.add(e.key())) {
+				if (!baseline.contains(e.key()) && seen.add(e.key())) {
 					songs.add(e);
 				}
 			}
@@ -238,28 +252,39 @@ public final class HeardLibrary implements Library {
 				songs.removeLast();
 			}
 		}
-		readFailed = false;
 		return true;
 	}
 
+	/** Asks for the list to be written. The re-read and merge happen on the writer thread, never on the caller's. */
 	private void save() {
-		if (readFailed && !mergeFile()) {
-			return; // the file couldn't be read at start and still can't: writing now would replace the old history
-		}
-		List<Entry> copy = snapshot();
 		try {
-			writer.execute(() -> write(file, copy));
+			writer.execute(this::merged);
 		} catch (RuntimeException e) {
 			// Shutting down
 		}
 	}
 
-	/** Writes a temporary file and moves it over the real one, so a crash never leaves half a file. */
-	static void write(Path file, List<Entry> entries) {
-		write(file, entries, Files::move);
+	private void merged() {
+		if (!mergeFile()) {
+			return;
+		}
+		List<Entry> copy = snapshot();
+		if (!write(file, copy, mover)) {
+			return; // the file kept its old songs, so the baseline must too: what we removed stays removed on the next save
+		}
+		baseline.clear();
+		for (Entry e : copy) {
+			baseline.add(e.key());
+		}
 	}
 
-	static void write(Path file, List<Entry> entries, SafeFile.Mover mover) {
+	/** Writes a temporary file and moves it over the real one, so a crash never leaves half a file. */
+	static boolean write(Path file, List<Entry> entries) {
+		return write(file, entries, Files::move);
+	}
+
+	/** False when it couldn't be written (after SafeFile's retries); the file is then as it was. */
+	static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover) {
 		try {
 			Path dir = file.toAbsolutePath().getParent();
 			Files.createDirectories(dir);
@@ -270,8 +295,10 @@ public final class HeardLibrary implements Library {
 			} finally {
 				Files.deleteIfExists(tmp);
 			}
+			return true;
 		} catch (IOException e) {
 			LOG.warn("Couldn't save the recently heard songs: {}", e.toString());
+			return false;
 		}
 	}
 

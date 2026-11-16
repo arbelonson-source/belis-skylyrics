@@ -177,4 +177,94 @@ class CoverCacheTest {
 			assertEquals(0, files.count());
 		}
 	}
+
+	@Test
+	void anErrorFromTheDecoderDoesNotKillTheWorkers(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		java.util.concurrent.CountDownLatch next = new java.util.concurrent.CountDownLatch(1);
+		// More failing covers than there are worker threads, then one more
+		CoverCache cache = new CoverCache(dir, url -> {
+			if (url.endsWith("/last")) {
+				next.countDown();
+				return null;
+			}
+			reads.incrementAndGet();
+			throw new NoClassDefFoundError("decoder");
+		});
+		try {
+			for (int i = 0; i < 6; i++) {
+				cache.get("https://example.test/bad" + i);
+			}
+			long end = System.nanoTime() + 5_000_000_000L;
+			while (reads.get() < 6 && System.nanoTime() < end) {
+				Thread.sleep(10);
+			}
+			assertEquals(6, reads.get());
+			cache.get("https://example.test/last");
+			assertTrue(next.await(5, java.util.concurrent.TimeUnit.SECONDS), "the workers are still running");
+		} finally {
+			cache.close();
+		}
+	}
+
+	@Test
+	void aCoverThatNeverLoadsIsGivenUpAfterThreeTries(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		CoverCache cache = new CoverCache(dir, url -> {
+			reads.incrementAndGet();
+			return null;
+		});
+		try {
+			String url = "https://example.test/gone";
+			long later = System.nanoTime();
+			long end = System.nanoTime() + 10_000_000_000L;
+			// The clock jumps past the retry gap on every call; the cover is requested again only until it has failed 3 times
+			while (reads.get() < 3 && System.nanoTime() < end) {
+				later += CoverCache.RETRY_NS * 2;
+				cache.get(url, later);
+				Thread.sleep(5);
+			}
+			assertEquals(3, reads.get());
+			for (int i = 0; i < 40; i++) {
+				later += CoverCache.RETRY_NS * 2;
+				assertNull(cache.get(url, later));
+				Thread.sleep(5);
+			}
+			assertEquals(3, reads.get());
+		} finally {
+			cache.close();
+		}
+	}
+
+	@Test
+	void networkTroubleIsRetriedForEverAndNeverCounted(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		CoverCache cache = new CoverCache(dir, url -> {
+			reads.incrementAndGet();
+			throw new java.net.ConnectException("offline");
+		});
+		try {
+			String url = "https://example.test/offline";
+			long later = System.nanoTime();
+			long end = System.nanoTime() + 10_000_000_000L;
+			while (reads.get() < 6 && System.nanoTime() < end) {
+				later += CoverCache.RETRY_NS * 2;
+				cache.get(url, later);
+				Thread.sleep(5);
+			}
+			assertTrue(reads.get() >= 6, "reads: " + reads.get());
+		} finally {
+			cache.close();
+		}
+	}
+
+	@Test
+	void onlyPermanentStatusesCountAgainstACover() {
+		assertTrue(CoverCache.countsAsFailure(404));
+		assertTrue(CoverCache.countsAsFailure(403));
+		assertFalse(CoverCache.countsAsFailure(503));
+		assertFalse(CoverCache.countsAsFailure(500));
+		assertFalse(CoverCache.countsAsFailure(429));
+		assertFalse(CoverCache.countsAsFailure(408));
+	}
 }

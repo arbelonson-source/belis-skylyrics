@@ -110,7 +110,7 @@ More answers: [FAQ](https://github.com/arbelonson-source/belis-skylyrics/blob/ma
 
 - Made by Beli.
 - Lyrics from [LRCLIB](https://lrclib.net) and [NetEase Cloud Music](https://music.163.com). The lyrics belong to their writers and are not part of this mod.
-- Fonts: Poppins, Kaushan Script and Noto Sans Hebrew, all under the SIL Open Font License.
+- Fonts: Poppins, Nunito, Kaushan Script, Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License.
 
 ### License
 

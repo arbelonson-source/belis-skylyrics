@@ -2,6 +2,8 @@ package dev.beli.skylyrics.update;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -185,5 +187,42 @@ class UpdaterChecksTest {
 		Updater.Notice notice = Updater.update(Updates.INSTALL, net, old, release, asset);
 		assertEquals(1, net.requests.size());
 		assertTrue(notice.downloaded());
+	}
+
+	private static final String LATEST_JSON = "{\"tag_name\":\"v0.2.0\",\"assets\":[{\"name\":\"" + NAME
+			+ "\",\"browser_download_url\":\"" + URL + "\"}]}";
+
+	@Test
+	void anInstalledJarKeepsTheOldJarsPermissions() throws Exception {
+		Assumptions.assumeTrue(dir.getFileSystem().supportedFileAttributeViews().contains("posix"), "needs file permissions");
+		byte[] data = jarBytes();
+		Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
+		Files.setPosixFilePermissions(old, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+		var asset = new UpdateCheck.Asset(NAME, URL, sha(data));
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		assertTrue(Updater.install(new Net(data), old, asset));
+		assertEquals("rw-r--r--", java.nio.file.attribute.PosixFilePermissions.toString(
+				Files.getPosixFilePermissions(dir.resolve(NAME))));
+	}
+
+	@Test
+	void withoutAPlainJarNotifyAndInstallBothTellAndInstallDownloadsNothing() throws Exception {
+		for (Updates mode : new Updates[] {Updates.NOTIFY, Updates.INSTALL}) {
+			Net net = new Net(jarBytes());
+			Updater.Notice n = Updater.look(mode, () -> LATEST_JSON, net, null, "0.1.0+1.21.11", "1.21.11", null, id -> null);
+			assertNotNull(n, mode.toString());
+			assertEquals("0.2.0", n.version());
+			assertFalse(n.downloaded());
+			assertEquals(0, net.requests.size());
+		}
+	}
+
+	@Test
+	void offAsksForNothing() throws Exception {
+		Net net = new Net(jarBytes());
+		assertNull(Updater.look(Updates.OFF, () -> {
+			throw new AssertionError("no request when off");
+		}, net, null, "0.1.0+1.21.11", "1.21.11", null, id -> null));
+		assertEquals(0, net.requests.size());
 	}
 }
