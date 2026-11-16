@@ -568,7 +568,9 @@ class LyricsServiceTest {
 		assertEquals(LyricsService.State.READY, service.state());
 		assertFalse(service.lyrics().isEmpty());
 		assertEquals(withCover, service.track());
-		assertEquals(before, asked.size());
+		Thread.sleep(300); // a lookup queued on the worker would show up by now
+		assertEquals(LyricsService.State.READY, service.state());
+		assertEquals(before, asked.size(), asked.toString());
 	}
 
 	@Test

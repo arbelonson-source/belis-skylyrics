@@ -96,10 +96,14 @@ class SafeFileTest {
 
 	@Test
 	void totalPausesStayShortForTheGameThread() {
+		// the schedule is 25, 50, 100, 200, 400 ms between six tries; written out here so changing it has to change this too
+		assertEquals(6, SafeFile.TRIES);
+		assertEquals(25, SafeFile.PAUSE_MS);
 		long total = 0;
 		for (int i = 0; i < SafeFile.TRIES - 1; i++) {
 			total += SafeFile.PAUSE_MS << i;
 		}
+		assertEquals(775, total);
 		assertTrue(total <= 1000, "total pause " + total);
 		assertTrue(total >= 500, "long enough for an antivirus scan: " + total);
 	}

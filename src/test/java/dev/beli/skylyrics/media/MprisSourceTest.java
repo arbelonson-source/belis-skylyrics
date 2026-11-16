@@ -230,7 +230,12 @@ class MprisSourceTest {
 				source.poll();
 			}
 			visible.set(true);
-			assertEquals("Good Song", source.poll().track().title());
+			long giveUp = System.nanoTime() + 20_000L * 1_000_000L;
+			Snapshot seen;
+			do { // the fresh reader may take longer than ANSWER_WAIT_MS to answer
+				seen = source.poll();
+			} while (seen.track().isNone() && System.nanoTime() < giveUp);
+			assertEquals("Good Song", seen.track().title());
 			visible.set(false);
 			// the count starts over once a player has been seen
 			for (int i = 0; i < MprisSource.HIDDEN_POLLS - 1; i++) {
