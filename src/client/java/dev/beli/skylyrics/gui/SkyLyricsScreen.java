@@ -85,6 +85,11 @@ public final class SkyLyricsScreen extends Screen {
 		return layout != Layout.WORLD;
 	}
 
+	/** Whether any sky effect is on, so the sky settings (Strength and the rest) show. */
+	static boolean anySkyEffect(SkyLyricsConfig cfg) {
+		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
+	}
+
 	private static final String LRCLIB = "https://lrclib.net";
 
 	private static final int TAB_COUNT = 5;
@@ -436,7 +441,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		Row night = new Cycle(Tr.t("Night sky"), Tr.t("Shows at night with music"), skyNames(),
 				() -> cfg.sky.ordinal(), i -> cfg.sky = SkyEffect.values()[i]);
-		BooleanSupplier anySky = () -> cfg.sky != SkyEffect.OFF || cfg.shootingStars || cfg.twinkle;
+		BooleanSupplier anySky = () -> anySkyEffect(cfg);
 		Row shootingStars = new Toggle(Tr.t("Shooting stars"), Tr.t("Now and then, more when the lyrics are busy"),
 				() -> cfg.shootingStars, v -> cfg.shootingStars = v);
 		Row twinkle = new Toggle(Tr.t("Twinkling stars"), Tr.t("Soft sparkles around the lyrics"),
