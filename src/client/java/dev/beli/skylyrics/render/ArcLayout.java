@@ -307,6 +307,28 @@ final class ArcLayout {
 	/** Like {@link #place(float[], int[], float, long, boolean)}; {@code tight[i]}: no space between word i and i+1. */
 	static List<Group> place(float[] widths, int[] rowStarts, float space, long seed, boolean rtl,
 			boolean @Nullable [] tight) {
+		return place(widths, rowStarts, space, seed, tight, straight(widths.length, rtl));
+	}
+
+	/** Where each of {@code n} words is seen from the left in a line that is plainly left to right, or plainly right to left. */
+	static int[] straight(int n, boolean rtl) {
+		int[] rank = new int[n];
+		for (int i = 0; i < n; i++) {
+			rank[i] = rtl ? n - 1 - i : i;
+		}
+		return rank;
+	}
+
+	/**
+	 * Places every group, the words in the order they are seen: {@code rank[i]} is how many words of the line stand left
+	 * of word i on screen (see {@link TopBarWords#visualRanks}), so a Hebrew line with an English phrase in it keeps the
+	 * phrase reading left to right. A group is cut short where the next word is not right beside the last one on
+	 * screen, so each group stays one piece; inside a group and between the groups of a row the words go left to
+	 * right by rank. A line that is plainly one direction comes out as before: the groups run from the right (or
+	 * left) in the order they are sung.
+	 */
+	static List<Group> place(float[] widths, int[] rowStarts, float space, long seed, boolean @Nullable [] tight,
+			int[] rank) {
 		int n = widths.length;
 		List<Group> out = new ArrayList<>();
 		int rows = rowStarts.length;
@@ -319,6 +341,15 @@ final class ArcLayout {
 			List<int[]> spans = new ArrayList<>();
 			for (int i = from; i < to; ) {
 				int end = Math.min(to, i + groupSize(seed, i));
+				int step = 0;
+				for (int k = i + 1; k < end; k++) {
+					int d = rank[k] - rank[k - 1];
+					if (Math.abs(d) != 1 || step != 0 && d != step) {
+						end = k;
+						break;
+					}
+					step = d;
+				}
 				spans.add(new int[] {i, end});
 				i = end;
 			}
@@ -338,28 +369,39 @@ final class ArcLayout {
 				rowY += ROW_PITCH * Math.max(1, (above + biggest) / 2);
 			}
 			above = biggest;
+			// The groups' centres, left to right by where they are seen
+			Integer[] seen = new Integer[spans.size()];
+			for (int g = 0; g < seen.length; g++) {
+				seen[g] = g;
+			}
+			Arrays.sort(seen, (a, b) -> Integer.compare(leftmost(rank, spans.get(a)), leftmost(rank, spans.get(b))));
+			float[] centre = new float[spans.size()];
 			float x = -rowWidth / 2;
+			for (int g : seen) {
+				centre[g] = x + advance[g] / 2;
+				x += advance[g] + GAP;
+			}
 			// y = rowY - curve * x², rising by the row's rise at its ends
 			float half = Math.max(1, rowWidth / 2);
 			float curve = rise(rowWidth) / (half * half);
 			for (int g = 0; g < spans.size(); g++, groupNo++) {
 				int[] s = spans.get(g);
-				float cx = x + advance[g] / 2;
-				x += advance[g] + GAP;
-				if (rtl) {
-					cx = -cx;
-				}
+				float cx = centre[g];
 				float y = rowY - curve * cx * cx + (unit(seed, s[0], SALT_STEP) * 2 - 1) * STEP;
 				float tangent = (float) Math.toDegrees(Math.atan(-2 * curve * cx));
 				float own = (groupNo % 2 == 0 ? flip : -flip) * (ROLL_MIN + (ROLL_MAX - ROLL_MIN) * unit(seed, s[0], SALT_ROLL));
 				float angle = Math.clamp(FOLLOW * tangent + own, -ROLL_LIMIT, ROLL_LIMIT);
 				float inner = width(widths, tight, s[0], s[1], space);
 				float[] wordX = new float[s[1] - s[0]];
+				// Left to right on screen: ascending words, or descending when the group runs against the line
+				boolean back = s[1] - s[0] > 1 && rank[s[0]] > rank[s[0] + 1];
 				float wx = -inner / 2;
-				for (int i = s[0]; i < s[1]; i++) {
-					float c = wx + widths[i] / 2;
-					wordX[i - s[0]] = rtl ? -c : c;
-					wx += widths[i] + (tight != null && tight[i] ? 0 : space);
+				for (int k = 0; k < s[1] - s[0]; k++) {
+					int i = back ? s[1] - 1 - k : s[0] + k;
+					wordX[i - s[0]] = wx + widths[i] / 2;
+					// Between two neighbours the gap belongs to the earlier word of the pair, whichever is on the left
+					int pair = back ? i - 1 : i;
+					wx += widths[i] + (tight != null && pair >= s[0] && pair < s[1] - 1 && tight[pair] ? 0 : space);
 				}
 				out.add(new Group(s[0], s[1], cx, y, angle, scale[g], wordX));
 			}
@@ -373,5 +415,10 @@ final class ArcLayout {
 		float shift = (top + bottom) / 2;
 		out.replaceAll(g -> new Group(g.from(), g.to(), g.x(), g.y() - shift, g.angle(), g.scale(), g.wordX()));
 		return out;
+	}
+
+	/** How far left on screen the group {@code span} starts: its smallest word rank. */
+	private static int leftmost(int[] rank, int[] span) {
+		return Math.min(rank[span[0]], rank[span[1] - 1]);
 	}
 }

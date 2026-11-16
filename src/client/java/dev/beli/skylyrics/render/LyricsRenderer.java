@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.ToDoubleFunction;
 
+import com.ibm.icu.lang.UCharacter;
 import com.ibm.icu.text.ArabicShaping;
 import com.ibm.icu.text.ArabicShapingException;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -1231,6 +1232,12 @@ public final class LyricsRenderer {
 			return grow;
 		}
 
+		/** The text {@link #word} draws for a word, left to right: what its width is measured on. */
+		static String drawn(String word, boolean rtl) {
+			int[] cps = Display.of(word, rtl).cps();
+			return new String(cps, 0, cps.length);
+		}
+
 		/** Cuts a line into words and places them for the arc layout. */
 		ArcText arcText(int index, String text) {
 			ArcWords split = arcWords(text);
@@ -1240,16 +1247,19 @@ public final class LyricsRenderer {
 			float[] widths = new float[n];
 			boolean[] pause = new boolean[n];
 			int[] firstChar = new int[n];
+			boolean rtl = WorldWords.rightToLeft(text);
+			List<TopBarWords.Piece> pieces = new ArrayList<>(n);
 			for (int w = 0; w < n; w++) {
 				String word = words.get(w);
-				widths[w] = LyricsFont.width(font, base, word);
+				// Measured as drawn: the shaped, mirrored letters, which can be a different width than the word as written
+				widths[w] = LyricsFont.width(font, base, drawn(word, rtl));
 				pause[w] = endsWithPause(word);
 				firstChar[w] = split.first()[w];
+				pieces.add(new TopBarWords.Piece(word, w == 0 || split.tight() == null || !split.tight()[w - 1]));
 			}
-			boolean rtl = WorldWords.rightToLeft(text);
 			float space = LyricsFont.width(font, base, " ");
 			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause, split.tight()), space,
-					ArcLayout.seed(index, text), rtl, split.tight());
+					ArcLayout.seed(index, text), split.tight(), TopBarWords.visualRanks(pieces));
 			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups, rtl);
 		}
 
@@ -1785,18 +1795,9 @@ public final class LyricsRenderer {
 				&& Character.UnicodeBlock.of(cp) == Character.UnicodeBlock.ARABIC;
 		}
 
+		/** The character a mirrored one is drawn as in a right-to-left run: ( ) [ ] { } < > « » ‹ › ≤ ≥ and the rest of Unicode's list. */
 		private static int mirror(int cp) {
-			return switch (cp) {
-				case '(' -> ')';
-				case ')' -> '(';
-				case '[' -> ']';
-				case ']' -> '[';
-				case '{' -> '}';
-				case '}' -> '{';
-				case '<' -> '>';
-				case '>' -> '<';
-				default -> cp;
-			};
+			return UCharacter.getMirror(cp);
 		}
 	}
 

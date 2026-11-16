@@ -263,6 +263,10 @@ public final class MprisSource implements MediaSource {
 	/** Reads still running from an earlier poll (a stuck player); only touched on the media thread. */
 	private final Map<String, Future<Answered>> asked = new HashMap<>();
 	private final Map<String, Remembered> lastGood = new HashMap<>();
+	/** How many polls in a row the followed player has answered with nothing (a blip between songs). */
+	private int emptyPolls;
+	/** Polls (about a second each) the followed player may answer with nothing before another player takes over. */
+	static final int EMPTY_GRACE_POLLS = 2;
 
 	@Override
 	public Snapshot poll() throws Exception {
@@ -327,13 +331,21 @@ public final class MprisSource implements MediaSource {
 			}
 			if (answered) {
 				if (reading == null || reading.track.isNone()) {
-					lastGood.remove(name);
+					// The followed player, still on the bus, may blink between songs: for a couple of polls keep
+					// what it said last, so a muted browser tab doesn't take over and then keep the lyrics
+					if (!(name.equals(current) && lastGood.containsKey(name) && ++emptyPolls <= EMPTY_GRACE_POLLS)) {
+						lastGood.remove(name);
+						continue;
+					}
 				} else {
+					if (name.equals(current)) {
+						emptyPolls = 0;
+					}
 					lastGood.put(name, new Remembered(reading, askedAt));
 					readings.add(reading);
 					readAt.put(reading, askedAt);
+					continue;
 				}
-				continue;
 			}
 			// No answer this time: go on with what it said last, moved along by the time since
 			Remembered kept = lastGood.get(name);
@@ -353,8 +365,12 @@ public final class MprisSource implements MediaSource {
 				preferredPlayer.get(), current);
 		if (chosen == null) {
 			current = null;
+			emptyPolls = 0;
 			currentTrackId = null;
 			return Snapshot.NOTHING;
+		}
+		if (!chosen.busName.equals(current)) {
+			emptyPolls = 0;
 		}
 		current = chosen.busName;
 		currentTrackId = chosen.trackId;
