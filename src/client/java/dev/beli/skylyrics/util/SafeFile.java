@@ -114,7 +114,7 @@ public final class SafeFile {
 		Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
 	}
 
-	/** Whether one of the {@code .bad} copies already holds exactly these bytes (a copy that vanishes meanwhile doesn't count). */
+	/** Whether one of the {@code .bad} copies already holds exactly these bytes (a copy that vanishes or can't be read doesn't count). */
 	private static boolean hasCopy(Path file) throws IOException {
 		long size = Files.size(file);
 		for (int i = 0; i <= 9; i++) {
@@ -123,8 +123,8 @@ public final class SafeFile {
 				if (Files.size(p) == size && Files.mismatch(file, p) == -1) {
 					return true;
 				}
-			} catch (NoSuchFileException e) {
-				// no such copy (or gone since)
+			} catch (IOException e) {
+				// no such copy, gone since, or one that can't be read (locked, a folder): it isn't this one, look on
 			}
 		}
 		return false;

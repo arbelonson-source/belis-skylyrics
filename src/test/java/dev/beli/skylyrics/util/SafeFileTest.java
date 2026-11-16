@@ -15,6 +15,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.nio.file.attribute.PosixFilePermissions;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -151,5 +153,22 @@ class SafeFileTest {
 		Files.writeString(file, "{ 333");
 		SafeFile.keepBad(file);
 		assertEquals("{ 333", Files.readString(dir.resolve("a.json.bad.2")));
+	}
+
+	@Test
+	void keepBadStillKeepsACopyWhenAnEarlierCopyCantBeRead() throws IOException {
+		Assumptions.assumeTrue(dir.getFileSystem().supportedFileAttributeViews().contains("posix"), "needs file permissions");
+		Path file = dir.resolve("a.json");
+		Files.writeString(file, "{ same");
+		Path locked = dir.resolve("a.json.bad");
+		Files.writeString(locked, "{ size"); // same length, so its bytes would have to be compared
+		Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("---------"));
+		Assumptions.assumeFalse(Files.isReadable(locked), "running as a user who can read anything");
+		try {
+			SafeFile.keepBad(file);
+			assertEquals("{ same", Files.readString(dir.resolve("a.json.bad.1")));
+		} finally {
+			Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("rw-------"));
+		}
 	}
 }
