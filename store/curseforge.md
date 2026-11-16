@@ -75,7 +75,7 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 ## Requirements
 
 - Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3, with Fabric Loader 0.17.0 or newer
-- Fabric API
+- A recent Fabric API (each jar needs a minimum version; if Minecraft says to update it, do)
 - Java 21 or newer for Minecraft 1.21.x, Java 25 for 26.x (the Minecraft launcher already includes it)
 - Linux, or Windows 10 or 11, with a music player that shows up in your media controls; or macOS with the Spotify or Music app
 - Optional: Mod Menu, to open the settings from the mod list
@@ -83,7 +83,7 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 ## How to install
 
 1. Install Fabric for your Minecraft version. The CurseForge app or Prism Launcher can set this up when you make a new profile.
-2. Add **Fabric API** and **Beli's SkyLyrics** to the profile.
+2. Add a recent **Fabric API** and **Beli's SkyLyrics** to the profile.
 3. Start the game and play a song in Spotify, a browser tab or any other music app.
 4. Press **J** in game to open the settings.
 

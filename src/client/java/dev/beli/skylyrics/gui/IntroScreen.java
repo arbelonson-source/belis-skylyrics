@@ -99,7 +99,7 @@ public final class IntroScreen extends Screen {
 					x += w3 + 8;
 				}
 			}
-			case 3 -> add(cfg.demoMode ? Tr.t("Demo song: on") : Tr.t("Demo song: off"), px + 70 * pw / PANEL_W, Math.min(mid + 20, bottom - 24), pw - 140 * pw / PANEL_W, () -> {
+			case 3 -> add(cfg.demoMode ? Tr.t("Demo song: on") : Tr.t("Demo song: off"), px + 70 * pw / PANEL_W, Math.min(mid + 28, bottom - 24), pw - 140 * pw / PANEL_W, () -> {
 				cfg.demoMode = !cfg.demoMode;
 				SkyLyricsClient mod = SkyLyricsClient.get();
 				if (mod != null) {
@@ -216,8 +216,10 @@ public final class IntroScreen extends Screen {
 			}
 			case 3 -> {
 				heading(g, Tr.t("Where the songs come from"), py + vy(22, ph));
-				lines(g, py + vy(42, ph), Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
-						Tr.t("Signing in to Spotify in the Music tab helps with timing and album covers."),
+				lines(g, py + vy(38, ph), SkyLyricsClient.mac()
+								? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if your launcher may control them, click OK.")
+								: Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
+						Tr.t("Optional: signing in to Spotify (needs Premium and a free developer app) can help with timing."),
 						Tr.t("No music right now? Try the demo song."));
 			}
 			case 4 -> {

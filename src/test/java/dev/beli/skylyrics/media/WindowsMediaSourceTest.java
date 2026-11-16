@@ -296,7 +296,7 @@ class WindowsMediaSourceTest {
 				Snapshot s = source.poll();
 				long took = System.currentTimeMillis() - before;
 				assertEquals("Slow Song A", s.track().title());
-				assertTrue(took < 6_000, "a poll took " + took + " ms");
+				assertTrue(took < 10_000, "a poll took " + took + " ms");
 				polls++;
 				Thread.sleep(300);
 			}

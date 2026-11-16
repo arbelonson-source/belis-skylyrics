@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * a "Where is Spotify?" window.
  *
  * <p>One osascript run per poll reads both apps and prints one tab-separated line per running app (see
- * {@link #parse}). The first time, macOS asks whether Minecraft may control the app, and osascript waits until
+ * {@link #parse}). The first time, macOS asks whether the launcher (the app that started the game, such as Minecraft or Prism Launcher) may control the app, and osascript waits until
  * the player answers that question.
  */
 public final class MacMediaSource implements MediaSource {
@@ -344,7 +344,7 @@ public final class MacMediaSource implements MediaSource {
 			current = null;
 			for (Failure f : last.failures()) {
 				if (isDenied(f.code())) {
-					throw new IOException(Tr.t("Allow Minecraft to control %s in System Settings → Privacy & Security → Automation", f.app().name()));
+					throw new IOException(Tr.t("Allow your launcher (Minecraft, Prism Launcher…) to control %s in System Settings → Privacy & Security → Automation", f.app().name()));
 				}
 			}
 			for (Failure f : last.failures()) {
@@ -457,7 +457,7 @@ public final class MacMediaSource implements MediaSource {
 				pending = null;
 				throw failed("osascript didn't answer in time");
 			}
-			throw new IOException(Tr.t("Waiting for Spotify or Music. If macOS asks to let Minecraft control them, click OK"));
+			throw new IOException(Tr.t("Waiting for Spotify or Music. If macOS asks to let your launcher control them, click OK"));
 		}
 		pending = null;
 		ranFromNs = pendingSince; // of the run that answered, which may be an older one than this call started

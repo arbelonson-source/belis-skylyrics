@@ -11,7 +11,7 @@ Go through these in order:
 1. **Is the mod turned on?** At the bottom left of the settings screen, under the list of tabs, there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
 2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to N, E, S or W (north, east, south or west). Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
 3. **Are they hidden on purpose?** On the **Display** tab check **Hide with F1** (pressing F1 hides them along with the rest of the screen), **Hide in menus** (hidden while chat or any menu is open) and **Hide when paused** (hidden while the music is paused).
-4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen).
+4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen). With **Spotify Web**, "Can't reach the internet or Spotify" means your internet (or Spotify) isn't answering: check that a web page opens. The mod keeps asking and carries on by itself once it is back.
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
    - **Looking for lyrics…**: wait a moment.
    - **No lyrics found for this song. Try Retry.**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**.
@@ -110,12 +110,12 @@ On a Mac the mod can see only two apps: **Spotify** and Apple's **Music** app. m
 
 **The app has to be open.** The mod only asks Spotify or Music while they are already running, so it never opens them by itself. If both play at once, set **Player** on the Music tab to the one you want.
 
-**Allow Minecraft to control Spotify and Music.** The first time, macOS shows a message like *"Minecraft" wants access to control "Spotify"*. Click **OK**. Depending on how you start the game, the message may name your launcher (for example Prism Launcher) or "java" instead of Minecraft. Until you answer, the Music tab says it is waiting for Spotify or Music.
+**Allow your launcher to control Spotify and Music.** The first time, macOS shows a message like *"Minecraft" wants access to control "Spotify"*. Click **OK**. The name in the message is the app that started the game: Minecraft for the official launcher, but Prism Launcher, MultiMC, Modrinth App, CurseForge, Terminal or "java" for others. Until you answer, the Music tab says it is waiting for Spotify or Music.
 
-If you clicked **Don't Allow**, the Music tab says "Allow Minecraft to control Spotify in System Settings → Privacy & Security → Automation". To fix it:
+If you clicked **Don't Allow**, the Music tab says "Allow your launcher (Minecraft, Prism Launcher…) to control Spotify in System Settings → Privacy & Security → Automation". To fix it:
 
 1. Open **System Settings**, then **Privacy & Security**, then **Automation**.
-2. Find Minecraft, your launcher or "java" in the list, and turn on **Spotify** and **Music** under it.
+2. Find your launcher (Minecraft, Prism Launcher…) or "java" in the list, and turn on **Spotify** and **Music** under it.
 3. Go back to the game. The mod notices within a second or two.
 
 If nothing like that is in the list, you can make macOS ask again. Quit Minecraft, open the Terminal app and type:
@@ -124,7 +124,7 @@ If nothing like that is in the list, you can make macOS ask again. Quit Minecraf
 tccutil reset AppleEvents
 ```
 
-Then start Minecraft and play a song. Note that this makes macOS ask again for every app that controls other apps, not only Minecraft.
+Then start Minecraft and play a song. Note that this makes macOS ask again for every app that controls other apps, not only your launcher.
 
 **No album cover for Music songs.** Spotify gives the mod a link to the album cover, but the Music app doesn't, so the top bar shows no album cover for songs played in Music.
 
@@ -148,13 +148,19 @@ Exordium redraws the HUD less often than the game draws frames, and the lyrics a
 
 ## The mod says a new version is out, but won't install it
 
-On Windows, if the folder your game lives in has accented or non-English letters in its path (like `C:\Users\José\AppData\Roaming\.minecraft`), the mod can't swap in the new version by itself, so it only tells you a new one is out. Download the new jar for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases), put it in your `mods` folder and delete the old SkyLyrics jar. If only your user folder has such letters and the game lives somewhere else (on `D:\Games`, say), the update installs itself as usual. You can also set **About → Updates** to **Tell me** if you only want the notice.
+**It needs something newer.** If the pop-up says "SkyLyrics 0.9.0 needs Fabric API 0.137.0 or newer" (or a newer Minecraft), the new version wouldn't start on what you have, so the mod doesn't install it and your working version stays. Update what it names (Fabric API, say) and the next start installs the new SkyLyrics. A newer Minecraft needs the SkyLyrics jar for that version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases).
 
-Other reasons for the notice: the download failed (a slow connection, say), or it wasn't accepted. The mod only uses a download from its own GitHub releases, only if it is Beli's SkyLyrics in the version it expected, and refuses one over 20 MB. If you launch with a launcher that links the `mods` or instance folder to somewhere else, updates still work.
+**Windows.** The update is swapped in when you close the game, with a small PowerShell script. Any user name or folder name works: accents, Hebrew, Cyrillic, spaces, & and ’ included. The old jar is only deleted once the new one is in place, and it is put back if that fails, so you are never left without the mod. If the new version isn't there after you close and restart the game, download the new jar for your Minecraft version from the Releases page, put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.
+
+Other reasons for the notice: the download failed (a slow connection, say; one that stops halfway is given up after 5 minutes and the unfinished file is removed from your `mods` folder), or it wasn't accepted. The mod only uses a download from its own GitHub releases, only if it is Beli's SkyLyrics in the version it expected, and refuses one over 20 MB. If you launch with a launcher that links the `mods` or instance folder to somewhere else, updates still work.
 
 ## Settings or Spotify sign-in not saved on Windows
 
-Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. From 0.8.0 the mod tries again for a moment before giving up. If a setting still won't stick, update to the newest version first.
+Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. The mod tries again for up to about a second before giving up, for the settings, the Spotify sign-in, saved album covers and the Windows music reader's helper file. If a setting still won't stick, update to the newest version first.
+
+## Two Minecraft games open at once
+
+Two games can share one Minecraft folder (two instances, or a game and a test copy). When one saves its settings or song timings it keeps what the other changed, so they don't undo each other. They share one Spotify sign-in: when both renew it at the same moment, the second waits briefly for the first one's new sign-in.
 
 ## Opening the settings
 
@@ -190,7 +196,9 @@ If the settings file has a value the mod can't read (a typo, or a value from ano
 
 The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others.
 
-To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`; if a `.bad` already exists it is kept and the new copy goes to `.bad.1` to `.bad.9`, and only when all ten are taken is the oldest one replaced, so no earlier copy is overwritten by a newer one. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
+If Windows, an antivirus or OneDrive holds the settings file when the game starts, the mod tries again. If it still can't read it, it leaves the file alone and doesn't save defaults over your settings, so closing and reopening the game once the lock is gone gets your settings back. A half-written `.tmp` file next to the settings or the Spotify sign-in, left when the game was killed, is cleaned up on a later start, once it is a day old.
+
+To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`; if a `.bad` already exists it is kept and the new copy goes to `.bad.1` to `.bad.9`, and only when all ten are taken is the oldest one replaced. The same damaged file is not copied twice. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
 
 ## Still stuck?
 

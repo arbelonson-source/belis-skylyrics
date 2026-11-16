@@ -8,13 +8,13 @@ While you play Minecraft and listen to music on the same computer, it shows the 
 
 ## Which Minecraft versions does it work on?
 
-Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3, with Fabric and Fabric API. Each release has one jar per version, so pick the one whose name ends in your version (see "Install" in the [README](../README.md#install)).
+Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3, with Fabric and a recent Fabric API (each jar needs a minimum one; if yours is too old, Minecraft tells you which version to install). The jar for 1.21.10 works on 1.21.10 only, not 1.21.9. Each release has one jar per version, so pick the one whose name ends in your version (see "Install" in the [README](../README.md#install)).
 
 ## Does it work on Windows or macOS?
 
 **Windows 10 and 11: yes.** The mod reads the same media controls that Windows shows when you press a media key or change the volume. To do that it runs a small hidden PowerShell helper. PowerShell comes with Windows, so there is nothing extra to install.
 
-**macOS: with Spotify and Apple Music only.** A Mac doesn't tell other apps what's playing, so the mod asks the Spotify and Music apps directly. Browsers and other players can't be seen. The first time, macOS asks whether Minecraft may control Spotify or Music. Click **OK**. If something goes wrong, see "On macOS" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#on-macos).
+**macOS: with Spotify and Apple Music only.** A Mac doesn't tell other apps what's playing, so the mod asks the Spotify and Music apps directly. Browsers and other players can't be seen. The first time, macOS asks whether your launcher (Minecraft, Prism Launcher…) may control Spotify or Music. Click **OK**. If something goes wrong, see "On macOS" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#on-macos).
 
 On Linux the mod finds your song through MPRIS, the feature behind the media keys and the music controls on your desktop.
 
@@ -78,9 +78,11 @@ Spotify only matters for the **song library** (press **N**). If you have signed 
 
 Only to look up lyrics for songs it hasn't seen before, and to download album covers that your player gives as a web link. Songs whose lyrics are already saved work offline. It also checks GitHub once when the game starts to see if a new version is out.
 
+Without internet, a song that isn't saved shows "Couldn't reach the lyrics sites. Check your internet, then press Retry." on the **Music** tab, and the lyrics come by themselves once you are back online. An album cover that couldn't download is tried again every so often during the song. With **Spotify Web**, the status says "Can't reach the internet or Spotify" and the mod keeps asking, waiting a little longer each time (30 seconds at most). LRCLIB is only set aside for a couple of minutes when it is really down or too busy, not because one song's lookup failed.
+
 ## How do I update it?
 
-From 0.7.0 on, it updates itself. When a new version is out, it downloads in the background and a pop-up tells you to restart Minecraft; the new version is used from the next start. To choose this yourself, open the settings, go to **About → Updates** and pick **Install**, **Tell me** (just a notice) or **Off**. An update is only downloaded from the mod's own GitHub releases, and only used if it really is Beli's SkyLyrics in the expected version. If the download fails, you still get the "new version available" message, and on Windows the same happens when the folder your game lives in has accented letters in its path (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#the-mod-says-a-new-version-is-out-but-wont-install-it)). Versions before 0.7.0 can't update themselves: download the new jar from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases) and replace the old one in your `mods` folder.
+From 0.7.0 on, it updates itself. When a new version is out, it downloads in the background and a pop-up tells you to restart Minecraft; the new version is used from the next start. To choose this yourself, open the settings, go to **About → Updates** and pick **Install**, **Tell me** (just a notice) or **Off**. An update is only downloaded from the mod's own GitHub releases, and only used if it really is Beli's SkyLyrics in the expected version. If the new version needs a newer Minecraft or Fabric API than you have, it isn't installed: the pop-up says what to update (for example "Update Fabric API to get it"), and the version you have keeps working. If the download fails, you still get the "new version available" message (see [TROUBLESHOOTING.md](TROUBLESHOOTING.md#the-mod-says-a-new-version-is-out-but-wont-install-it)). On Windows it works with any user name, accents, Hebrew or spaces included. Versions before 0.7.0 can't update themselves: download the new jar from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases) and replace the old one in your `mods` folder.
 
 ## Does it work with shaders, Sodium and Iris?
 
@@ -131,9 +133,11 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 ## What can I change about the look?
 
-- **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (with Lines: Words, Fade, Rise, Pop, Type or Slide), how World words arrive (Pop, Drop, Zoom, Fade or Type, letter by letter) and leave (Shrink, Float, Blow, Sink or Dissolve), the pulse when a new line starts, capital letters, **Soft edges** (World words with only a glow and no dark outline), and **View lock** (under **Position**). Also under **Position**: **Lazy follow** (in the sky with **Direction** on **Follow**, for the Arc and Lines layouts: the lyrics wait until you turn away, then glide over) and, in the World layout, **Elytra mode** (the words travel with you when you glide, ride or fly).
+- **Lyrics tab:** the layout: **Arc** (the line being sung on a gentle curve), **Lines** (the previous, current and next lines, straight) or **World** (each word or two appears in the world around you as it's sung). Then in the sky far away or floating close by, which direction, height, distance (in blocks; floating it is how far in front of you, up to about 16) and size, whether to show the previous and next lines (with Lines), the karaoke fill, a bigger current word, the animation (with Lines: Words, Fade, Rise, Pop, Type or Slide), how World words arrive (Pop, Drop, Zoom, Fade or Type, letter by letter) and leave (Shrink, Float, Blow, Sink or Dissolve), the pulse when a new line starts, capital letters, **Soft edges** (World words with only a glow and no dark outline), and **View lock** (under **Position**). Also under **Position**: **Lazy follow** (in the sky with **Direction** on **Follow**, for the Arc and Lines layouts: the lyrics wait until you turn away, then glide over) and, in the World layout, **Elytra mode** (the words travel with you when you glide, ride or fly).
 - **Look tab:** **Themes**, one-click looks to start from; your own colour (a soft periwinkle at first), the album cover's colour, **Time of day**, **Each line** (a new neon colour with every line) or rainbow; **Two-tone**, where each line fades into a second colour you pick; the letter style (Bold, Smooth, Round, Handwritten or Minecraft); **Depth** for a solid 3D edge on the letters; glow (a deeper shade of the letters' colour, or one you pick), shadow and opacity; the night sky (Off, Aurora, Nebula, Synthwave, Eclipse, Aurora + nebula, Moonlight, Galaxy, Comet or Random) with **Sky colours** (Classic, Album or Lyrics), **Sky speed**, its strength, **Shooting stars** and **Twinkling stars**; **Constellations**, star patterns joined by thin lines; a **Hat** for your character; and a **Crosshair** style.
 - **Display tab:** under **Hide lyrics**, hide the lyrics with F1, in menus or when the music is paused, hide them in the Nether, the End, underwater or in caves, keep them visible underground (**Show underground too**), hide them in multiplayer (**Hide in multiplayer**, so they only show in your own worlds), turn the top bar on or off, and choose what it shows: the line being sung, a clock on its left, and your frames per second and ping on its right. The **Record card** switch adds a small vinyl card with the song and its progress, **Corner** picks where it sits, **Lyric line** shows the line being sung under the record, and **Card lines** (with Lyric line on) can show the line before and the line after it too. The top bar can also show an **Equaliser** (on by default) and a **Song progress** line. **Main menu** puts the lyrics on the title screen. **Performance → Effects** (Auto, Full or Light) trades some glow for more frames per second.
+
+In the World layout, some settings are hidden because that layout doesn't use them: **Draw on top**, **Depth**, **Shadow**, **Pulse**, **Karaoke fill** and **Bigger current word**. Switch to Arc or Lines to see them again; your values are kept.
 
 ## Is the mod in Hebrew?
 
@@ -150,6 +154,8 @@ No. It only runs on your own computer (client side). It works in single player a
 ## Where are my settings saved?
 
 In a file called `skylyrics.json` in the `config` folder of your Minecraft folder. Saved lyrics and the **Recently heard** list are in `.cache/skylyrics` in the same Minecraft folder. See "Where the files are" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+Two Minecraft games open at once can share one folder: when one saves, it keeps what the other changed. If Windows, an antivirus or OneDrive holds a file for a moment, the mod tries again; a settings file it still can't read is left alone, not overwritten with defaults.
 
 ## Is this the Neon Lyrics mod?
 

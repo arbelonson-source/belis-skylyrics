@@ -67,7 +67,7 @@ It's free and open source, and it always will be.
 
 - Minecraft 1.21.1, 1.21.4, 1.21.5, 1.21.6 to 1.21.8, 1.21.10, 1.21.11, 26.1, 26.2 and 26.3
 - Fabric Loader 0.17.0 or newer
-- [Fabric API](https://modrinth.com/mod/fabric-api)
+- A recent [Fabric API](https://modrinth.com/mod/fabric-api) (each jar needs a minimum version; if Minecraft says to update it, do)
 - Java 21 or newer for Minecraft 1.21.x, Java 25 for 26.x (the Minecraft launcher already includes it)
 - Linux, or Windows 10 or 11, with a music player that shows up in your media controls; or macOS with the Spotify or Music app
 - Optional: [Mod Menu](https://modrinth.com/mod/modmenu) to open the settings from the mod list
@@ -75,7 +75,7 @@ It's free and open source, and it always will be.
 ### Install
 
 1. Install Fabric for your Minecraft version (Prism Launcher can do this for you when you make a new instance).
-2. Put **Fabric API** and **Beli's SkyLyrics** in your `mods` folder, or add them from Prism Launcher's mod browser.
+2. Put a recent **Fabric API** and **Beli's SkyLyrics** in your `mods` folder, or add them from Prism Launcher's mod browser.
 3. Start the game and play a song in Spotify, a browser tab or any other music app.
 4. Press **J** in game to open the settings.
 

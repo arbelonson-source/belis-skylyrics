@@ -92,6 +92,11 @@ public final class SkyLyricsScreen extends Screen {
 		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
 	}
 
+	/** Whether Sky speed does anything: the night sky, the constellations and the sparkles run on its clock; shooting stars don't. */
+	static boolean skySpeedApplies(SkyLyricsConfig cfg) {
+		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.twinkle;
+	}
+
 	/**
 	 * What the Distance slider reads, in real blocks. The stored value stays as it is: in the sky it is blocks (kept
 	 * under 80% of the render distance, which {@code renderChunks} gives), floating it is a setting that maps to 4 to 16 blocks.
@@ -464,12 +469,12 @@ public final class SkyLyricsScreen extends Screen {
 				i -> cfg.skyColors = SkyColors.values()[i]).when(anySky);
 		Row skySpeed = new Segmented(Tr.t("Sky speed"), null,
 				new String[] {Tr.t("Slow"), Tr.t("Normal"), Tr.t("Fast")}, () -> cfg.skySpeed.ordinal(),
-				i -> cfg.skySpeed = SkySpeed.values()[i]).when(() -> cfg.sky != SkyEffect.OFF || cfg.twinkle);
+				i -> cfg.skySpeed = SkySpeed.values()[i]).when(() -> skySpeedApplies(cfg));
 		Row skyStrength = new Slider(Tr.t("Strength"), null, 0.1, 1, 0.05,
 				() -> cfg.skyStrength, v -> cfg.skyStrength = (float) v, SkyLyricsScreen::percent)
 				.when(anySky);
 		Row skyPulse = new Toggle(Tr.t("Pulse with the lyrics"), Tr.t("Brightens as each new line starts"),
-				() -> cfg.skyPulse, v -> cfg.skyPulse = v).when(() -> cfg.sky != SkyEffect.OFF);
+				() -> cfg.skyPulse, v -> cfg.skyPulse = v).when(anySky);
 		Row constellations = new Toggle(Tr.t("Constellations"), Tr.t("Star patterns joined by thin lines"),
 				() -> cfg.constellations, v -> cfg.constellations = v);
 		Row hat = new Cycle(Tr.t("Hat"), Tr.t("See it in third person (F5). Only you can see it"),
@@ -526,7 +531,9 @@ public final class SkyLyricsScreen extends Screen {
 				String error = tracker.error();
 				return error == null || error.isEmpty() ? Tr.t("Can't reach music players") : error;
 			}
-			return tracker.track() == Track.NONE ? Tr.t("No music playing") : Tr.t("Following %s", tracker.sourceName());
+			return tracker.track() == Track.NONE
+					? (SkyLyricsClient.mac() && !SpotifyWebSource.KEY.equals(cfg.preferredPlayer)
+							? Tr.t("No Spotify or Music playing (browsers can't be read on a Mac)") : Tr.t("No music playing")) : Tr.t("Following %s", tracker.sourceName());
 		});
 		// The error often says what to allow or install, too long for the Status line
 		Row connectionHelp = new Paragraph(() -> tracker.error())
@@ -668,8 +675,10 @@ public final class SkyLyricsScreen extends Screen {
 				i -> cfg.barPosition = BarPosition.values()[i]).when(() -> cfg.nowPlayingHud);
 		Row barSize = new Slider(Tr.t("Bar size"), null, 0.75, 1.5, 0.05,
 				() -> cfg.barSize, v -> cfg.barSize = (float) v, SkyLyricsScreen::percent).when(() -> cfg.nowPlayingHud);
-		Row barBackground = new Slider(Tr.t("Background"), Tr.t("How dark the bar is"), 0, 1, 0.05,
-				() -> cfg.barBackground, v -> cfg.barBackground = (float) v, SkyLyricsScreen::percent).when(() -> cfg.nowPlayingHud);
+		// The Record card uses the same darkness, so the row stays while either is on
+		Row barBackground = new Slider(Tr.t("Background"), Tr.t("How dark the bar and the Record card are"), 0, 1, 0.05,
+				() -> cfg.barBackground, v -> cfg.barBackground = (float) v, SkyLyricsScreen::percent)
+				.when(() -> cfg.nowPlayingHud || cfg.recordCard);
 		Row barAccent = new Segmented(Tr.t("Accent colour"), Tr.t("Word highlight and equaliser"),
 				new String[] {Tr.t("Album"), Tr.t("Lyrics"), Tr.t("Pick")}, () -> cfg.barAccent.ordinal(),
 				i -> cfg.barAccent = BarAccent.values()[i]).when(() -> cfg.nowPlayingHud);
@@ -736,7 +745,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row how = new Paragraph(() -> SkyLyricsClient.windows()
 				? Tr.t("On Windows the song comes from the media controls that pop up when you press a media key, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time.")
 				: SkyLyricsClient.mac()
-				? Tr.t("On macOS the mod asks the Spotify and Music apps what's playing. The first time, macOS asks if Minecraft may control them: click OK. Browsers and other players can't be seen on a Mac. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time.")
+				? Tr.t("On macOS the mod asks the Spotify and Music apps what's playing. The first time, macOS asks if your launcher may control them: click OK. Browsers and other players can't be seen on a Mac. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time.")
 				: Tr.t("The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time."));
 		Row compat = new Paragraph(() -> Tr.t("Works with Sodium, Iris and shader packs."));
 		Row links = new Buttons(Tr.t("Links"), null,

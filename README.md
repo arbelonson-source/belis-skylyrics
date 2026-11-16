@@ -38,7 +38,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - A demo mode with a built-in song, so you can try it without any music playing.
 - Hebrew and Arabic lyrics are written from the right, with Arabic letters joined properly.
 - A short welcome tour the first time you start the game helps you pick a layout, a look and your music.
-- Updates itself: a new version downloads in the background and a pop-up tells you to restart Minecraft. On the **About** tab you can set **Updates** to **Tell me** for just a notice, or turn it off.
+- Updates itself: a new version downloads in the background and a pop-up tells you to restart Minecraft. An update that needs a newer Minecraft or Fabric API than yours isn't installed: the pop-up tells you what to update, and your working version stays. On the **About** tab you can set **Updates** to **Tell me** for just a notice, or turn it off.
 - English and Hebrew. The settings follow your Minecraft language.
 
 ## Pictures
@@ -62,20 +62,20 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 Each release has one jar per Minecraft version. Pick the one whose name ends in your version: `+1.21.1.jar`, `+1.21.4.jar`, `+1.21.5.jar`, `+1.21.8.jar` (for 1.21.6, 1.21.7 and 1.21.8), `+1.21.10.jar`, `+1.21.11.jar`, `+26.1.jar` (for 26.1, 26.1.1 and 26.1.2), `+26.2.jar` or `+26.3.jar`.
 
-Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether Minecraft may control them: click **OK**.
+Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether your launcher (Minecraft, Prism Launcher…) may control them: click **OK**.
 
 ### With Prism Launcher (easiest)
 
 1. Click **Add Instance**, pick Minecraft **1.21.1**, **1.21.4**, **1.21.5**, **1.21.8**, **1.21.10**, **1.21.11**, **26.1.2**, **26.2** or **26.3**, and choose **Fabric** as the mod loader.
 2. Select the instance, click **Edit**, then open **Mods**.
-3. Click **Download mods** and add **Fabric API**. You can also add **Sodium**, **Iris** and **Mod Menu** if you like.
+3. Click **Download mods** and add **Fabric API**, a recent one: if Minecraft says to update it, do. You can also add **Sodium**, **Iris** and **Mod Menu** if you like.
 4. Click **Add file** and pick the SkyLyrics `.jar` for your Minecraft version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases).
 5. Start the game, play a song in Spotify or your browser, and look up.
 
 ### With the official launcher
 
 1. Run the [Fabric installer](https://fabricmc.net/use/installer/) and install Fabric for **1.21.1**, **1.21.4**, **1.21.5**, **1.21.8**, **1.21.10**, **1.21.11**, **26.1.2**, **26.2** or **26.3**.
-2. Download [Fabric API](https://modrinth.com/mod/fabric-api) and the SkyLyrics `.jar` for your Minecraft version.
+2. Download a recent [Fabric API](https://modrinth.com/mod/fabric-api) (if Minecraft says to update it, do) and the SkyLyrics `.jar` for your Minecraft version.
 3. Put both files in your `mods` folder. Create it if it doesn't exist.
    - Linux: `~/.minecraft/mods`
    - Windows: `%appdata%\.minecraft\mods` (paste this into the File Explorer address bar)

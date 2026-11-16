@@ -172,7 +172,7 @@ public final class NowPlayingHud {
 	private record LineText(LineSource source, String key, String text) {}
 
 	/** What the song info is worked out from. */
-	private record SongSource(String title, String artist, String source, LyricsService.State state, Object language) {}
+	private record SongSource(String title, String artist, String source, LyricsService.State state, Object language, boolean demo) {}
 
 	/** What a piece of text's visual order is worked out from. */
 	private record VisualKey(String text, Style style, Object language) {}
@@ -899,18 +899,29 @@ public final class NowPlayingHud {
 
 	private Content songInfo(Track track, LyricsService.State state) {
 		// Worked out from the song, its state and the language, so it is only built again when one of them changes
-		SongSource source = new SongSource(track.title(), track.artist(), tracker.sourceName(), state, Language.getInstance());
+		SongSource source = new SongSource(track.title(), track.artist(), tracker.sourceName(), state, Language.getInstance(), SkyLyricsConfig.get().demoMode);
 		Content kept = songContent;
 		if (kept != null && source.equals(songSource)) {
 			return kept;
 		}
-		Content made = buildSongInfo(track, state);
+		Content made = buildSongInfo(track, state, source.demo());
 		songSource = source;
 		songContent = made;
 		return made;
 	}
 
-	private Content buildSongInfo(Track track, LyricsService.State state) {
+	/** The line under the title: the artist (or player), then the lyrics status, then the Demo mark, each only if there is one. */
+	static String subText(String base, String status, String demoMark) {
+		StringBuilder sb = new StringBuilder(base);
+		for (String part : new String[] {status, demoMark}) {
+			if (!part.isEmpty()) {
+				sb.append(sb.length() == 0 ? "" : "  ·  ").append(part);
+			}
+		}
+		return sb.toString();
+	}
+
+	private Content buildSongInfo(Track track, LyricsService.State state, boolean demo) {
 		String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
 		String status = switch (state) {
 			case LOADING -> Tr.t("finding lyrics…");
@@ -918,9 +929,7 @@ public final class NowPlayingHud {
 			case ERROR -> Tr.t("lyrics sites unreachable");
 			default -> "";
 		};
-		if (!status.isEmpty()) {
-			sub = sub.isEmpty() ? status : sub + "  ·  " + status;
-		}
+		sub = subText(sub, status, demo ? Tr.t("Demo") : "");
 		String title = track.title().isEmpty() ? Tr.t("Unknown song") : track.title();
 		return new Content("S" + title + "\n" + sub, false, title, sub, 1, 1);
 	}
