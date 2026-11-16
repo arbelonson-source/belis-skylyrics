@@ -42,6 +42,12 @@ public final class DemoSource implements MediaSource {
 		return pos % TRACK.lengthMs();
 	}
 
+	/** From the top and playing: the demo starts at 0:00 each time it's switched on, not wherever its clock got to. */
+	public synchronized void restart() {
+		startNanos = System.nanoTime();
+		pausedAtMs = -1;
+	}
+
 	@Override
 	public synchronized Snapshot poll() {
 		return new Snapshot(TRACK, positionMs(), pausedAtMs < 0, System.nanoTime());

@@ -21,7 +21,7 @@ public final class MediaTracker {
 	private static final long SEEK_THRESHOLD_MS = 350;
 
 	private final MediaSource player;
-	private final MediaSource demo = new DemoSource();
+	private final DemoSource demo = new DemoSource();
 	private final BooleanSupplier demoMode;
 	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
 		Thread t = new Thread(r, "SkyLyrics media");
@@ -172,6 +172,9 @@ public final class MediaTracker {
 
 	private void pollInner() {
 		MediaSource source = source();
+		if (switchedToDemo(source, lastSource, demo)) {
+			demo.restart();
+		}
 		Snapshot fresh;
 		Throwable failure;
 		try {
@@ -368,6 +371,11 @@ public final class MediaTracker {
 
 	public void seek(long positionMs) {
 		executor.execute(() -> safely(() -> source().seek(positionMs)));
+	}
+
+	/** Whether this read is the first from the demo after another source (or none): the demo then starts from the top. */
+	static boolean switchedToDemo(MediaSource source, @Nullable MediaSource last, MediaSource demo) {
+		return source == demo && last != demo;
 	}
 
 	/** Re-read now (e.g. right after switching demo mode). */

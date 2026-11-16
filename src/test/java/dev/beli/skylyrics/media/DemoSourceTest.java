@@ -69,4 +69,25 @@ class DemoSourceTest {
 		demo.seek(DemoSource.TRACK.lengthMs() + 5_000);
 		assertEquals(5_000, demo.poll().positionMs());
 	}
+
+	@Test
+	void switchingTheDemoOnStartsItFromTheTopAndPlaying() throws InterruptedException {
+		DemoSource demo = new DemoSource();
+		demo.seek(40_000);
+		demo.playPause(); // left paused mid-song
+		demo.restart();
+		Snapshot s = demo.poll();
+		assertTrue(s.playing());
+		assertTrue(s.positionMs() < 5_000, "position " + s.positionMs());
+	}
+
+	@Test
+	void onlyTheFirstReadFromTheDemoRestartsIt() {
+		DemoSource demo = new DemoSource();
+		MediaSource player = new DemoSource();
+		assertTrue(MediaTracker.switchedToDemo(demo, null, demo), "the game starts in demo mode");
+		assertTrue(MediaTracker.switchedToDemo(demo, player, demo), "demo switched on");
+		assertFalse(MediaTracker.switchedToDemo(demo, demo, demo), "the demo keeps playing");
+		assertFalse(MediaTracker.switchedToDemo(player, demo, demo), "demo switched off");
+	}
 }
