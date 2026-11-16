@@ -112,7 +112,9 @@ public final class Updater {
 			LOG.info("Release {} has no jar for Minecraft {}", release.version(), mcKey);
 			return;
 		}
-		notice = update(mode, http, jar, release, asset);
+		Path memory = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(SkyLyricsClient.MOD_ID)
+				.resolve("update-refused.json");
+		notice = update(mode, http, jar, release, asset, memory, Updater::running);
 	}
 
 	/**
@@ -120,17 +122,34 @@ public final class Updater {
 	 * a move that does not work), the player is still told a new version is out, just not that it is downloaded.
 	 */
 	static Notice update(Updates mode, HttpClient http, Path jar, UpdateCheck.Release release, UpdateCheck.Asset asset) {
+		return update(mode, http, jar, release, asset, null, Updater::running);
+	}
+
+	/**
+	 * As above, remembering a refusal in {@code memory} (null for no memory): the same file on the same running versions is
+	 * refused again without a download, and the player is told the same thing.
+	 */
+	static Notice update(Updates mode, HttpClient http, Path jar, UpdateCheck.Release release, UpdateCheck.Asset asset,
+			Path memory, UnaryOperator<String> running) {
 		boolean installed = false;
 		if (mode == Updates.INSTALL) {
+			Refusal known = Refusal.read(memory);
+			if (known != null && known.matches(asset, running)) {
+				LOG.info("Update {} not downloaded again: it needs {}", release.version(), known.unmet().text());
+				return new Notice(release.version(), false, known.unmet().text(), known.unmet().name());
+			}
 			try {
-				installed = install(http, jar, asset);
+				installed = install(http, jar, asset, running);
+				Refusal.forget(memory);
 			} catch (Incompatible e) {
 				LOG.info("Update {} not installed: it needs {}", release.version(), e.unmet.text());
+				Refusal.of(asset, running, e.unmet).write(memory);
 				return new Notice(release.version(), false, e.unmet.text(), e.unmet.name());
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			} catch (Exception e) {
 				LOG.warn("Could not install the update, telling the player instead: {}", e.toString());
+				Refusal.forget(memory);
 			}
 		}
 		return new Notice(release.version(), installed);
