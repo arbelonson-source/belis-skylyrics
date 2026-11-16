@@ -182,6 +182,16 @@ Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for
 
 Two games can share one Minecraft folder (two instances, or a game and a test copy). When one saves its settings or song timings it keeps what the other changed, so they don't undo each other. This also works across Minecraft versions: going back to an older SkyLyrics, or running two Minecraft versions of the mod on the same folder, no longer wipes the settings the other one saved, and your per-song timings are kept. They share one Spotify sign-in: when both renew it at the same moment, the second waits briefly for the first one's new sign-in.
 
+## Hebrew or Arabic looks wrong
+
+- **Boxes in the lyrics.** Invisible left-to-right or right-to-left marks in copied lyrics no longer show as small boxes in the sky, the top bar or the **Record card**. They still set the word order.
+- **Numbers with the game in Hebrew or Arabic.** The **Record card**'s time left reads "-2:35", and the **Height**, **Distance** and **Size** sliders read the right way round ("-10°", "0.50×"). If you still see one the other way round, update to the newest version.
+
+## Very long words and fast lyrics
+
+- **A very long word or web address in the top bar** shows its start while it is sung, not its end.
+- **Fast lyrics (rap).** In **World** and **Arc**, all the words of a short, quick line now show: World lets the last words out before the next line takes over, and Arc fades in the words not yet out as the line leaves.
+
 ## Opening the settings
 
 - Press **J** while playing (not while another menu is open).
@@ -216,7 +226,7 @@ If the settings file has a value the mod can't read (a typo, or a value from ano
 
 The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others.
 
-If Windows, an antivirus or OneDrive holds the settings file when the game starts, the mod tries again. If it still can't read it, it leaves the file alone and doesn't save defaults over your settings, so closing and reopening the game once the lock is gone gets your settings back. A half-written `.tmp` file next to the settings or the Spotify sign-in, left when the game was killed, is cleaned up on a later start, once it is a day old.
+If Windows, an antivirus or OneDrive holds the settings file when the game starts, the mod tries again. If it still can't read it, it leaves the file alone and doesn't save defaults over your settings, so closing and reopening the game once the lock is gone gets your settings back. A half-written `.tmp` file next to the settings, the Spotify sign-in, the Recently heard list or the update memory, or one left by the Windows music reader's helper, when the game was killed, is cleaned up on a later start, once it is a day old.
 
 To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`; if a `.bad` already exists it is kept and the new copy goes to `.bad.1` to `.bad.9`, and only when all ten are taken is the oldest one replaced. The same damaged file is not copied twice. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
 
