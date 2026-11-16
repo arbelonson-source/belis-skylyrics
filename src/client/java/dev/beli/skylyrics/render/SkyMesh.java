@@ -57,6 +57,13 @@ final class SkyMesh {
 		}
 	}
 
+	/** Works out the colour of rows {@code from} up to (not including) {@code to} again. */
+	void repaintRows(Paint paint, int from, int to) {
+		for (int k = from * cols; k < to * cols; k++) {
+			rgb[k] = paint.at(x[k], y[k], z[k]);
+		}
+	}
+
 	/** Turned by the yaw (given as cosine and sine) and pushed out to {@code r}. */
 	void draw(SkyCanvas c, float cos, float sin, float r, float level) {
 		draw(c, cos, sin, r, level, SkyView.ALL);
@@ -109,6 +116,27 @@ final class SkyMesh {
 			return columnShown;
 		}
 		return null;
+	}
+
+	/** Whether {@link #draw} would hand on any quad for this view (the same tests, nothing drawn). */
+	boolean anyVisible(float cos, float sin, SkyView view) {
+		if (capRadius >= 0 && !view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius)) {
+			return false;
+		}
+		boolean[] column = columnsInView(cos, sin, view);
+		boolean anyColumn = column == null;
+		for (int j = 0; column != null && j + 1 < cols; j++) {
+			anyColumn |= column[j];
+		}
+		if (!anyColumn) {
+			return false;
+		}
+		for (int i = 0; i + 1 < rows; i++) {
+			if (rowHeight == null || view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** Turns and pushes out the corners of one row that a drawn quad uses, once per draw. */

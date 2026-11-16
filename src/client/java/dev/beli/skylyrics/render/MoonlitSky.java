@@ -104,6 +104,10 @@ final class MoonlitSky {
 	private final SkyFrame frame = new SkyFrame();
 	private final SkyMesh clouds = SkyMesh.dome(CLOUD_ROWS, CLOUD_COLUMNS, MoonlitSky::background);
 	private float drift;
+	/** The cloud band is repainted in this many bites, one a frame; a bite of clouds this far (degrees) behind is not noticeable. */
+	private static final int REPAINT_PARTS = 4;
+	private static final float REPAINT_STEP = 0.05f;
+	private final DriftRepaint repaint = new DriftRepaint(REPAINT_STEP, REPAINT_PARTS);
 	private final SkyMesh.Paint drifted = (x, y, z) -> background(x, y, z, drift);
 
 	/** The finished sky colour in a direction (unit vector, lyrics facing south), clouds not drifted. */
@@ -197,13 +201,18 @@ final class MoonlitSky {
 
 	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
-		float d = (time * CLOUD_DRIFT) % 360;
-		// Repainting the band costs a little, so only when the clouds have visibly moved
-		if (Math.abs(d - drift) > 0.05f) {
-			drift = d;
-			clouds.repaint(drifted);
-		}
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
+		// Repainting the band costs about half a millisecond, so it waits until the clouds have visibly moved, is done
+		// a few rows a frame instead of in one go, and is skipped while no cloud is on screen
+		int part = repaint.advance((time * CLOUD_DRIFT) % 360, clouds.anyVisible(cos, sin, view));
+		if (part != DriftRepaint.NONE) {
+			drift = repaint.target();
+			if (part == DriftRepaint.ALL) {
+				clouds.repaint(drifted);
+			} else {
+				clouds.repaintRows(drifted, part * CLOUD_ROWS.length / REPAINT_PARTS, (part + 1) * CLOUD_ROWS.length / REPAINT_PARTS);
+			}
+		}
 		c.fadeBelowHorizon(HORIZON_FADE);
 		DOME_MESH.draw(c, cos, sin, radius * DOME, level, view);
 		GLOW_MESH.draw(c, cos, sin, radius * GLOW_SKY, level, view);
