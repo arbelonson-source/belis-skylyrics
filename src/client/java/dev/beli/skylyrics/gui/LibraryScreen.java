@@ -975,9 +975,10 @@ public final class LibraryScreen extends Screen {
 		String text = signInText();
 		int w = Math.min(300, pw - 40), x = px + (pw - w) / 2, y = viewY + viewH / 2 - 44;
 		Ui.rect(g, x, y, w, 80, 8, Ui.CARD);
-		List<net.minecraft.util.FormattedCharSequence> lines = font.split(Component.literal(text), w - 24);
+		List<net.minecraft.network.chat.FormattedText> lines = font.getSplitter().splitLines(text, w - 24, net.minecraft.network.chat.Style.EMPTY);
+		boolean rtl = Ui.paragraphRtl(text);
 		for (int i = 0; i < Math.min(2, lines.size()); i++) {
-			g.drawCenteredString(font, lines.get(i), x + w / 2, y + 14 + i * 11, Ui.TEXT);
+			g.drawCenteredString(font, Ui.visual(lines.get(i).getString(), rtl), x + w / 2, y + 14 + i * 11, Ui.TEXT);
 		}
 		int by = y + 50;
 		Controls.drawButton(f, x + w / 2 - 104, by, 100, 18, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), x + w / 2 - 104, by, 100, 18), true, true);

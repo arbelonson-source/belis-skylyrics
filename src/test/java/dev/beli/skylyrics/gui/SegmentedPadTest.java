@@ -21,7 +21,13 @@ class SegmentedPadTest {
 
 	@Test
 	void paddingNeverVanishes() {
-		assertEquals(4, Controls.Segmented.pad(150, 60, 200, 6));
-		assertEquals(4, Controls.Segmented.pad(0, 60, 200, 6), "before the row is laid out");
+		assertEquals(Controls.Segmented.MIN_PAD, Controls.Segmented.pad(150, 60, 200, 6));
+		assertEquals(Controls.Segmented.MIN_PAD, Controls.Segmented.pad(0, 60, 200, 6), "before the row is laid out");
+	}
+
+	@Test
+	void everyNameKeepsFourPixelsEachSideSoTheHighlightNeverTouchesTheNext() {
+		// The Record card corner choice at 854x480: four long names in a short row
+		assertTrue(Controls.Segmented.pad(300, 60, 240, 4) >= 8);
 	}
 }
