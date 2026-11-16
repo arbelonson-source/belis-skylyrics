@@ -69,4 +69,14 @@ class RowStackTest {
 		assertEquals(1, Controls.Swatches.lines(270, 14, true));
 		assertEquals(2, Controls.Swatches.lines(150, 14, true));
 	}
+
+	@Test
+	void aWrappedSwatchRowIsTallEnoughForEveryLine() {
+		int[] colors = new int[14];
+		Controls.Swatches row = new Controls.Swatches("Pick a colour", null, colors, java.util.Collections.nCopies(14, "c"), () -> 0, c -> { });
+		row.w = 150;
+		assertEquals(Controls.Swatches.lines(150, 14, true) * 17 + 3, row.controlHeight(), "two lines of swatches, not one control line");
+		row.w = 270;
+		assertEquals(17 + 3, row.controlHeight());
+	}
 }
