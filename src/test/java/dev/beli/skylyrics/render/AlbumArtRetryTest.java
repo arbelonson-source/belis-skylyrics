@@ -3,6 +3,7 @@ package dev.beli.skylyrics.render;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
@@ -91,9 +92,15 @@ class AlbumArtRetryTest {
 	@Test
 	void aMissingCoverIsNotRetried() {
 		AlbumArt art = art();
-		art.fetcher = url -> null; // 404, not an image
+		art.fetcher = url -> {
+			fetches++;
+			return null; // 404, not an image
+		};
 		art.load(song("T", "https://img.example/a.jpg"));
+		assertEquals(1, fetches, "it asked once");
 		assertTrue(delays.isEmpty());
+		assertTrue(scheduled.isEmpty());
+		assertNull(art.takeIfCurrent(), "and kept no cover");
 	}
 
 	@Test

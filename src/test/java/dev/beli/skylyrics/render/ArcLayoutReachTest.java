@@ -83,7 +83,13 @@ class ArcLayoutReachTest {
 		}
 		assertTrue(smooth < 0.5f, "a twentieth of a word moves the scroll by at most half a unit, not " + smooth);
 		assertTrue(stepped > 1f, "the whole-word stepping did hop, by " + stepped);
-		assertEquals(ArcLayout.focus(tall, 100f), ArcLayout.focus(tall, 100), 0f);
+		for (ArcLayout.Group g : tall) { // no hop where one group hands over to the next
+			if (g.from() > 0) {
+				float at = ArcLayout.focus(tall, g.from());
+				assertTrue(Math.abs(at - ArcLayout.focus(tall, g.from() - 0.05f)) < 0.5f, "before group " + g.from());
+				assertTrue(Math.abs(ArcLayout.focus(tall, g.from() + 0.05f) - at) < 0.5f, "after group " + g.from());
+			}
+		}
 	}
 
 	@Test
