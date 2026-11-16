@@ -408,14 +408,16 @@ final class Controls {
 
 		/**
 		 * Room around each option's name in a row {@code rowW} wide: the usual 12 when everything fits, less when it
-		 * doesn't, so the label keeps at least {@link #LABEL_KEEP} of its width, but never under 4.
+		 * doesn't, so the label keeps at least {@link #LABEL_KEEP} of its width, but never under {@link #MIN_PAD}.
 		 */
 		static int pad(int rowW, int labelW, int namesW, int count) {
 			int room = rowW - 20 - 8 - Math.min(labelW, LABEL_KEEP) - 4 - namesW;
-			return Math.max(4, Math.min(12, room / count));
+			return Math.max(MIN_PAD, Math.min(12, room / count));
 		}
 
 		static final int LABEL_KEEP = 56;
+		/** Never less than this around a name: 4 each side, so the highlight does not touch the next name. */
+		static final int MIN_PAD = 8;
 
 		@Override
 		int controlWidth(Font font) {
@@ -868,7 +870,10 @@ final class Controls {
 			int probe = font.width(FONT_PROBE);
 			if (width != linesWidth || !t.equals(linesText) || probe != linesProbe) {
 				linesProbe = probe;
-				lines = font.split(net.minecraft.network.chat.Component.literal(t), Math.max(1, width - 20));
+				// split logically, then order every line in the direction of the whole paragraph
+				boolean rtl = Ui.paragraphRtl(t);
+				lines = font.getSplitter().splitLines(t, Math.max(1, width - 20), net.minecraft.network.chat.Style.EMPTY).stream()
+						.map(l -> Ui.visual(l.getString(), rtl)).toList();
 				linesWidth = width;
 				linesText = t;
 			}
