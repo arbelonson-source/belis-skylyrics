@@ -222,7 +222,7 @@ public final class HeardLibrary implements Library {
 	private boolean mergeFile() {
 		List<Entry> old = new ArrayList<>();
 		try {
-			String text = SafeFile.readText(file, reader, 1, 0);
+			String text = SafeFile.readText(file, reader, SafeFile.READ_TRIES, SafeFile.READ_PAUSE_MS); // a lock may let go in a moment; this is the writer thread
 			if (!text.isBlank()) {
 				readSongs(text, old);
 			}

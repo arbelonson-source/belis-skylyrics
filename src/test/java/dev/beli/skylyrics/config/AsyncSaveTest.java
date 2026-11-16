@@ -173,6 +173,31 @@ class AsyncSaveTest {
 	}
 
 	@Test
+	void aSaveQueuedWhileTheWriterDiesIsWrittenWithoutAnotherSave() {
+		Path file = dir.resolve("skylyrics.json");
+		SkyLyricsConfig c = new SkyLyricsConfig();
+		boolean[] first = {true};
+		SkyLyricsConfig.mainThread = r -> {
+			if (first[0]) {
+				first[0] = false;
+				c.glow = 0.3f;
+				c.saveLater(file); // arrives while the writer is still busy
+				throw new OutOfMemoryError("test");
+			}
+			r.run();
+		};
+		c.saveLater(file);
+		try {
+			runWriter();
+		} catch (OutOfMemoryError expected) {
+			// the first writer ends with the Error
+		}
+		assertEquals(1, held.size(), "the writer is started again for the waiting save");
+		runWriter();
+		assertEquals(0.3f, open(file).glow, 1e-6f);
+	}
+
+	@Test
 	void aSaveThatFailedIsTriedAgainOnFlush() throws Exception {
 		Path blocker = dir.resolve("blocked");
 		Files.writeString(blocker, "a file where the folder should be");

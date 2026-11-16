@@ -827,23 +827,28 @@ public final class SkyLyricsConfig {
 			queue.draining = true;
 		}
 		if (start) {
-			try {
-				writerExec.accept(this::drain);
-			} catch (RuntimeException e) {
-				synchronized (queue) {
-					queue.draining = false;
-					queue.notifyAll();
-				}
-				LOG.warn("Couldn't start the settings writer: {}", e.toString());
+			startWriter();
+		}
+	}
+
+	/** Hands the writer to its thread ({@code draining} is already set); if that is refused, the queue is idle again. */
+	private void startWriter() {
+		try {
+			writerExec.accept(this::drain);
+		} catch (RuntimeException e) {
+			synchronized (queue) {
+				queue.draining = false;
+				queue.notifyAll();
 			}
+			LOG.warn("Couldn't start the settings writer: {}", e.toString());
 		}
 	}
 
 	private void drain() {
 		boolean clean = false;
+		Pending next = null;
 		try {
 			while (true) {
-				Pending next;
 				synchronized (queue) {
 					next = queue.pending;
 					queue.pending = null;
@@ -866,12 +871,22 @@ public final class SkyLyricsConfig {
 			}
 		} catch (Throwable t) {
 			LOG.warn("The settings writer stopped: {}", t.toString());
+			synchronized (queue) {
+				queue.failed = next; // the snapshot being written is not lost: flush tries it once more
+			}
 			throw t;
 		} finally {
 			if (!clean) {
+				boolean restart;
 				synchronized (queue) {
-					queue.draining = false; // else no later save would ever start the writer again
-					queue.notifyAll();
+					restart = queue.pending != null; // a save that came in while this writer was dying
+					if (!restart) {
+						queue.draining = false; // else no later save would ever start the writer again
+						queue.notifyAll();
+					}
+				}
+				if (restart) {
+					startWriter();
 				}
 			}
 		}
