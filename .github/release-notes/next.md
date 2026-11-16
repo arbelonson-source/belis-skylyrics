@@ -6,6 +6,11 @@
 
 ### Fixed
 
+- **Updating with two games.** When two games share one mods folder and both update, a game no longer deletes the new jar the other one just installed.
+- **Windows covers with two games.** On Windows, starting a second game no longer deletes the first game's album cover files.
+- **Spotify with two games.** When two games share one Spotify sign-in and renew it at the same moment, the second one now waits a moment for the first one's new sign-in instead of signing you out.
+- **Saving with two games open.** Two games saving at the same moment can no longer break each other's settings file or lose a renewed Spotify sign-in.
+- **Two games at once.** Two Minecraft games open at the same time no longer undo each other's settings or song timings: when one saves, it keeps what the other changed, and shows it too.
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title, especially one with a bracket left open, no longer makes the lyrics lookup hang.
 - **Quick skips.** After a quick skip, the new song never shows the old song's lyrics, cover or colour. The bar, the card and the shooting stars no longer show the last song's line or "finding lyrics" next to the new song's name. A slow lyrics or cover lookup for the old song can't hold up the new one.

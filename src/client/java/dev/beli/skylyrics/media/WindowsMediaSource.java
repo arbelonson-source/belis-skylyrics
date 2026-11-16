@@ -428,7 +428,7 @@ public final class WindowsMediaSource implements MediaSource {
 		Path script = dir.resolve(SCRIPT);
 		try {
 			Files.createDirectories(covers);
-			deleteFilesIn(covers); // left over from the last game
+			deleteStaleCovers(covers); // left over from a game that has closed
 			byte[] bytes;
 			try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
 				if (in == null) {
@@ -521,11 +521,35 @@ public final class WindowsMediaSource implements MediaSource {
 		}
 	}
 
-	private static void deleteFilesIn(Path dir) {
+	private static final java.util.regex.Pattern COVER_NAME = java.util.regex.Pattern.compile("cover-(\\d+)-\\d+\\.img");
+	private static final long STRANGE_FILE_AGE_MS = 24L * 60 * 60 * 1000;
+
+	/**
+	 * Whether a file in the covers folder is left over and can go. The helper names its covers {@code cover-<its process id>-n.img},
+	 * so one whose helper still runs belongs to another game sharing this folder; any other file goes once it is a day old.
+	 */
+	static boolean staleCover(String name, java.util.function.LongPredicate processRuns, long ageMs) {
+		var m = COVER_NAME.matcher(name);
+		if (m.matches()) {
+			try {
+				return !processRuns.test(Long.parseLong(m.group(1)));
+			} catch (NumberFormatException e) {
+				return ageMs > STRANGE_FILE_AGE_MS;
+			}
+		}
+		return ageMs > STRANGE_FILE_AGE_MS;
+	}
+
+	/** Removes the covers a helper that is gone left behind; never another running game's. */
+	private static void deleteStaleCovers(Path dir) {
 		try (Stream<Path> files = Files.list(dir)) {
+			long now = System.currentTimeMillis();
 			files.forEach(f -> {
 				try {
-					Files.deleteIfExists(f);
+					long age = now - Files.getLastModifiedTime(f).toMillis();
+					if (staleCover(f.getFileName().toString(), pid -> ProcessHandle.of(pid).isPresent(), age)) {
+						Files.deleteIfExists(f);
+					}
 				} catch (IOException e) {
 					// Still open somewhere; it'll go next time
 				}

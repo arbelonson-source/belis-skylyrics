@@ -334,6 +334,8 @@ class SpotifyWebSourceTest {
 		final java.util.Deque<String> apiAnswers = new java.util.ArrayDeque<>();
 		/** Token endpoint: refresh tokens it accepts; any other one gets invalid_grant. Null accepts everything. */
 		java.util.Set<String> acceptedRefresh;
+		/** A new refresh token Spotify hands out with each access token, or null. */
+		String newRefresh;
 		final List<String> refreshed = new ArrayList<>();
 
 		FakeHttp(int apiStatus) {
@@ -357,7 +359,7 @@ class SpotifyWebSourceTest {
 			boolean token = request.uri().getHost().startsWith("accounts");
 			calls.add(token ? "token" : "api");
 			int status = token ? 200 : apiStatus;
-			String body = token ? "{\"access_token\":\"fresh\",\"expires_in\":3600}" : "";
+			String body = token ? "{\"access_token\":\"fresh\",\"expires_in\":3600" + (newRefresh == null ? "" : ",\"refresh_token\":\"" + newRefresh + "\"") + "}" : "";
 			if (token) {
 				String sent = bodyOf(request);
 				String used = sent.replaceAll(".*refresh_token=([^&]*).*", "$1");
@@ -481,12 +483,53 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void savingARotatedTokenLeavesAnotherGamesTempFileAlone(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		Path other = dir.resolve("login.json.tmp"); // the other game is writing its own copy right now
+		Files.writeString(other, "half");
+		http.newRefresh = "r2";
+		source.poll();
+		assertTrue(Files.readString(dir.resolve("login.json")).contains("\"r2\""));
+		assertEquals("half", Files.readString(other));
+		try (var files = Files.list(dir)) {
+			assertEquals(java.util.Set.of("login.json", "login.json.tmp"), files.map(f -> f.getFileName().toString()).collect(java.util.stream.Collectors.toSet()));
+		}
+	}
+
+	@Test
+	void aRefusedRefreshWaitsForTheOtherGamesSaveToLand(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http); // memory has "r"; the file still has it too
+		Path login = dir.resolve("login.json");
+		http.acceptedRefresh = java.util.Set.of("x");
+		int[] sleeps = {0};
+		source.sleeper = ms -> {
+			if (++sleeps[0] == 2) { // the other game's rotated token arrives during the wait
+				try {
+					Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"x\",\"scopes\":\"\"}");
+				} catch (IOException e) {
+					throw new java.io.UncheckedIOException(e);
+				}
+			}
+		};
+		source.poll();
+		assertEquals(2, sleeps[0]);
+		assertEquals(List.of("r", "x"), http.refreshed);
+		assertTrue(Files.exists(login));
+		assertEquals(SpotifyWebSource.Account.SIGNED_IN, source.account());
+	}
+
+	@Test
 	void aRefusedRefreshWithNothingNewInTheFileStillSignsOut(@TempDir Path dir) throws Exception {
 		FakeHttp http = new FakeHttp(204);
 		SpotifyWebSource source = signedIn(dir, http);
 		http.acceptedRefresh = java.util.Set.of();
+		long[] slept = {0};
+		source.sleeper = ms -> slept[0] += ms;
 		assertThrows(IOException.class, source::poll);
 		assertEquals(List.of("r"), http.refreshed);
+		assertTrue(slept[0] > 0 && slept[0] <= 3500, "it waited a bounded while for the other game: " + slept[0]);
 		assertFalse(Files.exists(dir.resolve("login.json")));
 		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
 	}

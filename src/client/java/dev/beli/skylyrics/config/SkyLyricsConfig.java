@@ -487,6 +487,7 @@ public final class SkyLyricsConfig {
 				keepCopy(file);
 				LOG.warn("Settings file had problems, kept a copy as skylyrics.json.bad. {}", parsed.describe());
 			}
+			parsed.config().remember(text);
 			return parsed.config();
 		} catch (RuntimeException e) {
 			LOG.warn("Couldn't read the settings file, using defaults: {}", e.toString());
@@ -751,15 +752,90 @@ public final class SkyLyricsConfig {
 			if (saveBlocked && !reread(file)) {
 				return; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
 			}
+			Path tmp = null;
+			try {
+				Files.createDirectories(file.getParent());
+				JsonObject mine = GSON.toJsonTree(this).getAsJsonObject();
+				JsonObject out = mergeWithDisk(file, mine);
+				String text = GSON.toJson(out == null ? mine : out);
+				tmp = Files.createTempFile(file.getParent(), file.getFileName() + ".", ".tmp");
+				Files.writeString(tmp, text, StandardCharsets.UTF_8);
+				dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
+				tmp = null;
+				if (out != null) {
+					copyFrom(parse(text).config()); // this game now also sees the other game's changes
+				}
+				remember(text);
+			} catch (IOException e) {
+				LOG.warn("Couldn't save settings: {}", e.toString());
+			} finally {
+				if (tmp != null) {
+					try {
+						Files.deleteIfExists(tmp); // only our own temp file
+					} catch (IOException | RuntimeException ignored) {
+					}
+				}
+			}
 		}
+	}
+
+	/** The exact text this game last read from or wrote to the settings file, and its settings as a normalised JSON tree. */
+	transient String baseText;
+	transient JsonObject baseTree;
+
+	private void remember(String text) {
+		baseText = text;
+		baseTree = GSON.toJsonTree(parse(text).config()).getAsJsonObject();
+	}
+
+	/**
+	 * When another game saved the file since this one last read or wrote it: the file's JSON with only the settings this game
+	 * changed since then put over it (per song for the song timings). Null when nothing needs merging.
+	 */
+	private JsonObject mergeWithDisk(Path file, JsonObject mine) {
+		String disk;
 		try {
-			Files.createDirectories(file.getParent());
-			Path tmp = file.resolveSibling("skylyrics.json.tmp");
-			Files.writeString(tmp, GSON.toJson(this), StandardCharsets.UTF_8);
-			dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
-		} catch (IOException e) {
-			LOG.warn("Couldn't save settings: {}", e.toString());
+			disk = dev.beli.skylyrics.util.SafeFile.readText(file, reader != null ? reader : dev.beli.skylyrics.util.SafeFile::readText, 1, 0);
+		} catch (IOException | RuntimeException e) {
+			return null;
 		}
+		if (disk.equals(baseText)) {
+			return null;
+		}
+		JsonObject theirs;
+		try {
+			theirs = JsonParser.parseString(disk).getAsJsonObject();
+		} catch (RuntimeException e) {
+			return null; // damaged: nothing worth keeping
+		}
+		JsonObject base = baseTree != null ? baseTree : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
+		for (var entry : mine.entrySet()) {
+			String name = entry.getKey();
+			var now = entry.getValue();
+			var then = base.get(name);
+			if (now.equals(then)) {
+				continue; // this game didn't change it: the file's value stays
+			}
+			var there = theirs.get(name);
+			if (now.isJsonObject() && there != null && there.isJsonObject() && then != null && then.isJsonObject()) {
+				JsonObject merged = there.getAsJsonObject();
+				JsonObject before = then.getAsJsonObject();
+				for (String key : new java.util.ArrayList<>(before.keySet())) {
+					if (!now.getAsJsonObject().has(key)) {
+						merged.remove(key);
+					}
+				}
+				for (var e : now.getAsJsonObject().entrySet()) {
+					if (!e.getValue().equals(before.get(e.getKey()))) {
+						merged.remove(e.getKey()); // re-adding moves it to the end, like setSongOffset
+						merged.add(e.getKey(), e.getValue());
+					}
+				}
+			} else {
+				theirs.add(name, now);
+			}
+		}
+		return theirs;
 	}
 
 	/** True when writing is fine now: the file is gone or damaged, so there is nothing to protect. False while it is still unreadable, and when it was just loaded (the file wins). */
@@ -792,6 +868,7 @@ public final class SkyLyricsConfig {
 			keepCopy(file);
 		}
 		copyFrom(parsed.config());
+		remember(text);
 		saveBlocked = false;
 		LOG.info("The settings file could be read again and was loaded.");
 	}

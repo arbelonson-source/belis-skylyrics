@@ -17,7 +17,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -533,7 +532,7 @@ public final class SpotifyWebSource implements MediaSource {
 			} catch (Refused e) {
 				// A second game copy sharing this folder may have renewed the token and saved the new one: try that
 				// once before calling it a sign-out (which would also delete the file the other copy just wrote)
-				adopted = otherLogin(id, refresh);
+				adopted = waitForOtherLogin(id, refresh);
 				if (adopted == null) {
 					refused = true;
 				} else {
@@ -562,6 +561,30 @@ public final class SpotifyWebSource implements MediaSource {
 				return accessToken;
 			}
 		}
+	}
+
+	/** Pauses between looks at the login file while another game may still be saving a renewed token: about 3 s in all. */
+	long[] otherLoginWaitsMs = {250, 500, 750, 750, 750};
+
+	/** How the waiting is done; a seam for tests. */
+	@FunctionalInterface
+	interface Sleeper {
+		void sleep(long ms) throws InterruptedException;
+	}
+
+	Sleeper sleeper = Thread::sleep;
+
+	/**
+	 * Looks for a newer token in the login file; when there is none yet, looks a few more times over a short while, because
+	 * the other game that was just refused the same token may not have saved its renewed one. Null when none turns up.
+	 */
+	private String @Nullable [] waitForOtherLogin(String id, String used) throws InterruptedException {
+		String[] found = otherLogin(id, used);
+		for (int i = 0; found == null && i < otherLoginWaitsMs.length; i++) {
+			sleeper.sleep(otherLoginWaitsMs[i]);
+			found = otherLogin(id, used);
+		}
+		return found;
 	}
 
 	/** The refresh token and scopes in the saved login when it is for this Client ID and differs from {@code used}, else null. */
@@ -603,15 +626,12 @@ public final class SpotifyWebSource implements MediaSource {
 		json.addProperty("scopes", grantedScopes);
 		try {
 			Files.createDirectories(loginFile.getParent());
-			Path tmp = loginFile.resolveSibling(loginFile.getFileName() + ".tmp");
+			// A temp file of our own: a second game saving at the same moment must not write to or delete it
+			Path tmp = Files.createTempFile(loginFile.getParent(), loginFile.getFileName() + ".", ".tmp");
 			boolean done = false;
 			try {
-				Files.deleteIfExists(tmp);
-				try {
-					Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
-				} catch (UnsupportedOperationException e) {
-					Files.createFile(tmp);
-					// Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
+				// Owner-only already on Linux and macOS; Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
+				if (Files.getFileAttributeView(tmp, java.nio.file.attribute.PosixFileAttributeView.class) == null) {
 					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 				}
 				Files.writeString(tmp, json.toString(), StandardCharsets.UTF_8);
