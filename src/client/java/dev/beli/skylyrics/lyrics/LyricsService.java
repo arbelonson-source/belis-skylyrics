@@ -348,12 +348,15 @@ public final class LyricsService {
 		}
 	}
 
-	/** An answer that isn't lyrics and isn't a network problem: shown as "no lyrics", not saved, unless the song has changed meanwhile. */
+	/**
+	 * An answer that isn't lyrics and isn't a network problem: shown as "no lyrics", not saved, unless the song has
+	 * changed meanwhile. Lyrics already on show (a Retry) stay, as they did when this showed an error.
+	 */
 	private void setNotFound(long gen) {
 		beforePublish.run();
 		synchronized (fetchLock) {
 			if (generation.get() == gen) {
-				current = new Snapshot(current.track, Lyrics.NONE, State.NOT_FOUND);
+				current = new Snapshot(current.track, current.lyrics, State.NOT_FOUND);
 			}
 		}
 	}
