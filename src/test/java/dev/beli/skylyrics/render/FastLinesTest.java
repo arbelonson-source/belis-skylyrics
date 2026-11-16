@@ -67,4 +67,14 @@ class FastLinesTest {
 		assertEquals(0.6f, LyricsRenderer.leaveReveal(0.6f, 0f), 1e-6f);
 	}
 
+	@Test
+	void aLongWordIsLaidOutAtTheSizeItIsDrawnAt() {
+		float[] at = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180};
+		float size = 0.25f, distance = 12;
+		float fit = WorldWords.fitted(size, at, 1, distance);
+		assertTrue(fit < size, "a long word shrinks: " + fit);
+		double degrees = Math.toDegrees(2 * Math.atan(at[at.length - 1] * fit / 2 / distance));
+		assertEquals(WorldWords.MAX_CARD_DEGREES, degrees, 0.01);
+		assertEquals(size, WorldWords.fitted(size, new float[] {0, 10, 20}, 1, distance), 1e-6f, "a short word keeps its size");
+	}
 }

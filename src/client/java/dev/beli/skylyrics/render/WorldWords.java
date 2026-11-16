@@ -640,6 +640,14 @@ final class WorldWords {
 	}
 
 	/**
+	 * The size a card of the piece with letter positions {@code at} really gets at {@code distance}: {@code size} shrunk
+	 * to fit by {@link #fitSize}. A card is laid out with this, so a long word reserves the room it takes, not more.
+	 */
+	static float fitted(float size, float[] at, float wordScale, float distance) {
+		return fitSize(size, at[at.length - 1] * size * wordScale, distance, MAX_CARD_DEGREES);
+	}
+
+	/**
 	 * Which piece of a line is drawn big, so each line has one word that stands out like a sung highlight: any piece
 	 * but the first with a few letters, picked by {@code roll} (0 to 1). Lines of fewer than three pieces have none.
 	 */
@@ -1320,9 +1328,11 @@ final class WorldWords {
 			float yaw = centre[0] - SPOTS[slot][0] * out + (next() * 2 - 1) * WOBBLE_X;
 			float pitch = Mth.clamp(centre[1] - LIFT - SPOTS[slot][1] * out + (next() * 2 - 1) * WOBBLE_Y, -75, 45);
 			float distance = Mth.lerp(next(), NEAR, FAR);
+			// A long word is shrunk to fit once placed, so it takes room for the size it ends up with
+			float fit = fitted(size, at, wordScale, distance);
 			// Up high a card is closer to the axis it turns around, so it takes up more yaw
-			float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance * Mth.cos(pitch * DEG)) + PAD_X;
-			float halfH = halfAngle(5 * size * wordScale, distance) + PAD_Y;
+			float halfW = halfAngle(at[at.length - 1] * fit * wordScale / 2, distance * Mth.cos(pitch * DEG)) + PAD_X;
+			float halfH = halfAngle(5 * fit * wordScale, distance) + PAD_Y;
 			float cost = 0;
 			for (float[] o : taken) {
 				float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(yaw - o[0])), h = halfH + o[3] - Math.abs(pitch - o[1]);
@@ -1411,6 +1421,7 @@ final class WorldWords {
 			sentence.rest = wide;
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
+		size = fitted(size, at, wordScale, distance);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
 		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
 		openRun(sentence, lineRuns, lineHalf, placing, wordScale, halfH);
