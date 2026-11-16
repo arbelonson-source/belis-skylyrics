@@ -75,6 +75,8 @@ public final class LibraryScreen extends Screen {
 	private boolean typing;
 	private long typedAt;
 	private boolean searchDirty;
+	/** When a click last opened a playlist; its double-click's second click must not land on the songs that just appeared. */
+	private long openedAtNs = Long.MIN_VALUE / 2;
 	/** Set when a pressed Space already did something; the typed space that follows it must not start a search. */
 	private boolean swallowSpace;
 
@@ -135,8 +137,9 @@ public final class LibraryScreen extends Screen {
 		if (!same && (next != null || library != null)) {
 			library = next;
 			demo = wantDemo;
+			shelves.values().forEach(Shelf::cancel);
 			shelves.clear();
-			opened = null;
+			closeOpened();
 		}
 		if (library instanceof HeardLibrary && section == Section.PLAYLISTS) {
 			section = Section.LIKED;
@@ -167,6 +170,14 @@ public final class LibraryScreen extends Screen {
 			if (pending == null && next >= 0) {
 				error = "";
 				pending = loader.apply(next);
+			}
+		}
+
+		/** The list is being thrown away: a load that hasn't started yet never will. */
+		void cancel() {
+			if (pending != null) {
+				pending.cancel(true);
+				pending = null;
 			}
 		}
 
@@ -317,7 +328,10 @@ public final class LibraryScreen extends Screen {
 		toastAge += dt;
 		if (searchDirty && now - typedAt >= SEARCH_WAIT_NS) {
 			searchDirty = false;
-			shelves.remove(Section.SEARCH);
+			Shelf old = shelves.remove(Section.SEARCH);
+			if (old != null) {
+				old.cancel();
+			}
 			selected = -1;
 		}
 		pollPlaying();
@@ -510,7 +524,7 @@ public final class LibraryScreen extends Screen {
 				return;
 			}
 			String text = shelf.error.isEmpty() ? emptyText() : shelf.error;
-			g.drawCenteredString(font, Ui.visual(text), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text, viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
 			if (!shelf.error.isEmpty()) {
 				int bx = px + pw / 2 - 40, by = viewY + viewH / 2 + 4;
 				Controls.drawButton(f, bx, by, 80, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, 80, 16), true, true);
@@ -913,7 +927,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private void activate(Shelf shelf, int index) {
-		if (library == null || index < 0 || index >= shelf.items.size()) {
+		if (library == null || index < 0 || index >= shelf.items.size() || staleResults()) {
 			return;
 		}
 		if (clock <= shelf.born.get(index)) {
@@ -936,6 +950,7 @@ public final class LibraryScreen extends Screen {
 			Shelf songs = new Shelf(offset -> lib.playlist(list, offset));
 			songs.more();
 			opened = songs;
+			openedAtNs = System.nanoTime();
 			openedName = list.name();
 			selected = -1;
 			return;
@@ -961,8 +976,20 @@ public final class LibraryScreen extends Screen {
 		playing = library.play(item, after);
 	}
 
+	private void closeOpened() {
+		if (opened != null) {
+			opened.cancel();
+			opened = null;
+		}
+	}
+
+	/** The search box has changed and the shelf still shows the answer to an older search. */
+	private boolean staleResults() {
+		return LibraryKeys.staleResults(opened == null && section == Section.SEARCH, searchDirty);
+	}
+
 	private void showSection(Section s) {
-		opened = null;
+		closeOpened();
 		section = s;
 		selected = -1;
 		sayNewSection = true;
@@ -1027,7 +1054,7 @@ public final class LibraryScreen extends Screen {
 		}
 		if (opened != null) {
 			if (Ui.inside(mx, my, px + 10, y, font.width("‹ " + Tr.t("Playlists")) + 14, 14)) {
-				opened = null;
+				closeOpened();
 				selected = -1;
 			}
 		} else {
@@ -1054,6 +1081,10 @@ public final class LibraryScreen extends Screen {
 		}
 		Shelf shelf = shelf();
 		if (shelf != null && Ui.inside(mx, my, viewX, viewY, viewW, viewH)) {
+			if (staleResults() || LibraryKeys.tooSoonAfterOpen(System.nanoTime() - openedAtNs)) {
+				// Old results under a search being typed, or the second click of a double-click on a playlist
+				return true;
+			}
 			if (shelf.items.isEmpty() && !shelf.error.isEmpty()) {
 				shelf.more();
 				return true;
@@ -1201,7 +1232,7 @@ public final class LibraryScreen extends Screen {
 			if (typing) {
 				typing = false;
 			} else if (opened != null) {
-				opened = null;
+				closeOpened();
 				selected = -1;
 			} else {
 				onClose();
@@ -1250,6 +1281,9 @@ public final class LibraryScreen extends Screen {
 		int rowStep = mode == SkyLyricsConfig.LibraryView.GRID ? cols : 1;
 		int step = event.isLeft() ? -1 : event.isRight() ? 1 : event.isUp() ? -rowStep : event.isDown() ? rowStep : 0;
 		if (step != 0 && !(typing && (event.isLeft() || event.isRight()))) {
+			if (staleResults()) {
+				return true;
+			}
 			typing = false;
 			if (mode == SkyLyricsConfig.LibraryView.SHELF) {
 				int dCol = event.isLeft() ? -1 : event.isRight() ? 1 : 0;

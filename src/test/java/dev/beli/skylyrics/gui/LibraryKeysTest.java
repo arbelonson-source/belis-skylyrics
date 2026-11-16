@@ -50,4 +50,19 @@ class LibraryKeysTest {
 		assertEquals(-1, LibraryViews.shelfHit(10 + 3 * 48 + 5, 85, 10, 20, 0, 48, 60, 40, 2, 7), "past the last cover");
 		assertEquals(-1, LibraryViews.shelfHit(5, 25, 10, 20, 0, 48, 60, 40, 2, 7), "left of the shelf");
 	}
+
+	@Test
+	void resultsAreOnlyStaleInTheSearchViewWhileTyping() {
+		assertTrue(LibraryKeys.staleResults(true, true));
+		assertFalse(LibraryKeys.staleResults(true, false));
+		assertFalse(LibraryKeys.staleResults(false, true), "liked songs and playlists don't change as you type");
+	}
+
+	@Test
+	void aClickRightAfterOpeningAPlaylistIsTheDoubleClicksSecondHalf() {
+		assertTrue(LibraryKeys.tooSoonAfterOpen(0));
+		assertTrue(LibraryKeys.tooSoonAfterOpen(LibraryKeys.DOUBLE_CLICK_NS - 1));
+		assertFalse(LibraryKeys.tooSoonAfterOpen(LibraryKeys.DOUBLE_CLICK_NS));
+		assertFalse(LibraryKeys.tooSoonAfterOpen(Long.MAX_VALUE / 2), "a playlist that was never opened");
+	}
 }

@@ -26,7 +26,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Reads the signed-in user's Spotify songs for the song library and starts the one they pick.
- * Everything runs on one background thread; the screen just checks whether the answer has arrived.
+ * Searches and page loads share one background thread, and starting a song has its own, so a slow or rate-limited
+ * search never holds up Play. The screen just checks whether the answer has arrived.
  */
 public final class SpotifyLibrary implements Library {
 	/** Spotify hands out at most this many search results per request. */
@@ -57,6 +58,12 @@ public final class SpotifyLibrary implements Library {
 	private final Predicate<String> openHere;
 	private final ExecutorService worker = Executors.newSingleThreadExecutor(r -> {
 		Thread t = new Thread(r, "SkyLyrics library");
+		t.setDaemon(true);
+		return t;
+	});
+	/** Starting a song and the like never wait behind searches and page loads. */
+	private final ExecutorService controls = Executors.newSingleThreadExecutor(r -> {
+		Thread t = new Thread(r, "SkyLyrics library play");
 		t.setDaemon(true);
 		return t;
 	});
@@ -116,10 +123,15 @@ public final class SpotifyLibrary implements Library {
 	}
 
 	private CompletableFuture<String> send(String body, String uri) {
-		return run(() -> {
+		return run(controls, () -> {
 			HttpResponse<String> response = spotify.call("PUT", "/me/player/play", body);
 			if (response.statusCode() == 404) {
-				String device = firstDevice(get("/me/player/devices"));
+				String device;
+				try {
+					device = firstDevice(get("/me/player/devices"));
+				} catch (IOException e) {
+					device = null; // no answer about devices counts as none, so the app on this computer still gets its try
+				}
 				if (device != null) {
 					response = spotify.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 				}
@@ -143,8 +155,16 @@ public final class SpotifyLibrary implements Library {
 	}
 
 	private <T> CompletableFuture<T> run(Job<T> job) {
+		return run(worker, job);
+	}
+
+	/** Runs {@code job} on {@code pool}; a future cancelled before its turn (its list was thrown away) never makes the request. */
+	private <T> CompletableFuture<T> run(ExecutorService pool, Job<T> job) {
 		CompletableFuture<T> result = new CompletableFuture<>();
-		worker.execute(() -> {
+		pool.execute(() -> {
+			if (result.isDone()) {
+				return;
+			}
 			try {
 				result.complete(job.run());
 			} catch (Exception e) {
