@@ -614,4 +614,24 @@ class SpotifyWebSourceTest {
 		assertFalse(Files.exists(stale));
 		assertTrue(Files.exists(fresh));
 	}
+
+	@Test
+	void withoutAClientIdTheStatusSaysToPasteItNotToSignIn(@TempDir Path dir) {
+		assertEquals("Paste your Client ID first", SpotifyWebSource.notSetUp("").getMessage());
+		assertEquals("Paste your Client ID first", SpotifyWebSource.notSetUp("nope").getMessage());
+		assertEquals("Sign in to Spotify below", SpotifyWebSource.notSetUp(ID).getMessage());
+		SpotifyWebSource source = new SpotifyWebSource(() -> "", dir.resolve("spotify-login.json"));
+		Exception e = assertThrows(IOException.class, source::poll);
+		assertTrue(e instanceof SpotifyWebSource.NotSetUp);
+		assertEquals("Paste your Client ID first", e.getMessage());
+		assertTrue(source.failing() instanceof SpotifyWebSource.NotSetUp);
+	}
+
+	@Test
+	void aBadConnectionDuringSignInIsNotShownAsARawError() {
+		String net = "Can't reach the internet or Spotify";
+		assertEquals(net, SpotifyWebSource.failureText(new java.net.http.HttpConnectTimeoutException("HTTP connect timed out")));
+		assertEquals(net, SpotifyWebSource.failureText(new java.net.UnknownHostException("accounts.spotify.com")));
+		assertEquals(net, SpotifyWebSource.failureText(new IOException("wrapped", new java.net.ConnectException())));
+	}
 }

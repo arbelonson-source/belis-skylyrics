@@ -180,4 +180,15 @@ class SpotifyLibraryTest {
 		assertEquals("", own.get(1, () -> ""));
 		assertEquals("real", own.get(1, () -> "real"));
 	}
+
+	@Test
+	void aFailedLoadSaysWhatToDoNotWhatBrokeInside() {
+		assertEquals("Can't reach the internet or Spotify", SpotifyLibrary.errorText(new java.net.http.HttpTimeoutException("request timed out")));
+		assertEquals("Can't reach the internet or Spotify", SpotifyLibrary.errorText(new java.net.UnknownHostException("api.spotify.com")));
+		assertEquals("Sign in to Spotify on the Music tab to see your songs here",
+				SpotifyLibrary.errorText(SpotifyWebSource.notSetUp("0123456789abcdef0123456789abcdef")));
+		assertEquals("Spotify didn't answer, try again", SpotifyLibrary.errorText(new java.io.IOException("Spotify didn't answer, try again")));
+		assertEquals("Something went wrong, try again", SpotifyLibrary.errorText(new IllegalStateException("x")));
+		assertEquals("Something went wrong, try again", SpotifyLibrary.errorText(null));
+	}
 }

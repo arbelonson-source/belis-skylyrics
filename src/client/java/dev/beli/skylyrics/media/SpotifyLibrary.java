@@ -150,6 +150,17 @@ public final class SpotifyLibrary implements Library {
 		};
 	}
 
+	/** What the library shows for a failed load: the step to do or the internet's fault in words, never a raw network error. */
+	public static String errorText(@Nullable Throwable error) {
+		if (error instanceof SpotifyWebSource.NotSetUp) {
+			return Tr.t("Sign in to Spotify on the Music tab to see your songs here");
+		}
+		if (MediaTracker.networkFailure(error)) {
+			return Tr.t("Can't reach the internet or Spotify");
+		}
+		return error instanceof IOException && error.getMessage() != null ? error.getMessage() : Tr.t("Something went wrong, try again");
+	}
+
 	private interface Job<T> {
 		T run() throws IOException, InterruptedException;
 	}
@@ -183,7 +194,7 @@ public final class SpotifyLibrary implements Library {
 		}
 		if (response.statusCode() >= 300) {
 			throw new IOException(response.statusCode() == 403
-					? Tr.t("Sign in again to use the song library")
+					? Tr.t("Sign out and sign in again on the Music tab to use the song library")
 					: Tr.t("Spotify didn't answer, try again"));
 		}
 		return response.body();
