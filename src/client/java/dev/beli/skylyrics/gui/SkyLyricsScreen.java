@@ -11,6 +11,7 @@ import java.util.function.BooleanSupplier;
 
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -28,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.render.LyricsRenderer;
 import dev.beli.skylyrics.media.SpotifyWebSource;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
@@ -88,6 +90,17 @@ public final class SkyLyricsScreen extends Screen {
 	/** Whether any sky effect is on, so the sky settings (Strength and the rest) show. */
 	static boolean anySkyEffect(SkyLyricsConfig cfg) {
 		return cfg.sky != SkyEffect.OFF || cfg.constellations || cfg.shootingStars || cfg.twinkle;
+	}
+
+	/**
+	 * What the Distance slider reads, in real blocks. The stored value stays as it is: in the sky it is blocks (kept
+	 * under 80% of the render distance, which {@code renderChunks} gives), floating it is a setting that maps to 4 to 16 blocks.
+	 */
+	static String distanceBlocks(Placement placement, double value, int renderChunks) {
+		if (placement == Placement.SKY) {
+			return String.valueOf(Math.round(Math.max(8, Math.min(value, renderChunks * 16 * 0.8f))));
+		}
+		return String.format(Locale.ROOT, "%.1f", LyricsRenderer.floatingDistance((float) value));
 	}
 
 	private static final String LRCLIB = "https://lrclib.net";
@@ -267,7 +280,7 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.height, v -> cfg.height = (float) v, v -> Math.round(v) + "°")
 				.when(() -> heightApplies(cfg.layout, cfg.placement, cfg.direction));
 		Row distance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 8, 160, 1,
-				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", Math.round(v)))
+				() -> cfg.distance, v -> cfg.distance = (float) v, v -> Tr.t("%s blocks", distanceBlocks(cfg.placement, v, Minecraft.getInstance().options.getEffectiveRenderDistance())))
 				.when(() -> cfg.layout != Layout.WORLD);
 		// World words float at a mix of distances, so their setting is times the usual instead of blocks
 		Row worldDistance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 0.5, 2, 0.05,
