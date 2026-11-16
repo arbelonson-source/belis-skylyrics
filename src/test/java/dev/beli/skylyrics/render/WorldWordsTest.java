@@ -1101,4 +1101,9 @@ class WorldWordsTest {
 			}
 		}
 	}
+
+	@Test
+	void sideStepStraightUpHasNoSideToStepTo() {
+		assertEquals(Vec3.ZERO, WorldWords.sideStep(new Vec3(0, 5, 0), 5));
+	}
 }

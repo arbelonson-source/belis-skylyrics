@@ -207,7 +207,7 @@ public final class SpotifyWebSource implements MediaSource {
 		String state = B64.encodeToString(bytes(16));
 		ServerSocket server;
 		try {
-			server = new ServerSocket(PORT, 4, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
+			server = new ServerSocket(loginPort, 4, InetAddress.getByAddress(new byte[] {127, 0, 0, 1}));
 		} catch (BindException e) {
 			throw new IOException(Tr.t("Spotify sign-in needs port %s, but another program is using it. Close the other game or app and try again", PORT), e);
 		}
@@ -217,6 +217,15 @@ public final class SpotifyWebSource implements MediaSource {
 		thread.setDaemon(true);
 		thread.start();
 		return authorizeUrl(id, challenge(verifier), state);
+	}
+
+	/** Port the sign-in listens on; tests set 0 so parallel test runs never fight over {@link #PORT}. */
+	int loginPort = PORT;
+
+	/** The port the running sign-in actually listens on, or -1. */
+	synchronized int boundLoginPort() {
+		ServerSocket server = loginServer;
+		return server == null ? -1 : server.getLocalPort();
 	}
 
 	public synchronized void cancelLogin() {

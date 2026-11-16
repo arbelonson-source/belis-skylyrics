@@ -399,6 +399,16 @@ public final class WindowsMediaSource implements MediaSource {
 		}
 	}
 
+	/** How many helper starts failed since one last answered (for tests). */
+	synchronized int failuresInARow() {
+		return failuresInARow;
+	}
+
+	/** Lets the next poll start the helper without waiting out the back-off (for tests). */
+	synchronized void retryNow() {
+		retryAt = 0;
+	}
+
 	/** How long to wait for a helper to say it is ready: longer until one has managed it once. */
 	static long startLimitMs(long normalMs, boolean everReady) {
 		return everReady ? normalMs : Math.max(normalMs, FIRST_START_TIMEOUT_MS);

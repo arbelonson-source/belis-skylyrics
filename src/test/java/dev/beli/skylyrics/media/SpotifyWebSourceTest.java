@@ -457,11 +457,13 @@ class SpotifyWebSourceTest {
 		http.newRefresh = "newref";
 		SpotifyWebSource source = new SpotifyWebSource(() -> id[0], login);
 		source.useHttp(http);
+		source.loginPort = 0;
 		String url = source.startLogin();
+		int port = source.boundLoginPort();
 		String state = url.replaceAll(".*[?&]state=([^&]*).*", "$1");
 		try {
 			id[0] = "ffffffffffffffffffffffffffffffff";
-			String page = get(SpotifyWebSource.PORT, "/callback?state=" + state + "&code=abc");
+			String page = get(port, "/callback?state=" + state + "&code=abc");
 			assertTrue(page.contains("Sign-in was cancelled"), page);
 			assertFalse(Files.exists(login), "nothing saved under the old ID");
 		} finally {

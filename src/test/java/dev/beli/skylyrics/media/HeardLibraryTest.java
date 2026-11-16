@@ -144,6 +144,19 @@ class HeardLibraryTest {
 		assertEquals("", items.get(0).coverUrl());
 	}
 
+	/** An older file may still hold a file: cover; hearing the song again without a cover must not carry that dead path over. */
+	@Test
+	void theSameSongHeardAgainWithoutACoverDoesNotKeepAnOldFileCover() throws IOException {
+		Files.writeString(file(), HeardLibrary.toJson(List.of(
+				new HeardLibrary.Entry("One", "A", "Album", 1000, "file:///C:/Users/x/cover-12-1.img", "uri:one", "edge"))));
+		HeardLibrary lib = library();
+		lib.record(new Track("One", "A", "Album", 1000, "", "edge", "uri:one"));
+		lib.flush();
+		List<LibraryItem> items = library().liked(0).join().items();
+		assertEquals(1, items.size());
+		assertEquals("", items.get(0).coverUrl());
+	}
+
 	@Test
 	void damagedOrEmptyFileStartsEmptyAndStillWorks() throws IOException {
 		for (String junk : List.of("", "   ", "{", "not json at all", "[]", "{}", "{\"songs\": 5}", "{\"songs\": [1, null, {\"artist\": \"x\"}]}")) {

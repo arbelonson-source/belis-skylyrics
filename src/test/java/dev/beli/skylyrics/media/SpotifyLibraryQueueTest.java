@@ -111,9 +111,9 @@ class SpotifyLibraryQueueTest {
 
 	@Test
 	void playDoesNotWaitBehindARateLimitedSearch(@TempDir Path dir) throws Exception {
-		Net net = new Net(what -> what.startsWith("GET") ? new Reply(429, 30, "") : new Reply(204, -1, ""));
+		Net net = new Net(what -> what.startsWith("GET") ? new Reply(429, 5, "") : new Reply(204, -1, ""));
 		SpotifyLibrary library = new SpotifyLibrary(signedIn(dir, net));
-		library.search("one", 0); // sleeps out its 30 s Retry-After on the search thread
+		library.search("one", 0); // sleeps out its 5 s Retry-After on the search thread
 		library.search("two", 0);
 		CompletableFuture<String> play = library.play(SONG, List.of());
 		assertEquals("", play.get(2, TimeUnit.SECONDS));

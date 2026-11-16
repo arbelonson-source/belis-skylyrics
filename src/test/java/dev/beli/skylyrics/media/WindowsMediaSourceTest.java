@@ -235,7 +235,7 @@ class WindowsMediaSourceTest {
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
 			starts[0]++;
 			return List.of("/bin/sh", "-c", body);
-		}, 20_000, 300);
+		}, START_MS, 300);
 		try {
 			assertThrows(IOException.class, source::poll);
 			assertThrows(IOException.class, source::poll); // two misses on the first helper
@@ -243,6 +243,38 @@ class WindowsMediaSourceTest {
 			assertThrows(IOException.class, source::poll); // one miss on the second
 			assertThrows(IOException.class, source::poll); // two: must still be the same helper
 			assertEquals(2, starts[0]);
+		} finally {
+			source.close();
+		}
+	}
+
+	/**
+	 * A helper PowerShell stopped at once says why in windows-media.log, and the error carries that last line; failed
+	 * starts are counted, and a helper that answers resets the count.
+	 */
+	@Test
+	@Timeout(60)
+	void aBlockedHelperIsNamedInTheErrorAndCountedUntilOneAnswers() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String blocked = "echo blocked >&2; exit 1";
+		String good = "printf '{\"ready\":true}\\n'; while read n cmd rest; do "
+				+ "printf '{\"seq\":%s,\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\",\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}\\n' \"$n\"; done";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			return List.of("/bin/sh", "-c", ++starts[0] <= 2 ? blocked : good);
+		}, START_MS, REPLY_MS);
+		try {
+			IOException first = assertThrows(IOException.class, source::poll);
+			assertTrue(first.getMessage().contains("(blocked)"), first.getMessage());
+			assertEquals(1, source.failuresInARow());
+			source.retryNow();
+			IOException second = assertThrows(IOException.class, source::poll);
+			assertTrue(second.getMessage().contains("(blocked)"), second.getMessage());
+			assertEquals(2, source.failuresInARow());
+			source.retryNow();
+			assertEquals("Song", source.poll().track().title());
+			assertEquals(0, source.failuresInARow(), "a helper that answers starts the count over");
+			assertEquals(3, starts[0]);
 		} finally {
 			source.close();
 		}
