@@ -185,7 +185,7 @@ Two games can share one Minecraft folder (two instances, or a game and a test co
 ## Hebrew or Arabic looks wrong
 
 - **Boxes in the lyrics.** Invisible left-to-right or right-to-left marks in copied lyrics no longer show as small boxes in the sky, the top bar or the **Record card**. They still set the word order.
-- **Numbers with the game in Hebrew or Arabic.** The **Record card**'s time left reads "-2:35", and the **Height**, **Distance** and **Size** sliders keep their sign and unit on the right side ("-10°", "0.50×"). If you still see one the other way round, update to the newest version.
+- **Numbers with the game in Hebrew or Arabic.** The **Record card**'s time left reads "-2:35", and the **Height**, **Distance** and **Size** sliders read the right way round ("-10°", "0.50×"). If you still see one the other way round, update to the newest version.
 
 ## Very long words and fast lyrics
 
