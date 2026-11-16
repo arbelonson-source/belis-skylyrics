@@ -257,4 +257,14 @@ class CoverCacheTest {
 			cache.close();
 		}
 	}
+
+	@Test
+	void onlyPermanentStatusesCountAgainstACover() {
+		assertTrue(CoverCache.countsAsFailure(404));
+		assertTrue(CoverCache.countsAsFailure(403));
+		assertFalse(CoverCache.countsAsFailure(503));
+		assertFalse(CoverCache.countsAsFailure(500));
+		assertFalse(CoverCache.countsAsFailure(429));
+		assertFalse(CoverCache.countsAsFailure(408));
+	}
 }

@@ -320,6 +320,11 @@ public final class CoverCache {
 		}
 	}
 
+	/** Whether a non-2xx answer counts against the cover; one that may pass (5xx, 429, 408) is retried like network trouble instead. */
+	static boolean countsAsFailure(int status) {
+		return !CoverRetry.temporaryStatus(status);
+	}
+
 	private @Nullable BufferedImage read(String url) throws Exception {
 		Path file = dir.resolve(fileName(url));
 		BufferedImage cached = readCached(file);
@@ -331,7 +336,11 @@ public final class CoverCache {
 		try (java.io.InputStream body = response.body()) {
 			// A server that stalls mid-body would hold this worker for ever, so the stream is closed after a while
 			dev.beli.skylyrics.util.Net.closeAfter(body, Duration.ofSeconds(BODY_TIMEOUT_S));
-			if (response.statusCode() / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
+			int status = response.statusCode();
+			if (status / 100 != 2 && !countsAsFailure(status)) {
+				throw new java.io.IOException("HTTP " + status);
+			}
+			if (status / 100 != 2 || !acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 				return null;
 			}
 			bytes = readCapped(body, MAX_BYTES);
