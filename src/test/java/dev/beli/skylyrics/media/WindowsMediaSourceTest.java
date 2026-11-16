@@ -515,12 +515,19 @@ class WindowsMediaSourceTest {
 
 	@Test
 	void onlyACoverWhoseHelperIsGoneIsStale() {
-		java.util.function.LongPredicate runs = pid -> pid == 4242;
+		java.util.function.LongFunction<String> runs = pid -> pid == 4242 ? "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\PowerShell.EXE" : null;
 		assertFalse(WindowsMediaSource.staleCover("cover-4242-3.img", runs, 0), "another game's helper still runs");
 		assertTrue(WindowsMediaSource.staleCover("cover-777-1.img", runs, 0), "its helper is gone");
-		assertTrue(WindowsMediaSource.staleCover("cover-777-1.img", runs, 0));
 		assertFalse(WindowsMediaSource.staleCover("other.img", runs, 60_000), "not ours and not old: left alone");
 		assertTrue(WindowsMediaSource.staleCover("other.img", runs, 25L * 3600 * 1000), "a day old");
 		assertFalse(WindowsMediaSource.staleCover("cover-99999999999999999999-1.img", runs, 1000));
+	}
+
+	@Test
+	void aReusedProcessIdThatIsNotPowerShellDoesNotKeepACover() {
+		assertTrue(WindowsMediaSource.staleCover("cover-4242-3.img", pid -> "C:\\Program Files\\Chrome\\chrome.exe", 0));
+		assertFalse(WindowsMediaSource.staleCover("cover-4242-3.img", pid -> "C:\\x\\pwsh.exe", 0));
+		assertFalse(WindowsMediaSource.staleCover("cover-4242-3.img", pid -> "", 60_000), "program unknown: kept while fresh");
+		assertTrue(WindowsMediaSource.staleCover("cover-4242-3.img", pid -> "", 25L * 3600 * 1000), "program unknown: gone after a day");
 	}
 }
