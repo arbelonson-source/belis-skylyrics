@@ -38,15 +38,25 @@ jobs:
         run: ./gradlew build
       - name: check the music helper tests really ran
         if: matrix.os != 'macos-15'
-        # Linux skips one (the real Windows test). Windows skips three: the "no Windows media" test and the
-        # restart and refused-control tests, whose stand-in helpers need a POSIX shell. More skips would mean
-        # PowerShell wasn't found and the helper went untested.
+        # The tests that drive the real PowerShell helper skip themselves when PowerShell isn't found, so check by name
+        # that they ran (on Windows also the test of the real Windows media controls). Counting skips broke each time
+        # a test with a POSIX stand-in helper (skipped on Windows) was added.
         run: |
-          want=1
-          if [ "$RUNNER_OS" = "Windows" ]; then want=3; fi
+          py=$(command -v python3 || command -v python)
+          must="talksToTheHelper coversThatHangNeverMakeAPollLate aCoverIsReadAgainAfterAFewSeconds controlsNeverReachAnotherApp"
+          if [ "$RUNNER_OS" = "Windows" ]; then must="$must readsTheRealWindowsMediaControls"; fi
           for report in versions/*/build/test-results/test/TEST-dev.beli.skylyrics.media.WindowsMediaSourceTest.xml; do
             grep -o '<testsuite [^>]*>' "$report"
-            grep -q "skipped=\"$want\"" "$report" && grep -q 'failures="0"' "$report" && grep -q 'errors="0"' "$report" || exit 1
+            "$py" - "$report" $must <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          root = ET.parse(sys.argv[1]).getroot()
+          cases = {c.get('name'): c for c in root.iter('testcase')}
+          bad = [n for n in sys.argv[2:] if n not in cases or cases[n].find('skipped') is not None]
+          broken = [n for n, c in cases.items() if c.find('failure') is not None or c.find('error') is not None]
+          if bad or broken:
+              print('not run:', bad, 'failed:', broken)
+              sys.exit(1)
+          PY
           done
       - name: show failed tests as annotations
         # The annotations can be read through GitHub's API, which is easier to reach than the full log
