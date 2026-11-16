@@ -74,6 +74,7 @@ import dev.beli.skylyrics.render.AlbumArt;
 import dev.beli.skylyrics.render.CoverCache;
 import dev.beli.skylyrics.render.HatLayer;
 import dev.beli.skylyrics.render.LyricsRenderer;
+import dev.beli.skylyrics.render.MenuRoom;
 import dev.beli.skylyrics.render.NowPlayingHud;
 import dev.beli.skylyrics.render.RecordCard;
 import dev.beli.skylyrics.render.SkyEffects;
@@ -275,17 +276,18 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private void drawTitle(Screen screen, GuiGraphics g) {
 		int bottom = screen.height - TITLE_FOOTER;
-		int top = 0;
+		java.util.List<int[]> buttons = new java.util.ArrayList<>();
 		//? if >=26.1 {
 		/*for (AbstractWidget widget : Screens.getWidgets(screen)) {
 		*///?} else {
 		for (AbstractWidget widget : Screens.getButtons(screen)) {
 		//?}
-			if (widget.visible && widget.getBottom() < bottom) {
-				top = Math.max(top, widget.getBottom());
+			if (widget.visible) {
+				buttons.add(new int[] {widget.getX(), widget.getWidth(), widget.getBottom()});
 			}
 		}
-		renderer.renderMenu(g, top + 4, bottom);
+		MenuRoom.Room room = MenuRoom.of(screen.width, bottom, buttons.toArray(new int[0][]));
+		renderer.renderMenu(g, room.top() + 4, bottom, room.maxWidth());
 	}
 
 	/** Room left at the bottom of the title screen for the version and copyright lines. */
