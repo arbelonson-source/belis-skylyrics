@@ -15,6 +15,14 @@ public interface MediaSource extends AutoCloseable {
 	default void seek(long positionMs) {
 	}
 
+	/**
+	 * Why the last read failed, while the source is in a failing streak (including the moments between its retries,
+	 * when {@link #poll} returns the last answer without asking); {@code null} when the last read worked.
+	 */
+	default @org.jspecify.annotations.Nullable Throwable failing() {
+		return null;
+	}
+
 	/** Shown in the settings, e.g. "Spotify". */
 	String displayName();
 

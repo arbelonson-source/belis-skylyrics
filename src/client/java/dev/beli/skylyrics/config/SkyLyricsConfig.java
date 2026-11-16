@@ -461,6 +461,9 @@ public final class SkyLyricsConfig {
 	}
 
 	static SkyLyricsConfig load(Path file, dev.beli.skylyrics.util.SafeFile.Reader reader, int tries, long pauseMs) {
+		if (file.getParent() != null) {
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.getParent(), file.getFileName().toString(), System.currentTimeMillis());
+		}
 		if (!Files.isRegularFile(file)) {
 			return new SkyLyricsConfig();
 		}
@@ -814,6 +817,9 @@ public final class SkyLyricsConfig {
 			var now = entry.getValue();
 			var then = base.get(name);
 			if (now.equals(then)) {
+				if (!theirs.has(name)) {
+					theirs.add(name, now); // a file from an older version doesn't know this setting: keep this game's value
+				}
 				continue; // this game didn't change it: the file's value stays
 			}
 			var there = theirs.get(name);

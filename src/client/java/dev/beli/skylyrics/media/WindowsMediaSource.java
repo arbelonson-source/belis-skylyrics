@@ -526,18 +526,33 @@ public final class WindowsMediaSource implements MediaSource {
 
 	/**
 	 * Whether a file in the covers folder is left over and can go. The helper names its covers {@code cover-<its process id>-n.img},
-	 * so one whose helper still runs belongs to another game sharing this folder; any other file goes once it is a day old.
+	 * so one whose helper still runs belongs to another game sharing this folder. Windows reuses process ids fast, so a process
+	 * with that id only counts when it is a PowerShell: {@code commandOf} gives the process's program path, null when no such
+	 * process runs, and "" when it runs but its program is unknown (then the cover stays until it is a day old). Any other file goes
+	 * once it is a day old.
 	 */
-	static boolean staleCover(String name, java.util.function.LongPredicate processRuns, long ageMs) {
+	static boolean staleCover(String name, java.util.function.LongFunction<String> commandOf, long ageMs) {
 		var m = COVER_NAME.matcher(name);
 		if (m.matches()) {
 			try {
-				return !processRuns.test(Long.parseLong(m.group(1)));
+				String command = commandOf.apply(Long.parseLong(m.group(1)));
+				if (command == null) {
+					return true;
+				}
+				if (command.isEmpty()) {
+					return ageMs > STRANGE_FILE_AGE_MS;
+				}
+				String lower = command.toLowerCase(Locale.ROOT);
+				return !(lower.endsWith("powershell.exe") || lower.endsWith("pwsh.exe"));
 			} catch (NumberFormatException e) {
 				return ageMs > STRANGE_FILE_AGE_MS;
 			}
 		}
 		return ageMs > STRANGE_FILE_AGE_MS;
+	}
+
+	private static String commandOf(long pid) {
+		return ProcessHandle.of(pid).map(h -> h.info().command().orElse("")).orElse(null);
 	}
 
 	/** Removes the covers a helper that is gone left behind; never another running game's. */
@@ -547,7 +562,7 @@ public final class WindowsMediaSource implements MediaSource {
 			files.forEach(f -> {
 				try {
 					long age = now - Files.getLastModifiedTime(f).toMillis();
-					if (staleCover(f.getFileName().toString(), pid -> ProcessHandle.of(pid).isPresent(), age)) {
+					if (staleCover(f.getFileName().toString(), WindowsMediaSource::commandOf, age)) {
 						Files.deleteIfExists(f);
 					}
 				} catch (IOException e) {

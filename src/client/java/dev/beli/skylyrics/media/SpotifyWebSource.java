@@ -126,6 +126,8 @@ public final class SpotifyWebSource implements MediaSource {
 	/** When Spotify was last asked, how many asks in a row failed, and how long to wait after the last failure. */
 	private long askedNs = System.nanoTime();
 	private int failures;
+	/** Why the last ask failed, until one works; the tracker keeps reporting it between retries. */
+	private volatile @Nullable IOException lastFailure;
 	private long failDelayNs;
 	/** Quick re-asks still to make after Spotify answered empty right after a song (an ad, a device hand-off, a track change). */
 	private int recheck;
@@ -604,6 +606,9 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	private void load() {
+		if (loginFile.getParent() != null) {
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(loginFile.getParent(), loginFile.getFileName().toString(), System.currentTimeMillis());
+		}
 		try {
 			if (Files.exists(loginFile)) {
 				JsonObject json = object(Files.readString(loginFile, StandardCharsets.UTF_8));
@@ -713,9 +718,11 @@ public final class SpotifyWebSource implements MediaSource {
 		try {
 			Snapshot result = ask();
 			failures = 0;
+			lastFailure = null;
 			return result;
 		} catch (IOException e) {
 			failures++;
+			lastFailure = e;
 			failDelayNs = SpotifyPace.failureDelayNs(e instanceof BadStatus b ? b.status : 0, failures);
 			if (e instanceof BadStatus b && b.status == 401) {
 				// The refresh that came before this 401 asked for an immediate re-poll; the backoff must rule instead
@@ -723,6 +730,11 @@ public final class SpotifyWebSource implements MediaSource {
 			}
 			throw e;
 		}
+	}
+
+	@Override
+	public @Nullable Throwable failing() {
+		return lastFailure;
 	}
 
 	private Snapshot ask() throws IOException, InterruptedException {

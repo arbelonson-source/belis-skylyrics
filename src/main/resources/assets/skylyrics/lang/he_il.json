@@ -504,6 +504,7 @@
   "skylyrics.ui.each_line_fades_into_a_second_colour": "כל שורה עוברת בהדרגה לצבע שני",
   "skylyrics.ui.second_colour": "צבע שני",
   "skylyrics.ui.couldn_t_read_your_music_player": "לא הצלחנו לקרוא את נגן המוזיקה",
+  "skylyrics.ui.can_t_reach_the_internet_or_spotify": "לא ניתן להתחבר לאינטרנט או לספוטיפיי",
   "skylyrics.ui.couldn_t_start_the_windows_music_reader_check_th": "לא הצלחנו להפעיל את קורא המוזיקה של Windows. ודאו ש-Windows PowerShell מותקן והפעילו מחדש את המשחק. (%s)",
   "skylyrics.ui.the_windows_music_reader_took_too_long_to_start": "קורא המוזיקה של Windows לא התחיל בזמן. הפעילו מחדש את המשחק והמתינו רגע.",
   "skylyrics.ui.the_windows_music_reader_stopped_right_away_chec": "קורא המוזיקה של Windows נעצר מיד. ודאו ש-Windows PowerShell מותקן והפעילו מחדש את המשחק.",

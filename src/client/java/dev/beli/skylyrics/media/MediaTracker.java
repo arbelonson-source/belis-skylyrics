@@ -37,6 +37,9 @@ public final class MediaTracker {
 	};
 	private boolean loggedError;
 	private boolean loggedFault;
+	/** How many outages were logged and how many ended; one each per outage, whatever its length. */
+	volatile int outageWarnings;
+	volatile int recoveries;
 	/** How many empty/failed reads in a row still keep the last song (about 1.5 s at the usual poll rate). */
 	private static final int EMPTY_POLLS_HELD = 3;
 	/** How many polls a new song with no artist yet waits for one (the second poll announces it anyway). */
@@ -85,6 +88,29 @@ public final class MediaTracker {
 		return message == null || message.isBlank() ? fallback : message.strip();
 	}
 
+	/** Whether the read failed because the network is down or slow, not because of the player. */
+	static boolean networkFailure(@Nullable Throwable e) {
+		for (int depth = 0; e != null && depth < 8; depth++, e = e.getCause()) {
+			if (e instanceof java.net.UnknownHostException || e instanceof java.net.ConnectException
+					|| e instanceof java.net.NoRouteToHostException || e instanceof java.net.SocketTimeoutException
+					|| e instanceof java.net.http.HttpTimeoutException
+					|| e instanceof java.nio.channels.UnresolvedAddressException) {
+				return true;
+			}
+			// The HTTP client's own "no connection" error has no text at all
+			if (e.getClass() == java.io.IOException.class && e.getMessage() == null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** What the status shows for a failed read: the internet's fault when it is, else the message. */
+	static String failureText(Throwable e) {
+		return networkFailure(e) ? Tr.t("Can't reach the internet or Spotify")
+				: errorText(e.getMessage(), Tr.t("Couldn't read your music player"));
+	}
+
 	/** A late length, cover or artist is worth passing on (lyrics lookup, cover); a late album alone is not. */
 	private static boolean filledIn(Track old, Track fresh) {
 		return lateFill(old, fresh) && ((old.lengthMs() <= 0 && fresh.lengthMs() > 0)
@@ -108,19 +134,31 @@ public final class MediaTracker {
 	private void pollInner() {
 		MediaSource source = source();
 		Snapshot fresh;
+		Throwable failure;
 		try {
 			fresh = source.poll();
-			connected = true;
-			error = "";
-			loggedError = false;
+			// A source that is backing off returns its last answer between retries: still the same outage
+			failure = source.failing();
 		} catch (Throwable e) {
+			failure = e;
+			fresh = Snapshot.NOTHING;
+		}
+		if (failure != null) {
 			connected = false;
-			error = errorText(e.getMessage(), Tr.t("Couldn't read your music player"));
+			error = failureText(failure);
 			if (!loggedError) {
 				LOG.warn("Couldn't read the music player: {}", error);
 				loggedError = true;
+				outageWarnings++;
 			}
-			fresh = Snapshot.NOTHING;
+		} else {
+			connected = true;
+			error = "";
+			if (loggedError) {
+				LOG.info("The music player can be read again");
+				loggedError = false;
+				recoveries++;
+			}
 		}
 
 		Snapshot old = snapshot;

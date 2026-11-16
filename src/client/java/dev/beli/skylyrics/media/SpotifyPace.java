@@ -8,7 +8,10 @@ public final class SpotifyPace {
 	static final long RETRY_MAX_S = 300;
 
 	static final long BACKOFF_FIRST_NS = 4_000_000_000L;
-	static final long BACKOFF_MAX_NS = 60_000_000_000L;
+	/** Short enough that a song change shows up soon after the network returns. */
+	static final long BACKOFF_MAX_NS = 30_000_000_000L;
+	/** A 403 won't fix itself. */
+	static final long FORBIDDEN_NS = 60_000_000_000L;
 
 	/** The tracker's smooth clock fills the gaps, so once a second while playing is plenty. */
 	static final long PLAYING_NS = 1_000_000_000L;
@@ -32,7 +35,7 @@ public final class SpotifyPace {
 		return !looking ? QUIET_NS : playing ? PLAYING_NS : IDLE_NS;
 	}
 
-	/** 4 s after the first failure in a row, doubling each time, never over 60 s. */
+	/** 4 s after the first failure in a row, doubling each time, never over 30 s. */
 	static long backoffNs(int failures) {
 		long ns = BACKOFF_FIRST_NS;
 		for (int i = 1; i < failures && ns < BACKOFF_MAX_NS; i++) {
@@ -43,7 +46,7 @@ public final class SpotifyPace {
 
 	/** How long to leave Spotify alone after a failure: a 403 won't fix itself, so it waits the longest right away. */
 	static long failureDelayNs(int status, int failures) {
-		return status == 403 ? BACKOFF_MAX_NS : backoffNs(failures);
+		return status == 403 ? FORBIDDEN_NS : backoffNs(failures);
 	}
 
 	/** The {@code Retry-After} header as nanoseconds: seconds only (an HTTP date or junk reads as 10 s), kept within 1 to 300 s. */

@@ -557,4 +557,15 @@ class SpotifyWebSourceTest {
 		}
 		assertEquals("A", SpotifyWebSource.parse("{\"currently_playing_type\": \"episode\", \"item\": {\"name\": \"A\"}}", 0).track().title());
 	}
+
+	@Test
+	void oldTempFilesOfTheSignInAreRemovedAtStart(@TempDir Path dir) throws Exception {
+		Path login = dir.resolve("login.json");
+		Path stale = Files.writeString(dir.resolve("login.json.4411.tmp"), "token");
+		Path fresh = Files.writeString(dir.resolve("login.json.4412.tmp"), "token");
+		Files.setLastModifiedTime(stale, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 2 * 24L * 3600 * 1000));
+		new SpotifyWebSource(() -> "", login);
+		assertFalse(Files.exists(stale));
+		assertTrue(Files.exists(fresh));
+	}
 }

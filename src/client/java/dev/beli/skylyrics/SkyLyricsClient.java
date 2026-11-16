@@ -43,6 +43,7 @@ import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import dev.beli.skylyrics.util.Steps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,11 +148,14 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		hud = new NowPlayingHud(tracker, lyrics, art);
 		card = new RecordCard(tracker, art, hud);
 
+		// The tracker has already stored this song and will not call again for it, so one failing step must not cost the song its lyrics or cover
 		tracker.onTrackChange(track -> {
-			heard.record(track);
-			lyrics.load(track);
-			art.load(track);
-			hud.flash();
+			java.util.function.BiConsumer<String, RuntimeException> failed =
+					(step, e) -> LOG.warn("Track change step '{}' failed, going on with the rest: {}", step, e.toString());
+			Steps.run("heard", () -> heard.record(track), failed);
+			Steps.run("lyrics", () -> lyrics.load(track), failed);
+			Steps.run("cover", () -> art.load(track), failed);
+			Steps.run("flash", hud::flash, failed);
 		});
 		tracker.start(500);
 

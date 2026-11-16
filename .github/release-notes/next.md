@@ -6,7 +6,7 @@
 
 ### Fixed
 
-- **Two games at once.** Two Minecraft games open at the same time (sharing one game folder) no longer undo each other's settings or song timings: when one saves, it keeps what the other changed, and shows it too. Saving at the same moment can't break the settings file or lose a renewed Spotify sign-in, a second game on Windows no longer deletes the first one's album covers, and when both update, neither deletes the new jar the other just installed.
+- **Two games at once.** Two Minecraft games open at the same time (sharing one game folder) no longer undo each other's settings or song timings: when one saves, it keeps what the other changed, and shows it too. Saving at the same moment can't break the settings file or lose a renewed Spotify sign-in, a second game on Windows no longer deletes the first one's album covers, and when both update, neither deletes the new jar the other just installed (on Windows too).
 - **Spotify with two games.** When two games share one Spotify sign-in and renew it at the same moment, the second one now waits a moment for the first one's new sign-in instead of signing you out.
 - **No more lyrics from the wrong song.** When the lyrics site (LRCLIB) doesn't have the song, the mod no longer shows lyrics from a different song, even one by the same artist. A title with a translation or romanisation in brackets still finds its lyrics.
 - **Long titles.** A very long song title, especially one with a bracket left open, no longer makes the lyrics lookup hang.
@@ -71,6 +71,10 @@
 - **Safer lyrics downloads.** Replies from the lyrics sites are limited in size and time. A lyrics file with a long run of odd characters can no longer slow the lyrics down. Odd data from the NetEase backup no longer makes a song's lyrics search fail for good.
 - **Quick skips and the backup site.** Skipping songs quickly no longer makes the mod use the backup lyrics site (NetEase) for two minutes: a lookup cut short by a skip isn't counted as the main site being down.
 - **Half-saved lyrics.** A lookup cut short by a skip no longer leaves a half-written lyrics file behind.
+- **Cut-off updates.** Update downloads that were cut off are cleaned up from your mods folder.
+- **Left-over save files.** A settings or Spotify sign-in file that was half-written when the game was killed is cleaned up the next time the game starts, once it is a day old.
+- **Spotify without internet.** When Spotify can't be reached, the settings show one steady message that says the internet can't be reached (it used to blink on and off and blame the player), and the log gets one warning instead of one a minute. Spotify is asked again at least every 30 seconds, so a song change shows up sooner once the connection is back.
+- **Stalled update download.** An update download that stops halfway is now given up after 5 minutes instead of holding the update for the rest of the session, and its half file is removed.
 - **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
 
 ### Faster

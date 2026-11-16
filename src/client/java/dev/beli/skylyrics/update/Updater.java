@@ -78,6 +78,7 @@ public final class Updater {
 		if (mcKey == null || jar == null) {
 			return;
 		}
+		cleanLeftovers(jar.getParent(), System.currentTimeMillis());
 		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
 		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
 		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
@@ -239,12 +240,21 @@ public final class Updater {
 		return host.equals("github.com") || host.endsWith(".githubusercontent.com");
 	}
 
+	/** The request timeout covers only the headers; the whole body gets this long (a jar takes seconds on a bad line too). */
+	private static final java.time.Duration BODY_TIMEOUT = java.time.Duration.ofMinutes(5);
+
 	/**
 	 * Downloads the address to a file, following redirects by hand (at most 5) and only to places redirectOk accepts.
 	 * True when the file holds a complete 200 body of at most max bytes; otherwise logs why, leaves no file, and is false.
 	 */
 	static boolean fetch(HttpClient http, String url, Path file, long max, java.util.function.Predicate<URI> redirectOk)
 			throws IOException, InterruptedException {
+		return fetch(http, url, file, max, redirectOk, BODY_TIMEOUT);
+	}
+
+	/** As above; a body still coming after {@code bodyLimit} is cut off (an IOException), so a stalled download can't hold the thread. */
+	static boolean fetch(HttpClient http, String url, Path file, long max, java.util.function.Predicate<URI> redirectOk,
+			java.time.Duration bodyLimit) throws IOException, InterruptedException {
 		if (http.followRedirects() != HttpClient.Redirect.NEVER) {
 			throw new IllegalArgumentException("the download client must not follow redirects by itself");
 		}
@@ -276,6 +286,7 @@ public final class Updater {
 					LOG.warn("Update download refused: it announces more than {} bytes", max);
 					return false;
 				}
+				dev.beli.skylyrics.util.Net.closeAfter(body, bodyLimit);
 				if (!copyCapped(body, file, max)) {
 					LOG.warn("Update download refused: it is bigger than {} bytes", max);
 					return false;
@@ -368,7 +379,7 @@ public final class Updater {
 		if (!swapPathsSafe(oldJar, target)) {
 			return false;
 		}
-		Path waiting = waitingName(target);
+		Path waiting = waitingFor(part, target);
 		Path bat = writeSwapScript(oldJar, waiting, target, part);
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
@@ -386,6 +397,46 @@ public final class Updater {
 
 	private static Path waitingName(Path target) {
 		return target.resolveSibling(target.getFileName() + ".new");
+	}
+
+	/**
+	 * The waiting name of one game's download: the download's own unique name with .new in place of .part, so two games
+	 * sharing a mods folder never stage over each other. It only adds digits to {@link #waitingName}, so that name's
+	 * path check covers it.
+	 */
+	static Path waitingFor(Path part, Path target) {
+		String name = part.getFileName().toString();
+		return name.endsWith(".part") ? part.resolveSibling(name.substring(0, name.length() - 5) + ".new") : waitingName(target);
+	}
+
+	static final long LEFTOVER_AGE_MS = 24L * 60 * 60 * 1000;
+
+	/**
+	 * Deletes this mod's own leftovers in the mods folder: downloads (.part) and Windows staged jars (.new) whose
+	 * name starts with belis-skylyrics- and that are over a day old. A fresh one may be another game's running download.
+	 * Returns how many were deleted.
+	 */
+	static int cleanLeftovers(Path dir, long nowMs) {
+		int deleted = 0;
+		try (var files = Files.newDirectoryStream(dir, "belis-skylyrics-*")) {
+			for (Path f : files) {
+				String name = f.getFileName().toString();
+				if (!name.endsWith(".part") && !name.endsWith(".new")) {
+					continue;
+				}
+				try {
+					if (Files.isRegularFile(f, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+							&& nowMs - Files.getLastModifiedTime(f).toMillis() > LEFTOVER_AGE_MS && Files.deleteIfExists(f)) {
+						deleted++;
+					}
+				} catch (IOException | RuntimeException e) {
+					LOG.info("Could not remove the old leftover {}: {}", name, e.toString());
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			LOG.info("Could not look for old update leftovers: {}", e.toString());
+		}
+		return deleted;
 	}
 
 	/**

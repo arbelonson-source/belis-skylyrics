@@ -115,4 +115,43 @@ class TwoGamesConfigTest {
 			assertEquals(java.util.Set.of("skylyrics.json", "skylyrics.json.tmp"), files.map(f -> f.getFileName().toString()).collect(java.util.stream.Collectors.toSet()));
 		}
 	}
+
+	@Test
+	void aSettingTheFileDoesNotKnowKeepsMyValue() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		new SkyLyricsConfig().save(file);
+		SkyLyricsConfig a = open(file);
+		a.worldWords = 5; // not the default; this game set it before and has not changed it since
+		a.save(file);
+		SkyLyricsConfig mine = open(file);
+		// An older game, which has no worldWords setting, rewrites the file and a different setting changes in this game
+		com.google.gson.JsonObject json = com.google.gson.JsonParser.parseString(Files.readString(file)).getAsJsonObject();
+		json.remove("worldWords");
+		json.addProperty("glow", 0.2f);
+		Files.writeString(file, json.toString());
+		mine.syncOffsetMs = 123;
+		mine.save(file);
+		assertEquals(5, mine.worldWords, "in memory");
+		assertEquals(5, open(file).worldWords, "on disk");
+		assertEquals(0.2f, open(file).glow, 1e-6f, "the other game's change is still kept");
+		assertEquals(123, open(file).syncOffsetMs);
+	}
+
+	@Test
+	void oldTempFilesOfOurNameAreRemovedAtLoad() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		java.nio.file.attribute.FileTime old = java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 2 * 24L * 3600 * 1000);
+		Path stale = Files.writeString(dir.resolve("skylyrics.json.8812345.tmp"), "x");
+		Path fresh = Files.writeString(dir.resolve("skylyrics.json.555.tmp"), "y");
+		Path odd = Files.writeString(dir.resolve("skylyrics.json.bad.tmp"), "z");
+		Path unrelated = Files.writeString(dir.resolve("other.json.99.tmp"), "w");
+		for (Path p : java.util.List.of(stale, odd, unrelated)) {
+			Files.setLastModifiedTime(p, old);
+		}
+		open(file);
+		assertFalse(Files.exists(stale));
+		assertTrue(Files.exists(fresh), "another game may be saving it");
+		assertTrue(Files.exists(odd));
+		assertTrue(Files.exists(unrelated));
+	}
 }

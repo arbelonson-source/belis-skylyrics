@@ -504,6 +504,7 @@
   "skylyrics.ui.each_line_fades_into_a_second_colour": "Each line fades into a second colour",
   "skylyrics.ui.second_colour": "Second colour",
   "skylyrics.ui.couldn_t_read_your_music_player": "Couldn't read your music player",
+  "skylyrics.ui.can_t_reach_the_internet_or_spotify": "Can't reach the internet or Spotify",
   "skylyrics.ui.couldn_t_start_the_windows_music_reader_check_th": "Couldn't start the Windows music reader. Check that Windows PowerShell is installed, then reopen the game. (%s)",
   "skylyrics.ui.the_windows_music_reader_took_too_long_to_start": "The Windows music reader took too long to start. Reopen the game and give it a moment.",
   "skylyrics.ui.the_windows_music_reader_stopped_right_away_chec": "The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game.",
