@@ -217,4 +217,78 @@ class TitleCleanerTest {
 		assertEquals("a".repeat(TitleCleaner.MAX_TEXT - 2) + "\uD83C\uDFB5", TitleCleaner.capped(fits));
 		assertEquals("short", TitleCleaner.capped("short"));
 	}
+
+
+	@Test
+	void versionWordAfterTheDashIsNotTheSongName() {
+		// Spotify's Web Player in a browser: the title is "Song - Version", the artist is the real one
+		Track remix = TitleCleaner.clean(track("Levels - Skrillex Remix", "Avicii", "firefox"));
+		assertEquals("Avicii", remix.artist());
+		assertEquals("Levels - Skrillex Remix", remix.title());
+		Track taylor = TitleCleaner.clean(track("Bad Blood - Taylor's Version", "Taylor Swift", "firefox"));
+		assertEquals("Taylor Swift", taylor.artist());
+		assertEquals("Bad Blood - Taylor's Version", taylor.title());
+		for (String tail : new String[] {"Slowed + Reverb", "Sped Up", "slowed down", "Remastered 2011", "Remaster", "Radio Edit", "Extended Mix", "Acoustic Version"}) {
+			Track t = TitleCleaner.clean(track("Song - " + tail, "Real Artist", "firefox"));
+			assertEquals("Real Artist", t.artist(), tail);
+		}
+	}
+
+	@Test
+	void artistDashSongStillSplitsWhenNoVersionWordEndsIt() {
+		Track a = TitleCleaner.clean(track("Avicii - Levels", "AviciiVEVO", "firefox"));
+		assertEquals("Avicii", a.artist());
+		assertEquals("Levels", a.title());
+		Track mix = TitleCleaner.clean(track("Little Mix - Shout Out to My Ex", "LittleMixVEVO", "firefox"));
+		assertEquals("Little Mix", mix.artist());
+		assertEquals("Shout Out to My Ex", mix.title());
+	}
+
+	@Test
+	void noiseTailAfterABarOrDashIsDropped() {
+		Track t = TitleCleaner.clean(track("Some Band - Cool Song | Official Music Video", "SomeBandVEVO", "firefox"));
+		assertEquals("Some Band", t.artist());
+		assertEquals("Cool Song", t.title());
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song - Official Audio", "x", "firefox")).title());
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song | Lyrics", "x", "firefox")).title());
+		assertEquals("Cool Song | Part 2", TitleCleaner.clean(track("Some Band - Cool Song | Part 2", "x", "firefox")).title());
+		// "Official Remix" is not all noise, so it stays; the first dash is still "Artist - Song"
+		Track remix = TitleCleaner.clean(track("Some Band - Cool Song | Official Remix", "x", "firefox"));
+		assertEquals("Some Band", remix.artist());
+		assertEquals("Cool Song | Official Remix", remix.title());
+		assertEquals("Song", TitleCleaner.forSearch("Song | Official Music Video"));
+		assertEquals("Song", TitleCleaner.forSearch("Song - 4K Visualizer"));
+		assertEquals("Song | Part 2", TitleCleaner.forSearch("Song | Part 2"));
+		assertTrue(TitleCleaner.sameSong("Song", "Song | Official Video"));
+	}
+
+	@Test
+	void aSecondDashKeepsTheArtistSongSplit() {
+		Track t = TitleCleaner.clean(track("Nirvana - Smells Like Teen Spirit - Remastered 2011", "NirvanaVEVO", "firefox"));
+		assertEquals("Nirvana", t.artist());
+		assertEquals("Smells Like Teen Spirit - Remastered 2011", t.title());
+		Track r = TitleCleaner.clean(track("Avicii - Levels - Skrillex Remix", "AviciiVEVO", "firefox"));
+		assertEquals("Avicii", r.artist());
+		assertEquals("Levels - Skrillex Remix", r.title());
+		Track web = TitleCleaner.clean(track("Levels - Skrillex Remix", "Avicii", "firefox"));
+		assertEquals("Avicii", web.artist());
+		assertEquals("Levels - Skrillex Remix", web.title());
+	}
+
+	@Test
+	void aOneWordSongNamedLikeANoiseWordKeepsItsName() {
+		Track t = TitleCleaner.clean(track("Madonna - Music", "MadonnaVEVO", "firefox"));
+		assertEquals("Madonna", t.artist());
+		assertEquals("Music", t.title());
+		assertEquals("Video", TitleCleaner.clean(track("India.Arie - Video", "IndiaArieVEVO", "firefox")).title());
+		assertEquals("Audio", TitleCleaner.clean(track("Some Band - Audio", "x", "firefox")).title());
+		assertEquals("Song - Music", TitleCleaner.forSearch("Song - Music"));
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song | Lyrics", "x", "firefox")).title());
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song - Music Video", "x", "firefox")).title());
+	}
+
+	@Test
+	void fullwidthLettersMatchPlainOnes() {
+		assertTrue(TitleCleaner.sameSong("\uFF22\uFF4C\uFF55\uFF45", "Blue"));
+	}
 }

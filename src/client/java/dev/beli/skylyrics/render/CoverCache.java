@@ -301,6 +301,46 @@ public final class CoverCache {
 		return width > 0 && height > 0 && width <= MAX_SIDE && height <= MAX_SIDE;
 	}
 
+	/**
+	 * Decodes a cover no bigger than needed: the reader skips pixels while reading (source subsampling), so a huge
+	 * cover never sits whole on the heap. The result's longer side lands in [2 * target, 4 * target] (and the
+	 * shorter one stays at least {@code target} where the picture allows); pictures up to 4 * target decode as they are.
+	 * Falls back to a plain {@link ImageIO#read} when no reader takes the bytes or subsampling fails.
+	 */
+	static @Nullable BufferedImage decodeSmall(byte[] bytes, int target) throws java.io.IOException {
+		try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+			Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
+			if (readers.hasNext()) {
+				javax.imageio.ImageReader reader = readers.next();
+				try {
+					reader.setInput(in, true, true);
+					int step = subsampling(reader.getWidth(0), reader.getHeight(0), target);
+					javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
+					param.setSourceSubsampling(step, step, 0, 0);
+					BufferedImage image = reader.read(0, param);
+					if (image != null) {
+						return image;
+					}
+				} catch (java.io.IOException | RuntimeException e) {
+					LOG.debug("Subsampled cover decode failed, reading whole", e);
+				} finally {
+					reader.dispose();
+				}
+			}
+		}
+		return ImageIO.read(new ByteArrayInputStream(bytes));
+	}
+
+	/** Every how many pixels to read so the longer side lands in [2 * target, 4 * target] (the shrink's box filter needs a few samples per output pixel); 1 up to 4 * target. */
+	static int subsampling(int width, int height, int target) {
+		int longer = Math.max(width, height), shorter = Math.min(width, height);
+		if (longer <= 4 * target) {
+			return 1; // already small: decode as is
+		}
+		int step = (longer + 4 * target - 1) / (4 * target);
+		return Math.max(1, Math.min(step, shorter / target));
+	}
+
 	/** Checks the picture size from its header, before anything is decoded. */
 	static boolean dimensionsOk(byte[] bytes) {
 		try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
@@ -348,7 +388,7 @@ public final class CoverCache {
 		if (bytes == null || !dimensionsOk(bytes)) {
 			return null;
 		}
-		BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+		BufferedImage image = decodeSmall(bytes, SIZE);
 		if (image != null) {
 			store(dir, file, bytes);
 		}
@@ -369,7 +409,7 @@ public final class CoverCache {
 			return null;
 		}
 		try {
-			BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+			BufferedImage image = decodeSmall(bytes, SIZE);
 			if (image != null) {
 				file.toFile().setLastModified(System.currentTimeMillis());
 				return image;

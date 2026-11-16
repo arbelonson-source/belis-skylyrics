@@ -333,4 +333,25 @@ class MprisSourceTest {
 			source.close();
 		}
 	}
+
+
+	@Test
+	void spotifyDesktopWebAddressBecomesItsSongId() {
+		assertEquals("spotify:track:X", MprisSource.songUri("spotify", "https://open.spotify.com/track/X"));
+		assertEquals("spotify:track:X", MprisSource.songUri("spotify", "https://open.spotify.com/track/X?si=abc"));
+		assertEquals("spotify:episode:E1", MprisSource.songUri("spotify", "https://open.spotify.com/episode/E1"));
+		// a browser's page address changes when you click around: never a song id
+		assertEquals("https://open.spotify.com/track/X", MprisSource.songUri("firefox", "https://open.spotify.com/track/X"));
+		assertEquals("https://open.spotify.com/album/A", MprisSource.songUri("spotify", "https://open.spotify.com/album/A"));
+		assertEquals("spotify:track:Z", MprisSource.songUri("spotify", "spotify:track:Z"));
+		assertEquals("", MprisSource.songUri("spotify", ""));
+	}
+
+	@Test
+	void twoSameNamedSpotifyDesktopSongsAreToldApart() {
+		Track a = new Track("Interlude", "Made Up Band", "Album", 60_000, "", "spotify", MprisSource.songUri("spotify", "https://open.spotify.com/track/X"));
+		Track b = new Track("Interlude", "Made Up Band", "Album", 60_000, "", "spotify", MprisSource.songUri("spotify", "https://open.spotify.com/track/Y"));
+		assertFalse(a.sameSong(b));
+		assertTrue(a.sameSong(new Track("Interlude", "Made Up Band", "Album", 60_000, "", "spotify", "spotify:track:X")));
+	}
 }

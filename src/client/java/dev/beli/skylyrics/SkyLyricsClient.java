@@ -515,6 +515,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker.shutdown();
 		lyrics.shutdown();
 		heard.flush();
+		SkyLyricsConfig.get().flush(2000); // a save still waiting for the writer
 		art.close();
 		covers.close();
 	}

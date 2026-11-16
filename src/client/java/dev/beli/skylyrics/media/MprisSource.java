@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -401,9 +403,26 @@ public final class MprisSource implements MediaSource {
 
 		String player = playerId(busName);
 
-		Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : url));
+		Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : songUri(player, url)));
 		double rate = value(all.get("Rate")) instanceof Number n ? n.doubleValue() : 1.0;
 		return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId, rate);
+	}
+
+	private static final Pattern SPOTIFY_SONG_URL = Pattern.compile("https://open\\.spotify\\.com/(track|episode)/([A-Za-z0-9]+)(?:[?#].*)?");
+
+	/**
+	 * The song address to keep. Spotify's desktop app sends "https://open.spotify.com/track/ID" as xesam:url; it
+	 * becomes "spotify:track:ID", the form the other readers use, so two songs with the same title, artist and album
+	 * are told apart. Only for the Spotify app itself: a browser's page address changes when you click around.
+	 */
+	static String songUri(String player, String url) {
+		if ("spotify".equals(player)) {
+			Matcher m = SPOTIFY_SONG_URL.matcher(url);
+			if (m.matches()) {
+				return "spotify:" + m.group(1) + ":" + m.group(2);
+			}
+		}
+		return url;
 	}
 
 	/**

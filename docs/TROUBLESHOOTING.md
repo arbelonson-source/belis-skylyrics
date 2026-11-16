@@ -152,6 +152,10 @@ In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). I
 
 Exordium redraws the HUD less often than the game draws frames, and the lyrics are drawn as part of the HUD, so they can lag behind your camera. Turn off Exordium's HUD buffering (in Exordium's own settings) and they follow smoothly again. The game log says the same when Exordium is installed.
 
+## The top bar covers another mod's info (Jade, WTHIT, a minimap)
+
+The song bar sits at the top centre of the screen, where Jade and WTHIT show what you're looking at, and a wide bar can reach a minimap in the top right corner. On the **Display** tab, set **Bar position** to **Bottom** (it sits just above the hotbar), or make it smaller with **Bar size**, or turn off **Clock**, **Ping** and **FPS** to make it narrower.
+
 ## The mod says a new version is out, but won't install it
 
 **It needs something newer.** If the pop-up says "SkyLyrics 0.9.0 needs Fabric API 0.137.0 or newer" (or a newer Minecraft), the new version wouldn't start on what you have, so the mod doesn't install it and your working version stays. Update what it names (Fabric API, say) and the next start installs the new SkyLyrics. Until then the mod remembers the refusal, so it doesn't download the same update again on every start; a newer release, or updating Fabric API, Fabric Loader, Minecraft or Java, makes it check again. A newer Minecraft needs the SkyLyrics jar for that version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases).
