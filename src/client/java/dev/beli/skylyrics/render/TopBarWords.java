@@ -103,6 +103,16 @@ final class TopBarWords {
 		return order;
 	}
 
+	/** Where each piece is seen from the left, counted from 0: the inverse of {@link #visualOrder}, indexed by logical piece number. */
+	static int[] visualRanks(List<Piece> pieces) {
+		int[] order = visualOrder(pieces);
+		int[] rank = new int[order.length];
+		for (int k = 0; k < order.length; k++) {
+			rank[order[k]] = k;
+		}
+		return rank;
+	}
+
 	private static boolean strong(char c) {
 		byte d = Character.getDirectionality(c);
 		return d == Character.DIRECTIONALITY_LEFT_TO_RIGHT || d == Character.DIRECTIONALITY_RIGHT_TO_LEFT
