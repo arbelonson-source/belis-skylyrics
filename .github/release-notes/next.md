@@ -72,6 +72,7 @@
 - **Quick skips and the backup site.** Skipping songs quickly no longer makes the mod use the backup lyrics site (NetEase) for two minutes: a lookup cut short by a skip isn't counted as the main site being down.
 - **Half-saved lyrics.** A lookup cut short by a skip no longer leaves a half-written lyrics file behind.
 - **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
+- **One odd answer from the lyrics site.** An error for one odd song title no longer switches the main lyrics site (LRCLIB) off for two minutes. Only a site that is really down or too busy does, and even then a song the backup doesn't have is still asked from the main site.
 
 ### Faster
 

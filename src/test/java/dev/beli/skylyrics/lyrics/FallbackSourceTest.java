@@ -124,6 +124,54 @@ class FallbackSourceTest {
 		FallbackSource source = fallback(down(502), t -> LrclibClient.Result.NOT_FOUND);
 		assertThrows(IOException.class, () -> source.find(TRACK));
 		assertThrows(IOException.class, () -> source.find(TRACK));
+		assertEquals(2, mainAsked.get()); // while skipping, main is asked once more for a song the backup lacks
+	}
+
+	@Test
+	void oddRefusalDoesNotSkipMain() throws Exception {
+		FallbackSource source = fallback(down(400), t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(2, mainAsked.get());
+	}
+
+	@Test
+	void serviceUnavailableStillSkips() throws Exception {
+		FallbackSource source = fallback(down(503), t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+	}
+
+	@Test
+	void tooManyRequestsStillSkips() throws Exception {
+		FallbackSource source = fallback(down(429), t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+	}
+
+	@Test
+	void duringSkipASongOnlyMainHasIsAskedFromMain() throws Exception {
+		AtomicInteger calls = new AtomicInteger();
+		FallbackSource source = fallback(track -> {
+			if (calls.incrementAndGet() == 1) {
+				throw new LrclibClient.StatusException(503);
+			}
+			return MAIN;
+		}, t -> LrclibClient.Result.NOT_FOUND);
+		assertThrows(IOException.class, () -> source.find(TRACK)); // starts the skip
+		assertSame(MAIN, source.find(TRACK)); // skipping, backup has nothing: main answers
+		assertSame(MAIN, source.find(TRACK)); // main is up again
+		assertEquals(3, mainAsked.get());
+	}
+
+	@Test
+	void duringSkipMainStillDownKeepsSkipping() throws Exception {
+		FallbackSource source = fallback(down(503), t -> BACKUP);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+		source.find(TRACK); // backup has it: main not asked
 		assertEquals(1, mainAsked.get());
 	}
 
