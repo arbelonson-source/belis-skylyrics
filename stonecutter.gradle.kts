@@ -97,7 +97,7 @@ stonecutter parameters {
 			replace("new DynamicTexture(() -> \"SkyLyrics round corner\", image)", "new dev.beli.skylyrics.render.TextureCompat.Smooth(image)")
 			replace("client.getToastManager()", "client.getToasts()")
 			replace("mc.getDeltaTracker()", "mc.getTimer()")
-			replace("mc.getFramerateLimitTracker().getFramerateLimit()", "mc.getWindow().getFramerateLimit()")
+			replace("mc.getFramerateLimitTracker().getFramerateLimit()", "(mc.level == null && (mc.screen != null || mc.getOverlay() != null) ? 60 : mc.getWindow().getFramerateLimit())")
 			replace("DimensionSpecialEffects.SkyType.OVERWORLD", "DimensionSpecialEffects.SkyType.NORMAL")
 		}
 		// 26.3 moved the low-level graphics classes into com.mojang.renderpearl
