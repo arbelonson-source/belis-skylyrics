@@ -778,29 +778,134 @@ public final class SkyLyricsConfig {
 		return Float.isNaN(v) ? min : Math.max(min, Math.min(max, v));
 	}
 
+	/**
+	 * Saves the settings without blocking: the caller only takes a snapshot, and one daemon writer thread does the reading,
+	 * merging and writing. Several quick saves coalesce, only the latest snapshot is written.
+	 */
 	public void save() {
-		save(file());
+		saveLater(file());
 	}
 
+	/** What a queued save needs: where to write, the settings as they were, and the file state they were changed from. */
+	private record Pending(Path file, JsonObject snapshot, JsonObject base) {}
+
+	/** The queue between the game thread and the writer; one field so the settings class keeps a single piece of such state. */
+	private static final class Queue {
+		Pending pending;
+		boolean draining;
+	}
+
+	final transient Queue queue = new Queue();
+
+	/** Runs the writer's work; a seam so tests can hold the writer. */
+	static java.util.function.Consumer<Runnable> writerExec = new java.util.function.Consumer<>() {
+		private final java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+			Thread t = new Thread(r, "SkyLyrics settings writer");
+			t.setDaemon(true);
+			return t;
+		});
+
+		@Override
+		public void accept(Runnable task) {
+			pool.execute(task);
+		}
+	};
+
+	void saveLater(Path file) {
+		Pending now = new Pending(file, GSON.toJsonTree(this).getAsJsonObject(), baseTree);
+		boolean start;
+		synchronized (queue) {
+			queue.pending = now;
+			start = !queue.draining;
+			queue.draining = true;
+		}
+		if (start) {
+			try {
+				writerExec.accept(this::drain);
+			} catch (RuntimeException e) {
+				synchronized (queue) {
+					queue.draining = false;
+					queue.notifyAll();
+				}
+				LOG.warn("Couldn't start the settings writer: {}", e.toString());
+			}
+		}
+	}
+
+	private void drain() {
+		while (true) {
+			Pending next;
+			synchronized (queue) {
+				next = queue.pending;
+				queue.pending = null;
+				if (next == null) {
+					queue.draining = false;
+					queue.notifyAll();
+					return;
+				}
+			}
+			try {
+				write(next.file(), next.snapshot(), next.base(), task -> mainThread.accept(task));
+			} catch (RuntimeException e) {
+				LOG.warn("Couldn't save settings: {}", e.toString());
+			}
+		}
+	}
+
+	/** Waits until every queued save is written, at most {@code timeoutMs}; true when nothing is left. */
+	public boolean flush(long timeoutMs) {
+		long end = System.nanoTime() + timeoutMs * 1_000_000L;
+		synchronized (queue) {
+			while (queue.pending != null || queue.draining) {
+				long left = (end - System.nanoTime()) / 1_000_000L;
+				if (left <= 0) {
+					return false;
+				}
+				try {
+					queue.wait(left);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	/** Saves now, on this thread (tests, and anything that must be on disk before it goes on). */
 	void save(Path file) {
+		write(file, GSON.toJsonTree(this).getAsJsonObject(), baseTree, Runnable::run);
+	}
+
+	/**
+	 * Reads, merges and writes the file for a snapshot. {@code applier} runs what changes the live settings (on the game's
+	 * main thread when saving later): the other game's changes come in only for fields still equal to the snapshot.
+	 */
+	private void write(Path file, JsonObject mine, JsonObject base, java.util.function.Consumer<Runnable> applier) {
 		synchronized (this) {
-			if (saveBlocked && !reread(file)) {
+			if (saveBlocked && !reread(file, mine, applier)) {
 				return; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
 			}
 			Path tmp = null;
 			try {
 				Files.createDirectories(file.getParent());
-				JsonObject mine = GSON.toJsonTree(this).getAsJsonObject();
-				JsonObject out = mergeWithDisk(file, mine);
+				JsonObject out = mergeWithDisk(file, mine, base);
 				String text = GSON.toJson(out == null ? mine : out);
 				tmp = Files.createTempFile(file.getParent(), file.getFileName() + ".", ".tmp");
 				Files.writeString(tmp, text, StandardCharsets.UTF_8);
 				dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 				tmp = null;
-				if (out != null) {
-					copyFrom(parse(text).config()); // this game now also sees the other game's changes
-				}
-				remember(text);
+				Parsed parsed = parse(text); // once, for the base and for what this game takes over
+				JsonObject tree = GSON.toJsonTree(parsed.config()).getAsJsonObject();
+				boolean merged = out != null;
+				// The base moves with the apply, on the same thread as the snapshots, so a snapshot and its base always agree.
+				applier.accept(() -> {
+					if (merged) {
+						copyFrom(parsed.config(), mine); // this game now also sees the other game's changes
+					}
+					baseText = text;
+					baseTree = tree;
+				});
 			} catch (IOException e) {
 				LOG.warn("Couldn't save settings: {}", e.toString());
 			} finally {
@@ -815,8 +920,8 @@ public final class SkyLyricsConfig {
 	}
 
 	/** The exact text this game last read from or wrote to the settings file, and its settings as a normalised JSON tree. */
-	transient String baseText;
-	transient JsonObject baseTree;
+	transient volatile String baseText;
+	transient volatile JsonObject baseTree;
 
 	private void remember(String text) {
 		baseText = text;
@@ -827,7 +932,7 @@ public final class SkyLyricsConfig {
 	 * When another game saved the file since this one last read or wrote it: the file's JSON with only the settings this game
 	 * changed since then put over it (per song for the song timings). Null when nothing needs merging.
 	 */
-	private JsonObject mergeWithDisk(Path file, JsonObject mine) {
+	private JsonObject mergeWithDisk(Path file, JsonObject mine, JsonObject baseOrNull) {
 		String disk;
 		try {
 			disk = dev.beli.skylyrics.util.SafeFile.readText(file, reader != null ? reader : dev.beli.skylyrics.util.SafeFile::readText, 1, 0);
@@ -845,7 +950,7 @@ public final class SkyLyricsConfig {
 		if (theirs.get("songOffsets") instanceof JsonObject offsets) {
 			theirs.add("songOffsets", rekeyed(offsets));
 		}
-		JsonObject base = baseTree != null ? baseTree : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
+		JsonObject base = baseOrNull != null ? baseOrNull : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
 		for (var entry : mine.entrySet()) {
 			String name = entry.getKey();
 			var now = entry.getValue();
@@ -879,7 +984,7 @@ public final class SkyLyricsConfig {
 	}
 
 	/** True when writing is fine now: the file is gone or damaged, so there is nothing to protect. False while it is still unreadable, and when it was just loaded (the file wins). */
-	private boolean reread(Path file) {
+	private boolean reread(Path file, JsonObject snapshot, java.util.function.Consumer<Runnable> applier) {
 		String text;
 		try {
 			text = dev.beli.skylyrics.util.SafeFile.readText(file, reader, 1, 0);
@@ -897,29 +1002,43 @@ public final class SkyLyricsConfig {
 			}
 			return false;
 		}
-		adopt(file, text);
+		adopt(file, text, snapshot, applier);
 		return false;
 	}
 
 	/** The file reads again: its settings become the live ones (the file wins; what was set meanwhile is lost) and saving is allowed. */
 	private void adopt(Path file, String text) {
+		adopt(file, text, null, Runnable::run);
+	}
+
+	/** With a snapshot (a save found the file readable again), only settings the player hasn't touched since it are replaced. */
+	private void adopt(Path file, String text, JsonObject snapshot, java.util.function.Consumer<Runnable> applier) {
 		Parsed parsed = parse(text);
 		if (parsed.damaged()) {
 			keepCopy(file);
 		}
-		copyFrom(parsed.config());
-		remember(text);
+		JsonObject tree = GSON.toJsonTree(parsed.config()).getAsJsonObject();
+		applier.accept(() -> {
+			copyFrom(parsed.config(), snapshot);
+			baseText = text;
+			baseTree = tree;
+		});
 		saveBlocked = false;
 		LOG.info("The settings file could be read again and was loaded.");
 	}
 
-	private void copyFrom(SkyLyricsConfig other) {
+	/** Takes over {@code other}'s settings; with a snapshot, only those still equal to it (the player hasn't changed them since). */
+	private void copyFrom(SkyLyricsConfig other, JsonObject snapshot) {
+		JsonObject now = snapshot == null ? null : GSON.toJsonTree(this).getAsJsonObject();
 		for (var field : SkyLyricsConfig.class.getDeclaredFields()) {
 			int mods = field.getModifiers();
 			if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods) || field.isSynthetic()) {
 				continue;
 			}
 			try {
+				if (now != null && !java.util.Objects.equals(now.get(field.getName()), snapshot.get(field.getName()))) {
+					continue;
+				}
 				field.setAccessible(true);
 				field.set(this, field.get(other));
 			} catch (IllegalAccessException e) {
