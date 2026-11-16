@@ -213,6 +213,11 @@ public final class SkyEffects {
 		return clamp01(starBrightness / NIGHT_STARS) * (rainInStars ? 1 : 1 - clamp01(rainLevel)) * clamp01(strength);
 	}
 
+	/** The sky's visibility as the render loop uses it: {@link #visibility} with this version's {@link #STARS_DIM_WITH_RAIN}. */
+	static float starVisibility(float starBrightness, float rainLevel, float strength) {
+		return visibility(starBrightness, rainLevel, strength, STARS_DIM_WITH_RAIN);
+	}
+
 	/** Whether {@link #readStarBrightness} already fades the stars with rain and thunder (vanilla's environment attribute does). */
 	static final boolean STARS_DIM_WITH_RAIN =
 			//? if >=1.21.11 {
@@ -395,7 +400,7 @@ public final class SkyEffects {
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		skyStars = easeStars(skyStars, starBrightness(level, camera, partial), dt);
 		boolean syncedShown = cfg.skyPulse && lyrics.visible() && syncedLyricsShown();
-		fade = visibility(skyStars, level.getRainLevel(partial), cfg.skyStrength, STARS_DIM_WITH_RAIN) * smooth(presence)
+		fade = starVisibility(skyStars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
 				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, syncedShown);
 		if (fade < 0.01f) {
 			return;

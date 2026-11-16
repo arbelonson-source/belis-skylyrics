@@ -69,7 +69,8 @@ class SkyEffectsTest {
 		// 1.21.11 and newer: the star value is already 0.5 of full in half rain, so visibility must not halve it again
 		assertEquals(0.5f, SkyEffects.visibility(0.25f, 0.5f, 1, true), 1e-6f);
 		assertEquals(0.25f, SkyEffects.visibility(0.25f, 0.5f, 1, false), 1e-6f);
-		assertEquals(0.5f, SkyEffects.visibility(0.25f, 0.5f, 1, SkyEffects.STARS_DIM_WITH_RAIN) * (SkyEffects.STARS_DIM_WITH_RAIN ? 1 : 2), 1e-6f);
+		// the real caller's math: rain is applied here only where the star value does not already carry it
+		assertEquals(SkyEffects.STARS_DIM_WITH_RAIN ? 0.5f : 0.25f, SkyEffects.starVisibility(0.25f, 0.5f, 1), 1e-6f);
 	}
 
 	@Test
