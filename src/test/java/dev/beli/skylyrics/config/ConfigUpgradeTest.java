@@ -55,6 +55,37 @@ class ConfigUpgradeTest {
 	}
 
 	@Test
+	void aTimingResetUnderAMarkedKeyStaysResetAfterARestart() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		new SkyLyricsConfig().save(file);
+		String text = Files.readString(file).replace("\"songOffsets\": {}",
+				"\"songOffsets\": {\"‏shir‎ - ‏שיר‎\": 250, \"other - song\": 40}");
+		Files.writeString(file, text);
+		SkyLyricsConfig c = open(file);
+		c.setSongOffset(track("שיר", "Shir"), 0);
+		c.save(file);
+		SkyLyricsConfig again = open(file);
+		assertEquals(0, again.songOffset(track("שיר", "Shir")), Files.readString(file));
+		assertEquals(40, again.songOffset(track("song", "other")));
+		// A save with the timings untouched writes them back under the clean keys
+		assertTrue(!Files.readString(file).contains("‏"), Files.readString(file));
+	}
+
+	@Test
+	void aTimingChangedUnderAMarkedKeyKeepsOnlyTheNewValue() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		new SkyLyricsConfig().save(file);
+		String text = Files.readString(file).replace("\"songOffsets\": {}",
+				"\"songOffsets\": {\"‏shir‎ - ‏שיר‎\": 250}");
+		Files.writeString(file, text);
+		SkyLyricsConfig c = open(file);
+		c.setSongOffset(track("שיר", "Shir"), 500);
+		c.save(file);
+		assertEquals(500, open(file).songOffset(track("שיר", "Shir")));
+		assertEquals(1, open(file).songOffsets.size(), Files.readString(file));
+	}
+
+	@Test
 	void aCleanKeyStaysTheSame() throws Exception {
 		Path file = dir.resolve("skylyrics.json");
 		SkyLyricsConfig seed = new SkyLyricsConfig();

@@ -669,6 +669,20 @@ public final class SkyLyricsConfig {
 		return out;
 	}
 
+	/** {@link #rekeyed(Map)} for the timings as they are in the file. */
+	private static JsonObject rekeyed(JsonObject old) {
+		JsonObject out = new JsonObject();
+		for (var e : old.entrySet()) {
+			String key = Track.clean(e.getKey()).toLowerCase(Locale.ROOT).strip();
+			if (key.isEmpty()) {
+				continue;
+			}
+			out.remove(key); // the later entry wins and takes the later place
+			out.add(key, e.getValue());
+		}
+		return out;
+	}
+
 	/** How many recent library searches are kept, here and when the library remembers a new one. */
 	public static final int MAX_RECENT_SEARCHES = 6;
 	private static final int MAX_SEARCH_CHARS = 100;
@@ -825,6 +839,11 @@ public final class SkyLyricsConfig {
 			theirs = JsonParser.parseString(disk).getAsJsonObject();
 		} catch (RuntimeException e) {
 			return null; // damaged: nothing worth keeping
+		}
+		// The file can still hold song timings under keys from before a title-cleaning change; this game's base and its own
+		// timings use the cleaned keys, so merge against cleaned keys too (else a reset timing would come back from the old key)
+		if (theirs.get("songOffsets") instanceof JsonObject offsets) {
+			theirs.add("songOffsets", rekeyed(offsets));
 		}
 		JsonObject base = baseTree != null ? baseTree : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
 		for (var entry : mine.entrySet()) {
