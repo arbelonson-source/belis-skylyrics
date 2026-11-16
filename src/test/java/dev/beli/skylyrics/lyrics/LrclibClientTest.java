@@ -78,7 +78,7 @@ class LrclibClientTest {
 
 	@Test
 	void getServerErrorStillTriesSearch() throws Exception {
-		getCode = 503;
+		getCode = 500;
 		searchBody = HIT;
 		LrclibClient.Result r = client.find(TRACK);
 		assertEquals("[00:01.00]A made-up line", r.synced());
@@ -86,15 +86,36 @@ class LrclibClientTest {
 
 	@Test
 	void getServerErrorWithSearchErrorIsAnError() {
-		getCode = 503;
+		getCode = 500;
 		searchCode = 503;
 		LrclibClient.StatusException e = assertThrows(LrclibClient.StatusException.class, () -> client.find(TRACK));
 		assertEquals(503, e.status());
 	}
 
 	@Test
-	void getServerErrorWithEmptySearchIsNoLyrics() throws Exception {
+	void getBusyAnswerIsReportedWithoutSearching() {
 		getCode = 503;
+		searchBody = HIT;
+		retryAfter = "9";
+		LrclibClient.StatusException e = assertThrows(LrclibClient.StatusException.class, () -> client.find(TRACK));
+		assertEquals(503, e.status());
+		assertEquals(9000, e.retryAfterMs());
+		assertEquals(1, asked.size());
+	}
+
+	@Test
+	void retryAfterAsADateBecomesADelay() {
+		java.time.Instant now = java.time.Instant.parse("2026-10-21T07:27:00Z");
+		assertEquals(60_000, LrclibClient.retryAfterMs("Wed, 21 Oct 2026 07:28:00 GMT", now));
+		assertEquals(-1, LrclibClient.retryAfterMs("Wed, 21 Oct 2026 07:26:00 GMT", now)); // already past
+		assertEquals(-1, LrclibClient.retryAfterMs("Wed, 21 Oct 2027 07:28:00 GMT", now)); // over a day away
+		assertEquals(-1, LrclibClient.retryAfterMs("soon", now));
+		assertEquals(7000, LrclibClient.retryAfterMs("7", now));
+	}
+
+	@Test
+	void getServerErrorWithEmptySearchIsNoLyrics() throws Exception {
+		getCode = 500;
 		searchBody = "[]";
 		assertFalse(client.find(TRACK).found());
 	}

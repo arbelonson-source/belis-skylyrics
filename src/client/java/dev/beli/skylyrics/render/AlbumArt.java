@@ -73,7 +73,41 @@ public final class AlbumArt {
 	}
 
 	AlbumArt(ExecutorService executor) {
+		this(executor, null);
+	}
+
+	AlbumArt(ExecutorService executor, @Nullable Scheduler scheduler) {
 		this.executor = executor;
+		this.scheduler = scheduler != null ? scheduler : this::scheduleLater;
+	}
+
+	/** Runs something after a delay; replaced in tests. */
+	interface Scheduler {
+		Future<?> schedule(Runnable task, long delayMs);
+	}
+
+	/** Fetches and decodes one cover; replaced in tests. */
+	interface Fetcher {
+		@Nullable BufferedImage read(String url) throws Exception;
+	}
+
+	private final Scheduler scheduler;
+	Fetcher fetcher = this::read;
+	/** The one pending retry of the current cover, if any. */
+	private @Nullable Future<?> retry;
+	private java.util.concurrent.@Nullable ScheduledExecutorService timer;
+
+	private synchronized Future<?> scheduleLater(Runnable task, long delayMs) {
+		if (timer == null) {
+			java.util.concurrent.ScheduledThreadPoolExecutor t = new java.util.concurrent.ScheduledThreadPoolExecutor(1, r -> {
+				Thread thread = new Thread(r, "SkyLyrics album art retry");
+				thread.setDaemon(true);
+				return thread;
+			});
+			t.setRemoveOnCancelPolicy(true);
+			timer = t;
+		}
+		return timer.schedule(task, delayMs, java.util.concurrent.TimeUnit.MILLISECONDS);
 	}
 	private final AtomicLong generation = new AtomicLong();
 	/** Held while a song change is registered and while a finished cover is accepted, so the colour and the image go together. */
@@ -139,21 +173,26 @@ public final class AlbumArt {
 			if (previous != null) {
 				previous.cancel(true); // a stalled download of the last cover must not hold up this one
 			}
+			Future<?> oldRetry = retry;
+			retry = null;
+			if (oldRetry != null) {
+				oldRetry.cancel(false); // the last song's cover is no longer wanted
+			}
 			// A cover that finished decoding for the song we just left must not be shown on this one
 			Pending stale = pending.getAndSet(null);
 			if (stale != null) {
 				stale.image().close();
 			}
 			if (!url.isEmpty()) {
-				job = executor.submit(task(url, gen)); // submit doesn't block, so job is set before any later load() looks
+				job = executor.submit(task(url, gen, 0)); // submit doesn't block, so job is set before any later load() looks
 			}
 		}
 	}
 
-	private Runnable task(String url, long gen) {
+	private Runnable task(String url, long gen, int failures) {
 		return () -> {
 			try {
-				BufferedImage image = read(url);
+				BufferedImage image = fetcher.read(url);
 				if (generation.get() != gen) {
 					return;
 				}
@@ -193,10 +232,31 @@ public final class AlbumArt {
 				synchronized (accept) {
 					if (generation.get() == gen) {
 						color = FALLBACK_COLOR;
+						// No network at song start must not mean no cover for the whole song
+						if (e instanceof Exception && CoverRetry.temporary(e)) {
+							retryLater(url, gen, failures + 1);
+						}
 					}
 				}
 			}
 		};
+	}
+
+	/** Called with {@link #accept} held. Keeps at most one retry pending, and only for the song it was scheduled for. */
+	private void retryLater(String url, long gen, int failures) {
+		Future<?> old = retry;
+		if (old != null) {
+			old.cancel(false);
+		}
+		retry = scheduler.schedule(() -> {
+			synchronized (accept) {
+				if (generation.get() != gen) {
+					return;
+				}
+				retry = null;
+				job = executor.submit(task(url, gen, failures));
+			}
+		}, CoverRetry.delayMs(failures));
 	}
 
 	/** Takes the waiting cover; one from a song we already left is closed and dropped. */
@@ -255,6 +315,9 @@ public final class AlbumArt {
 		if (url.startsWith("http://") || url.startsWith("https://")) {
 			HttpResponse<InputStream> response = dev.beli.skylyrics.util.Net.getFollowing(http(), URI.create(url), Duration.ofSeconds(10));
 			try (InputStream in = response.body()) {
+				if (CoverRetry.temporaryStatus(response.statusCode())) {
+					throw new CoverRetry.TemporaryFailure("Cover server answered " + response.statusCode(), null);
+				}
 				// The request's timeout only covers the wait for the answer: a server that stalls mid-body would hold
 				// the single worker (and every later cover) forever, so the stream is closed after a while
 				dev.beli.skylyrics.util.Net.closeAfter(in, Duration.ofSeconds(BODY_TIMEOUT_S));
@@ -262,7 +325,13 @@ public final class AlbumArt {
 						|| !CoverCache.acceptable(response.headers().firstValueAsLong("Content-Length").orElse(-1))) {
 					return null;
 				}
-				return decode(CoverCache.readCapped(in, CoverCache.MAX_BYTES));
+				byte[] bytes;
+				try {
+					bytes = CoverCache.readCapped(in, CoverCache.MAX_BYTES);
+				} catch (java.io.IOException e) {
+					throw new CoverRetry.TemporaryFailure("Cover download broke off", e); // dropped or stalled body
+				}
+				return decode(bytes);
 			}
 		}
 		return null; // data: URIs and other odd schemes aren't worth it
