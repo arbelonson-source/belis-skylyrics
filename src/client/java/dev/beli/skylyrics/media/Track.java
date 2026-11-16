@@ -17,7 +17,7 @@ public record Track(String title, String artist, String album, long lengthMs, St
 	}
 
 	/** Control characters become a space, text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
-	static String clean(String s) {
+	public static String clean(String s) {
 		if (s == null) {
 			return "";
 		}
