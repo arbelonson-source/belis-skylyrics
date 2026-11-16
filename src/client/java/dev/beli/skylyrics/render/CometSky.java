@@ -84,6 +84,15 @@ final class CometSky {
 
 	private final SkyFrame frame = new SkyFrame();
 	private final int[] ionGrid = new int[ION_A.length];
+	/** The sky clock the gas tail's colours were last worked out for; NaN before the first time. */
+	private float ionTime = Float.NaN;
+	/** How often (seconds) the streamers are worked out again. */
+	static final float ION_INTERVAL = 1 / 30f;
+
+	/** Whether the streamers, last worked out at {@code last}, need working out again at {@code now} (also when the clock jumps back). */
+	static boolean streamersDue(float last, float now) {
+		return !(Math.abs(now - last) < ION_INTERVAL);
+	}
 
 	/** Light round the head at {@code r} (0 middle, 1 edge of the glow), ending at nothing on the edge. */
 	static int head(float r) {
@@ -144,11 +153,15 @@ final class CometSky {
 		if (!view.capVisible(frame.dx, frame.dy, frame.dz, REACH)) {
 			return;
 		}
-		for (int i = 0; i <= STEPS; i++) {
-			float s = STEP_AT[i];
-			for (int j = 0; j <= ION_ACROSS; j++) {
-				float w = across(j, ION_ACROSS);
-				ionGrid[i * (ION_ACROSS + 1) + j] = SkyColors.scale(ION_RGB, ION_PEAK * tail(s, w) * streak(s, w, time));
+		// The streamers drift a few hundredths of a tail a second: working them out 30 times a second is plenty
+		if (streamersDue(ionTime, time)) {
+			ionTime = time;
+			for (int i = 0; i <= STEPS; i++) {
+				float s = STEP_AT[i];
+				for (int j = 0; j <= ION_ACROSS; j++) {
+					float w = across(j, ION_ACROSS);
+					ionGrid[i * (ION_ACROSS + 1) + j] = SkyColors.scale(ION_RGB, ION_PEAK * tail(s, w) * streak(s, w, time));
+				}
 			}
 		}
 		boolean depth = false;
