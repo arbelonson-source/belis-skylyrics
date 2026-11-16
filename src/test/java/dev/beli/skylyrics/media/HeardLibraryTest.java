@@ -415,6 +415,35 @@ class HeardLibraryTest {
 	}
 
 	@Test
+	void aFailedWriteDoesNotLetClearedSongsComeBackOnTheNextSave() {
+		HeardLibrary b = library();
+		b.record(song("X", "Me"));
+		b.record(song("W", "Me"));
+		b.flush();
+		boolean[] failing = {false};
+		HeardLibrary a = make2(failing);
+		failing[0] = true;
+		a.clear();
+		a.flush(); // this save's write fails: the file still lists x and w
+		assertEquals(2, HeardLibrary.read(file()).size());
+		failing[0] = false;
+		a.record(song("N", "Me"));
+		a.flush();
+		assertEquals(List.of("N"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+		assertEquals(List.of("N"), titles(a));
+	}
+
+	private HeardLibrary make2(boolean[] failing) {
+		HeardLibrary lib = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, dev.beli.skylyrics.util.SafeFile::readText,
+				(from, to, opts) -> {
+					if (failing[0]) throw new IOException("locked");
+					Files.move(from, to, opts);
+				});
+		made.add(lib);
+		return lib;
+	}
+
+	@Test
 	void aDamagedFileAtSaveTimeDoesNotLoseOurList() throws IOException {
 		HeardLibrary a = library();
 		a.record(song("X", "Me"));

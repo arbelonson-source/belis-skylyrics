@@ -109,6 +109,7 @@ public final class HeardLibrary implements Library {
 	 */
 	private final java.util.Set<String> baseline = new java.util.HashSet<>();
 	private final SafeFile.Reader reader;
+	private final SafeFile.Mover mover;
 	private volatile boolean blockedLogged;
 
 	public HeardLibrary(Path file, BooleanSupplier enabled, Opener opener) {
@@ -116,6 +117,11 @@ public final class HeardLibrary implements Library {
 	}
 
 	HeardLibrary(Path file, BooleanSupplier enabled, Opener opener, SafeFile.Reader reader) {
+		this(file, enabled, opener, reader, Files::move);
+	}
+
+	HeardLibrary(Path file, BooleanSupplier enabled, Opener opener, SafeFile.Reader reader, SafeFile.Mover mover) {
+		this.mover = mover;
 		this.file = file;
 		this.enabled = enabled;
 		this.opener = opener;
@@ -263,7 +269,9 @@ public final class HeardLibrary implements Library {
 			return;
 		}
 		List<Entry> copy = snapshot();
-		write(file, copy);
+		if (!write(file, copy, mover)) {
+			return; // the file kept its old songs, so the baseline must too: what we removed stays removed on the next save
+		}
 		baseline.clear();
 		for (Entry e : copy) {
 			baseline.add(e.key());
@@ -271,11 +279,12 @@ public final class HeardLibrary implements Library {
 	}
 
 	/** Writes a temporary file and moves it over the real one, so a crash never leaves half a file. */
-	static void write(Path file, List<Entry> entries) {
-		write(file, entries, Files::move);
+	static boolean write(Path file, List<Entry> entries) {
+		return write(file, entries, Files::move);
 	}
 
-	static void write(Path file, List<Entry> entries, SafeFile.Mover mover) {
+	/** False when it couldn't be written (after SafeFile's retries); the file is then as it was. */
+	static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover) {
 		try {
 			Path dir = file.toAbsolutePath().getParent();
 			Files.createDirectories(dir);
@@ -286,8 +295,10 @@ public final class HeardLibrary implements Library {
 			} finally {
 				Files.deleteIfExists(tmp);
 			}
+			return true;
 		} catch (IOException e) {
 			LOG.warn("Couldn't save the recently heard songs: {}", e.toString());
+			return false;
 		}
 	}
 
