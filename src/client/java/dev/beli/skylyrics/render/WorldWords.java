@@ -1702,7 +1702,7 @@ final class WorldWords {
 				if (move[0] != 0 || move[1] != 0) {
 					double far = to.length(), flat = Math.sqrt(to.x * to.x + to.z * to.z);
 					// Sideways is across the line of sight, up is straight up; both as far as the angles ask at that distance
-					Vec3 side = new Vec3(-to.z, 0, to.x).normalize().scale(-flat * Math.tan(move[0] * DEG));
+					Vec3 side = sideStep(to, move[0]);
 					Vec3 up = new Vec3(0, far * Math.tan(-move[1] * DEG), 0);
 					Vec3 dir = to.normalize();
 					Vec3 here = c.pos.add(c.slide);
@@ -1800,6 +1800,18 @@ final class WorldWords {
 		List<float[]> both = new ArrayList<>(a);
 		both.addAll(b);
 		return both;
+	}
+
+	/**
+	 * The sideways offset (across the line of sight, level) that turns a word at {@code to} by {@code yawDeg} of yaw, in
+	 * the same direction yaw counts (yaw is atan2(-x, z), so a positive turn goes to -x when looking down +z).
+	 */
+	static Vec3 sideStep(Vec3 to, float yawDeg) {
+		double flat = Math.sqrt(to.x * to.x + to.z * to.z);
+		if (flat < 1e-6) {
+			return Vec3.ZERO;
+		}
+		return new Vec3(-to.z, 0, to.x).normalize().scale(flat * Math.tan(yawDeg * DEG));
 	}
 
 	/**

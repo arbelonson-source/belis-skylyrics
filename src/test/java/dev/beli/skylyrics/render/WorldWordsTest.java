@@ -12,6 +12,7 @@ import java.util.List;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.WorldLeave;
 
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -1086,5 +1087,18 @@ class WorldWordsTest {
 			return 1;
 		});
 		assertEquals(1 + 2 + 3 + 4 + 5, calls[0]);
+	}
+
+	@Test
+	void sideStepTurnsTheWordTheWayYawCounts() {
+		Vec3[] tos = {new Vec3(0, 0, 10), new Vec3(-5, 0, 8.66), new Vec3(8.66, 2, -5), new Vec3(-4, -3, -7), new Vec3(3, 6, 12)};
+		for (Vec3 to : tos) {
+			double yaw = Math.toDegrees(Math.atan2(-to.x, to.z));
+			for (float d : new float[] {5, -5}) {
+				Vec3 moved = to.add(WorldWords.sideStep(to, d));
+				double got = Math.toDegrees(Math.atan2(-moved.x, moved.z));
+				assertEquals(d, Mth.wrapDegrees((float) (got - yaw)), 0.2f, "to=" + to + " d=" + d);
+			}
+		}
 	}
 }
