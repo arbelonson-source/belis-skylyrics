@@ -38,4 +38,33 @@ final class LibraryKeys {
 	static boolean tooSoonAfterOpen(long sinceOpenNs) {
 		return sinceOpenNs >= 0 && sinceOpenNs < DOUBLE_CLICK_NS;
 	}
+
+	/**
+	 * Moves the keyboard over the header stops (the Open Music tab button, the grid/shelf/carousel buttons, the recent
+	 * searches): back goes toward the first and stays there, forward past the last leaves them for the songs (-1).
+	 */
+	static int stopMove(int current, int count, int dir) {
+		if (count <= 0) {
+			return -1;
+		}
+		int to = current + dir;
+		return to < 0 ? 0 : to >= count ? -1 : to;
+	}
+
+	/** Where the keyboard lands on the header stops: the first recent search when there are no songs to look at, else the current view's button. */
+	static int enterStop(boolean hasSongs, int viewStop, int firstChip) {
+		return !hasSongs && firstChip >= 0 ? firstChip : viewStop;
+	}
+
+	/** Whether Up has nowhere left to go in the songs: none chosen, the top row of a grid or of a shelf column, or any carousel. */
+	static boolean atTop(dev.beli.skylyrics.config.SkyLyricsConfig.LibraryView view, int selected, int cols, int shelfRows) {
+		if (selected < 0) {
+			return true;
+		}
+		return switch (view) {
+			case GRID -> selected < cols;
+			case SHELF -> LibraryViews.shelfRow(selected, shelfRows) == 0;
+			case CAROUSEL -> true;
+		};
+	}
 }

@@ -75,4 +75,19 @@ class FocusTest {
 		assertEquals(500f, Focus.page(480, 1, 100, 500));
 		assertEquals(0f, Focus.page(0, 1, 100, 0));
 	}
+
+	@Test
+	void withNothingChosenAndTheMouseStillTheKeyboardStartsAtTheFirstRow() {
+		assertEquals(Focus.KeyTarget.FOCUSED, Focus.keyTarget(true, false));
+		assertEquals(Focus.KeyTarget.FOCUSED, Focus.keyTarget(true, true));
+		assertEquals(Focus.KeyTarget.FIRST_ROW, Focus.keyTarget(false, false));
+		assertEquals(Focus.KeyTarget.MOUSE_ROW, Focus.keyTarget(false, true));
+	}
+
+	@Test
+	void aPixelOfMouseJitterIsNotMovement() {
+		assertEquals(false, Focus.mouseMoved(100, 100, 101, 100));
+		assertEquals(true, Focus.mouseMoved(100, 100, 100, 103));
+		assertEquals(true, Focus.mouseMoved(100, 100, 90, 100));
+	}
 }

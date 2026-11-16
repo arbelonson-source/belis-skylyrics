@@ -114,6 +114,19 @@ public final class TitleCleaner {
 			"\\s*[(\\[\uFF08\uFF3B\u3010\u3014][^)\\]\uFF09\uFF3D\u3011\u3015]*\\b(remaster(ed)?|live|radio edit|edit|version|mix|mono|stereo|acoustic|demo|from [^)\\]\uFF09\uFF3D\u3011\u3015]+|feat\\.?|ft\\.?|featuring|with|prod\\.?)\\b[^)\\]\uFF09\uFF3D\u3011\u3015]*[)\\]\uFF09\uFF3D\u3011\u3015]",
 			Pattern.CASE_INSENSITIVE);
 
+	/**
+	 * The search title without version tags in brackets: "Song (2011 Remaster)" -> "Song". A title with a bracket that
+	 * names another work or a track without vocals ("(Remix)", "(Part 2)", "(Instrumental Version)") is returned as
+	 * {@link #forSearch} gives it.
+	 */
+	public static String withoutVersionBrackets(String title) {
+		String t = forSearch(title);
+		if (noVocals(title) || withoutBrackets(title) == null) {
+			return t;
+		}
+		return VERSION_BRACKET.matcher(t).replaceAll("").trim();
+	}
+
 	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */
 	public static String key(String s) {
 		return s.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "");

@@ -171,6 +171,17 @@ public final class LrclibClient implements LyricsSource {
 		if (best == null) {
 			best = searchBest(Map.of("q", (title + " " + main).trim()), seconds, title, main, titleOnly);
 		}
+		if (best == null && plainOnly == null) {
+			// "Song (2011 Remaster)" can find nothing although LRCLIB has "Song": ask once more without the version tag.
+			// The result check still uses the full title, so the same length limit and version rules apply.
+			String bare = TitleCleaner.withoutVersionBrackets(track.title());
+			if (!bare.isBlank() && !bare.equals(title)) {
+				best = searchBest(Map.of("track_name", bare, "artist_name", artist), seconds, title, null, titleOnly);
+				if (best == null) {
+					best = searchBest(Map.of("q", (bare + " " + main).trim()), seconds, title, main, titleOnly);
+				}
+			}
+		}
 		if (best != null && (best.hasSynced() || plainOnly == null)) {
 			return best;
 		}

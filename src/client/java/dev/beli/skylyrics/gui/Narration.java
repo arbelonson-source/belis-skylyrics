@@ -42,8 +42,48 @@ final class Narration {
 		return join(section, error, title, under, place);
 	}
 
-	/** A value as it is said aloud: "40%" is "40 percent", "-10°" "-10 degrees", "1.5×" "1.5 times". */
-	static String speakable(String value, String percent, String degrees, String times) {
-		return value.replace("%", " " + percent).replace("°", " " + degrees).replace("×", " " + times);
+	/** A value as it is said aloud: "40%" is "40 percent", "-10°" "-10 degrees", "1.5×" "1.5 times", "+0.50 s" "+0.50 seconds". */
+	static String speakable(String value, String percent, String degrees, String times, String seconds) {
+		return value.replace("%", " " + percent).replace("°", " " + degrees).replace("×", " " + times)
+				.replaceAll("(\\d) s$", "$1 " + java.util.regex.Matcher.quoteReplacement(seconds));
+	}
+
+	/** What the Narrator says after Ctrl+Tab: the tab, and the row the keyboard lands on there when there is one. */
+	static String tab(String name, String kind, String place, String row) {
+		return join(choice(name, kind, "", place), row);
+	}
+
+	/** A row the keyboard is on; one that is listed in the search but hidden in its tab says it is not in use now. */
+	static String row(String narration, boolean hidden, String notInUse) {
+		return join(narration, hidden ? notInUse : "");
+	}
+
+	/** The section or playlist the library names once it has just changed, or nothing. */
+	static String section(boolean say, boolean playlistOpen, String playlistName, String sectionName) {
+		return !say ? "" : playlistOpen ? playlistName : sectionName;
+	}
+
+	/** What an empty list is doing: loading, an error, or empty. Nothing when there are cards. */
+	static String shelfState(int count, boolean loaded, boolean busy, String error, String loading, String empty) {
+		if (count > 0 || !error.isEmpty()) {
+			return "";
+		}
+		return busy || !loaded ? loading : empty;
+	}
+
+	/** The number of search results, said on the search box line; nothing before anything is typed. */
+	static String resultCount(boolean typed, boolean busy, int count, String searching, String none, String one, String many) {
+		if (!typed) {
+			return "";
+		}
+		if (busy) {
+			return searching;
+		}
+		return count == 1 ? one : count == 0 ? none : many;
+	}
+
+	/** A song or playlist tile as the keyboard lands on it: the card and what Enter does with it. */
+	static String tile(String card, String action) {
+		return join(card, action);
 	}
 }

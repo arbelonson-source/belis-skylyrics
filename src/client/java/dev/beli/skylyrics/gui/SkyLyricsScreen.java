@@ -241,6 +241,9 @@ public final class SkyLyricsScreen extends Screen {
 	private final @Nullable Row[] tabFocus = new Row[TAB_COUNT + 1];
 	/** What the Narrator says instead of the focused row, after a tab changes. */
 	private @Nullable String announcement;
+	/** Whether the mouse has moved since the screen opened (or since the last tab switch by keyboard). */
+	private boolean mouseMovedYet;
+	private double mouseFromX = Double.NaN, mouseFromY;
 
 	public SkyLyricsScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
@@ -539,7 +542,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row connectionHelp = new Paragraph(() -> tracker.error())
 				.when(() -> !cfg.demoMode && !tracker.connected() && !tracker.error().isEmpty());
 		Row timing = new Slider(Tr.t("Timing"), Tr.t("Late? Move right. Early? Left"), -5000, 5000, 50,
-				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds);
+				() -> cfg.syncOffsetMs, v -> cfg.syncOffsetMs = (int) Math.round(v), SkyLyricsScreen::seconds).narrateHint();
 		Row songTiming = new Slider(Tr.t("This song"), Tr.t("Remembered for this song only"), -5000, 5000, 50,
 				() -> cfg.songOffset(tracker.track()), v -> cfg.setSongOffset(tracker.track(), (int) Math.round(v)),
 				SkyLyricsScreen::seconds).when(() -> tracker.track() != Track.NONE).searchOnlyWhenShown();
@@ -951,7 +954,11 @@ public final class SkyLyricsScreen extends Screen {
 			focus = tabFocus[to];
 		}
 		focusVisible = true;
-		announcement = Narration.choice(tabName(to), Tr.t("tab"), "", Tr.t("%s of %s", to + 1, TAB_COUNT));
+		// A new tab starts from the keyboard: the mouse has to move again before it picks a row
+		mouseMovedYet = false;
+		mouseFromX = Double.NaN;
+		announcement = Narration.tab(tabName(to), Tr.t("tab"), Tr.t("%s of %s", to + 1, TAB_COUNT),
+				focus instanceof Row row ? rowNarration(row) : "");
 		afterKeyboardAction();
 	}
 
@@ -994,7 +1001,7 @@ public final class SkyLyricsScreen extends Screen {
 			return Narration.join(Tr.t("Search"), Tr.t("text box"), query);
 		}
 		if (focus instanceof Row row) {
-			return row.narration();
+			return rowNarration(row);
 		}
 		if (focus instanceof Chrome button) {
 			String name = switch (button) {
@@ -1005,6 +1012,22 @@ public final class SkyLyricsScreen extends Screen {
 			return Narration.join(name, Tr.t("button"));
 		}
 		return "";
+	}
+
+	/** A row's words; in the search results a row that its tab is hiding right now says so. */
+	private String rowNarration(Row row) {
+		return Narration.row(row.narration(), tab == SEARCH_TAB && row != masterToggle && !row.shown(), Tr.t("not in use now"));
+	}
+
+	@Override
+	public void mouseMoved(double mx, double my) {
+		if (Double.isNaN(mouseFromX)) {
+			mouseFromX = mx;
+			mouseFromY = my;
+		} else if (Focus.mouseMoved(mouseFromX, mouseFromY, mx, my)) {
+			mouseMovedYet = true;
+		}
+		super.mouseMoved(mx, my);
 	}
 
 	@Override
@@ -1575,10 +1598,16 @@ public final class SkyLyricsScreen extends Screen {
 				afterKeyboardAction();
 				return true;
 			}
-			// With the keyboard on a row it gets the keys; with nothing chosen, the row under the mouse does, as before
+			// With the keyboard on a row it gets the keys; with nothing chosen, the row under the mouse does once the mouse
+			// has moved. Before that the keyboard starts at the first row, so nothing changes without being said.
+			Focus.KeyTarget target = Focus.keyTarget(focus != null, mouseMovedYet);
+			if (target == Focus.KeyTarget.FIRST_ROW && (event.isLeft() || event.isRight() || event.isSelection())) {
+				moveFocus(1);
+				return true;
+			}
 			double mx = minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());
 			double my = minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
-			Row row = focus instanceof Row focused ? focused : focus == null ? rowAt(mx, my) : null;
+			Row row = focus instanceof Row focused ? focused : target == Focus.KeyTarget.MOUSE_ROW ? rowAt(mx, my) : null;
 			if (row != null && row.key(event)) {
 				dirty = true;
 				if (row == focus) {
