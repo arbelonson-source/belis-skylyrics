@@ -66,6 +66,7 @@
 - **Hebrew wording.** The Hebrew texts now speak to you in the plural everywhere, write Spotify and Minecraft in Hebrew letters, and say "no access" for the internet error.
 - **Demo song.** While the demo song plays, the top bar shows "Demo" next to the song, so you can tell it from your own music.
 - **Spotify sign-in.** The welcome tour now says that signing in to Spotify is optional and needs Premium and a free developer app.
+- **Slide apart.** In the World layout, two words that overlap by a sliver side by side now part sideways instead of sliding into each other and jittering or stacking.
 
 ### Faster
 
