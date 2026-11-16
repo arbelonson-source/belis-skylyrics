@@ -337,6 +337,8 @@ class SpotifyWebSourceTest {
 		/** A new refresh token Spotify hands out with each access token, or null. */
 		String newRefresh;
 		final List<String> refreshed = new ArrayList<>();
+		/** When set, the token endpoint answers 400 with this (non-JSON) body. */
+		String tokenBadBody;
 
 		FakeHttp(int apiStatus) {
 			this.apiStatus = apiStatus;
@@ -364,6 +366,10 @@ class SpotifyWebSourceTest {
 				String sent = bodyOf(request);
 				String used = sent.replaceAll(".*refresh_token=([^&]*).*", "$1");
 				refreshed.add(used);
+				if (tokenBadBody != null) {
+					status = 400;
+					body = tokenBadBody;
+				}
 				if (acceptedRefresh != null && !acceptedRefresh.contains(used)) {
 					status = 400;
 					body = "{\"error\":\"invalid_grant\",\"error_description\":\"Refresh token revoked\"}";
@@ -429,6 +435,44 @@ class SpotifyWebSourceTest {
 		long now = System.nanoTime();
 		assertFalse(source.pollDue(now + 2 * SEC, true));
 		assertTrue(source.pollDue(now + 5 * SEC, true));
+	}
+
+	@Test
+	void aNonJsonRefusalIsAnOrdinaryFailureNotACrash(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenBadBody = "<html>captive portal</html>";
+		SpotifyWebSource source = signedIn(dir, http);
+		IOException e = assertThrows(IOException.class, source::poll);
+		assertEquals("HTTP 400", e.getMessage());
+		assertSame(e, source.failing());
+		// The failure counted: the next poll is held back
+		assertFalse(source.pollDue(System.nanoTime() + SEC / 2, true));
+	}
+
+	@Test
+	void aSignInFinishingAfterTheClientIdChangedSavesNothing(@TempDir Path dir) throws Exception {
+		Path login = dir.resolve("login.json");
+		String[] id = {ID};
+		FakeHttp http = new FakeHttp(200);
+		http.newRefresh = "newref";
+		SpotifyWebSource source = new SpotifyWebSource(() -> id[0], login);
+		source.useHttp(http);
+		String url = source.startLogin();
+		String state = url.replaceAll(".*[?&]state=([^&]*).*", "$1");
+		try {
+			id[0] = "ffffffffffffffffffffffffffffffff";
+			String page = get(SpotifyWebSource.PORT, "/callback?state=" + state + "&code=abc");
+			assertTrue(page.contains("Sign-in was cancelled"), page);
+			assertFalse(Files.exists(login), "nothing saved under the old ID");
+		} finally {
+			source.cancelLogin();
+		}
+	}
+
+	@Test
+	void anExceptionWithoutAMessageStillGetsATextWithoutNull() {
+		assertEquals("NullPointerException", SpotifyWebSource.failureText(new NullPointerException()));
+		assertEquals("boom", SpotifyWebSource.failureText(new IOException("boom")));
 	}
 
 	private static final String PLAYING = "{\"is_playing\": true, \"progress_ms\": 1000, \"currently_playing_type\": \"track\","

@@ -583,7 +583,11 @@ public final class SkyLyricsScreen extends Screen {
 		Row clientId = new Buttons(Tr.t("Client ID"), "",
 				new Button(Tr.t("Paste"), () -> {
 					String pasted = minecraft.keyboardHandler.getClipboard().strip();
-					cfg.spotifyClientId = pasted.length() > 64 ? pasted.substring(0, 64) : pasted;
+					String next = pasted.length() > 64 ? pasted.substring(0, 64) : pasted;
+					if (!next.equals(cfg.spotifyClientId)) {
+						spotify.cancelLogin(); // a sign-in waiting in the browser belongs to the old ID
+					}
+					cfg.spotifyClientId = next;
 					tracker().refresh();
 				}))
 				.describe(() -> {

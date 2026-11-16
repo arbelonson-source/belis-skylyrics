@@ -346,8 +346,8 @@ public final class SpotifyWebSource implements MediaSource {
 					// Cancelled or signed out while Spotify was answering: don't sign the player back in
 					message = Tr.t("Sign-in was cancelled");
 				}
-			} catch (IOException | InterruptedException e) {
-				problem = Tr.t("Sign-in failed: %s", e.getMessage());
+			} catch (IOException | InterruptedException | RuntimeException e) {
+				problem = Tr.t("Sign-in failed: %s", failureText(e));
 				message = problem;
 			}
 			respond(socket.getOutputStream(), "200 OK", message);
@@ -358,12 +358,19 @@ public final class SpotifyWebSource implements MediaSource {
 
 	/** Keeps the tokens only while this sign-in is still the current one. */
 	private synchronized boolean finishLogin(ServerSocket server, String id, JsonObject tokens) {
-		if (loginServer != server) {
+		// Also refuse when the Client ID changed while the browser was open: the tokens belong to the old app
+		if (loginServer != server || !id.equals(id())) {
 			return false;
 		}
 		signInGeneration++;
 		accept(id, tokens);
 		return true;
+	}
+
+	/** What to show for a failure: its message, or its class name when it has none (never "null"). */
+	static String failureText(Throwable e) {
+		String message = e.getMessage();
+		return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
 	}
 
 	private static void closeQuietly(java.io.Closeable c) {
@@ -472,7 +479,7 @@ public final class SpotifyWebSource implements MediaSource {
 				.build();
 		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
 		JsonObject json = object(response.body());
-		if (response.statusCode() == 400 && "invalid_grant".equals(string(json, "error"))) {
+		if (json != null && response.statusCode() == 400 && "invalid_grant".equals(string(json, "error"))) {
 			throw new Refused(string(json, "error_description"));
 		}
 		if (response.statusCode() != 200 || json == null || string(json, "access_token") == null) {
