@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
@@ -93,6 +94,9 @@ public final class SafeFile {
 	 * replaces the oldest one (by modified time).
 	 */
 	public static void keepBad(Path file) throws IOException {
+		if (hasCopy(file)) {
+			return;
+		}
 		Path target = freeBadName(file);
 		if (target == null) {
 			Path oldest = null;
@@ -108,6 +112,22 @@ public final class SafeFile {
 			target = oldest;
 		}
 		Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
+	}
+
+	/** Whether one of the {@code .bad} copies already holds exactly these bytes (a copy that vanishes meanwhile doesn't count). */
+	private static boolean hasCopy(Path file) throws IOException {
+		long size = Files.size(file);
+		for (int i = 0; i <= 9; i++) {
+			Path p = file.resolveSibling(file.getFileName() + (i == 0 ? ".bad" : ".bad." + i));
+			try {
+				if (Files.size(p) == size && Files.mismatch(file, p) == -1) {
+					return true;
+				}
+			} catch (NoSuchFileException e) {
+				// no such copy (or gone since)
+			}
+		}
+		return false;
 	}
 
 	/** Replaces target with tmp. If it can't be done, tmp is deleted and the last error is thrown. */

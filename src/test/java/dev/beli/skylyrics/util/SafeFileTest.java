@@ -125,4 +125,31 @@ class SafeFileTest {
 		assertEquals("copy 0", Files.readString(dir.resolve("a.json.bad")));
 		assertEquals("copy 9", Files.readString(dir.resolve("a.json.bad.9")));
 	}
+
+	@Test
+	void keepBadTwiceOnTheSameFileLeavesOneCopy() throws IOException {
+		Path file = dir.resolve("a.json");
+		Files.writeString(file, "{ broken");
+		SafeFile.keepBad(file);
+		SafeFile.keepBad(file);
+		SafeFile.keepBad(file);
+		assertEquals("{ broken", Files.readString(dir.resolve("a.json.bad")));
+		assertFalse(Files.exists(dir.resolve("a.json.bad.1")));
+	}
+
+	@Test
+	void keepBadStillCopiesAChangedFileAndSkipsAnyEarlierIdenticalCopy() throws IOException {
+		Path file = dir.resolve("a.json");
+		Files.writeString(file, "{ one");
+		SafeFile.keepBad(file);
+		Files.writeString(file, "{ two");
+		SafeFile.keepBad(file);
+		assertEquals("{ two", Files.readString(dir.resolve("a.json.bad.1")));
+		Files.writeString(file, "{ one"); // same as the first copy, which is not the last one
+		SafeFile.keepBad(file);
+		assertFalse(Files.exists(dir.resolve("a.json.bad.2")));
+		Files.writeString(file, "{ 333");
+		SafeFile.keepBad(file);
+		assertEquals("{ 333", Files.readString(dir.resolve("a.json.bad.2")));
+	}
 }
