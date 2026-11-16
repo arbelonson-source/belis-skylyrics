@@ -5,6 +5,7 @@
 
 ### Fixed
 
+- **Pick a look crash.** Pressing Left or Right on **Pick a look** while the look is Custom (after changing any look setting) no longer crashes the game: Right picks the first look and Left the last.
 - **Updates on Windows.** Automatic updates now install for players whose Windows user name has Hebrew, Cyrillic or accented letters (or spaces and signs like & and ’ in the folder name). An update can no longer leave you without SkyLyrics: the old file is only deleted once the new one is in place, and it is put back if the new one can't be. A download that Windows briefly holds is tried again, and old update leftovers are cleaned up.
 - **Saving on Windows.** Settings, the Spotify sign-in and saved covers are saved even when an antivirus or OneDrive holds the file for up to about a second, and the Windows music reader's helper file is written the same careful way.
 - **Updates that wouldn't start.** An update that needs a newer Minecraft or Fabric API than you have is no longer installed: the mod tells you what to update instead, and your working version stays. It remembers this, so the same update is not downloaded again on every start until you update Fabric API, Fabric Loader, Minecraft or Java, or a newer release comes out.
