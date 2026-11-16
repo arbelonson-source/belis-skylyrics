@@ -72,6 +72,7 @@
 - **Quick skips and the backup site.** Skipping songs quickly no longer makes the mod use the backup lyrics site (NetEase) for two minutes: a lookup cut short by a skip isn't counted as the main site being down.
 - **Half-saved lyrics.** A lookup cut short by a skip no longer leaves a half-written lyrics file behind.
 - **Cut-off updates.** Update downloads that were cut off are cleaned up from your mods folder.
+- **Left-over save files.** A settings or Spotify sign-in file that was half-written when the game was killed is cleaned up the next time the game starts, once it is a day old.
 - **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
 
 ### Faster
