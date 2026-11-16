@@ -235,4 +235,26 @@ class CoverCacheTest {
 			cache.close();
 		}
 	}
+
+	@Test
+	void networkTroubleIsRetriedForEverAndNeverCounted(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		CoverCache cache = new CoverCache(dir, url -> {
+			reads.incrementAndGet();
+			throw new java.net.ConnectException("offline");
+		});
+		try {
+			String url = "https://example.test/offline";
+			long later = System.nanoTime();
+			long end = System.nanoTime() + 10_000_000_000L;
+			while (reads.get() < 6 && System.nanoTime() < end) {
+				later += CoverCache.RETRY_NS * 2;
+				cache.get(url, later);
+				Thread.sleep(5);
+			}
+			assertTrue(reads.get() >= 6, "reads: " + reads.get());
+		} finally {
+			cache.close();
+		}
+	}
 }

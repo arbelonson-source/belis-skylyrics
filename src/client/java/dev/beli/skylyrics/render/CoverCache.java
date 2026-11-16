@@ -266,6 +266,10 @@ public final class CoverCache {
 		} catch (InterruptedException e) {
 			// shutting down: keep the flag so work() ends
 			Thread.currentThread().interrupt();
+		} catch (java.io.IOException e) {
+			// Network trouble (offline, timeout): retried later, and not counted against the cover
+			cover.failedAt = Math.max(1, System.nanoTime());
+			LOG.debug("Couldn't load cover {}: {}", cover.url, e.toString());
 		} catch (Throwable e) {
 			// Not just Exception: a decoder's LinkageError or a StackOverflowError must not kill the worker thread
 			fail(cover);
