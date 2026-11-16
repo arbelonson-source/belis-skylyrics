@@ -66,7 +66,9 @@ The mod reads the media controls that Windows shows when you press a media key o
 - a school or work computer blocks PowerShell scripts, or
 - an antivirus program blocks it. Allowing Minecraft (Java) to run PowerShell fixes this.
 
-The helper writes its own error messages to `.cache\skylyrics\windows\windows-media.log` in your Minecraft folder. That file is useful to include if you [ask for help](#still-stuck). If the helper fails, the mod tries again 15 seconds later on its own.
+The helper writes its own error messages to `.cache\skylyrics\windows\windows-media.log` in your Minecraft folder. That file is useful to include if you [ask for help](#still-stuck). If the helper fails, the mod tries again on its own, first after 15 seconds and then less and less often, up to every 5 minutes.
+
+**"The Windows music reader stopped right away…"** The Music tab shows this when PowerShell started and quit at once. PowerShell's own message follows in brackets, for example one about Constrained Language Mode or AppLocker. That means the computer is set up to block PowerShell, which is common on school and work PCs. The mod can't change that, and only whoever looks after the PC (your school or IT) can allow it. You can use the mod anyway: on the **Music** tab set **Player** to **Spotify Web** and sign in to Spotify there. Spotify Web asks Spotify over the internet, so it doesn't need PowerShell (see "Can it follow Spotify on my phone or another computer?" in the [FAQ](FAQ.md)).
 
 ### On Linux
 
@@ -128,6 +130,8 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 **No album cover for Music songs.** Spotify gives the mod a link to the album cover, but the Music app doesn't, so the top bar shows no album cover for songs played in Music.
 
+**Internet radio and ads.** When Music plays an internet radio station, the mod shows the song the station is playing now, not just the station's name. Spotify's ads are skipped: the mod doesn't look up lyrics for them.
+
 **Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
 
 ## Lyrics vanish in caves
@@ -160,7 +164,7 @@ Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for
 
 ## Two Minecraft games open at once
 
-Two games can share one Minecraft folder (two instances, or a game and a test copy). When one saves its settings or song timings it keeps what the other changed, so they don't undo each other. They share one Spotify sign-in: when both renew it at the same moment, the second waits briefly for the first one's new sign-in.
+Two games can share one Minecraft folder (two instances, or a game and a test copy). When one saves its settings or song timings it keeps what the other changed, so they don't undo each other. This also works across Minecraft versions: going back to an older SkyLyrics, or running two Minecraft versions of the mod on the same folder, no longer wipes the settings the other one saved, and your per-song timings are kept. They share one Spotify sign-in: when both renew it at the same moment, the second waits briefly for the first one's new sign-in.
 
 ## Opening the settings
 

@@ -40,7 +40,7 @@ VLC and mpv don't show up in that panel on their own, so the mod can't see them.
 - Spotify, the desktop app
 - Music, Apple's own music app (Apple Music and your own songs)
 
-The app has to be open; the mod never opens it by itself. YouTube and other sites in a browser, VLC and other players don't work on a Mac.
+The app has to be open; the mod never opens it by itself. YouTube and other sites in a browser, VLC and other players don't work on a Mac. Music's internet radio shows the song the station is playing now, and Spotify's ads are skipped.
 
 If you're not sure, see "Check that your player can be seen" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
@@ -156,6 +156,10 @@ No. It only runs on your own computer (client side). It works in single player a
 In a file called `skylyrics.json` in the `config` folder of your Minecraft folder. Saved lyrics and the **Recently heard** list are in `.cache/skylyrics` in the same Minecraft folder. See "Where the files are" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 Two Minecraft games open at once can share one folder: when one saves, it keeps what the other changed. If Windows, an antivirus or OneDrive holds a file for a moment, the mod tries again; a settings file it still can't read is left alone, not overwritten with defaults.
+
+## Can two Minecraft versions share one folder?
+
+Yes. If two games (for example 1.21.11 and a newer version) use the same Minecraft folder, they share one settings file. Each keeps the settings the other one saved, so they don't undo each other. The same goes when you go back to an older SkyLyrics: it leaves the settings it doesn't know alone, and your per-song timings stay. See "Two Minecraft games open at once" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#two-minecraft-games-open-at-once).
 
 ## Is this the Neon Lyrics mod?
 
