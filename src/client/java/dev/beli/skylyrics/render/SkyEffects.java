@@ -669,7 +669,7 @@ public final class SkyEffects {
 
 	private void vertex(VertexConsumer vc, PoseStack.Pose pose, float yaw, float elev, float r, int color) {
 		float h = r * Mth.cos(elev);
-		point(vc, pose, h * Mth.sin(yaw), r * Mth.sin(elev), -h * Mth.cos(yaw), color);
+		pointFront(vc, pose, h * Mth.sin(yaw), r * Mth.sin(elev), -h * Mth.cos(yaw), color);
 	}
 
 	/** A curtain's distance as a share of the sky radius: the first is the farthest. */
@@ -835,14 +835,14 @@ public final class SkyEffects {
 			ez *= toSphere;
 			*///?}
 			if (i > 0) {
-				point(vc, pose, cx, cy, cz, centreC);
-				point(vc, pose, cx, cy, cz, centreC);
-				point(vc, pose, mx, my, mz, midC);
-				point(vc, pose, prevMx, prevMy, prevMz, midC);
-				point(vc, pose, prevMx, prevMy, prevMz, midC);
-				point(vc, pose, mx, my, mz, midC);
-				point(vc, pose, ex, ey, ez, edgeC);
-				point(vc, pose, prevEx, prevEy, prevEz, edgeC);
+				pointFront(vc, pose, cx, cy, cz, centreC);
+				pointFront(vc, pose, cx, cy, cz, centreC);
+				pointFront(vc, pose, mx, my, mz, midC);
+				pointFront(vc, pose, prevMx, prevMy, prevMz, midC);
+				pointFront(vc, pose, prevMx, prevMy, prevMz, midC);
+				pointFront(vc, pose, mx, my, mz, midC);
+				pointFront(vc, pose, ex, ey, ez, edgeC);
+				pointFront(vc, pose, prevEx, prevEy, prevEz, edgeC);
 			}
 			prevMx = mx;
 			prevMy = my;
@@ -868,10 +868,10 @@ public final class SkyEffects {
 			float h = radius * Mth.cos(elev);
 			float x = h * Mth.sin(yaw), y = radius * Mth.sin(elev), z = -h * Mth.cos(yaw);
 			float rx = Mth.cos(yaw) * s, rz = Mth.sin(yaw) * s;
-			point(vc, pose, x - rx, y - s, z - rz, c);
-			point(vc, pose, x + rx, y - s, z + rz, c);
-			point(vc, pose, x + rx, y + s, z + rz, c);
-			point(vc, pose, x - rx, y + s, z - rz, c);
+			pointFront(vc, pose, x - rx, y - s, z - rz, c);
+			pointFront(vc, pose, x + rx, y - s, z + rz, c);
+			pointFront(vc, pose, x + rx, y + s, z + rz, c);
+			pointFront(vc, pose, x - rx, y + s, z - rz, c);
 		}
 	}
 
@@ -967,16 +967,34 @@ public final class SkyEffects {
 
 	/** Collects four corners, then emits the quad twice (both windings) as triangles, as the pipeline culls back faces. */
 	private void point(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float z, int color) {
-		qx[corner] = x;
-		qy[corner] = y;
-		qz[corner] = z;
-		qc[corner] = color;
-		if (++corner < 4) {
+		corner(x, y, z, color);
+		if (corner < 4) {
 			return;
 		}
 		corner = 0;
 		triangles(vc, pose, qx, qy, qz, qc, FRONT);
 		triangles(vc, pose, qx, qy, qz, qc, BACK);
+	}
+
+	/**
+	 * Like {@link #point}, but emits only the winding that faces the camera at the origin. Only for shapes whose corners
+	 * run counter-clockwise seen from the origin (the curtains, clouds and stars): the other winding is always culled.
+	 */
+	private void pointFront(VertexConsumer vc, PoseStack.Pose pose, float x, float y, float z, int color) {
+		corner(x, y, z, color);
+		if (corner < 4) {
+			return;
+		}
+		corner = 0;
+		triangles(vc, pose, qx, qy, qz, qc, FRONT);
+	}
+
+	private void corner(float x, float y, float z, int color) {
+		qx[corner] = x;
+		qy[corner] = y;
+		qz[corner] = z;
+		qc[corner] = color;
+		corner++;
 	}
 
 	/** Whether the level has the normal overworld sky, with a sun, moon and stars */
