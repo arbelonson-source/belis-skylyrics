@@ -99,6 +99,20 @@ public final class LyricsFont {
 		return sink -> seq.accept((i, st, cp) -> isMark(cp) || sink.accept(i, st, cp));
 	}
 
+	/** {@link #ltr} for a value with no letters ("-10°", "0.50×"); a value with words ("60 fps", "-0.30 s") already reads right. */
+	public static String ltrNumber(String text) {
+		return text.codePoints().anyMatch(Character::isLetter) ? text : ltr(text);
+	}
+
+	/**
+	 * A left-to-right run inside right-to-left text: the number "-2:35" or "0.50×" keeps its order and its sign and unit
+	 * stay on their sides. Both ends are marked, since a trailing sign or unit would otherwise join the right-to-left side.
+	 * Drawn through {@link #dropMarks} (the marks are dropped after the order is set).
+	 */
+	public static String ltr(String text) {
+		return "\u200E" + text + "\u200E";
+	}
+
 	/** Widths measured for the per-frame text (top bar, Record card, lyric rows); see {@link WidthCache}. */
 	private static final WidthCache WIDTHS = new WidthCache(256);
 

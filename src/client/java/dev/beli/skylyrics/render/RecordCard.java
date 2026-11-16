@@ -163,7 +163,8 @@ public final class RecordCard {
 			float small = scale * 0.85f;
 			String[] times = timesShown(played, length);
 			text(g, font, style, times[0], tx, lineY + 7, small, fade(SUB));
-			String left = times[1];
+			// Kept left to right in a Hebrew or Arabic game, where "-2:35" would read "2:35-"
+			String left = LyricsFont.ltr(times[1]);
 			float leftW = LyricsFont.cachedWidth(font, style, left) * small;
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
