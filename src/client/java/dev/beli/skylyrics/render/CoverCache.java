@@ -390,9 +390,57 @@ public final class CoverCache {
 		}
 		BufferedImage image = decodeSmall(bytes, SIZE);
 		if (image != null) {
-			store(dir, file, bytes);
+			cache(dir, file, image);
 		}
 		return image;
+	}
+
+	/**
+	 * Saves what the mod actually uses (the cover as a {@link #SIZE}-px square) instead of the downloaded bytes, which can
+	 * be several MB each. Files saved by older versions hold the raw download and still read the same way.
+	 */
+	static void cache(Path dir, Path file, BufferedImage image) {
+		byte[] small;
+		try {
+			small = encodeSmall(image);
+		} catch (java.io.IOException | RuntimeException e) {
+			LOG.debug("Could not encode cover {} for the cache", file, e);
+			return;
+		}
+		store(dir, file, small);
+	}
+
+	/**
+	 * The centred square of the picture, box-filtered down to {@link #SIZE} px (never enlarged), as PNG bytes. The mod
+	 * crops to a square and ignores transparency everywhere, so this is opaque RGB; any source type is read through getRGB.
+	 */
+	static byte[] encodeSmall(BufferedImage src) throws java.io.IOException {
+		int side = Math.min(src.getWidth(), src.getHeight());
+		int x0 = (src.getWidth() - side) / 2, y0 = (src.getHeight() - side) / 2;
+		int size = Math.min(side, SIZE);
+		BufferedImage out = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < size; y++) {
+			int sy0 = y0 + y * side / size, sy1 = Math.max(sy0 + 1, y0 + (y + 1) * side / size);
+			for (int x = 0; x < size; x++) {
+				int sx0 = x0 + x * side / size, sx1 = Math.max(sx0 + 1, x0 + (x + 1) * side / size);
+				long r = 0, g = 0, b = 0, n = 0;
+				for (int sy = sy0; sy < sy1; sy++) {
+					for (int sx = sx0; sx < sx1; sx++) {
+						int p = src.getRGB(sx, sy);
+						r += (p >> 16) & 0xFF;
+						g += (p >> 8) & 0xFF;
+						b += p & 0xFF;
+						n++;
+					}
+				}
+				out.setRGB(x, y, (int) (r / n) << 16 | (int) (g / n) << 8 | (int) (b / n));
+			}
+		}
+		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+		if (!ImageIO.write(out, "png", bytes)) {
+			throw new java.io.IOException("no PNG writer");
+		}
+		return bytes.toByteArray();
 	}
 
 	/** The cover saved earlier, or null when there is none, it can't be read now, or the file is damaged (which is then removed so it downloads again). */
