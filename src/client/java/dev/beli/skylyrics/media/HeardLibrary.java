@@ -288,7 +288,7 @@ public final class HeardLibrary implements Library {
 		try {
 			Path dir = file.toAbsolutePath().getParent();
 			Files.createDirectories(dir);
-			Path tmp = Files.createTempFile(dir, "heard", ".tmp");
+			Path tmp = Files.createTempFile(dir, file.getFileName() + ".", ".tmp");
 			try {
 				Files.writeString(tmp, toJson(entries), StandardCharsets.UTF_8);
 				SafeFile.replace(tmp, file, mover, SafeFile.TRIES, SafeFile.PAUSE_MS);
@@ -338,6 +338,9 @@ public final class HeardLibrary implements Library {
 
 	static Loaded load(Path file, SafeFile.Reader reader, int tries, long pauseMs, java.util.function.Predicate<Path> readable) {
 		List<Entry> out = new ArrayList<>();
+		if (file.toAbsolutePath().getParent() != null) {
+			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.toAbsolutePath().getParent(), file.getFileName().toString(), System.currentTimeMillis());
+		}
 		if (!Files.isRegularFile(file)) {
 			return new Loaded(out, false);
 		}

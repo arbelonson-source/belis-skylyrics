@@ -48,20 +48,29 @@ class TopBarLayoutTest {
 
 	@Test
 	void lineThatFitsNeverScrolls() {
-		assertEquals(0, TopBarLayout.lineShift(100, 100, 120, 3));
-		assertEquals(0, TopBarLayout.lineShift(100, 40, 103, 3));
+		assertEquals(0, TopBarLayout.lineShift(100, 80, 100, 120, 3));
+		assertEquals(0, TopBarLayout.lineShift(100, 20, 40, 103, 3));
 	}
 
 	@Test
 	void longLineKeepsTheCurrentWordInView() {
 		float room = 150, pad = 3;
 		// Early words are already in view
-		assertEquals(0, TopBarLayout.lineShift(300, 60, room, pad));
+		assertEquals(0, TopBarLayout.lineShift(300, 40, 60, room, pad));
 		// Later, the word's end (with its highlight) sits right at the room's end
-		float shift = TopBarLayout.lineShift(300, 200, room, pad);
+		float shift = TopBarLayout.lineShift(300, 170, 200, room, pad);
 		assertEquals(200 + pad - shift, room, 0.01f);
 		// At the end, the line's end shows and no more
-		assertEquals(300 + pad - room, TopBarLayout.lineShift(300, 300, room, pad), 0.01f);
+		assertEquals(300 + pad - room, TopBarLayout.lineShift(300, 270, 300, room, pad), 0.01f);
+	}
+
+	@Test
+	void wordWiderThanTheRoomKeepsItsStartInView() {
+		float room = 150, pad = 3;
+		// a 200-wide word starting at 40: its head stays at the room's left edge, not its tail
+		assertEquals(40, TopBarLayout.lineShift(300, 40, 240, room, pad), 0.01f);
+		// a one-word line wider than the room starts unshifted
+		assertEquals(0, TopBarLayout.lineShift(200, 0, 200, room, pad), 0.01f);
 	}
 
 	@Test
