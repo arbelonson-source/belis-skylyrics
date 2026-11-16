@@ -41,6 +41,7 @@ public final class FallbackSource implements LyricsSource {
 		try {
 			result = main.find(track);
 		} catch (IOException | RuntimeException mainDown) {
+			cancelledOrThrow(mainDown); // a skipped song's interrupt isn't the site being down
 			skipMainUntil = clockMs.getAsLong() + SKIP_MAIN_MS;
 			skipping = true;
 			return fromBackup(track, mainDown instanceof IOException io ? io : new IOException(mainDown));
@@ -51,6 +52,7 @@ public final class FallbackSource implements LyricsSource {
 		try {
 			return backup.find(track);
 		} catch (IOException | RuntimeException backupDown) {
+			cancelledOrThrow(backupDown);
 			// The backup didn't answer, so this isn't a real "no lyrics": show nothing now, but don't keep it
 			return result.asStopgap();
 		}
@@ -64,8 +66,25 @@ public final class FallbackSource implements LyricsSource {
 				return result.asStopgap();
 			}
 		} catch (IOException | RuntimeException backupDown) {
+			cancelledOrThrow(backupDown);
 			mainDown.addSuppressed(backupDown);
 		}
 		throw mainDown;
+	}
+
+	/**
+	 * A lookup cancelled by a song skip is interrupted, and the JDK may turn that into an IOException while the
+	 * interrupt flag is set again. That says nothing about the site, so it must not switch the main source off:
+	 * the lookup just ends. Timeouts are real signals and don't count (SocketTimeoutException is an InterruptedIOException).
+	 */
+	private static void cancelledOrThrow(Exception failure) throws InterruptedException {
+		boolean cancelled = Thread.currentThread().isInterrupted();
+		for (Throwable t = failure; t != null && !cancelled; t = t.getCause() == t ? null : t.getCause()) {
+			cancelled = t instanceof InterruptedException || t instanceof java.nio.channels.ClosedByInterruptException;
+		}
+		if (cancelled) {
+			Thread.currentThread().interrupt();
+			throw new InterruptedException("Lyrics lookup cancelled");
+		}
 	}
 }

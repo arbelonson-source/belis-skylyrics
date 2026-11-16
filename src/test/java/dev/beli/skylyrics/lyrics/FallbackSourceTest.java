@@ -146,4 +146,73 @@ class FallbackSourceTest {
 		source.find(TRACK);
 		assertEquals(2, mainAsked.get());
 	}
+
+	@Test
+	void interruptedFailureDoesNotSkipMain() throws Exception {
+		AtomicInteger calls = new AtomicInteger();
+		FallbackSource source = fallback(track -> {
+			if (calls.incrementAndGet() == 1) {
+				Thread.currentThread().interrupt();
+				throw new IOException("closed while reading");
+			}
+			return MAIN;
+		}, t -> BACKUP);
+		try {
+			assertThrows(InterruptedException.class, () -> source.find(TRACK));
+			assertTrue(Thread.currentThread().isInterrupted());
+		} finally {
+			Thread.interrupted();
+		}
+		assertSame(MAIN, source.find(TRACK));
+		assertEquals(0, backupAsked.get());
+	}
+
+	@Test
+	void interruptCauseDoesNotSkipMain() throws Exception {
+		AtomicInteger calls = new AtomicInteger();
+		FallbackSource source = fallback(track -> {
+			if (calls.incrementAndGet() == 1) {
+				throw new IOException("wrapped", new java.nio.channels.ClosedByInterruptException());
+			}
+			return MAIN;
+		}, t -> BACKUP);
+		try {
+			assertThrows(InterruptedException.class, () -> source.find(TRACK));
+		} finally {
+			Thread.interrupted();
+		}
+		assertEquals(0, backupAsked.get());
+		assertSame(MAIN, source.find(TRACK)); // not skipped: main is asked again
+		assertEquals(2, mainAsked.get());
+	}
+
+	@Test
+	void failureWithoutInterruptStillSkips() throws Exception {
+		FallbackSource source = fallback(track -> {
+			throw new IOException("down");
+		}, t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+	}
+
+	@Test
+	void socketTimeoutStillSkips() throws Exception {
+		FallbackSource source = fallback(track -> {
+			throw new java.net.SocketTimeoutException("read timed out");
+		}, t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+	}
+
+	@Test
+	void httpTimeoutStillSkips() throws Exception {
+		FallbackSource source = fallback(track -> {
+			throw new java.net.http.HttpTimeoutException("timed out");
+		}, t -> BACKUP);
+		source.find(TRACK);
+		source.find(TRACK);
+		assertEquals(1, mainAsked.get());
+	}
 }
