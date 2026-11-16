@@ -67,7 +67,7 @@ class AsyncSaveTest {
 		assertFalse(Files.exists(file.getParent()));
 		assertEquals(1, held.size());
 		runWriter();
-		assertTrue(Files.readString(file).contains("0.3"));
+		assertEquals(0.3f, open(file).glow, 1e-6f);
 	}
 
 	@Test
@@ -79,16 +79,14 @@ class AsyncSaveTest {
 		c.glow = 0.6f;
 		c.saveLater(file);
 		assertEquals(1, held.size());
-		int[] writes = {0};
+		int[] handedBack = {0};
 		SkyLyricsConfig.mainThread = r -> {
-			writes[0]++;
+			handedBack[0]++;
 			mainQueue.add(r);
 		};
 		runWriter();
-		assertEquals(1, writes[0]);
-		String text = Files.readString(file);
-		assertTrue(text.contains("0.6"));
-		assertFalse(text.contains("0.3"));
+		assertEquals(1, handedBack[0]);
+		assertEquals(0.6f, open(file).glow, 1e-6f);
 	}
 
 	@Test
@@ -108,7 +106,7 @@ class AsyncSaveTest {
 		a.saveLater(file);
 		runWriter();
 		runMain();
-		assertTrue(Files.readString(file).contains("0.5"));
+		assertEquals(0.5f, open(file).glow, 1e-6f);
 	}
 
 	@Test
@@ -153,7 +151,7 @@ class AsyncSaveTest {
 		c.glow = 0.3f;
 		c.saveLater(file);
 		assertTrue(c.flush(10_000));
-		assertTrue(Files.readString(file).contains("0.3"));
+		assertEquals(0.3f, open(file).glow, 1e-6f);
 	}
 
 	@Test
