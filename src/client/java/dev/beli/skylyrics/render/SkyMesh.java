@@ -20,6 +20,8 @@ final class SkyMesh {
 	/** For round patches: the unit direction of the middle and the angular radius (radians) that holds every point. */
 	/** Scratch for one draw (the render thread only): which columns are in view. */
 	private boolean[] columnShown;
+	/** For polar meshes: a round patch (unit direction, angular radius in radians) holding each segment, so one can be skipped alone. */
+	private float[] wedgeX, wedgeY, wedgeZ, wedgeRadius;
 	/** Scratch for one draw: each corner after turning, and which rows have been turned yet. */
 	private final float[] outX, outY, outZ;
 	private final int[] outArgb;
@@ -100,6 +102,12 @@ final class SkyMesh {
 			}
 			return columnShown;
 		}
+		if (wedgeRadius != null) {
+			for (int j = 0; j + 1 < cols; j++) {
+				columnShown[j] = view.capVisibleTurned(wedgeX[j], wedgeY[j], wedgeZ[j], cos, sin, wedgeRadius[j]);
+			}
+			return columnShown;
+		}
 		return null;
 	}
 
@@ -163,7 +171,46 @@ final class SkyMesh {
 			}
 		}
 		mesh.capAround(f);
+		mesh.wedges();
 		return mesh;
+	}
+
+	/** Remembers, for each segment of a polar mesh, a round patch that holds all of its corners (and so every quad between them). */
+	private void wedges() {
+		int n = cols - 1;
+		wedgeX = new float[n];
+		wedgeY = new float[n];
+		wedgeZ = new float[n];
+		wedgeRadius = new float[n];
+		columnShown = new boolean[n];
+		for (int j = 0; j < n; j++) {
+			float sx = 0, sy = 0, sz = 0;
+			for (int i = 0; i < rows; i++) {
+				for (int k = i * cols + j; k <= i * cols + j + 1; k++) {
+					sx += x[k];
+					sy += y[k];
+					sz += z[k];
+				}
+			}
+			float l = (float) Math.sqrt(sx * sx + sy * sy + sz * sz);
+			float least = 1;
+			if (l > 1e-3f) {
+				sx /= l;
+				sy /= l;
+				sz /= l;
+				for (int i = 0; i < rows; i++) {
+					for (int k = i * cols + j; k <= i * cols + j + 1; k++) {
+						least = Math.min(least, sx * x[k] + sy * y[k] + sz * z[k]);
+					}
+				}
+			}
+			wedgeX[j] = sx;
+			wedgeY[j] = sy;
+			wedgeZ[j] = sz;
+			// A flat quad between corners stays inside a patch smaller than a half sphere; a wider one is never skipped
+			float radius = l > 1e-3f ? (float) Math.acos(Math.max(-1, least)) + 0.005f : (float) Math.PI;
+			wedgeRadius[j] = radius < 1.5f ? radius : (float) Math.PI;
+		}
 	}
 
 	/** Remembers the round patch round the middle of {@code f} that holds every point, so it can be skipped whole. */
