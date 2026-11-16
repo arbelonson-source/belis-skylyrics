@@ -328,4 +328,43 @@ class RecordCardTest {
 		assertFalse(RecordCard.topCorner(CardCorner.BOTTOM_LEFT));
 		assertFalse(RecordCard.topCorner(CardCorner.BOTTOM_RIGHT));
 	}
+
+	private static float[] topBarAt(int w, float size) {
+		TopBarLayout.Fit fit = TopBarLayout.fit(w, size, 30, 40);
+		return TopBarLayout.topBarBox(w, size, fit.pill(), 30, fit.clock(), 40, fit.stats(), 5);
+	}
+
+	private static float[] atTop(CardCorner c, int w, float[] topBar) {
+		return RecordCard.corner(c, w, 240, 0, 60, true, false, 0, RecordCard.liftUp(true, 49), null, false, topBar);
+	}
+
+	@Test
+	void aTopCardSitsBelowTheTopBarOnANarrowScreen() {
+		for (float size : new float[] {1, 1.5f}) {
+			for (CardCorner c : new CardCorner[] {CardCorner.TOP_LEFT, CardCorner.TOP_RIGHT}) {
+				float[] bar = topBarAt(427, size);
+				float[] without = atTop(c, 427, null);
+				assertTrue(overlaps(without, 60, bar), "control: they overlap without the box, " + c + " " + size);
+				float[] at = atTop(c, 427, bar);
+				assertEquals(bar[3] + RecordCard.BAR_GAP, at[1], 1e-3f, c + " " + size);
+				assertTrue(!overlaps(at, 60, bar));
+			}
+		}
+	}
+
+	@Test
+	void aTopCardStaysInTheCornerWhenTheBarIsFarAway() {
+		float[] bar = topBarAt(1920, 1);
+		assertEquals(RecordCard.MARGIN, atTop(CardCorner.TOP_LEFT, 1920, bar)[1], 1e-3f);
+		assertEquals(RecordCard.MARGIN, atTop(CardCorner.TOP_RIGHT, 1920, bar)[1], 1e-3f);
+		// and with no top bar at all
+		assertEquals(RecordCard.MARGIN, atTop(CardCorner.TOP_LEFT, 427, null)[1], 1e-3f);
+	}
+
+	@Test
+	void theTopBoxHangsDownFromTheBar() {
+		float[] b = topBarAt(480, 1.5f);
+		assertEquals(5f, b[1]);
+		assertEquals(5f + TopBarLayout.PILL_H * 1.5f, b[3], 1e-3f);
+	}
 }

@@ -7,6 +7,7 @@
 
 ### Fixed
 
+- **Top bar and Record card.** With the top bar at the top and the **Record card** in a top corner, the card no longer sits on top of the bar on a small window or a big GUI scale: it moves down below the bar. A song title that fits no longer ends with a lone "…" where the artist would be.
 - **Pick a look crash.** Pressing Left or Right on **Pick a look** while the look is Custom (after changing any look setting) no longer crashes the game: Right picks the first look and Left the last.
 - **Updates on Windows.** Automatic updates now install for players whose Windows user name has letters beyond plain English ones (Hebrew, Cyrillic, accented) or spaces and signs. An update can no longer leave you without SkyLyrics: the old file is only deleted once the new one is in place, and it is put back if the new one can't be. A download that Windows briefly holds is tried again, and old update leftovers are cleaned up.
 - **Saving on Windows.** Settings, the recently heard list, the Spotify sign-in and saved covers are read and saved even when Windows, an antivirus or OneDrive holds the file for a moment (the mod tries again), and the Windows music reader's helper file is written the same careful way.
