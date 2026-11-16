@@ -1755,7 +1755,7 @@ public final class LyricsRenderer {
 				logical[i] = i;
 			}
 			if (!Bidi.requiresBidi(row.toCharArray(), 0, row.length())) {
-				return new Display(cps, logical);
+				return dropMarks(new Display(cps, logical));
 			}
 			int[] charToCp = new int[row.length() + 1];
 			for (int off = 0, i = 0; off < row.length(); i++) {
@@ -1793,6 +1793,10 @@ public final class LyricsRenderer {
 						// Vowel marks would need stacking on the letter, which the font can't do; they'd leave a gap
 						continue;
 					}
+					if (directionMark(cps[i])) {
+						// Steered the order above; never drawn (the font would show a box)
+						continue;
+					}
 					outCps[v] = rtl ? mirror(shaped[i]) : shaped[i];
 					outLogical[v++] = i;
 				}
@@ -1810,6 +1814,36 @@ public final class LyricsRenderer {
 			} catch (ArabicShapingException e) {
 				return row;
 			}
+		}
+
+		/** LRM, RLM, ALM, the embeddings and overrides, and the isolates: invisible, but they steer the order. */
+		static boolean directionMark(int cp) {
+			return cp == 0x200E || cp == 0x200F || cp == 0x061C
+				|| (cp >= 0x202A && cp <= 0x202E) || (cp >= 0x2066 && cp <= 0x2069);
+		}
+
+		/** The same display without the direction marks; {@code logical} keeps pointing at the raw text. */
+		private static Display dropMarks(Display d) {
+			int[] cps = d.cps();
+			int v = 0;
+			for (int cp : cps) {
+				if (!directionMark(cp)) {
+					v++;
+				}
+			}
+			if (v == cps.length) {
+				return d;
+			}
+			int[] outCps = new int[v];
+			int[] outLogical = new int[v];
+			v = 0;
+			for (int i = 0; i < cps.length; i++) {
+				if (!directionMark(cps[i])) {
+					outCps[v] = cps[i];
+					outLogical[v++] = d.logical()[i];
+				}
+			}
+			return new Display(outCps, outLogical);
 		}
 
 		static boolean arabicMark(int cp) {
@@ -1937,7 +1971,11 @@ public final class LyricsRenderer {
 
 	/** Whether a word ends with a mark where a row may nicely end. */
 	static boolean endsWithPause(String word) {
-		return !word.isEmpty() && ",.;:!?…،؟。、，！？".indexOf(word.charAt(word.length() - 1)) >= 0;
+		int end = word.length();
+		while (end > 0 && Display.directionMark(word.charAt(end - 1))) {
+			end--;
+		}
+		return end > 0 && ",.;:!?…،؟。、，！？".indexOf(word.charAt(end - 1)) >= 0;
 	}
 
 	/** A line cut into arc words: each word's text, where it starts (code points), and whether it runs straight into the next. */
