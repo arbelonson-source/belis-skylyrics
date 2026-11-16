@@ -473,12 +473,17 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle(Tr.t("See through blocks"), Tr.t("Stay visible behind hills and walls"),
 				() -> cfg.seeThroughBlocks, v -> cfg.seeThroughBlocks = v);
-		Row layer = new Segmented(Tr.t("Draw on top"), Tr.t("Always: stays bright with shaders and rain. Never: drawn in the world"),
+		Row layer = new Segmented(Tr.t("Draw on top"), null,
 				new String[] {Tr.t("Auto"), Tr.t("Always"), Tr.t("Never")}, () -> switch (cfg.layer) {
 					case AUTO -> 0;
 					case SCREEN -> 1;
 					case WORLD -> 2;
 				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD)
+				.describe(() -> switch (cfg.layer) {
+					case AUTO -> Tr.t("On top when needed: shaders, rain, See through blocks");
+					case SCREEN -> Tr.t("Over everything: shaders and clouds can't dim it");
+					case WORLD -> Tr.t("In the world: hills hide it, shaders light it");
+				})
 				.when(() -> flatLayout(cfg.layout));
 
 		Row night = new Cycle(Tr.t("Night sky"), Tr.t("Shows at night with music"), skyNames(),
