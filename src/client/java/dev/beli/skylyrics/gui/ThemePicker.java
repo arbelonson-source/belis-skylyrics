@@ -52,11 +52,17 @@ final class ThemePicker extends Controls.Row {
 	@Override
 	boolean key(KeyEvent event) {
 		if (event.isLeft() || event.isRight()) {
-			int at = Themes.ALL.indexOf(Themes.active(cfg));
-			Themes.apply(Themes.ALL.get(LibraryKeys.nextButton(at, Themes.ALL.size(), event.isRight() ? 1 : -1)), cfg);
+			Themes.apply(step(cfg, event.isRight()), cfg);
 			return true;
 		}
 		return false;
+	}
+
+	/** The theme one step right or left of the current look; from Custom (no theme matches) the first going right, the last going left. */
+	static Theme step(SkyLyricsConfig cfg, boolean right) {
+		@Nullable Theme active = Themes.active(cfg);
+		int at = active == null ? -1 : Themes.ALL.indexOf(active);
+		return Themes.ALL.get(LibraryKeys.nextButton(at, Themes.ALL.size(), right ? 1 : -1));
 	}
 
 	@Override
