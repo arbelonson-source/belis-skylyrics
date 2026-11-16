@@ -372,15 +372,19 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		// The update check runs in the background; its answer pops up straight away, and is told in chat once a world is open
 		Updater.Notice update = Updater.takeNotice();
 		if (update != null) {
-			Component title = Component.literal(update.downloaded() ? Tr.t("SkyLyrics %s downloaded", update.version())
+			boolean blocked = update.needs() != null;
+			Component title = Component.literal(blocked ? Tr.t("SkyLyrics %s needs %s", update.version(), update.needs())
+					: update.downloaded() ? Tr.t("SkyLyrics %s downloaded", update.version())
 					: Tr.t("SkyLyrics %s is out", update.version()));
-			Component body = Component.literal(update.downloaded() ? Tr.t("Restart Minecraft to use it") : Tr.t("Get it from the GitHub page"));
+			Component body = Component.literal(blocked ? Tr.t("Update %s to get it", update.what()) : update.downloaded() ? Tr.t("Restart Minecraft to use it") : Tr.t("Get it from the GitHub page"));
 			//? if >=26.2 {
 			/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
 			*///?} else {
 			SystemToast.addOrUpdate(client.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
 			//?}
-			updateLine = Component.literal(update.downloaded()
+			updateLine = Component.literal(blocked
+					? Tr.t("SkyLyrics %s needs %s: update %s to get it", update.version(), update.needs(), update.what())
+					: update.downloaded()
 					? Tr.t("SkyLyrics %s is downloaded — restart Minecraft to use it", update.version())
 					: Tr.t("SkyLyrics %s is out", update.version()));
 		}

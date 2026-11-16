@@ -518,5 +518,8 @@
   "skylyrics.ui.windows_media_controls_aren_t_available_s": "פקדי המדיה של Windows לא זמינים (%s)",
   "skylyrics.ui.windows_media_controls_stopped_answering_s": "פקדי המדיה של Windows הפסיקו להגיב (%s)",
   "skylyrics.ui.windows_is_missing_a_part_the_music_reader_needs": "חסר ב-Windows רכיב שקורא המוזיקה צריך (System.Web)",
-  "skylyrics.ui.couldn_t_prepare_the_windows_music_reader_s": "לא הצלחנו להכין את קורא המוזיקה של Windows (%s)"
+  "skylyrics.ui.couldn_t_prepare_the_windows_music_reader_s": "לא הצלחנו להכין את קורא המוזיקה של Windows (%s)",
+  "skylyrics.ui.skylyrics_s_needs_s": "SkyLyrics %s דורשת %s",
+  "skylyrics.ui.update_s_to_get_it": "עדכנו את %s כדי לקבל אותה",
+  "skylyrics.ui.skylyrics_s_needs_s_update_s_to_get_it": "SkyLyrics %s דורשת %s: עדכנו את %s כדי לקבל אותה"
 }
