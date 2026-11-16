@@ -250,4 +250,16 @@ class NeteaseClientTest {
 		searchAnswer = "{\"result\":{\"songs\":[]},\"code\":200,\"pad\":\"" + "a".repeat(3 * 1024 * 1024) + "\"}";
 		assertThrows(IOException.class, () -> client.find(track("A Made-Up Song", "Made Up Band", 200_000)));
 	}
+
+
+	@Test
+	void aVersionTaggedTitleStillMatchesNeteasePlainOne() throws Exception {
+		songs(song(21, "A Made-Up Song", "Made Up Band", 200_000));
+		lyric(21, LYRIC);
+		assertTrue(client.find(track("A Made-Up Song (Remastered 2011)", "Made Up Band", 200_000)).found());
+		// an instrumental is still another recording
+		songs(song(22, "A Made-Up Song", "Made Up Band", 200_000));
+		lyric(22, LYRIC);
+		assertFalse(client.find(track("A Made-Up Song (Instrumental)", "Made Up Band", 200_000)).found());
+	}
 }
