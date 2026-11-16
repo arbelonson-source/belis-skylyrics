@@ -95,6 +95,11 @@ public final class SkyLyricsScreen extends Screen {
 		return flatLayout(cfg.layout) || cfg.nowPlayingHud && cfg.barLyrics;
 	}
 
+	/** Whether Depth does anything: only the Arc layout draws it (Lines has Shadow, World neither). */
+	static boolean depthApplies(SkyLyricsConfig cfg) {
+		return cfg.layout == Layout.ARC;
+	}
+
 	/** Whether Shadow does anything: Arc leaves it off while Depth draws its solid edge, and World has no Shadow. */
 	static boolean shadowApplies(SkyLyricsConfig cfg) {
 		return flatLayout(cfg.layout) && !(cfg.layout == Layout.ARC && cfg.depth);
@@ -455,7 +460,7 @@ public final class SkyLyricsScreen extends Screen {
 				});
 		Row depth = new Toggle(Tr.t("Depth"), Tr.t("A solid edge that makes the letters look 3D"),
 				() -> cfg.depth, v -> cfg.depth = v)
-				.when(() -> flatLayout(cfg.layout));
+				.when(() -> depthApplies(cfg));
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
 		Row glowMode = new Segmented(Tr.t("Glow colour"), Tr.t("The words' colour, or one of its own"),

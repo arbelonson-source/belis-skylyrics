@@ -114,4 +114,15 @@ class SettingsRowsTest {
 		cfg.layout = Layout.WORLD;
 		assertFalse(SkyLyricsScreen.showUndergroundApplies(cfg));
 	}
+
+	@Test
+	void depthOnlyShowsForArc() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.layout = Layout.ARC;
+		assertTrue(SkyLyricsScreen.depthApplies(cfg));
+		cfg.layout = Layout.LINES;
+		assertFalse(SkyLyricsScreen.depthApplies(cfg));
+		cfg.layout = Layout.WORLD;
+		assertFalse(SkyLyricsScreen.depthApplies(cfg));
+	}
 }
