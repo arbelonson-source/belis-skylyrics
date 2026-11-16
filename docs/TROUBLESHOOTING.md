@@ -156,9 +156,9 @@ Exordium redraws the HUD less often than the game draws frames, and the lyrics a
 
 The song bar sits at the top centre of the screen, where Jade and WTHIT show what you're looking at, and a wide bar can reach a minimap in the top right corner. On the **Display** tab, set **Bar position** to **Bottom** (it sits just above the hotbar), or make it smaller with **Bar size**, or turn off **Clock**, **Ping** and **FPS** to make it narrower.
 
-## The top bar covers the player list (Tab)
+## The top bar and the player list (Tab)
 
-It doesn't any more. While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out, and they come back when you let go.
+While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays.
 
 ## Spotify sign-in doesn't start
 
