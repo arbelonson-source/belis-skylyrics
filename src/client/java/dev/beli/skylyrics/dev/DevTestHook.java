@@ -44,6 +44,11 @@ import dev.beli.skylyrics.media.DemoSource;
  * lie down, and an item like a spyglass starts to be used. {@code hold use on} keeps the Use key held down (a spyglass
  * stays up) and {@code hold use off} lets go. A held key is let go by itself when the world closes, so it can't stay stuck.
  * <p>
+ * {@code hold <mapping> <ms>} holds a key binding down for that many milliseconds, then lets go by itself, as the player
+ * holding the key would: {@code hold key.playerlist 2000} shows the player list, {@code hold key.sneak 500} sneaks (the full name
+ * of the binding as options.txt has it without {@code key_}; {@code playerlist} alone also works). An unknown name logs
+ * "Test hook: no key mapping ..." and nothing else happens.
+ * <p>
  * {@code debug on|off} opens or closes the F3 debug screen, as the F3 key does.
  * <p>
  * {@code burst <name> <count> <everyMs>} grabs the game frame {@code count} times (1 to 60), {@code everyMs} apart (0 = every
@@ -81,6 +86,8 @@ public final class DevTestHook {
 
 	/** Whether {@code hold use on} has the Use key held down. */
 	private boolean holdingUse;
+	/** Key bindings held down by {@code hold <mapping> <ms>}, with their release times. */
+	private final DevKeys.HoldSchedule<net.minecraft.client.KeyMapping> holds = new DevKeys.HoldSchedule<>();
 
 	/** Called once per rendered frame by the game loop; a no-op unless the test hook is on. */
 	public static void frame(Minecraft client) {
@@ -90,6 +97,7 @@ public final class DevTestHook {
 				hook.holdingUse = false; // the world closed: never leave the key stuck down
 				client.options.keyUse.setDown(false);
 			}
+			hook.keepHolds(client);
 			try {
 				hook.onFrame(client);
 			} catch (RuntimeException e) {
@@ -97,6 +105,52 @@ public final class DevTestHook {
 				hook.abortBurst();
 			}
 		}
+	}
+
+	/**
+	 * Lets go of the held key bindings whose time is up and presses the others again. Vanilla resets keys when a screen
+	 * opens or closes and when the window changes focus, so a hold is pressed anew every frame and tick until its time ends.
+	 */
+	private void keepHolds(Minecraft client) {
+		for (net.minecraft.client.KeyMapping mapping : holds.expire(System.nanoTime() / 1_000_000L)) {
+			mapping.setDown(false);
+			SkyLyricsClient.LOG.info("Test hook: released {}", mapping.getName());
+		}
+		for (net.minecraft.client.KeyMapping mapping : holds.held()) {
+			mapping.setDown(true);
+		}
+	}
+
+	/** "hold <mapping> <ms>": presses a key binding as its key would and lets go after the time, even if the script moves on. */
+	private void hold(Minecraft client, String arg) {
+		Boolean legacy = DevKeys.legacyUse(arg);
+		if (legacy != null) {
+			holdingUse = legacy;
+			client.options.keyUse.setDown(holdingUse);
+			return;
+		}
+		DevKeys.Hold hold = DevKeys.parseHold(arg);
+		net.minecraft.client.KeyMapping found = null;
+		for (net.minecraft.client.KeyMapping mapping : client.options.keyMappings) {
+			if (mapping.getName().equals(hold.mapping())) {
+				found = mapping;
+				break;
+			}
+		}
+		if (found == null) {
+			SkyLyricsClient.LOG.warn("Test hook: no key mapping {}", hold.mapping());
+			return;
+		}
+		if (!holds.held().contains(found)) {
+			// As the keyboard handler does on a key press: the click is counted too (Use and Attack read clicks, not the down state)
+			com.mojang.blaze3d.platform.InputConstants.Key key = com.mojang.blaze3d.platform.InputConstants.getKey(found.saveString());
+			if (key.getValue() != com.mojang.blaze3d.platform.InputConstants.UNKNOWN.getValue()) {
+				net.minecraft.client.KeyMapping.click(key);
+			}
+		}
+		holds.hold(found, System.nanoTime() / 1_000_000L, hold.ms());
+		found.setDown(true);
+		SkyLyricsClient.LOG.info("Test hook: holding {} for {} ms", hold.mapping(), hold.ms());
 	}
 
 	private void startBurst(String arg, boolean atLineChange) {
@@ -216,6 +270,7 @@ public final class DevTestHook {
 	}
 
 	public void tick(Minecraft client) {
+		keepHolds(client);
 		if (fpsLeft > 0 && --fpsLeft % 20 == 0) {
 			fpsSeen.add(client.getFps());
 			if (fpsLeft == 0) {
@@ -573,13 +628,7 @@ public final class DevTestHook {
 					*///?}
 				}
 				case "use" -> net.minecraft.client.KeyMapping.click(com.mojang.blaze3d.platform.InputConstants.getKey(client.options.keyUse.saveString()));
-				case "hold" -> {
-					if (!arg.startsWith("use ")) {
-						throw new IllegalArgumentException("hold: only 'hold use on|off'");
-					}
-					holdingUse = arg.endsWith("on");
-					client.options.keyUse.setDown(holdingUse);
-				}
+				case "hold" -> hold(client, arg);
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
 				case "lines" -> lines(client, arg);

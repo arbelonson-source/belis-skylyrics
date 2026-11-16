@@ -108,4 +108,82 @@ final class DevKeys {
 			default -> scancode | 0x40000000;
 		};
 	}
+
+	/** The longest {@code hold} the hook accepts, in milliseconds. */
+	static final int MAX_HOLD_MS = 120_000;
+
+	/** A key binding to hold down, by its full name ("key.playerlist"), for this many milliseconds. */
+	record Hold(String mapping, int ms) {
+	}
+
+	/** "key.playerlist 1500": a mapping name (see {@link #mappingName}) and a duration of 1 to 120000 ms. */
+	static Hold parseHold(String arg) {
+		String[] words = arg.strip().split("\\s+");
+		if (words.length != 2 || words[0].isEmpty()) {
+			throw new IllegalArgumentException("expected: hold <mapping> <ms>");
+		}
+		int ms;
+		try {
+			ms = Integer.parseInt(words[1]);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("bad duration " + words[1]);
+		}
+		if (ms < 1 || ms > MAX_HOLD_MS) {
+			throw new IllegalArgumentException("duration must be 1 to " + MAX_HOLD_MS + " ms");
+		}
+		return new Hold(mappingName(words[0]), ms);
+	}
+
+	/** A mapping name as written in options.txt ("key_key.sneak"), as the KeyMapping's own name ("key.sneak") or short ("sneak"). */
+	static String mappingName(String raw) {
+		String name = raw.strip().toLowerCase(java.util.Locale.ROOT);
+		if (name.startsWith("key_")) {
+			name = name.substring(4);
+		}
+		return name.startsWith("key.") ? name : "key." + name;
+	}
+
+	/** The old "use on" or "use off" form of {@code hold}: TRUE for on, FALSE for off, null when it is not that form. */
+	static Boolean legacyUse(String arg) {
+		return switch (arg.strip()) {
+			case "use on" -> Boolean.TRUE;
+			case "use off" -> Boolean.FALSE;
+			default -> null;
+		};
+	}
+
+	/**
+	 * Which held keys are due to be let go, by time in milliseconds. Holding a key again moves its deadline.
+	 * The test hook lets go of what {@link #expire} returns, and presses everything {@link #held} returns each tick.
+	 */
+	static final class HoldSchedule<T> {
+		private final java.util.Map<T, Long> deadlines = new java.util.LinkedHashMap<>();
+
+		void hold(T key, long nowMs, long ms) {
+			deadlines.put(key, nowMs + ms);
+		}
+
+		/** Takes out and returns the keys whose time is up at {@code nowMs}. */
+		java.util.List<T> expire(long nowMs) {
+			java.util.List<T> done = new java.util.ArrayList<>();
+			for (var it = deadlines.entrySet().iterator(); it.hasNext();) {
+				var entry = it.next();
+				if (nowMs >= entry.getValue()) {
+					done.add(entry.getKey());
+					it.remove();
+				}
+			}
+			return done;
+		}
+
+		java.util.List<T> held() {
+			return new java.util.ArrayList<>(deadlines.keySet());
+		}
+
+		java.util.List<T> releaseAll() {
+			java.util.List<T> all = held();
+			deadlines.clear();
+			return all;
+		}
+	}
 }
