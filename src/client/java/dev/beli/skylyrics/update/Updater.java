@@ -87,34 +87,61 @@ public final class Updater {
 	private static void check(Updates mode, String runningVersion) throws Exception {
 		String mcKey = UpdateCheck.mcKey(runningVersion);
 		Path jar = ownJar();
-		// A dev run has no real jar in a mods folder and no Minecraft key; there is nothing to update
-		if (mcKey == null || jar == null) {
+		// A dev run has no Minecraft key; there is nothing to update. A jar that is not a plain file in mods (linked
+		// from elsewhere) still gets the notice, it just can't be swapped
+		if (mcKey == null) {
 			return;
 		}
-		long now = System.currentTimeMillis();
-		cleanLeftovers(jar.getParent(), now);
-		cleanLeftovers(Path.of(System.getProperty("java.io.tmpdir")), now);
+		if (jar != null) {
+			long now = System.currentTimeMillis();
+			cleanLeftovers(jar.getParent(), now);
+			cleanLeftovers(Path.of(System.getProperty("java.io.tmpdir")), now);
+		}
 		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
 		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
 		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
-		HttpResponse<String> response = api.send(request(LATEST).header("Accept", "application/vnd.github+json").build(),
-				HttpResponse.BodyHandlers.ofString());
-		if (response.statusCode() != 200) {
-			LOG.info("Update check got HTTP {}", response.statusCode());
-			return;
+		Path memory = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(SkyLyricsClient.MOD_ID)
+				.resolve("update-refused.json");
+		notice = look(mode, () -> {
+			HttpResponse<String> response = api.send(request(LATEST).header("Accept", "application/vnd.github+json").build(),
+					HttpResponse.BodyHandlers.ofString());
+			if (response.statusCode() != 200) {
+				LOG.info("Update check got HTTP {}", response.statusCode());
+				return null;
+			}
+			return response.body();
+		}, http, jar, runningVersion, mcKey, memory, Updater::running);
+	}
+
+	/** Asks for the latest release's JSON (null when there is none). */
+	interface Latest {
+		String get() throws Exception;
+	}
+
+	/**
+	 * The notice for the latest release, or null. Off asks for nothing. The jar (null when it is not a plain file in
+	 * mods) is needed only to install: without it, Install tells the player like "Tell me" does.
+	 */
+	static Notice look(Updates mode, Latest latest, HttpClient http, Path jar, String runningVersion, String mcKey, Path memory,
+			UnaryOperator<String> running) throws Exception {
+		if (mode == Updates.OFF || mcKey == null) {
+			return null;
 		}
-		UpdateCheck.Release release = UpdateCheck.parse(response.body());
+		String body = latest.get();
+		UpdateCheck.Release release = body == null ? null : UpdateCheck.parse(body);
 		if (release == null || UpdateCheck.compare(release.version(), runningVersion) <= 0) {
-			return;
+			return null;
 		}
 		UpdateCheck.Asset asset = UpdateCheck.pick(release, mcKey);
 		if (asset == null) {
 			LOG.info("Release {} has no jar for Minecraft {}", release.version(), mcKey);
-			return;
+			return null;
 		}
-		Path memory = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(SkyLyricsClient.MOD_ID)
-				.resolve("update-refused.json");
-		notice = update(mode, http, jar, release, asset, memory, Updater::running);
+		if (jar == null && mode == Updates.INSTALL) {
+			LOG.info("Update {} not installed: the mod's jar is not a plain file in the mods folder, telling the player instead", release.version());
+			mode = Updates.NOTIFY;
+		}
+		return update(mode, http, jar, release, asset, memory, running);
 	}
 
 	/**
@@ -231,6 +258,7 @@ public final class Updater {
 			if (windows()) {
 				return installLater(oldJar, part, target);
 			}
+			keepMode(oldJar, part);
 			try {
 				Files.move(part, target); // never over a jar another game just installed
 			} catch (java.nio.file.FileAlreadyExistsException e) {
@@ -255,6 +283,17 @@ public final class Updater {
 			} catch (IOException ignored) {
 				// leftover .part files are ignored by the game
 			}
+		}
+	}
+
+	/** The temp file is private (0600); give the new jar the old one's permissions, so what could read the old jar can read it. */
+	private static void keepMode(Path oldJar, Path part) {
+		try {
+			if (part.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+				Files.setPosixFilePermissions(part, Files.getPosixFilePermissions(oldJar));
+			}
+		} catch (IOException | RuntimeException e) {
+			LOG.info("Could not copy the old jar's permissions to the update: {}", e.toString());
 		}
 	}
 
