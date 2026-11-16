@@ -650,4 +650,26 @@ class LyricsServiceTest {
 		// The same song, even with the album arriving late, keeps its lyrics
 		assertSame(before, before.forSong(new Track("A", "X", "Late album", 0, "", "")));
 	}
+
+	@Test
+	void failedCacheWriteLeavesNoTmpFile() throws Exception {
+		java.nio.file.Path target = cache.resolve("abc.json");
+		java.nio.file.Files.createDirectories(target); // a folder in the way makes the final replace fail
+		java.nio.file.Files.writeString(target.resolve("x"), "x");
+		LyricsService.writeCache(target, new LyricsService.CacheEntry("[00:01.00]a", null, false, 1L, 1));
+		assertFalse(java.nio.file.Files.exists(cache.resolve("abc.json.tmp")));
+	}
+
+	@Test
+	void cancelledLookupWritesNoCacheFile() throws Exception {
+		java.nio.file.Path target = cache.resolve("def.json");
+		Thread.currentThread().interrupt();
+		try {
+			LyricsService.writeCache(target, new LyricsService.CacheEntry("[00:01.00]a", null, false, 1L, 1));
+		} finally {
+			Thread.interrupted();
+		}
+		assertFalse(java.nio.file.Files.exists(target));
+		assertFalse(java.nio.file.Files.exists(cache.resolve("def.json.tmp")));
+	}
 }

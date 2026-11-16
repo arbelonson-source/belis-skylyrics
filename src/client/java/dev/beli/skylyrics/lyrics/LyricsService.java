@@ -55,7 +55,7 @@ public final class LyricsService {
 	 * @param v which version wrote the file; 0 (missing) for 0.7.8 and older, which also saved the backup site's
 	 *          stand-ins, so those can't be told apart from a real answer
 	 */
-	private record CacheEntry(String synced, String plain, boolean instrumental, long savedAt, int v) {
+	record CacheEntry(String synced, String plain, boolean instrumental, long savedAt, int v) {
 	}
 
 	private final LyricsSource client;
@@ -410,14 +410,23 @@ public final class LyricsService {
 		return null;
 	}
 
-	private static void writeCache(Path file, CacheEntry entry) {
+	static void writeCache(Path file, CacheEntry entry) {
+		if (Thread.currentThread().isInterrupted()) {
+			return; // this lookup was cancelled by a skip: the write would only fail halfway
+		}
+		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 		try {
 			Files.createDirectories(file.getParent());
-			Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 			Files.writeString(tmp, GSON.toJson(entry), StandardCharsets.UTF_8);
 			dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 		} catch (IOException e) {
 			LOG.debug("Couldn't write lyrics cache: {}", e.toString());
+		} finally {
+			try {
+				Files.deleteIfExists(tmp); // gone after a good write; a failed or interrupted one must not leave a half file
+			} catch (IOException ignored) {
+				// tidyDisk or the next write of this song cleans it
+			}
 		}
 	}
 
