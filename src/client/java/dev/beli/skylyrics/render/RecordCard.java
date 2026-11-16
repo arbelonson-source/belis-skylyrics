@@ -163,7 +163,8 @@ public final class RecordCard {
 			float small = scale * 0.85f;
 			String[] times = timesShown(played, length);
 			text(g, font, style, times[0], tx, lineY + 7, small, fade(SUB));
-			String left = times[1];
+			// Kept left to right in a Hebrew or Arabic game, where "-2:35" would read "2:35-"
+			String left = LyricsFont.ltr(times[1]);
 			float leftW = LyricsFont.cachedWidth(font, style, left) * small;
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
@@ -562,7 +563,8 @@ public final class RecordCard {
 	static String[] times(long playedMs, long lengthMs) {
 		long length = Math.round(Math.max(0, lengthMs) / 1000.0);
 		long played = Math.min(Math.max(0, playedMs) / 1000, length);
-		return new String[] {clock(played * 1000), "-" + clock((length - played) * 1000)};
+		long left = length - played;
+		return new String[] {clock(played * 1000), (left > 0 ? "-" : "") + clock(left * 1000)};
 	}
 
 	/** "3:07" for minutes and seconds, "1:02:05" past an hour; never below zero. */

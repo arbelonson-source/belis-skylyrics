@@ -828,10 +828,10 @@ public final class NowPlayingHud {
 		text(g, font, visual(text, style), x, midY, scale, color);
 	}
 
-	/** The game's visual order of the text (right-to-left runs reversed), kept while the same text is asked for again. */
+	/** The game's visual order of the text (right-to-left runs reversed), without its invisible direction marks (dropped after the order), kept while the same text is asked for again. */
 	static FormattedCharSequence visual(String text, Style style) {
 		return VISUAL.get(new VisualKey(text, style, Language.getInstance()),
-				k -> ((Language) k.language()).getVisualOrder(FormattedText.of(k.text(), k.style())));
+				k -> LyricsFont.dropMarks(((Language) k.language()).getVisualOrder(FormattedText.of(k.text(), k.style()))));
 	}
 
 	private static void text(GuiGraphics g, Font font, FormattedCharSequence seq, float x, float midY, float scale, int color) {
