@@ -34,6 +34,12 @@ class UpdaterSwapWindowsTest {
 		return p.pid();
 	}
 
+	private static java.util.Set<String> names(Path folder) throws Exception {
+		try (var files = Files.list(folder)) {
+			return files.map(f -> f.getFileName().toString()).collect(java.util.stream.Collectors.toSet());
+		}
+	}
+
 	private static int run(Path old, Path waiting, Path target) throws Exception {
 		ProcessBuilder builder = Updater.swapProcess(Updater.powershell(), old, waiting, target, finishedPid());
 		Process p = builder.start();
@@ -55,7 +61,7 @@ class UpdaterSwapWindowsTest {
 		assertEquals("new", Files.readString(target));
 		assertFalse(Files.exists(waiting));
 		try (var left = Files.list(mods)) {
-			assertEquals(1, left.count(), "only the new jar is left, no .old");
+			assertEquals(1, left.count(), "only the new jar is left, no aside file");
 		}
 	}
 
@@ -68,6 +74,7 @@ class UpdaterSwapWindowsTest {
 		assertEquals(0, run(old, waiting, target));
 		assertEquals("old", Files.readString(old));
 		assertFalse(Files.exists(target));
+		assertEquals(java.util.Set.of(old.getFileName().toString()), names(mods), "the folder is exactly as it was");
 	}
 
 	/** The new jar can't be put in place (a folder sits on its name): the old jar comes back, never an empty mods folder. */
@@ -81,5 +88,43 @@ class UpdaterSwapWindowsTest {
 		assertEquals(0, run(old, waiting, target));
 		assertTrue(Files.isRegularFile(old), "the old jar is back");
 		assertEquals("old", Files.readString(old));
+		assertTrue(Files.isDirectory(target), "the held target is untouched");
+		assertEquals("x", Files.readString(target.resolve("keep")));
+		assertEquals(java.util.Set.of(old.getFileName().toString(), target.getFileName().toString(), waiting.getFileName().toString()),
+				names(mods), "no set-aside file is left");
+	}
+
+	/** Another game's swap already ran: the old jar is gone and the target is there. Only our own staged jar goes. */
+	@Test
+	void aFinishedSwapOfAnotherGameIsLeftAlone() throws Exception {
+		Path mods = mods();
+		Path old = mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar");
+		Path target = Files.writeString(mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar"), "theirs");
+		Path waiting = Files.writeString(mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar.2.new"), "ours");
+		assertEquals(0, run(old, waiting, target));
+		assertEquals("theirs", Files.readString(target));
+		assertFalse(Files.exists(waiting), "our staged jar is deleted");
+		assertFalse(Files.exists(old));
+		try (var left = Files.list(mods)) {
+			assertEquals(1, left.count(), "nothing else changed");
+		}
+	}
+
+	/** A player's own backup named like the old jar plus .old survives a normal swap. */
+	@Test
+	void aPlayersOwnOldBackupSurvivesTheSwap() throws Exception {
+		Path mods = mods();
+		Path old = Files.writeString(mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar"), "old");
+		Path backup = Files.writeString(mods.resolve("belis-skylyrics-0.1.0+1.21.11.jar.old"), "mine");
+		Path target = mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar");
+		Path waiting = Files.writeString(mods.resolve("belis-skylyrics-0.2.0+1.21.11.jar.1.new"), "new");
+		assertEquals(0, run(old, waiting, target));
+		assertEquals("mine", Files.readString(backup));
+		assertEquals("new", Files.readString(target));
+		assertFalse(Files.exists(old));
+		assertFalse(Files.exists(waiting));
+		try (var left = Files.list(mods)) {
+			assertEquals(2, left.count(), "the new jar and the backup only");
+		}
 	}
 }

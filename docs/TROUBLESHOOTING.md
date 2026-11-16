@@ -110,12 +110,12 @@ On a Mac the mod can see only two apps: **Spotify** and Apple's **Music** app. m
 
 **The app has to be open.** The mod only asks Spotify or Music while they are already running, so it never opens them by itself. If both play at once, set **Player** on the Music tab to the one you want.
 
-**Allow Minecraft to control Spotify and Music.** The first time, macOS shows a message like *"Minecraft" wants access to control "Spotify"*. Click **OK**. Depending on how you start the game, the message may name your launcher (for example Prism Launcher) or "java" instead of Minecraft. Until you answer, the Music tab says it is waiting for Spotify or Music.
+**Allow your launcher to control Spotify and Music.** The first time, macOS shows a message like *"Minecraft" wants access to control "Spotify"*. Click **OK**. The name in the message is the app that started the game: Minecraft for the official launcher, but Prism Launcher, MultiMC, Modrinth App, CurseForge, Terminal or "java" for others. Until you answer, the Music tab says it is waiting for Spotify or Music.
 
-If you clicked **Don't Allow**, the Music tab says "Allow Minecraft to control Spotify in System Settings → Privacy & Security → Automation". To fix it:
+If you clicked **Don't Allow**, the Music tab says "Allow your launcher (Minecraft, Prism Launcher…) to control Spotify in System Settings → Privacy & Security → Automation". To fix it:
 
 1. Open **System Settings**, then **Privacy & Security**, then **Automation**.
-2. Find Minecraft, your launcher or "java" in the list, and turn on **Spotify** and **Music** under it.
+2. Find your launcher (Minecraft, Prism Launcher…) or "java" in the list, and turn on **Spotify** and **Music** under it.
 3. Go back to the game. The mod notices within a second or two.
 
 If nothing like that is in the list, you can make macOS ask again. Quit Minecraft, open the Terminal app and type:
@@ -124,7 +124,7 @@ If nothing like that is in the list, you can make macOS ask again. Quit Minecraf
 tccutil reset AppleEvents
 ```
 
-Then start Minecraft and play a song. Note that this makes macOS ask again for every app that controls other apps, not only Minecraft.
+Then start Minecraft and play a song. Note that this makes macOS ask again for every app that controls other apps, not only your launcher.
 
 **No album cover for Music songs.** Spotify gives the mod a link to the album cover, but the Music app doesn't, so the top bar shows no album cover for songs played in Music.
 

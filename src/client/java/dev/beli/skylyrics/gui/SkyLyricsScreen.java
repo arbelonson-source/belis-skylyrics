@@ -745,7 +745,7 @@ public final class SkyLyricsScreen extends Screen {
 		Row how = new Paragraph(() -> SkyLyricsClient.windows()
 				? Tr.t("On Windows the song comes from the media controls that pop up when you press a media key, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time.")
 				: SkyLyricsClient.mac()
-				? Tr.t("On macOS the mod asks the Spotify and Music apps what's playing. The first time, macOS asks if Minecraft may control them: click OK. Browsers and other players can't be seen on a Mac. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time.")
+				? Tr.t("On macOS the mod asks the Spotify and Music apps what's playing. The first time, macOS asks if your launcher may control them: click OK. Browsers and other players can't be seen on a Mac. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time.")
 				: Tr.t("The song comes from your music app through MPRIS, the same Linux feature your media keys use, so Spotify, browsers and most players work. Lyrics come from LRCLIB, a free community lyrics library, or from NetEase Cloud Music when LRCLIB is down or doesn't have the song. They're saved on your computer for next time."));
 		Row compat = new Paragraph(() -> Tr.t("Works with Sodium, Iris and shader packs."));
 		Row links = new Buttons(Tr.t("Links"), null,

@@ -217,7 +217,7 @@ public final class IntroScreen extends Screen {
 			case 3 -> {
 				heading(g, Tr.t("Where the songs come from"), py + vy(22, ph));
 				lines(g, py + vy(38, ph), SkyLyricsClient.mac()
-								? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if Minecraft may control them, click OK.")
+								? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if your launcher may control them, click OK.")
 								: Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
 						Tr.t("Optional: signing in to Spotify (needs Premium and a free developer app) can help with timing."),
 						Tr.t("No music right now? Try the demo song."));
