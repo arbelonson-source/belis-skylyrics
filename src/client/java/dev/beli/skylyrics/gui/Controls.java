@@ -158,13 +158,45 @@ final class Controls {
 			return rowW > 0 && controlW > 0 && rowW - 28 - controlW < need;
 		}
 
+		// What layout worked out this frame (see prepare); valid only while the row keeps the width it was prepared at.
+		private @Nullable Font preparedFont;
+		private int preparedW = -1;
+		private boolean preparedStacked;
+		private int preparedControlW;
+		private int preparedLabelW;
+
+		/**
+		 * Measures the row once for this frame: whether the control stacks, how wide it is and how wide the label is.
+		 * The screen calls this in layout() after the row's width is set; height(), hovered(), render() and the like then
+		 * read it instead of measuring again. A row used before that (or at another width) measures on demand.
+		 */
+		final void prepare(Font font) {
+			preparedFont = font;
+			preparedW = w;
+			preparedControlW = controlWidth(font);
+			preparedLabelW = font.width(label);
+			preparedStacked = stacks(w, preparedControlW, preparedLabelW, desc == null ? 0 : font.width(desc.get()));
+		}
+
+		private boolean isPrepared() {
+			return preparedFont != null && preparedW == w;
+		}
+
 		/** The control sits under the label, not beside it. */
 		final boolean stacked() {
+			if (isPrepared()) {
+				return preparedStacked;
+			}
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
 			if (font == null) {
 				return false;
 			}
 			return stacks(w, controlWidth(font), font.width(label), desc == null ? 0 : font.width(desc.get()));
+		}
+
+		/** {@link #controlWidth} as measured this frame by {@link #prepare}, or measured now. */
+		final int controlW(Font font) {
+			return isPrepared() ? preparedControlW : controlWidth(font);
 		}
 
 		boolean hovered(Frame f) {
@@ -177,14 +209,17 @@ final class Controls {
 		abstract void renderControl(Frame f);
 
 		void render(Frame f) {
-			int textW = stacked() ? w - 20 : w - 20 - controlWidth(f.font()) - 8;
+			Font font = f.font();
+			int textW = stacked() ? w - 20 : w - 20 - controlW(font) - 8;
+			int labelW = isPrepared() ? preparedLabelW : font.width(label);
 			if (desc == null) {
-				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 8, Ui.TEXT, false);
+				f.g().drawString(font, Ui.visual(Ui.clip(font, label, textW, labelW)), x + 10, y + 8, Ui.TEXT, false);
 			} else {
 				String d = desc.get();
-				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), label, textW)), x + 10, y + 7, Ui.TEXT, false);
-				descClipped = f.font().width(d) > textW;
-				f.g().drawString(f.font(), Ui.visual(Ui.clip(f.font(), d, textW)), x + 10, y + 18, Ui.MUTED, false);
+				int descW = font.width(d);
+				f.g().drawString(font, Ui.visual(Ui.clip(font, label, textW, labelW)), x + 10, y + 7, Ui.TEXT, false);
+				descClipped = descW > textW;
+				f.g().drawString(font, Ui.visual(Ui.clip(font, d, textW, descW)), x + 10, y + 18, Ui.MUTED, false);
 			}
 			renderControl(f);
 		}
@@ -393,8 +428,8 @@ final class Controls {
 			return Narration.choice(narratedLabel(), Tr.t("choice"), options[i], Tr.t("%s of %s", i + 1, options.length));
 		}
 
-		private int optionWidth(Font font, int i) {
-			return font.width(options[i]) + pad(font);
+		private int optionWidth(Font font, int i, int pad) {
+			return font.width(options[i]) + pad;
 		}
 
 		/** Room around each option's name, tighter when many options or long (Hebrew) names would crowd out the label. */
@@ -424,9 +459,10 @@ final class Controls {
 
 		@Override
 		int controlWidth(Font font) {
+			int pad = pad(font);
 			int total = 4;
 			for (int i = 0; i < options.length; i++) {
-				total += optionWidth(font, i);
+				total += optionWidth(font, i, pad);
 			}
 			return total;
 		}
@@ -434,14 +470,18 @@ final class Controls {
 		@Override
 		void renderControl(Frame f) {
 			Font font = f.font();
-			int total = controlWidth(font);
+			int pad = pad(font);
+			int total = 4;
+			for (int i = 0; i < options.length; i++) {
+				total += optionWidth(font, i, pad);
+			}
 			int bx = x + w - 10 - total;
 			int by = controlCy() - 8;
 			Ui.rect(f.g(), bx, by, total, 16, 4, Ui.CONTROL);
 			int selected = get.getAsInt();
 			int ox = bx + 2;
 			for (int i = 0; i < options.length; i++) {
-				int ow = optionWidth(font, i);
+				int ow = optionWidth(font, i, pad);
 				if (i == selected) {
 					if (Float.isNaN(animX)) {
 						animX = ox;
@@ -455,7 +495,7 @@ final class Controls {
 			Ui.rect(f.g(), Math.round(animX), by + 2, Math.round(animW), 12, 3, Ui.ACCENT);
 			ox = bx + 2;
 			for (int i = 0; i < options.length; i++) {
-				int ow = optionWidth(font, i);
+				int ow = optionWidth(font, i, pad);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), ox, by, ow, 16);
 				int color = i == selected ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED;
 				f.g().drawString(font, Ui.visual(options[i]), ox + (ow - font.width(options[i])) / 2, by + 4, color, false);
@@ -466,10 +506,11 @@ final class Controls {
 		@Override
 		boolean click(double mx, double my) {
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
+			int pad = pad(font);
 			int total = controlWidth(font);
 			int ox = x + w - 10 - total + 2;
 			for (int i = 0; i < options.length; i++) {
-				int ow = optionWidth(font, i);
+				int ow = optionWidth(font, i, pad);
 				if (Ui.inside(mx, my, ox, controlCy() - 9, ow, 18)) {
 					set.accept(i);
 					return true;
@@ -533,7 +574,7 @@ final class Controls {
 		@Override
 		void renderControl(Frame f) {
 			Font font = f.font();
-			int bw = controlWidth(font);
+			int bw = controlW(font);
 			int bx = x + w - 10 - bw;
 			int by = controlCy() - 8;
 			boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, by, bw, 16);
@@ -654,21 +695,14 @@ final class Controls {
 			return perLine(w, colors.length, stacked());
 		}
 
-		@Override
-		int controlHeight() {
-			return lines(w, colors.length, true) * LINE + 3;
-		}
-
-		private int swatchX(Font font, int i) {
-			int per = perLine();
+		private int swatchX(int cw, int i, int per) {
 			if (per >= colors.length) {
-				return x + w - 10 - controlWidth(font) + 1 + i * LINE;
+				return x + w - 10 - cw + 1 + i * LINE;
 			}
 			return x + 11 + i % per * LINE;
 		}
 
-		private int swatchY(int i) {
-			int per = perLine();
+		private int swatchY(int i, int per) {
 			if (per >= colors.length) {
 				return controlCy() - SIZE / 2;
 			}
@@ -678,9 +712,11 @@ final class Controls {
 		@Override
 		void renderControl(Frame f) {
 			int current = selected.getAsInt();
+			int per = perLine();
+			int cw = controlW(f.font());
 			for (int i = 0; i < colors.length; i++) {
-				int cx = swatchX(f.font(), i);
-				int sy = swatchY(i);
+				int cx = swatchX(cw, i, per);
+				int sy = swatchY(i, per);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), cx - 2, sy - 2, SIZE + 4, SIZE + 4);
 				if ((colors[i] & 0xFFFFFF) == current) {
 					Ui.outline(f.g(), cx - 2, sy - 2, SIZE + 4, SIZE + 4, 4, 0xFFFFFFFF);
@@ -694,8 +730,10 @@ final class Controls {
 		@Override
 		boolean click(double mx, double my) {
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
+			int per = perLine();
+			int cw = controlWidth(font);
 			for (int i = 0; i < colors.length; i++) {
-				if (Ui.inside(mx, my, swatchX(font, i) - 2, swatchY(i) - 3, SIZE + 4, SIZE + 6)) {
+				if (Ui.inside(mx, my, swatchX(cw, i, per) - 2, swatchY(i, per) - 3, SIZE + 4, SIZE + 6)) {
 					pick.accept(colors[i] & 0xFFFFFF);
 					return true;
 				}
@@ -741,7 +779,7 @@ final class Controls {
 		void renderFocus(Frame f) {
 			super.renderFocus(f);
 			if (buttons.size() > 1) {
-				int bx = x + w - 10 - controlWidth(f.font());
+				int bx = x + w - 10 - controlW(f.font());
 				for (int i = 0; i < buttons.size(); i++) {
 					int bw = width(f.font(), buttons.get(i));
 					if (i == sub) {
@@ -787,7 +825,7 @@ final class Controls {
 
 		@Override
 		void renderControl(Frame f) {
-			int bx = x + w - 10 - controlWidth(f.font());
+			int bx = x + w - 10 - controlW(f.font());
 			for (Button b : buttons) {
 				int bw = width(f.font(), b);
 				boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, controlCy() - 8, bw, 16);
@@ -803,7 +841,7 @@ final class Controls {
 		@Override
 		boolean click(double mx, double my) {
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
-			int bx = x + w - 10 - controlWidth(font);
+			int bx = x + w - 10 - controlW(font);
 			for (Button b : buttons) {
 				int bw = width(font, b);
 				if (Ui.inside(mx, my, bx, controlCy() - 9, bw, 18) && b.enabled().getAsBoolean()) {

@@ -864,6 +864,7 @@ public final class SkyLyricsScreen extends Screen {
 				row.x = x;
 				row.w = viewW;
 				row.y = y;
+				row.prepare(font);
 				y += row.height() + 1;
 			}
 			y += 9;

@@ -1,5 +1,9 @@
 package dev.beli.skylyrics.gui;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
@@ -33,14 +37,20 @@ final class Ui {
 	 * skips this, which wrote the Hebrew settings backwards.
 	 */
 	static FormattedCharSequence visual(String text) {
-		return visual(text, baseRtl(Language.getInstance().isDefaultRightToLeft(), text));
+		Language language = Language.getInstance();
+		return visual(text, baseRtl(language.isDefaultRightToLeft(), text));
 	}
 
 	/** One line of a wrapped paragraph, laid out in the direction decided for the whole paragraph ({@link #paragraphRtl}). */
 	static FormattedCharSequence visual(String line, boolean rtl) {
-		// Direction marks (LRM and the like) steer the order, then are dropped: vanilla would draw each as a box
-		return LyricsFont.dropMarks(Language.getInstance().getVisualOrder(FormattedText.of(marked(line, rtl))));
+		Language language = Language.getInstance();
+		return VISUAL.get(language, line, rtl, () ->
+				// Direction marks (LRM and the like) steer the order, then are dropped: vanilla would draw each as a box
+				LyricsFont.dropMarks(language.getVisualOrder(FormattedText.of(marked(line, rtl)))));
 	}
+
+	/** Drawn text remembered between frames: the same string comes back about 120 times a frame. Render thread only. */
+	private static final VisualCache<FormattedCharSequence> VISUAL = new VisualCache<>(512);
 
 	/** The base direction for a whole paragraph in the current game language. */
 	static boolean paragraphRtl(String paragraph) {
@@ -122,10 +132,15 @@ final class Ui {
 	}
 
 	static String clip(Font font, String text, int maxW) {
+		return clip(font, text, maxW, maxW <= 0 ? 0 : font.width(text));
+	}
+
+	/** {@link #clip(Font, String, int)} when the width of {@code text} is already known. */
+	static String clip(Font font, String text, int maxW, int textW) {
 		if (maxW <= 0) {
 			return "";
 		}
-		if (font.width(text) <= maxW) {
+		if (textW <= maxW) {
 			return text;
 		}
 		return clipBy(text, maxW, font::width);
@@ -158,5 +173,46 @@ final class Ui {
 		float k = 1 - (float) Math.exp(-dt * speed);
 		float next = value + (target - value) * k;
 		return Math.abs(target - next) < 0.002f ? target : next;
+	}
+
+	/**
+	 * A small least-recently-used memory of values worked out per (text, direction), valid for one language object: when
+	 * the game's {@code Language} instance changes (a language switch or resource reload) everything is dropped. The values
+	 * must be immutable. Render thread only.
+	 */
+	static final class VisualCache<V> {
+		private record Key(String text, boolean rtl) {}
+
+		private final int limit;
+		private final LinkedHashMap<Key, V> map;
+		private Object language;
+
+		VisualCache(int limit) {
+			this.limit = limit;
+			this.map = new LinkedHashMap<>(16, 0.75f, true) {
+				@Override
+				protected boolean removeEldestEntry(Map.Entry<Key, V> eldest) {
+					return size() > VisualCache.this.limit;
+				}
+			};
+		}
+
+		V get(Object language, String text, boolean rtl, Supplier<V> compute) {
+			if (language != this.language) {
+				map.clear();
+				this.language = language;
+			}
+			Key key = new Key(text, rtl);
+			V known = map.get(key);
+			if (known == null) {
+				known = compute.get();
+				map.put(key, known);
+			}
+			return known;
+		}
+
+		int size() {
+			return map.size();
+		}
 	}
 }
