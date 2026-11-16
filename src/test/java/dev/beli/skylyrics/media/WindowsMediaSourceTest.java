@@ -35,6 +35,28 @@ class WindowsMediaSourceTest {
 	@TempDir
 	Path dir;
 
+	/** The helper is rewritten through a temp file of its own, tried again while Windows holds the file, and no temp file stays. */
+	@Test
+	void helperScriptIsWrittenThroughAUniqueTempFileWithRetries() throws Exception {
+		Path script = dir.resolve("windows-media.ps1");
+		Files.writeString(script, "old");
+		int[] calls = {0};
+		java.util.List<Path> temps = new java.util.ArrayList<>();
+		WindowsMediaSource.writeScript(script, "new".getBytes(java.nio.charset.StandardCharsets.UTF_8), (from, to, opts) -> {
+			temps.add(from);
+			if (++calls[0] <= 2) {
+				throw new java.nio.file.AccessDeniedException(to.toString());
+			}
+			Files.move(from, to, opts);
+		});
+		assertEquals(3, calls[0]);
+		assertEquals("new", Files.readString(script));
+		assertFalse(temps.get(0).getFileName().toString().equals("windows-media.ps1.tmp"), "a unique name, not the fixed one");
+		try (var left = Files.list(dir)) {
+			assertEquals(List.of(script), left.toList(), "no temp file left behind");
+		}
+	}
+
 	@Test
 	void playerNamesFromWindowsAppIds() {
 		assertEquals("spotify", WindowsMediaSource.playerKey("Spotify.exe"));

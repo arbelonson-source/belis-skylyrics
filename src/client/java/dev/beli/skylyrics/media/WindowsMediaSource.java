@@ -10,7 +10,6 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -423,6 +422,19 @@ public final class WindowsMediaSource implements MediaSource {
 		return !alive && nowNanos - startedAtNanos < EARLY_EXIT_NS;
 	}
 
+	/** Writes the helper through a temp file of its own (two games may start at once) and moves it in, trying again when Windows briefly holds the file. */
+	static void writeScript(Path script, byte[] bytes, dev.beli.skylyrics.util.SafeFile.Mover mover) throws IOException {
+		Path tmp = Files.createTempFile(script.getParent(), script.getFileName() + ".", ".tmp");
+		try {
+			Files.write(tmp, bytes);
+		} catch (IOException | RuntimeException e) {
+			Files.deleteIfExists(tmp);
+			throw e;
+		}
+		dev.beli.skylyrics.util.SafeFile.replace(tmp, script, mover, dev.beli.skylyrics.util.SafeFile.TRIES,
+				dev.beli.skylyrics.util.SafeFile.PAUSE_MS);
+	}
+
 	private void start() throws IOException, InterruptedException {
 		Path covers = dir.resolve("covers");
 		Path script = dir.resolve(SCRIPT);
@@ -438,9 +450,7 @@ public final class WindowsMediaSource implements MediaSource {
 			}
 			// Rewriting an unchanged file can collide with an antivirus scanning it
 			if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
-				Path tmp = dir.resolve(SCRIPT + ".tmp");
-				Files.write(tmp, bytes);
-				Files.move(tmp, script, StandardCopyOption.REPLACE_EXISTING);
+				writeScript(script, bytes, Files::move);
 			}
 		} catch (IOException e) {
 			throw new IOException(Tr.t("Couldn't prepare the Windows music reader (%s)", detail(e)), e);
