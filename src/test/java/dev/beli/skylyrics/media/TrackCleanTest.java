@@ -64,4 +64,14 @@ class TrackCleanTest {
 		assertEquals("Tail", t.album());
 		assertEquals("¶ Ș", of("¶ Ș", "x", "x").title());
 	}
+
+	@Test
+	void invisibleDirectionMarksAreRemovedButLettersAndSpacesStay() {
+		Track t = of("\u200Fשלום\u200E עולם\u061C", "\u200F\u05D0\u05D1\u200F", "ال\u061Cعربية \u200E");
+		assertEquals("שלום עולם", t.title());
+		assertEquals("אב", t.artist());
+		assertEquals("العربية", t.album());
+		assertEquals("a b", of("a \u200F b", "", "").title());
+		assertTrue(of("\u200E\u200F\u061C", "x", "").isNone());
+	}
 }

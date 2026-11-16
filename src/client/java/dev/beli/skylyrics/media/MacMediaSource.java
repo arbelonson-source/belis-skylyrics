@@ -105,7 +105,7 @@ public final class MacMediaSource implements MediaSource {
 			"	return v",
 			"end clean");
 
-	/** Spotify: duration in milliseconds, position in seconds. Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives. */
+	/** Spotify: duration in milliseconds, position in seconds; the last field is the song's spotify: address ("spotify:ad:..." for an ad). Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives. */
 	private static final String SPOTIFY_READ = """
 			tell application "Spotify"
 				set p to player state
@@ -123,6 +123,7 @@ public final class MacMediaSource implements MediaSource {
 				set ar to ""
 				set al to ""
 				set art to ""
+				set u to ""
 				try
 					set d to duration of t
 				end try
@@ -141,10 +142,16 @@ public final class MacMediaSource implements MediaSource {
 				try
 					set art to artwork url of t
 				end try
-				return {s, d, pos, n, ar, al, art}
+				try
+					set u to spotify url of t
+				end try
+				return {s, d, pos, n, ar, al, art, u}
 			end tell""";
 
-	/** Music: duration and position in seconds; streams may have neither. No cover link, only image data. */
+	/**
+	 * Music: duration and position in seconds; streams may have neither. No cover link, only image data and no
+	 * address, so those two fields are empty. The last field is an internet radio station's "Artist - Song" line.
+	 */
 	private static final String MUSIC_READ = """
 			tell application "Music"
 				set p to player state
@@ -176,7 +183,11 @@ public final class MacMediaSource implements MediaSource {
 				try
 					set al to album of t
 				end try
-				return {s, d, pos, n, ar, al, ""}
+				set st to ""
+				try
+					set st to current stream title
+				end try
+				return {s, d, pos, n, ar, al, "", "", st}
 			end tell""";
 
 	/** An app we can ask. {@code name} is the app's own name, as AppleScript and System Settings use it. */
@@ -361,7 +372,8 @@ public final class MacMediaSource implements MediaSource {
 
 	/**
 	 * Reads what the script prints. Each line is one running app: its name and state, then for a song
-	 * duration, position, title, artist, album and cover link, separated by tabs; or its name, "error",
+	 * duration, position, title, artist, album, cover link, song address (Spotify) and the stream's current title (Music radio),
+	 * separated by tabs (the last two may be missing in an older reply); or its name, "error",
 	 * the AppleScript error number and message.
 	 */
 	static Answer parse(String output) {
@@ -385,7 +397,25 @@ public final class MacMediaSource implements MediaSource {
 			if (!playing && !state.equals("paused")) {
 				continue; // stopped, or the answer to a button press
 			}
+			String uri = field(f, 8);
+			if (uri.startsWith("spotify:ad:")) {
+				continue; // an ad is not a song
+			}
 			String title = field(f, 4);
+			String artist = field(f, 5);
+			String album = field(f, 6);
+			String stream = field(f, 9);
+			if (artist.isEmpty() && !stream.isEmpty()) {
+				// Internet radio: the "song" is the station and the artist is empty; the stream title is "Artist - Song"
+				int dash = stream.indexOf(" - ");
+				if (dash > 0 && dash + 3 < stream.length()) {
+					artist = stream.substring(0, dash).strip();
+					title = stream.substring(dash + 3).strip();
+				} else {
+					title = stream;
+				}
+				album = ""; // the station name must not go into the lyrics lookup
+			}
 			if (title.isEmpty()) {
 				continue;
 			}
@@ -394,7 +424,7 @@ public final class MacMediaSource implements MediaSource {
 			if (length > 0) {
 				position = Math.min(position, length);
 			}
-			Track track = new Track(title, field(f, 5), field(f, 6), length, field(f, 7), app.key());
+			Track track = new Track(title, artist, album, length, field(f, 7), app.key(), uri);
 			players.add(new Reading(app, TitleCleaner.clean(track), position, playing));
 		}
 		return new Answer(players, failures);

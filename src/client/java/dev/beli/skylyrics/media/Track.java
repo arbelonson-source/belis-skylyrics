@@ -16,7 +16,7 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		album = clean(album);
 	}
 
-	/** Control characters become a space, text-direction embeddings and overrides go, runs of space become one, and the ends are trimmed. */
+	/** Control characters become a space, text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
 	static String clean(String s) {
 		if (s == null) {
 			return "";
@@ -25,7 +25,8 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		StringBuilder b = new StringBuilder(s.length());
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
-			if (c >= '\u202A' && c <= '\u202E' || c >= '\u2066' && c <= '\u2069') {
+			if (c >= '\u202A' && c <= '\u202E' || c >= '\u2066' && c <= '\u2069'
+					|| c == '\u200E' || c == '\u200F' || c == '\u061C') {
 				continue;
 			}
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);

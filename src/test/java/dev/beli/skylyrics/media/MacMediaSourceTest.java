@@ -129,6 +129,65 @@ class MacMediaSourceTest {
 		assertEquals(0, r.track().lengthMs());
 	}
 
+	@Test
+	void spotifyAddressIsReadWhenThere() {
+		MacMediaSource.Reading r = MacMediaSource.parse(
+				"Spotify\tplaying\t215000\t61.25\tSong One\tMade Up Band\tMade Up Album\thttps://x/a\tspotify:track:abc\n").players().getFirst();
+		assertEquals("spotify:track:abc", r.track().uri());
+		assertEquals("Song One", r.track().title());
+		// An old reply without the field is read as before
+		r = MacMediaSource.parse(SPOTIFY_PLAYING).players().getFirst();
+		assertEquals("", r.track().uri());
+		assertEquals("Song One", r.track().title());
+		// Two songs with the same text are told apart by their address
+		Track a = MacMediaSource.parse("Spotify\tplaying\t1000\t0\tInterlude\tBand\tAlbum\t\tspotify:track:1\n").players().getFirst().track();
+		Track b = MacMediaSource.parse("Spotify\tplaying\t1000\t0\tInterlude\tBand\tAlbum\t\tspotify:track:2\n").players().getFirst().track();
+		assertTrue(a.otherUri(b));
+	}
+
+	@Test
+	void anAdIsNoSong() {
+		assertTrue(MacMediaSource.parse("Spotify\tplaying\t30000\t1\tAdvertisement\tSpotify\t\t\tspotify:ad:0000\n").players().isEmpty());
+		// the other app is still read
+		assertEquals(1, MacMediaSource.parse("Spotify\tplaying\t30000\t1\tAdvertisement\tSpotify\t\t\tspotify:ad:0000\n" + MUSIC_PAUSED).players().size());
+		// a local file's address is not an ad
+		assertEquals(1, MacMediaSource.parse("Spotify\tplaying\t30000\t1\tSong\tA\t\t\tspotify:local:a:b:c:1\n").players().size());
+	}
+
+	@Test
+	void radioStreamTitleBecomesTheSong() {
+		MacMediaSource.Reading r = MacMediaSource.parse("Music\tplaying\t\t\tKEXP 90.3\t\tKEXP\t\t\tBjork - Hyperballad - Live\n").players().getFirst();
+		assertEquals("Bjork", r.track().artist());
+		assertEquals("Hyperballad - Live", r.track().title());
+		assertEquals("", r.track().album(), "the station stays out of the lookup");
+		// no " - ": the whole line is the title
+		r = MacMediaSource.parse("Music\tplaying\t\t\tStation\t\t\t\t\tJust A Title\n").players().getFirst();
+		assertEquals("Just A Title", r.track().title());
+		assertEquals("", r.track().artist());
+		// "-" without spaces is not a separator
+		assertEquals("Jay-Z", MacMediaSource.parse("Music\tplaying\t\t\tStation\t\t\t\t\tJay-Z\n").players().getFirst().track().title());
+		// without a stream title, and with an artist, nothing changes
+		r = MacMediaSource.parse("Music\tplaying\t\t\tStation\t\t\t\t\t\n").players().getFirst();
+		assertEquals("Station", r.track().title());
+		r = MacMediaSource.parse("Music\tpaused\t245.5\t12.5\tSong Two\tOther Band\tOther Album\t\t\tX - Y\n").players().getFirst();
+		assertEquals("Song Two", r.track().title());
+		assertEquals("Other Band", r.track().artist());
+		assertEquals("Other Album", r.track().album());
+	}
+
+	@Test
+	void scriptsReadTheNewFieldsOnTheirOwn() {
+		String sp = MacMediaSource.SPOTIFY.readScript();
+		assertTrue(sp.contains("set u to spotify url of t"));
+		assertTrue(sp.contains("return {s, d, pos, n, ar, al, art, u}"));
+		String mu = MacMediaSource.MUSIC.readScript();
+		assertTrue(mu.contains("set st to current stream title"));
+		assertTrue(mu.contains("return {s, d, pos, n, ar, al, \"\", \"\", st}"));
+		// each read sits inside its own try
+		assertTrue(sp.replace("\t", "").contains("try\nset u to spotify url of t\nend try"));
+		assertTrue(mu.replace("\t", "").contains("try\nset st to current stream title\nend try"));
+	}
+
 	/** Every field the read scripts return is fetched inside its own try, so one missing field can't lose the reading. */
 	@Test
 	void everyFieldIsReadOnItsOwn() {
