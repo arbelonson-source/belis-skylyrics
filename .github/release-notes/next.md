@@ -74,6 +74,7 @@
 - **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
 - **One odd answer from the lyrics site.** An error for one odd song title no longer switches the main lyrics site (LRCLIB) off for two minutes. Only a site that is really down or too busy does, and even then a song the backup doesn't have is still asked from the main site.
 - **Covers after being offline.** A cover that couldn't download (no network, a slow or busy server) is tried again every so often during the song, instead of staying missing until the next song.
+- **Busy lyrics site.** When the lyrics site says it is too busy, the mod now waits as long as the site asks, including when it gives a time instead of a number of seconds, before asking again.
 
 ### Faster
 

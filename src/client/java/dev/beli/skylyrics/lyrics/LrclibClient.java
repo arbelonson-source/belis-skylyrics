@@ -140,9 +140,10 @@ public final class LrclibClient implements LyricsSource {
 				exact = get("/get", q);
 			} catch (StatusException busy) {
 				// LRCLIB often answers 5xx on /get for songs it hasn't cached while /search works.
-				// A quick error reply means the site is reachable, so go on to search. Other
-				// errors (429, timeouts, no network) still fail: searching would only repeat them.
-				if (busy.status() < 500) {
+				// A quick error reply means the site is reachable, so go on to search. A 503 or 429
+				// says it is overloaded, and other errors (timeouts, no network) fail too: searching
+				// would only repeat them, so they are reported and the retry policy waits.
+				if (busy.status() < 500 || busy.status() == 503) {
 					throw busy;
 				}
 			}
@@ -308,15 +309,27 @@ public final class LrclibClient implements LyricsSource {
 		return json;
 	}
 
-	/** A Retry-After header in seconds as milliseconds, or -1 when missing or not a plain number. */
+	/** A Retry-After header (seconds, or an HTTP date) as milliseconds from now, or -1 when missing, past or odd. */
 	static long retryAfterMs(@Nullable String header) {
+		return retryAfterMs(header, java.time.Instant.now());
+	}
+
+	static long retryAfterMs(@Nullable String header, java.time.Instant now) {
 		if (header == null) {
 			return -1;
 		}
+		String text = header.strip();
 		try {
-			long seconds = Long.parseLong(header.strip());
+			long seconds = Long.parseLong(text);
 			return seconds < 0 || seconds > 86_400 ? -1 : seconds * 1000;
 		} catch (NumberFormatException e) {
+			// maybe a date: "Wed, 21 Oct 2026 07:28:00 GMT"
+		}
+		try {
+			long ms = java.time.Duration.between(now,
+					java.time.ZonedDateTime.parse(text, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME).toInstant()).toMillis();
+			return ms <= 0 || ms > 86_400_000L ? -1 : ms;
+		} catch (java.time.format.DateTimeParseException | ArithmeticException e) {
 			return -1;
 		}
 	}
