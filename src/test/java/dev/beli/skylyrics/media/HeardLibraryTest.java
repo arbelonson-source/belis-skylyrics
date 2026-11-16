@@ -433,6 +433,24 @@ class HeardLibraryTest {
 		assertEquals(List.of("N"), titles(a));
 	}
 
+	@Test
+	void aSongHeardWhileTheFileIsBrieflyLockedIsStillSaved() throws IOException {
+		HeardLibrary b = library();
+		b.record(song("X", "Me"));
+		b.flush();
+		int[] failures = {0};
+		boolean[] armed = {false};
+		HeardLibrary a = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, f -> {
+			if (armed[0] && failures[0]++ == 0) throw new IOException("locked");
+			return Files.readString(f, java.nio.charset.StandardCharsets.UTF_8);
+		});
+		made.add(a);
+		armed[0] = true;
+		a.record(song("Y", "Me"));
+		a.flush();
+		assertEquals(List.of("Y", "X"), HeardLibrary.read(file()).stream().map(HeardLibrary.Entry::title).toList());
+	}
+
 	private HeardLibrary make2(boolean[] failing) {
 		HeardLibrary lib = new HeardLibrary(file(), () -> true, HeardLibrary.NO_OPENER, dev.beli.skylyrics.util.SafeFile::readText,
 				(from, to, opts) -> {
