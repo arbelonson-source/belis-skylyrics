@@ -51,6 +51,9 @@ class BaseDirectionTest {
 
 	/** Visual left-to-right order of a line, like the reorder the game does (right-to-left runs reversed). */
 	private static String visualOrder(String s) {
+		if (s.isEmpty()) {
+			return ""; // java.text.Bidi has no runs to reorder for empty text
+		}
 		Bidi bidi = new Bidi(s, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT);
 		int n = bidi.getRunCount();
 		byte[] levels = new byte[n];
