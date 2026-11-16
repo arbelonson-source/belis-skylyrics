@@ -31,11 +31,13 @@ import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.locale.Language;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.scores.DisplaySlot;
 
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.SkyLyricsClient;
@@ -239,6 +241,8 @@ public final class NowPlayingHud {
 				&& !Visibility.hidden(mc, cfg)
 				// The debug screen (F3) fills the top corners and a bar at the top would be drawn over its text
 				&& !(cfg.barPosition != BarPosition.BOTTOM && f3Open(mc))
+				// The player list (held Tab) is drawn after the bar, over it and see-through
+				&& !(cfg.barPosition != BarPosition.BOTTOM && tabListUp(mc))
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
 				//? if >=26.2 {
 				/*&& !(mc.gui.screen() instanceof SkyLyricsScreen settings && settings.coversTopBar());
@@ -407,10 +411,38 @@ public final class NowPlayingHud {
 	static boolean actionBarShowing(Minecraft mc) {
 		try {
 			//? if >=26.2 {
-			/*return ((GuiOverlayAccessor) mc.gui.hud).skylyrics$getOverlayMessageTime() > 0;
+			/*GuiOverlayAccessor overlay = (GuiOverlayAccessor) mc.gui.hud;
 			*///?} else {
-			return ((GuiOverlayAccessor) mc.gui).skylyrics$getOverlayMessageTime() > 0;
+			GuiOverlayAccessor overlay = (GuiOverlayAccessor) mc.gui;
 			//?}
+			Component text = overlay.skylyrics$getOverlayMessageString();
+			return actionBarShowing(overlay.skylyrics$getOverlayMessageTime(), text == null ? "" : text.getString());
+		} catch (RuntimeException | LinkageError e) {
+			return false;
+		}
+	}
+
+	/** An action bar message shows while it has time left and says something: servers send an empty one to clear it. */
+	static boolean actionBarShowing(int ticksLeft, String text) {
+		return ticksLeft > 0 && !text.isEmpty();
+	}
+
+	/**
+	 * Whether the player list (held Tab) is drawn, by the game's own test: the key is held, and it isn't a single-player
+	 * world with only you listed and nothing on the list scoreboard.
+	 */
+	static boolean tabListShown(boolean keyDown, boolean localServer, int listedPlayers, boolean listObjective) {
+		return keyDown && (!localServer || listedPlayers > 1 || listObjective);
+	}
+
+	/** Whether the player list is on screen now; it is drawn over the top bar and a card in a top corner. */
+	static boolean tabListUp(Minecraft mc) {
+		try {
+			if (!mc.options.keyPlayerList.isDown() || mc.player == null || mc.level == null) {
+				return false;
+			}
+			return tabListShown(true, mc.isLocalServer(), mc.player.connection.getListedOnlinePlayers().size(),
+					mc.level.getScoreboard().getDisplayObjective(DisplaySlot.LIST) != null);
 		} catch (RuntimeException | LinkageError e) {
 			return false;
 		}

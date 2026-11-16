@@ -7,6 +7,7 @@
 
 ### Fixed
 
+- **Player list and action bar.** Holding Tab on a server no longer draws the player list over the top bar or a **Record card** in a top corner: they fade out while it shows and back when you let go. A bottom bar no longer lifts when a server sends an empty action bar message to clear it.
 - **Top bar and Record card.** With the top bar at the top and the **Record card** in a top corner, the card no longer sits on top of the bar on a small window or a big GUI scale: it moves down below the bar. A song title that fits no longer ends with a lone "…" where the artist would be.
 - **Sky effects fade.** The sky effects now fade in and out smoothly when the time of day jumps (/time set, or a server skipping the night) instead of cutting in a single frame, and changing the **Sky** setting while it is night fades the old sky out before the new one comes in. With **Pulse** on and no synced lyrics showing (unsynced lyrics, no lyrics, an instrumental song, or lyrics hidden), the sky is no longer a little dimmer than with Pulse off. The sparkles no longer drift in from a stale spot when they come back. On 1.21.11 and newer, in light rain the sky effects are no longer dimmer than they should be. The sky effects fade out during a boss fight's fog (Wither, Ender Dragon) like the vanilla sky.
 - **Pick a look crash.** Pressing Left or Right on **Pick a look** while the look is Custom (after changing any look setting) no longer crashes the game: Right picks the first look and Left the last.
