@@ -333,4 +333,100 @@ class MprisSourceTest {
 			source.close();
 		}
 	}
+
+
+	@Test
+	void spotifyDesktopWebAddressBecomesItsSongId() {
+		assertEquals("spotify:track:X", MprisSource.songUri("spotify", "https://open.spotify.com/track/X"));
+		assertEquals("spotify:track:X", MprisSource.songUri("spotify", "https://open.spotify.com/track/X?si=abc"));
+		assertEquals("spotify:episode:E1", MprisSource.songUri("spotify", "https://open.spotify.com/episode/E1"));
+		// a browser's page address changes when you click around: never a song id
+		assertEquals("https://open.spotify.com/track/X", MprisSource.songUri("firefox", "https://open.spotify.com/track/X"));
+		assertEquals("https://open.spotify.com/album/A", MprisSource.songUri("spotify", "https://open.spotify.com/album/A"));
+		assertEquals("spotify:track:Z", MprisSource.songUri("spotify", "spotify:track:Z"));
+		assertEquals("", MprisSource.songUri("spotify", ""));
+	}
+
+	@Test
+	void twoSameNamedSpotifyDesktopSongsAreToldApart() {
+		Track a = new Track("Interlude", "Made Up Band", "Album", 60_000, "", "spotify", MprisSource.songUri("spotify", "https://open.spotify.com/track/X"));
+		Track b = new Track("Interlude", "Made Up Band", "Album", 60_000, "", "spotify", MprisSource.songUri("spotify", "https://open.spotify.com/track/Y"));
+		assertFalse(a.sameSong(b));
+		assertTrue(a.sameSong(new Track("Interlude", "Made Up Band", "Album", 60_000, "", "spotify", "spotify:track:X")));
+	}
+
+	private static final String A = "org.mpris.MediaPlayer2.spotify";
+	private static final String B = "org.mpris.MediaPlayer2.firefox";
+
+	/** Polls until the song title shows (the first polls may only start the reader threads). */
+	private static String pollTitle(MprisSource source) throws Exception {
+		Snapshot s = source.poll();
+		long giveUp = System.nanoTime() + 20_000L * 1_000_000L;
+		while (s.track().isNone() && System.nanoTime() < giveUp) {
+			Thread.sleep(20);
+			s = source.poll();
+		}
+		return s.track().title();
+	}
+
+	private static MprisSource twoPlayers(AtomicReference<List<String>> names, AtomicBoolean aEmpty) {
+		return new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return names.get();
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) {
+				if (busName.equals(A)) {
+					return aEmpty.get() ? null : reading(A, "Spotify Song", 5000);
+				}
+				return reading(B, "Browser Song", 5000);
+			}
+		});
+	}
+
+	@Test
+	void aBlipOfTheFollowedPlayerDoesNotHandOverToAnotherPlayer() throws Exception {
+		AtomicBoolean aEmpty = new AtomicBoolean();
+		MprisSource source = twoPlayers(new AtomicReference<>(List.of(A, B)), aEmpty);
+		try {
+			assertEquals("Spotify Song", pollTitle(source));
+			aEmpty.set(true);
+			assertEquals("Spotify Song", source.poll().track().title());
+			aEmpty.set(false);
+			assertEquals("Spotify Song", source.poll().track().title());
+		} finally {
+			source.close();
+		}
+	}
+
+	@Test
+	void aFollowedPlayerThatLeavesTheBusIsReplacedAtOnce() throws Exception {
+		AtomicReference<List<String>> names = new AtomicReference<>(List.of(A, B));
+		MprisSource source = twoPlayers(names, new AtomicBoolean());
+		try {
+			assertEquals("Spotify Song", pollTitle(source));
+			names.set(List.of(B));
+			assertEquals("Browser Song", source.poll().track().title());
+		} finally {
+			source.close();
+		}
+	}
+
+	@Test
+	void aFollowedPlayerThatStaysEmptyIsReplacedAfterTheGrace() throws Exception {
+		AtomicBoolean aEmpty = new AtomicBoolean();
+		MprisSource source = twoPlayers(new AtomicReference<>(List.of(A, B)), aEmpty);
+		try {
+			assertEquals("Spotify Song", pollTitle(source));
+			aEmpty.set(true);
+			// two empty polls are forgiven, the third hands over
+			assertEquals("Spotify Song", source.poll().track().title());
+			assertEquals("Spotify Song", source.poll().track().title());
+			assertEquals("Browser Song", source.poll().track().title());
+		} finally {
+			source.close();
+		}
+	}
 }

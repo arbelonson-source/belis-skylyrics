@@ -37,11 +37,15 @@ public final class Tr {
 		return shown == null ? "" : SOURCE.getOrDefault(shown, shown);
 	}
 
+	private static final java.util.regex.Pattern NON_ALNUM = java.util.regex.Pattern.compile("[^a-z0-9]+");
+	private static final java.util.regex.Pattern EDGES = java.util.regex.Pattern.compile("^_+|_+$");
+	private static final java.util.regex.Pattern TAIL = java.util.regex.Pattern.compile("_+$");
+
 	/** The lang key for an English text: "skylyrics.ui." + slug. */
 	static String key(String english) {
-		String slug = english.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
+		String slug = EDGES.matcher(NON_ALNUM.matcher(english.toLowerCase(Locale.ROOT)).replaceAll("_")).replaceAll("");
 		if (slug.length() > 48) {
-			slug = slug.substring(0, 48).replaceAll("_+$", "");
+			slug = TAIL.matcher(slug.substring(0, 48)).replaceAll("");
 		}
 		return "skylyrics.ui." + slug;
 	}

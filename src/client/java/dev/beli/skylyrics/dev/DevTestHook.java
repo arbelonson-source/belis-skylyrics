@@ -297,6 +297,44 @@ public final class DevTestHook {
 		}
 	}
 
+	/** The Minecraft key code of a {@link DevKeys.Key} name: a GLFW key code, or an SDL scancode on 26.3 and newer. */
+	private static int keyCode(String name) {
+		char first = name.charAt(0);
+		if (name.length() == 1 && first >= 'a' && first <= 'z') {
+			return com.mojang.blaze3d.platform.InputConstants.KEY_A + (first - 'a');
+		}
+		if (name.length() == 1) {
+			int digit = first - '0';
+			//? if >=26.3 {
+			/*return digit == 0 ? com.mojang.blaze3d.platform.InputConstants.KEY_0 : com.mojang.blaze3d.platform.InputConstants.KEY_1 + digit - 1;
+			*///?} else {
+			return com.mojang.blaze3d.platform.InputConstants.KEY_0 + digit;
+			//?}
+		}
+		if (first == 'f' && Character.isDigit(name.charAt(1))) {
+			int n = Integer.parseInt(name.substring(1));
+			return n <= 12 ? com.mojang.blaze3d.platform.InputConstants.KEY_F1 + n - 1 : com.mojang.blaze3d.platform.InputConstants.KEY_F13 + n - 13;
+		}
+		return switch (name) {
+			case "space" -> com.mojang.blaze3d.platform.InputConstants.KEY_SPACE;
+			case "escape" -> com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE;
+			case "enter" -> com.mojang.blaze3d.platform.InputConstants.KEY_RETURN;
+			case "tab" -> com.mojang.blaze3d.platform.InputConstants.KEY_TAB;
+			case "backspace" -> com.mojang.blaze3d.platform.InputConstants.KEY_BACKSPACE;
+			case "insert" -> com.mojang.blaze3d.platform.InputConstants.KEY_INSERT;
+			case "delete" -> com.mojang.blaze3d.platform.InputConstants.KEY_DELETE;
+			case "right" -> com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT;
+			case "left" -> com.mojang.blaze3d.platform.InputConstants.KEY_LEFT;
+			case "down" -> com.mojang.blaze3d.platform.InputConstants.KEY_DOWN;
+			case "up" -> com.mojang.blaze3d.platform.InputConstants.KEY_UP;
+			case "page_up" -> com.mojang.blaze3d.platform.InputConstants.KEY_PAGEUP;
+			case "page_down" -> com.mojang.blaze3d.platform.InputConstants.KEY_PAGEDOWN;
+			case "home" -> com.mojang.blaze3d.platform.InputConstants.KEY_HOME;
+			case "end" -> com.mojang.blaze3d.platform.InputConstants.KEY_END;
+			default -> throw new IllegalArgumentException("unknown key " + name);
+		};
+	}
+
 	/** The open screen, or null in the game world (keys must never reach the world). */
 	private static Screen currentScreen(Minecraft client) {
 		//? if >=26.2 {
@@ -418,18 +456,30 @@ public final class DevTestHook {
 						SkyLyricsClient.LOG.info("Test hook: no screen is open, key not sent");
 					} else {
 						int typed = DevKeys.charFor(key);
-						//? if >=1.21.9 {
-						screen.keyPressed(new net.minecraft.client.input.KeyEvent(key.code(), 0, key.modifiers()));
+						int code = keyCode(key.name());
+						//? if >=26.3 {
+						/*// SDL: the scancode, then the SDL keycode that Screen's Tab and arrow handling reads, and SDL modifier bits
+						int mods = DevKeys.sdlModifiers(key);
+						int keycode = DevKeys.sdlKeycode(key, code);
+						screen.keyPressed(new net.minecraft.client.input.KeyEvent(code, keycode, mods));
 						if (typed != 0) {
-							screen.charTyped(charEvent(typed, key.modifiers()));
+							screen.charTyped(charEvent(typed, mods));
 						}
-						screen.keyReleased(new net.minecraft.client.input.KeyEvent(key.code(), 0, key.modifiers()));
+						screen.keyReleased(new net.minecraft.client.input.KeyEvent(code, keycode, mods));
+						*///?} else if >=1.21.9 {
+						int mods = DevKeys.glfwModifiers(key);
+						screen.keyPressed(new net.minecraft.client.input.KeyEvent(code, 0, mods));
+						if (typed != 0) {
+							screen.charTyped(charEvent(typed, mods));
+						}
+						screen.keyReleased(new net.minecraft.client.input.KeyEvent(code, 0, mods));
 						//?} else {
-						/*screen.keyPressed(key.code(), 0, key.modifiers());
+						/*int mods = DevKeys.glfwModifiers(key);
+						screen.keyPressed(code, 0, mods);
 						if (typed != 0) {
-							screen.charTyped((char) typed, key.modifiers());
+							screen.charTyped((char) typed, mods);
 						}
-						screen.keyReleased(key.code(), 0, key.modifiers());
+						screen.keyReleased(code, 0, mods);
 						*///?}
 						SkyLyricsClient.LOG.info("Test hook: sent key {} to {}", arg, screen.getClass().getSimpleName());
 					}

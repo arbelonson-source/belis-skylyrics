@@ -310,6 +310,15 @@ final class WorldWords {
 	private float wordScale = 1;
 	/** Whether the line reads right to left, so a flowing line is written from the right. */
 	private boolean lineRtl;
+	/**
+	 * Per piece of the line: {@link #RUN_NONE}, or where it is in a stretch that reads against the line's own direction
+	 * (an English phrase in a Hebrew line, say), see {@link #runs}.
+	 */
+	private int[] lineRuns = new int[0];
+	/** Per piece of the line: half its width in text units times its nominal size, to tell how wide a reversed stretch is. */
+	private float[] lineHalf = new float[0];
+	/** The piece being placed (an index into {@link #lineChunks}). */
+	private int placing = -1;
 	private long rng = System.nanoTime();
 
 	/** You died: every word up drops out of the sky, spinning as it fades. */
@@ -349,6 +358,71 @@ final class WorldWords {
 		sentence = null;
 		last = null;
 		recent[0] = recent[1] = -1;
+	}
+
+	/** A piece's place in a stretch of the line that reads against its direction: none, first, in the middle, last. */
+	static final int RUN_NONE = 0, RUN_FIRST = 1, RUN_MIDDLE = 2, RUN_LAST = 3;
+
+	/** The line's pieces as {@link TopBarWords} sees them: a piece cut out of a Chinese or Japanese run joins the one before. */
+	static List<TopBarWords.Piece> pieces(String text, List<int[]> chunks) {
+		int[] cps = text.codePoints().toArray();
+		List<TopBarWords.Piece> out = new ArrayList<>(chunks.size());
+		for (int k = 0; k < chunks.size(); k++) {
+			int[] c = chunks.get(k);
+			out.add(new TopBarWords.Piece(new String(cps, c[0], c[1] - c[0]), k == 0 || chunks.get(k - 1)[1] != c[0]));
+		}
+		return out;
+	}
+
+	/**
+	 * Which pieces of a line are written against the line's direction when it is laid out the way it is read: in a Hebrew
+	 * line an English phrase of two or more pieces still reads left to right, so its first piece goes at the phrase's far
+	 * end. Each stretch is marked {@link #RUN_FIRST}, {@link #RUN_MIDDLE}… {@link #RUN_LAST}; every other piece is {@link #RUN_NONE}.
+	 * A line of one direction has none.
+	 */
+	static int[] runs(List<TopBarWords.Piece> pieces, boolean rtl) {
+		int n = pieces.size();
+		int[] out = new int[n];
+		if (n < 2) {
+			return out;
+		}
+		int[] rank = TopBarWords.visualRanks(pieces);
+		// Counted from where the line starts being written, so a reversed stretch always runs down by one
+		for (int i = 0; i < n; i++) {
+			rank[i] = rtl ? n - 1 - rank[i] : rank[i];
+		}
+		for (int i = 0; i + 1 < n; ) {
+			int j = i;
+			while (j + 1 < n && rank[j + 1] == rank[j] - 1) {
+				j++;
+			}
+			if (j > i) {
+				out[i] = RUN_FIRST;
+				for (int k = i + 1; k < j; k++) {
+					out[k] = RUN_MIDDLE;
+				}
+				out[j] = RUN_LAST;
+				i = j + 1;
+			} else {
+				i++;
+			}
+		}
+		return out;
+	}
+
+	/** Half the width, in text units times size, a piece will have: what a reversed stretch is measured with. */
+	private float nominalHalf(String text, List<int[]> chunks, int k, Font font, Style style) {
+		int[] c = chunks.get(k);
+		Display d = Display.of(new String(text.codePoints().toArray(), c[0], c[1] - c[0]), lineRtl);
+		float[] at = widths(d, font, style);
+		int letters = 0;
+		for (int cp : d.cps()) {
+			if (Character.isLetterOrDigit(cp)) {
+				letters++;
+			}
+		}
+		float size = SIZE * sizeFor(letters, 0.5f) * (big && bigPiece == k ? BIG : 1);
+		return at[at.length - 1] * size / 2;
 	}
 
 	/**
@@ -802,6 +876,13 @@ final class WorldWords {
 			float[] whole = lineText == null ? null : widths(Display.of(lineText), font, style);
 			lineWidth = whole == null || whole.length == 0 ? 0 : whole[whole.length - 1];
 			lineRtl = lineText != null && rightToLeft(lineText);
+			lineRuns = lineText == null ? new int[0] : runs(pieces(lineText, lineChunks), lineRtl);
+			lineHalf = new float[lineChunks.size()];
+			for (int k = 0; k < lineHalf.length; k++) {
+				if (lineRuns[k] != RUN_NONE) {
+					lineHalf[k] = nominalHalf(lineText, lineChunks, k, font, style);
+				}
+			}
 			spawned = 0;
 			last = sentence;
 			sentence = null;
@@ -1121,6 +1202,7 @@ final class WorldWords {
 			avoid.add(middle);
 			firm.add(middle);
 		}
+		placing = lineChunks.indexOf(chunk);
 		float[] spot = flow ? follow(centre, at, size, avoid, firm) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
@@ -1296,7 +1378,26 @@ final class WorldWords {
 		}
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
+		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
+		if (run == RUN_NONE) {
+			sentence.forward();
+		} else if (run == RUN_FIRST) {
+			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it
+			float span = 0;
+			int count = 0;
+			for (int k = placing; k < lineRuns.length; k++) {
+				span += 2 * halfAngle(lineHalf[k] * wordScale, sentence.distance);
+				count++;
+				if (lineRuns[k] == RUN_LAST) {
+					break;
+				}
+			}
+			sentence.reverse(span + (count - 1) * Sentence.GAP * halfH);
+		}
 		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
+		if (run == RUN_LAST) {
+			sentence.forward();
+		}
 		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
@@ -1476,6 +1577,11 @@ final class WorldWords {
 		 * it sits centred under the row above instead of hugging the left edge.
 		 */
 		float rest = Float.POSITIVE_INFINITY;
+		/**
+		 * The width of a stretch of pieces that reads against the line (0 when none is being written), and where the next of
+		 * its pieces ends, counted along the row (NaN before the stretch's first piece has found its room).
+		 */
+		float run, runAt = Float.NaN;
 		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
 		boolean newRow;
 		/** How many rows have been started after the first. */
@@ -1512,17 +1618,31 @@ final class WorldWords {
 		 * {@code bob} add a little chance.
 		 */
 		float[] place(float halfW, float halfH, float indent, float bob) {
-			float yaw = cursor + GAP * halfH + halfW;
-			boolean wrap = newRow || cursor > left && yaw + halfW > left + width;
+			// A stretch against the line's direction takes room for all of it when its first piece comes, then each piece
+			// sits in it from the far end back
+			boolean first = run > 0 && Float.isNaN(runAt);
+			float whole = first ? run / 2 : halfW;
+			float yaw = cursor + GAP * halfH + whole;
+			boolean inRun = run > 0 && !first;
+			boolean wrap = !inRun && (newRow || cursor > left && yaw + whole > left + width);
 			if (wrap) {
 				newRow = false;
 				rows++;
 				// A short last row is centred under the full one above it
-				float centre = (cursor - left - Math.max(rest, 2 * halfW)) / 2;
-				yaw = left + Math.max(indent, centre) + halfW;
+				float centre = (cursor - left - Math.max(rest, 2 * whole)) / 2;
+				yaw = left + Math.max(indent, centre) + whole;
 			}
-			rest -= yaw + halfW - cursor;
-			cursor = yaw + halfW;
+			if (run <= 0 || first) {
+				rest -= yaw + whole - cursor;
+				cursor = yaw + whole;
+			}
+			if (run > 0) {
+				if (first) {
+					runAt = cursor;
+				}
+				yaw = runAt - halfW;
+				runAt = yaw - halfW - GAP * halfH;
+			}
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
 				yaw = 2 * left + width - yaw;
@@ -1549,7 +1669,19 @@ final class WorldWords {
 
 		/** Where writing has got to, for {@link #back}. */
 		float[] mark() {
-			return new float[] {top, cursor, above, low, rest, newRow ? 1 : 0, rows, pieces};
+			return new float[] {top, cursor, above, low, rest, newRow ? 1 : 0, rows, pieces, run, runAt};
+		}
+
+		/** The next pieces, {@code span} wide together, read against the line's direction: written from the far end back. */
+		void reverse(float span) {
+			run = span;
+			runAt = Float.NaN;
+		}
+
+		/** Back to writing along the line's direction. */
+		void forward() {
+			run = 0;
+			runAt = Float.NaN;
 		}
 
 		/** Goes back to where writing was at a {@link #mark}, as if the pieces since were never placed. */
@@ -1562,6 +1694,8 @@ final class WorldWords {
 			newRow = mark[5] != 0;
 			rows = (int) mark[6];
 			pieces = (int) mark[7];
+			run = mark[8];
+			runAt = mark[9];
 		}
 
 		/**

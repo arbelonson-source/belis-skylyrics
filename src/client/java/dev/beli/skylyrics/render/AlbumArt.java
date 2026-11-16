@@ -14,7 +14,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.imageio.ImageIO;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -462,7 +461,7 @@ public final class AlbumArt {
 		if (bytes == null || !CoverCache.dimensionsOk(bytes)) {
 			return null;
 		}
-		return ImageIO.read(new java.io.ByteArrayInputStream(bytes));
+		return CoverCache.decodeSmall(bytes, SIZE);
 	}
 
 	/** Center-crops to a square, scales to {@code size} and rounds the corners ({@code size / 2} makes a circle). */

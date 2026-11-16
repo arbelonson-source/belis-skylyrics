@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -261,6 +263,10 @@ public final class MprisSource implements MediaSource {
 	/** Reads still running from an earlier poll (a stuck player); only touched on the media thread. */
 	private final Map<String, Future<Answered>> asked = new HashMap<>();
 	private final Map<String, Remembered> lastGood = new HashMap<>();
+	/** How many polls in a row the followed player has answered with nothing (a blip between songs). */
+	private int emptyPolls;
+	/** Polls (about a second each) the followed player may answer with nothing before another player takes over. */
+	static final int EMPTY_GRACE_POLLS = 2;
 
 	@Override
 	public Snapshot poll() throws Exception {
@@ -325,13 +331,21 @@ public final class MprisSource implements MediaSource {
 			}
 			if (answered) {
 				if (reading == null || reading.track.isNone()) {
-					lastGood.remove(name);
+					// The followed player, still on the bus, may blink between songs: for a couple of polls keep
+					// what it said last, so a muted browser tab doesn't take over and then keep the lyrics
+					if (!(name.equals(current) && lastGood.containsKey(name) && ++emptyPolls <= EMPTY_GRACE_POLLS)) {
+						lastGood.remove(name);
+						continue;
+					}
 				} else {
+					if (name.equals(current)) {
+						emptyPolls = 0;
+					}
 					lastGood.put(name, new Remembered(reading, askedAt));
 					readings.add(reading);
 					readAt.put(reading, askedAt);
+					continue;
 				}
-				continue;
 			}
 			// No answer this time: go on with what it said last, moved along by the time since
 			Remembered kept = lastGood.get(name);
@@ -351,8 +365,12 @@ public final class MprisSource implements MediaSource {
 				preferredPlayer.get(), current);
 		if (chosen == null) {
 			current = null;
+			emptyPolls = 0;
 			currentTrackId = null;
 			return Snapshot.NOTHING;
+		}
+		if (!chosen.busName.equals(current)) {
+			emptyPolls = 0;
 		}
 		current = chosen.busName;
 		currentTrackId = chosen.trackId;
@@ -401,9 +419,26 @@ public final class MprisSource implements MediaSource {
 
 		String player = playerId(busName);
 
-		Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : url));
+		Track track = TitleCleaner.clean(new Track(title, artist, album, lengthUs / 1000, art, player, url.length() > 1000 ? "" : songUri(player, url)));
 		double rate = value(all.get("Rate")) instanceof Number n ? n.doubleValue() : 1.0;
 		return new Reading(busName, track, Math.max(0, positionUs / 1000), playing, trackId, rate);
+	}
+
+	private static final Pattern SPOTIFY_SONG_URL = Pattern.compile("https://open\\.spotify\\.com/(track|episode)/([A-Za-z0-9]+)(?:[?#].*)?");
+
+	/**
+	 * The song address to keep. Spotify's desktop app sends "https://open.spotify.com/track/ID" as xesam:url; it
+	 * becomes "spotify:track:ID", the form the other readers use, so two songs with the same title, artist and album
+	 * are told apart. Only for the Spotify app itself: a browser's page address changes when you click around.
+	 */
+	static String songUri(String player, String url) {
+		if ("spotify".equals(player)) {
+			Matcher m = SPOTIFY_SONG_URL.matcher(url);
+			if (m.matches()) {
+				return "spotify:" + m.group(1) + ":" + m.group(2);
+			}
+		}
+		return url;
 	}
 
 	/**
