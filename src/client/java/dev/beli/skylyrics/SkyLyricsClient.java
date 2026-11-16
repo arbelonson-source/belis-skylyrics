@@ -252,6 +252,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			ViewLock.release();
 			renderer.onJoinWorld();
+			sky.onJoinWorld();
 		});
 		// Don't keep the old world's level alive on the title screen
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> renderer.onLeaveWorld());

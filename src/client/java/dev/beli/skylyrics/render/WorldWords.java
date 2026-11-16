@@ -1933,7 +1933,8 @@ final class WorldWords {
 					* (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
 			a *= settledAlpha(since);
 			Vector3f centre = CENTRE.set(x, y, z);
-			if (!showing(centre, c.at[n] * grow / 2, grow, look)) {
+			float blown = blownBack(leave, gone, fade, c.rtl);
+			if (!showing(centre, c.at[n] * grow / 2, grow, look, blown)) {
 				continue;
 			}
 			if (clearMiddle) {
@@ -1956,7 +1957,6 @@ final class WorldWords {
 			if (shove > 0) {
 				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit) * flashing);
 			}
-			float blown = blownBack(leave, gone, fade, c.rtl);
 			pose.pushPose();
 			pose.translate(x, y, z);
 			pose.mulPose(TURN.rotationY(Mth.PI - face * DEG).rotateX(c.nod * DEG)
@@ -1998,9 +1998,19 @@ final class WorldWords {
 	 * @param grow  blocks per text unit
 	 */
 	static boolean showing(Vector3f centre, float halfW, float grow, Vec3 look) {
+		return showing(centre, halfW, grow, look, 0);
+	}
+
+	/** The ball's radius round a card's centre, in blocks; {@code blown} is how far a Blow leave has shifted it, in text units. */
+	static float cullRadius(float halfW, float grow, float blown) {
+		float halfH = HALF_HEIGHT * grow;
+		return Mth.sqrt(halfW * halfW + halfH * halfH) + EDGE * grow + Math.abs(blown) * grow;
+	}
+
+	/** {@link #showing(Vector3f, float, float, Vec3)} for a card the Blow leave has shifted {@code blown} text units sideways. */
+	static boolean showing(Vector3f centre, float halfW, float grow, Vec3 look, float blown) {
 		if (ScreenLayer.ready()) {
-			float halfH = HALF_HEIGHT * grow;
-			return ScreenLayer.ballInView(centre, Mth.sqrt(halfW * halfW + halfH * halfH) + EDGE * grow);
+			return ScreenLayer.ballInView(centre, cullRadius(halfW, grow, blown));
 		}
 		float far = centre.length();
 		return far < 1e-3f || (centre.x * look.x + centre.y * look.y + centre.z * look.z) / far >= CULL;

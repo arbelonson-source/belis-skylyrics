@@ -34,4 +34,24 @@ class FollowAnchorTest {
 		assertTrue(FollowAnchor.needsInit(Float.POSITIVE_INFINITY, 0));
 		assertFalse(FollowAnchor.needsInit(10, -30));
 	}
+
+	@Test
+	void joiningAWorldMakesBothAnchorsStartFresh() throws Exception {
+		SkyEffects sky = new SkyEffects(null, null, null, null);
+		set(sky, "anchorYaw", 90f);
+		assertFalse(sky.anchorNeedsInit());
+		sky.onJoinWorld();
+		assertTrue(sky.anchorNeedsInit());
+		LyricsRenderer r = new LyricsRenderer(null, null, null);
+		set(r, "anchorYaw", 90f);
+		assertFalse(r.anchorNeedsInit());
+		r.onJoinWorld();
+		assertTrue(r.anchorNeedsInit());
+	}
+
+	private static void set(Object o, String name, Object v) throws Exception {
+		java.lang.reflect.Field f = o.getClass().getDeclaredField(name);
+		f.setAccessible(true);
+		f.set(o, v);
+	}
 }
