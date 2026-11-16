@@ -253,8 +253,9 @@ public final class LyricsService {
 				return;
 			}
 			if (!temporary(e)) {
+				// The site answered (an odd status) or something broke here: not the internet's fault, so it isn't blamed
 				LOG.warn("Couldn't get lyrics for {}: {}", t.key(), e.toString());
-				setError(gen);
+				setNotFound(gen);
 				return;
 			}
 			// Keep trying while the song plays; never saved to the cache, so it isn't "no lyrics"
@@ -347,12 +348,15 @@ public final class LyricsService {
 		}
 	}
 
-	/** A failure that won't be retried: shows the error for this song, unless the song has changed meanwhile. */
-	private void setError(long gen) {
+	/**
+	 * An answer that isn't lyrics and isn't a network problem: shown as "no lyrics", not saved, unless the song has
+	 * changed meanwhile. Lyrics already on show (a Retry) stay, as they did when this showed an error.
+	 */
+	private void setNotFound(long gen) {
 		beforePublish.run();
 		synchronized (fetchLock) {
 			if (generation.get() == gen) {
-				current = new Snapshot(current.track, current.lyrics, State.ERROR);
+				current = new Snapshot(current.track, current.lyrics, State.NOT_FOUND);
 			}
 		}
 	}

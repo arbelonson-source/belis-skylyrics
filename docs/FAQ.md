@@ -108,7 +108,7 @@ Press **J** in game. If you have [Mod Menu](https://modrinth.com/mod/modmenu), y
 
 ## Can I use the settings with the keyboard?
 
-Yes, you don't need the mouse. **Tab** or **Up** and **Down** move from row to row, **Left** and **Right** change a choice or a slider, **Enter** or **Space** switches the row or presses its button, and **Page Up** and **Page Down** scroll. **Ctrl+Tab** goes to the next tab and **Ctrl+F** (**Cmd+F** on a Mac) starts a search. With the Narrator on, each row reads out its name, the kind of control, its value and its place in the list (like "Layout, choice, Arc, 1 of 3"), and the song library reads out the song you are on, the section, the buttons and the search box. In the song library, Space plays the chosen song, and the sign-in and Try again buttons work from the keyboard too.
+Yes, you don't need the mouse. **Tab** or **Up** and **Down** move from row to row, **Left** and **Right** change a choice or a slider, **Enter** or **Space** switches the row or presses its button, and **Page Up** and **Page Down** scroll. **Ctrl+Tab** goes to the next tab and **Ctrl+F** (**Cmd+F** on a Mac) starts a search. With the Narrator on, each row reads out its name, the kind of control, its value and its place in the list (like "Layout, choice, Arc, 1 of 3"), and the song library reads out the song you are on, the section, the buttons, the search box and what Enter does. The intro tour reads its page too. The song library's grid, shelf and carousel buttons, recent searches and **Open Music tab** button can be reached with the keyboard (press Up from the top row of songs, then Left and Right; Down goes back). In the song library, Space plays the chosen song, and the sign-in and Try again buttons work from the keyboard too.
 
 ## Can I change the keys?
 
@@ -141,7 +141,7 @@ In the World layout, some settings are hidden because that layout doesn't use th
 
 ## Is the mod in Hebrew?
 
-The settings screen and the top bar are in English and Hebrew. They follow your Minecraft language, so pick Hebrew in Minecraft's language settings to get it.
+The settings screen and the top bar are in English and Hebrew. They follow your Minecraft language, so pick Hebrew in Minecraft's language settings to get it. A Hebrew or Arabic lyric line with an English phrase in it (or the other way round) reads each part in its own direction in the Arc layout, and in World with **Flowing line** on.
 
 ## Can I try it without music?
 
@@ -155,7 +155,7 @@ No. It only runs on your own computer (client side). It works in single player a
 
 In a file called `skylyrics.json` in the `config` folder of your Minecraft folder. Saved lyrics and the **Recently heard** list are in `.cache/skylyrics` in the same Minecraft folder. See "Where the files are" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
-Two Minecraft games open at once can share one folder: when one saves, it keeps what the other changed. If Windows, an antivirus or OneDrive holds a file for a moment, the mod tries again; a settings file it still can't read is left alone, not overwritten with defaults.
+Two Minecraft games open at once can share one folder: when one saves, it keeps what the other changed. If Windows, an antivirus or OneDrive holds a file for a moment, the mod tries again, and settings are saved in the background, so the game doesn't pause while they are written; a settings file it still can't read is left alone, not overwritten with defaults.
 
 ## Can two Minecraft versions share one folder?
 

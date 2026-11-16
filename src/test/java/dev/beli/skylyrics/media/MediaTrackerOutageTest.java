@@ -138,4 +138,38 @@ class MediaTrackerOutageTest {
 		assertEquals("Spotify answered with error 500", MediaTracker.failureText(new IOException("Spotify answered with error 500")));
 		assertEquals("Allow Minecraft", MediaTracker.failureText(new IllegalStateException("Allow Minecraft")));
 	}
+
+	@Test
+	void aSourceThatIsNotSetUpYetNeverStartsTheErrorToast() throws Exception {
+		BackingOff source = new BackingOff();
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		try {
+			source.failure = SpotifyWebSource.notSetUp("");
+			source.asking = true;
+			tracker.refresh();
+			settle(tracker, source);
+			assertFalse(tracker.connected());
+			assertEquals("Paste your Client ID first", tracker.error());
+			java.lang.reflect.Field f = MediaTracker.class.getDeclaredField("failingSince");
+			f.setAccessible(true);
+			assertEquals(Long.MIN_VALUE, f.getLong(tracker), "a setup step is not a read failure");
+			assertFalse(tracker.takeReadFailure());
+			// a real failure still counts
+			source.failure = new IOException("boom");
+			tracker.refresh();
+			settle(tracker, source);
+			assertTrue(f.getLong(tracker) != Long.MIN_VALUE);
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	@Test
+	void theEmptyBarHintFollowsThePlatformAndTheReader() {
+		assertEquals("Play a song in Spotify, a browser or any player", MediaTracker.idleHint(true, false, false));
+		assertEquals("Play a song in Spotify or the Music app", MediaTracker.idleHint(true, true, false));
+		assertEquals("Play a song in Spotify, a browser or any player", MediaTracker.idleHint(true, true, true));
+		assertEquals("", MediaTracker.idleHint(false, false, false));
+		assertEquals("", MediaTracker.idleHint(false, true, false));
+	}
 }

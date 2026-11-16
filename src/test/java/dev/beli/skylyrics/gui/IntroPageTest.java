@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
+import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.Themes;
 import org.junit.jupiter.api.Test;
 
@@ -47,5 +48,31 @@ class IntroPageTest {
 		assertTrue(p.spoken().contains(": J"));
 		assertTrue(p.spoken().contains(": K"));
 		assertEquals(2, p.keys().size());
+	}
+
+	@Test
+	void theLookPageStartsOnThePlayersLook() {
+		for (int i = 0; i < Themes.ALL.size(); i++) {
+			SkyLyricsConfig cfg = new SkyLyricsConfig();
+			Themes.apply(Themes.ALL.get(i), cfg);
+			assertEquals(i, IntroScreen.startLook(cfg), "look " + i);
+		}
+	}
+
+	@Test
+	void aCustomLookStartsOnCustomAndTheFirstPressGoesToTheEnds() {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.size = 3.21f; // no theme uses this
+		assertEquals(-1, IntroScreen.startLook(cfg));
+		assertEquals(0, IntroScreen.stepLook(-1, 1));
+		assertEquals(Themes.ALL.size() - 1, IntroScreen.stepLook(-1, -1));
+		assertEquals(1, IntroScreen.stepLook(0, 1));
+		assertEquals(Themes.ALL.size() - 1, IntroScreen.stepLook(0, -1));
+	}
+
+	@Test
+	void theLookPageSaysCustomWhenNoLookMatches() {
+		IntroPage custom = IntroScreen.content(1, false, null, Layout.ARC, null, null);
+		assertEquals(dev.beli.skylyrics.Tr.t("Custom"), custom.chosen());
 	}
 }

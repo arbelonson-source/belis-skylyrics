@@ -5,12 +5,13 @@ import net.minecraft.client.gui.Gui;
 //?} else {
 /*import net.minecraft.client.gui.Hud;
 *///?}
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
 /**
- * How many ticks the action bar message (the text above the hotbar) has left, so the bottom bar can step out of its
- * way. The field has this name on every supported version (26.2 and later moved it to the Hud class).
+ * How many ticks the action bar message (the text above the hotbar) has left, and its text, so the bottom bar can step out of its
+ * way. The fields have these names on every supported version (26.2 and later moved it to the Hud class).
  */
 //? if <26.2 {
 @Mixin(Gui.class)
@@ -20,4 +21,7 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 public interface GuiOverlayAccessor {
 	@Accessor("overlayMessageTime")
 	int skylyrics$getOverlayMessageTime();
+
+	@Accessor("overlayMessageString")
+	Component skylyrics$getOverlayMessageString();
 }

@@ -128,6 +128,22 @@ public final class MediaTracker {
 		return false;
 	}
 
+	/** Whether the source only isn't set up yet (no Client ID, not signed in): the player has a step to do, nothing failed. */
+	static boolean setupPending(@Nullable Throwable e) {
+		return e instanceof SpotifyWebSource.NotSetUp;
+	}
+
+	/**
+	 * The second line of the player bar when nothing is playing: where music can come from. Empty while the reader itself
+	 * is failing (the Status line says why), and on a Mac without the browsers it can't read.
+	 */
+	public static String idleHint(boolean reading, boolean mac, boolean webPlayer) {
+		if (!reading) {
+			return "";
+		}
+		return mac && !webPlayer ? Tr.t("Play a song in Spotify or the Music app") : Tr.t("Play a song in Spotify, a browser or any player");
+	}
+
 	/** What the status shows for a failed read: the internet's fault when it is, else the message. */
 	static String failureText(Throwable e) {
 		return networkFailure(e) ? Tr.t("Can't reach the internet or Spotify")
@@ -170,7 +186,9 @@ public final class MediaTracker {
 			connected = false;
 			error = failureText(failure);
 			networkDown = networkFailure(failure);
-			if (failingSince == NOT_FAILING) {
+			if (setupPending(failure)) {
+				failingSince = NOT_FAILING; // the status line says what to do; an error toast would be wrong
+			} else if (failingSince == NOT_FAILING) {
 				failingSince = System.nanoTime();
 			}
 			if (!loggedError) {

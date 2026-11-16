@@ -292,6 +292,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aNonFinitePositionCarriesNothing() {
+		Vec3 last = new Vec3(10, 80, 10);
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, new Vec3(Double.NaN, 80, 10), true, 0.016f));
+		assertEquals(Vec3.ZERO, WorldWords.carry(new Vec3(10, Double.NaN, 10), new Vec3(11, 80, 10), true, 0.016f));
+	}
+
+	@Test
+	void aNonFinitePositionResetsTheFastRun() {
+		Vec3 last = new Vec3(10, 80, 10);
+		assertEquals(0, WorldWords.fastRun(2, last, new Vec3(Double.NaN, 80, 10), 0.016f));
+		assertEquals(0, WorldWords.fastRun(2, new Vec3(10, Double.NaN, 10), new Vec3(11, 80, 10), 0.016f));
+	}
+
+	@Test
 	void aFastRunOfFramesCountsAsFlyingButATeleportDoesNot() {
 		Vec3 last = new Vec3(10, 80, 10);
 		// 1 block in 16 ms is 62 blocks a second: counts; walking pace (0.1 block) resets

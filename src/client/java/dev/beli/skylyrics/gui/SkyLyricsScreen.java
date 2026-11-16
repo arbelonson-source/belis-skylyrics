@@ -608,9 +608,13 @@ public final class SkyLyricsScreen extends Screen {
 					default -> Tr.t("Sign in");
 				}, () -> {
 					switch (spotify.account()) {
-						case SIGNED_IN -> spotify.signOut();
+						case SIGNED_IN -> {
+							spotifyError = "";
+							spotify.signOut();
+						}
 						case WAITING -> spotify.cancelLogin();
 						default -> {
+							spotifyError = "";
 							try {
 								ConfirmLinkScreen.confirmLinkNow(this, URI.create(spotify.startLogin()));
 							} catch (IOException e) {
@@ -1734,7 +1738,8 @@ public final class SkyLyricsScreen extends Screen {
 			int tx = barX();
 			if (track == Track.NONE) {
 				g.drawString(font, Ui.visual(Tr.t("Nothing playing")), tx, y + 13, Ui.TEXT, false);
-				g.drawString(font, Ui.visual(Ui.clip(font, Tr.t("Play a song in Spotify, a browser or any player"), w - tx + x - 10)),
+				g.drawString(font, Ui.visual(Ui.clip(font, MediaTracker.idleHint(tracker.connected(), SkyLyricsClient.mac(),
+						SpotifyWebSource.KEY.equals(cfg.preferredPlayer)), w - tx + x - 10)),
 						tx, y + 25, Ui.MUTED, false);
 				return;
 			}

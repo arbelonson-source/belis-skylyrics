@@ -1041,6 +1041,9 @@ final class WorldWords {
 		float jump = Math.max(GLIDE_JUMP, GLIDE_SPEED * Mth.clamp(seconds, 0, 1));
 		double d2 = last.distanceToSqr(eye);
 		double fast = (double) FAST_SPEED * seconds;
+		if (!Double.isFinite(d2)) {
+			return 0; // a NaN position is no speed: it counts like a jump, not as a fast frame
+		}
 		return d2 > jump * jump || d2 <= fast * fast ? 0 : run + 1;
 	}
 
@@ -1050,8 +1053,9 @@ final class WorldWords {
 	 */
 	static Vec3 carry(@Nullable Vec3 last, Vec3 eye, boolean gliding, float seconds) {
 		float jump = Math.max(GLIDE_JUMP, GLIDE_SPEED * Mth.clamp(seconds, 0, 1));
-		if (!gliding || last == null || last.distanceToSqr(eye) > jump * jump) {
-			return Vec3.ZERO;
+		double d2 = last == null ? 0 : last.distanceToSqr(eye);
+		if (!gliding || last == null || !Double.isFinite(d2) || d2 > jump * jump) {
+			return Vec3.ZERO; // also for a NaN position: nothing to carry
 		}
 		return eye.subtract(last);
 	}

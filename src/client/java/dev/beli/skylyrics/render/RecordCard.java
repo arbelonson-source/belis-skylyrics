@@ -104,7 +104,9 @@ public final class RecordCard {
 		//?}
 				&& !Visibility.hidden(mc, cfg)
 				// The debug screen (F3) fills the top corners and a card there would be drawn over its text
-				&& !(topCorner(cfg.cardCorner) && NowPlayingHud.f3Open(mc));
+				&& !(topCorner(cfg.cardCorner) && NowPlayingHud.f3Open(mc))
+				// The player list (held Tab) is drawn after the card, over it and see-through
+				&& !(topCorner(cfg.cardCorner) && NowPlayingHud.tabListUp(mc));
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			cardY = Float.NaN;
