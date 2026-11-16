@@ -291,4 +291,16 @@ class TitleCleanerTest {
 	void fullwidthLettersMatchPlainOnes() {
 		assertTrue(TitleCleaner.sameSong("\uFF22\uFF4C\uFF55\uFF45", "Blue"));
 	}
+
+	@Test
+	void withoutVersionBracketsDropsOnlyVersionTags() {
+		assertEquals("Song", TitleCleaner.withoutVersionBrackets("Song (2011 Remaster)"));
+		assertEquals("Song", TitleCleaner.withoutVersionBrackets("Song [Live]"));
+		assertEquals("Song", TitleCleaner.withoutVersionBrackets("Song (From \"Film\")"));
+		assertEquals("Song (Remix)", TitleCleaner.withoutVersionBrackets("Song (Remix)"));
+		assertEquals("Song (Part 2)", TitleCleaner.withoutVersionBrackets("Song (Part 2)"));
+		assertEquals("Song (Instrumental)", TitleCleaner.withoutVersionBrackets("Song (Instrumental)"));
+		assertEquals("Song (Karaoke)", TitleCleaner.withoutVersionBrackets("Song (Karaoke)"));
+		assertEquals("Song (Instrumental Version)", TitleCleaner.withoutVersionBrackets("Song (Instrumental Version)"));
+	}
 }
