@@ -153,6 +153,20 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aBlownCardKeepsShowingWhileItsShiftCarriesItIntoView() {
+		float base = WorldWords.cullRadius(1, 0.06f, 0);
+		float shifted = WorldWords.cullRadius(1, 0.06f, WorldWords.BLOW);
+		assertEquals(base + WorldWords.BLOW * 0.06f, shifted, 1e-5);
+		assertEquals(shifted, WorldWords.cullRadius(1, 0.06f, -WorldWords.BLOW), 1e-5, "either direction");
+		// A card whose centre is just off the edge but whose blown word reaches in still shows
+		ScreenLayer.capture(new Matrix4f(), new Matrix4f().perspective((float) Math.toRadians(70), 16 / 9f, 0.05f, 1000));
+		Vec3 ahead = new Vec3(0, 0, -1);
+		Vector3f edge = new Vector3f((float) Math.sin(Math.toRadians(65)) * 10, 0, (float) -Math.cos(Math.toRadians(65)) * 10);
+		assertFalse(WorldWords.showing(edge, 1, 0.06f, ahead, 0));
+		assertTrue(WorldWords.showing(edge, 1, 0.06f, ahead, WorldWords.BLOW));
+	}
+
+	@Test
 	void onlyCardsThatCouldBeOnScreenAreDrawn() {
 		Vec3 ahead = new Vec3(0, 0, -1);
 		// Off to the side at 65°: past the edge of a normal view, so skipped

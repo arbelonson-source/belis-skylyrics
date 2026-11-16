@@ -143,6 +143,20 @@ public final class SkyEffects {
 	private final float[] meteorAge = new float[METEORS], meteorLife = new float[METEORS];
 	private int meteorsAlive;
 
+	/** You joined a world: forget the old anchor so the effects start where you look now (Lazy follow). */
+	public void onJoinWorld() {
+		resetAnchor();
+	}
+
+	void resetAnchor() {
+		anchorYaw = Float.NaN;
+		following = false;
+	}
+
+	boolean anchorNeedsInit() {
+		return FollowAnchor.needsInit(anchorYaw, anchorPitch);
+	}
+
 	public SkyEffects(LyricsRenderer lyrics, LyricsService service, AlbumArt art, MediaTracker tracker) {
 		this.lyrics = lyrics;
 		this.service = service;

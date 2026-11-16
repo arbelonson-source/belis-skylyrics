@@ -197,6 +197,17 @@ public final class LyricsRenderer {
 	/** You joined a world: its first song title floats up again. A dimension change within a world doesn't count. */
 	public void onJoinWorld() {
 		announced = null;
+		resetAnchor();
+	}
+
+	/** Forget where the lyrics were anchored, so the next frame starts them where you look now (Lazy follow). */
+	void resetAnchor() {
+		anchorYaw = Float.NaN;
+		following = false;
+	}
+
+	boolean anchorNeedsInit() {
+		return FollowAnchor.needsInit(anchorYaw, anchorPitch);
 	}
 
 	/** You swung at something; a World word under the crosshair gets knocked. */
