@@ -37,28 +37,23 @@ class UpdaterTest {
 		return file;
 	}
 
+	/** A release-shaped URL, so the download is really attempted; the body is cut short and is no jar. */
 	@Test
 	void failedDownloadStillTellsThePlayer() throws Exception {
-		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-		// Promises a body and then cuts the connection
-		server.createContext("/", ex -> {
-			ex.sendResponseHeaders(200, 1000);
-			ex.getResponseBody().write(new byte[10]);
-			ex.close();
-		});
-		server.start();
-		try {
-			Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
-			var asset = new UpdateCheck.Asset("belis-skylyrics-0.2.0+1.21.11.jar",
-					"http://127.0.0.1:" + server.getAddress().getPort() + "/a.jar", null);
-			var release = new UpdateCheck.Release("0.2.0", List.of(asset));
-			Updater.Notice n = Updater.update(Updates.INSTALL, HttpClient.newHttpClient(), old, release, asset);
-			assertNotNull(n);
-			assertEquals("0.2.0", n.version());
-			assertFalse(n.downloaded());
-			assertTrue(Files.exists(old));
-		} finally {
-			server.stop(0);
+		String name = "belis-skylyrics-0.2.0+1.21.11.jar";
+		String url = "https://github.com/arbelonson-source/belis-skylyrics/releases/download/v0.2.0/" + name;
+		Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
+		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(new byte[10]);
+		var asset = new UpdateCheck.Asset(name, url, null);
+		var release = new UpdateCheck.Release("0.2.0", List.of(asset));
+		Updater.Notice n = Updater.update(Updates.INSTALL, net, old, release, asset);
+		assertEquals(1, net.requests.size(), "the download was really tried");
+		assertNotNull(n);
+		assertEquals("0.2.0", n.version());
+		assertFalse(n.downloaded());
+		assertFalse(Files.exists(dir.resolve(name)), "nothing installed");
+		try (var left = Files.list(dir)) {
+			assertEquals(List.of(old.getFileName().toString()), left.map(f -> f.getFileName().toString()).toList(), "no .part left");
 		}
 	}
 
@@ -107,10 +102,37 @@ class UpdaterTest {
 		int exists = script.indexOf("if(-not [IO.File]::Exists($w)){exit}");
 		int aside = script.indexOf("[IO.File]::Move($o,$a)");
 		int moveNew = script.indexOf("[IO.File]::Move($w,$t)");
-		int deleteOld = script.indexOf("$done){try{[IO.File]::Delete($a)}");
+		int deleteOld = script.indexOf("$done){if($mine){try{[IO.File]::Delete($a)}");
 		int restore = script.indexOf("[IO.File]::Move($a,$o)");
 		assertTrue(exists > 0 && exists < aside && aside < moveNew && moveNew < deleteOld && deleteOld < restore, script);
 		assertFalse(script.contains("Delete($o)"), "the old jar is never deleted outright");
+	}
+
+	/** One line, no double quote, the distinctive aside name, and the guard for a second game's swap that already ran. */
+	@Test
+	void swapScriptLeavesAnotherGamesFinishedSwapAloneAndNeverTouchesAPlayersBackup() {
+		String script = Updater.swapScript();
+		assertFalse(script.contains("\""));
+		assertFalse(script.contains("\n"));
+		assertTrue(script.contains("$a=$o+'.skylyrics-old'"), script);
+		assertFalse(script.contains("'.old'"), script);
+		assertTrue(script.contains("if(-not [IO.File]::Exists($o)){if([IO.File]::Exists($t)){[IO.File]::Delete($w);exit}"), script);
+		assertTrue(script.contains("$mine=$true"), script);
+		assertTrue(script.contains("if($mine){try{[IO.File]::Delete($a)}"), script);
+		assertTrue(script.contains("elseif($mine){try{[IO.File]::Move($a,$o)}"), script);
+	}
+
+	@Test
+	void onlyOurOwnSetAsideFilesAreCleanedNotAPlayersOldBackup() throws Exception {
+		long now = System.currentTimeMillis();
+		java.nio.file.attribute.FileTime old = java.nio.file.attribute.FileTime.fromMillis(now - 2 * 24L * 3600 * 1000);
+		Path ours = Files.createFile(dir.resolve("belis-skylyrics-x.jar.skylyrics-old"));
+		Path backup = Files.createFile(dir.resolve("belis-skylyrics-x.jar.old"));
+		Files.setLastModifiedTime(ours, old);
+		Files.setLastModifiedTime(backup, old);
+		assertEquals(1, Updater.cleanLeftovers(dir, now));
+		assertFalse(Files.exists(ours));
+		assertTrue(Files.exists(backup), "a player's own backup stays");
 	}
 
 	@Test
@@ -136,7 +158,7 @@ class UpdaterTest {
 		Path stale = Files.createFile(dir.resolve("skylyrics-update-123456.bat"));
 		Path fresh = Files.createFile(dir.resolve("skylyrics-update-654321.bat"));
 		Path other = Files.createFile(dir.resolve("someone-else.bat"));
-		Path aside = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar.old"));
+		Path aside = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar.skylyrics-old"));
 		for (Path p : List.of(stale, other, aside)) {
 			Files.setLastModifiedTime(p, old);
 		}
