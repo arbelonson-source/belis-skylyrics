@@ -496,7 +496,7 @@ public final class SkyLyricsConfig {
 		return new SkyLyricsConfig();
 	}
 
-	/** Copies the settings file to {@code skylyrics.json.bad}, so a reset never costs the original (a smaller file doesn't replace a bigger older copy). */
+	/** Copies the settings file to {@code skylyrics.json.bad} (or the next free {@code .bad.N}), so a reset never costs the original; an identical copy isn't made twice. */
 	static void keepCopy(Path file) {
 		try {
 			dev.beli.skylyrics.util.SafeFile.keepBad(file);
