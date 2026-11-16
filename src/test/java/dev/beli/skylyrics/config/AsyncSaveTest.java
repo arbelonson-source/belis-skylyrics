@@ -155,6 +155,50 @@ class AsyncSaveTest {
 	}
 
 	@Test
+	void anErrorInsideTheWriterDoesNotStopLaterSaves() {
+		SkyLyricsConfig c = new SkyLyricsConfig();
+		SkyLyricsConfig.mainThread = r -> {
+			throw new OutOfMemoryError("test");
+		};
+		c.saveLater(dir.resolve("skylyrics.json"));
+		assertEquals(1, held.size());
+		try {
+			runWriter();
+		} catch (OutOfMemoryError expected) {
+			// the writer task ends with the Error
+		}
+		c.glow = 0.3f;
+		c.saveLater(dir.resolve("skylyrics.json"));
+		assertEquals(1, held.size(), "a new writer is started for the next save");
+	}
+
+	@Test
+	void aSaveThatFailedIsTriedAgainOnFlush() throws Exception {
+		Path blocker = dir.resolve("blocked");
+		Files.writeString(blocker, "a file where the folder should be");
+		Path file = blocker.resolve("skylyrics.json");
+		SkyLyricsConfig c = new SkyLyricsConfig();
+		c.glow = 0.3f;
+		c.saveLater(file);
+		runWriter(); // fails: the parent is a file
+		assertFalse(Files.exists(file));
+		Files.delete(blocker);
+		assertTrue(c.flush(1000));
+		assertEquals(0.3f, open(file).glow, 1e-6f);
+	}
+
+	@Test
+	void aFailedSaveIsTriedOnlyOnceMoreOnFlush() throws Exception {
+		Path blocker = dir.resolve("blocked");
+		Files.writeString(blocker, "x");
+		SkyLyricsConfig c = new SkyLyricsConfig();
+		c.saveLater(blocker.resolve("skylyrics.json"));
+		runWriter();
+		assertFalse(c.flush(1000)); // the retry fails too
+		assertTrue(c.flush(1000)); // and is not remembered again
+	}
+
+	@Test
 	void flushGivesUpWhenTheWriterNeverRuns() {
 		SkyLyricsConfig c = new SkyLyricsConfig();
 		c.saveLater(dir.resolve("skylyrics.json"));

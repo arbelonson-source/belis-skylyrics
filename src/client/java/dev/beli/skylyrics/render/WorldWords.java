@@ -1041,6 +1041,9 @@ final class WorldWords {
 		float jump = Math.max(GLIDE_JUMP, GLIDE_SPEED * Mth.clamp(seconds, 0, 1));
 		double d2 = last.distanceToSqr(eye);
 		double fast = (double) FAST_SPEED * seconds;
+		if (!Double.isFinite(d2)) {
+			return 0; // a NaN position is no speed: it counts like a jump, not as a fast frame
+		}
 		return d2 > jump * jump || d2 <= fast * fast ? 0 : run + 1;
 	}
 
