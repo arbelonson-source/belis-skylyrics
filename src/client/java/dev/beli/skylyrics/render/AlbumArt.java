@@ -124,6 +124,8 @@ public final class AlbumArt {
 	}
 	/** The generation of the cover on the GPU now, -1 for none yet. */
 	private volatile long uploadedGen = -1;
+	/** The generation at which the current song (or its cover being dropped) began; covers uploaded before it are another song's. */
+	private volatile long songStartGen = 0;
 	private @Nullable DynamicTexture texture;
 	private String loadedUrl = "";
 	private String loadedSong = "";
@@ -137,7 +139,8 @@ public final class AlbumArt {
 
 	/** True if {@link #TEXTURE} currently shows this song's cover. Call {@link #upload()} first. */
 	public boolean hasTexture() {
-		return isCurrent(uploadedGen, generation.get());
+		// A cover of the same song stays on show while a corrected one loads: it counts from the song's first load on
+		return uploadedGen >= songStartGen;
 	}
 
 	/** Whether a cover from song change {@code coverGen} belongs to the song of change {@code currentGen}. */
@@ -161,8 +164,12 @@ public final class AlbumArt {
 		boolean newSong = !song.equals(loadedSong);
 		loadedSong = song;
 		long gen;
+		boolean keepOnFail = !newSong && !url.isEmpty(); // a corrected cover that fails leaves the one we have
 		synchronized (accept) {
 			gen = generation.incrementAndGet();
+			if (newSong || url.isEmpty()) {
+				songStartGen = gen; // the old cover goes at once; for the same song it stays until the corrected one is up
+			}
 			// The last song's colour must not glow on this one while its cover loads (or if it never does). A cover that
 			// only changed for the same song (a late album, another image size) keeps the colour until the new one is in.
 			if (newSong || url.isEmpty()) {
@@ -184,12 +191,12 @@ public final class AlbumArt {
 				stale.image().close();
 			}
 			if (!url.isEmpty()) {
-				job = executor.submit(task(url, gen, 0)); // submit doesn't block, so job is set before any later load() looks
+				job = executor.submit(task(url, gen, 0, keepOnFail)); // submit doesn't block, so job is set before any later load() looks
 			}
 		}
 	}
 
-	private Runnable task(String url, long gen, int failures) {
+	private Runnable task(String url, long gen, int failures, boolean keepOnFail) {
 		return () -> {
 			try {
 				BufferedImage image = fetcher.read(url);
@@ -197,9 +204,12 @@ public final class AlbumArt {
 					return;
 				}
 				if (image == null) {
+					if (keepOnFail) {
+						LOG.debug("Corrected album art {} not usable, keeping the current cover", url);
+					}
 					// A cover we can't read (WebP, a failed answer, a data: URI) must not leave the last song's colour behind
 					synchronized (accept) {
-						if (generation.get() == gen) {
+						if (generation.get() == gen && !keepOnFail) {
 							color = colorFor(null);
 						}
 					}
@@ -231,10 +241,12 @@ public final class AlbumArt {
 				LOG.debug("Couldn't load album art {}: {}", url, e.toString());
 				synchronized (accept) {
 					if (generation.get() == gen) {
-						color = FALLBACK_COLOR;
+						if (!keepOnFail) {
+							color = FALLBACK_COLOR;
+						}
 						// No network at song start must not mean no cover for the whole song
 						if (e instanceof Exception && CoverRetry.temporary(e)) {
-							retryLater(url, gen, failures + 1);
+							retryLater(url, gen, failures + 1, keepOnFail);
 						}
 					}
 				}
@@ -243,7 +255,7 @@ public final class AlbumArt {
 	}
 
 	/** Called with {@link #accept} held. Keeps at most one retry pending, and only for the song it was scheduled for. */
-	private void retryLater(String url, long gen, int failures) {
+	private void retryLater(String url, long gen, int failures, boolean keepOnFail) {
 		Future<?> old = retry;
 		if (old != null) {
 			old.cancel(false);
@@ -254,7 +266,7 @@ public final class AlbumArt {
 					return;
 				}
 				retry = null;
-				job = executor.submit(task(url, gen, failures));
+				job = executor.submit(task(url, gen, failures, keepOnFail));
 			}
 		}, CoverRetry.delayMs(failures));
 	}
