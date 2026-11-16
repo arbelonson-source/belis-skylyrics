@@ -41,6 +41,15 @@ public final class MediaTracker {
 	static final long TOAST_AFTER_NS = 10_000_000_000L;
 	private Consumer<Track> onTrackChange = t -> {
 	};
+	private Consumer<Track> onCoverChange = t -> {
+	};
+	/**
+	 * The most cover corrections passed on per song. A player's first cover can be the last song's (the Windows helper reads it
+	 * again 5 s in), so one or two corrections are real; but some players (a few Linux browsers) write a new temp file on every
+	 * update, and each one would reload the cover for the whole song.
+	 */
+	static final int MAX_COVER_CHANGES = 2;
+	private int coverChanges;
 	private boolean loggedError;
 	private boolean loggedFault;
 	/** How many outages were logged and how many ended; one each per outage, whatever its length. */
@@ -70,6 +79,14 @@ public final class MediaTracker {
 
 	public void onTrackChange(Consumer<Track> listener) {
 		this.onTrackChange = listener;
+	}
+
+	/**
+	 * Called when the same song comes with another, non-empty cover address (a corrected cover): only the cover should reload,
+	 * not the lyrics or the song flash. At most {@link #MAX_COVER_CHANGES} per song.
+	 */
+	public void onCoverChange(Consumer<Track> listener) {
+		this.onCoverChange = listener;
 	}
 
 	private MediaSource source() {
@@ -211,6 +228,9 @@ public final class MediaTracker {
 		pendingCount = 0;
 
 		if (newSong || filledIn(old.track(), freshTrack)) {
+			if (newSong) {
+				coverChanges = 0;
+			}
 			snapshot = fresh;
 			zeroPolls = 0;
 			zeroRunBase = null;
@@ -219,6 +239,10 @@ public final class MediaTracker {
 			onTrackChange.accept(freshTrack);
 			return;
 		}
+
+		// Same song with a different cover (not an empty one filled in, which is passed on above)
+		boolean coverChanged = !old.track().artUrl().isEmpty() && !freshTrack.artUrl().isEmpty()
+				&& !old.track().artUrl().equals(freshTrack.artUrl()) && ++coverChanges <= MAX_COVER_CHANGES;
 
 		// Same song: only accept the new position if it really moved (seek), to avoid jitter
 		long predicted = positionAt(old, fresh.readAtNanos());
@@ -235,6 +259,9 @@ public final class MediaTracker {
 			snapshot = new Snapshot(freshTrack, base.positionMs(), base.playing(), base.readAtNanos(), base.rate());
 		}
 		sourceName = source.displayName();
+		if (coverChanged) {
+			onCoverChange.accept(freshTrack);
+		}
 	}
 
 	/**

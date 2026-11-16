@@ -118,7 +118,7 @@ class HeardLibraryTest {
 	@Test
 	void savedFileComesBackAsItWas() {
 		HeardLibrary lib = library();
-		lib.record(new Track("שיר ראשון", "להקה", "אלבום", 123_000, "file:///c.png", "spotify", "https://open.spotify.com/track/abc"));
+		lib.record(new Track("שיר ראשון", "להקה", "אלבום", 123_000, "https://img.example/c.png", "spotify", "https://open.spotify.com/track/abc"));
 		lib.record(song("Two", "B"));
 		lib.flush();
 		HeardLibrary again = library();
@@ -126,8 +126,22 @@ class HeardLibraryTest {
 		LibraryItem hebrew = again.liked(0).join().items().get(1);
 		assertEquals("להקה", hebrew.artists());
 		assertEquals(123_000, hebrew.lengthMs());
-		assertEquals("file:///c.png", hebrew.coverUrl());
+		assertEquals("https://img.example/c.png", hebrew.coverUrl());
 		assertEquals("https://open.spotify.com/track/abc", hebrew.uri());
+	}
+
+	/** The Windows helper's cover is a temporary file the cover cache can't load and that is deleted soon: no dead path in the list. */
+	@Test
+	void aFileCoverIsNotRemembered() {
+		HeardLibrary lib = library();
+		lib.record(new Track("One", "A", "", 1000, "file:///C:/Users/x/cover-12-1.img", "edge"));
+		lib.record(new Track("Two", "B", "", 1000, "https://img.example/b.jpg", "edge"));
+		lib.record(new Track("Three", "C", "", 1000, "FILE:///tmp/c.img", "edge"));
+		lib.flush();
+		List<LibraryItem> items = library().liked(0).join().items();
+		assertEquals("", items.get(2).coverUrl());
+		assertEquals("https://img.example/b.jpg", items.get(1).coverUrl());
+		assertEquals("", items.get(0).coverUrl());
 	}
 
 	@Test

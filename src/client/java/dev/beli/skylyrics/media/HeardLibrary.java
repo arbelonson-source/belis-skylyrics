@@ -140,7 +140,7 @@ public final class HeardLibrary implements Library {
 			return;
 		}
 		Entry fresh = new Entry(clip(track.title()), clip(track.artist()), clip(track.album()), Math.max(0, track.lengthMs()),
-				clip(track.artUrl()), clip(track.uri()), clip(track.player()));
+				remoteCover(clip(track.artUrl())), clip(track.uri()), clip(track.player()));
 		synchronized (lock) {
 			Entry old = null;
 			for (int i = 0; i < songs.size(); i++) {
@@ -152,7 +152,7 @@ public final class HeardLibrary implements Library {
 			if (old != null) {
 				// The same song heard again: keep what the earlier time knew if this time doesn't say
 				fresh = new Entry(fresh.title, fresh.artist, fresh.album.isEmpty() ? old.album : fresh.album,
-						fresh.lengthMs > 0 ? fresh.lengthMs : old.lengthMs, fresh.coverUrl.isEmpty() ? old.coverUrl : fresh.coverUrl,
+						fresh.lengthMs > 0 ? fresh.lengthMs : old.lengthMs, fresh.coverUrl.isEmpty() ? remoteCover(old.coverUrl) : fresh.coverUrl,
 						fresh.uri.isEmpty() ? old.uri : fresh.uri, fresh.player.isEmpty() ? old.player : fresh.player);
 			}
 			songs.addFirst(fresh);
@@ -161,6 +161,14 @@ public final class HeardLibrary implements Library {
 			}
 		}
 		save();
+	}
+
+	/**
+	 * Only an http(s) cover is worth remembering: the list's cover cache loads nothing else, and a {@code file:} one is the
+	 * Windows helper's temporary copy that is deleted within a few songs, so it would only be a dead path.
+	 */
+	static String remoteCover(String url) {
+		return url.regionMatches(true, 0, "file:", 0, 5) ? "" : url;
 	}
 
 	/** Forgets every remembered song. */

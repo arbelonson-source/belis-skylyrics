@@ -198,6 +198,56 @@ class WindowsMediaSourceTest {
 		assertFalse(WindowsMediaSource.shouldBackOff(true, s, s + 2_000_000_000L), "still running");
 	}
 
+	@Test
+	void retryDelayGrowsAndIsCapped() {
+		long s = 1_000_000_000L;
+		assertEquals(15 * s, WindowsMediaSource.retryDelayNs(0));
+		assertEquals(15 * s, WindowsMediaSource.retryDelayNs(1));
+		assertEquals(30 * s, WindowsMediaSource.retryDelayNs(2));
+		assertEquals(60 * s, WindowsMediaSource.retryDelayNs(3));
+		assertEquals(120 * s, WindowsMediaSource.retryDelayNs(4));
+		assertEquals(240 * s, WindowsMediaSource.retryDelayNs(5));
+		assertEquals(300 * s, WindowsMediaSource.retryDelayNs(6));
+		assertEquals(300 * s, WindowsMediaSource.retryDelayNs(7));
+		assertEquals(300 * s, WindowsMediaSource.retryDelayNs(1000));
+		assertEquals(300 * s, WindowsMediaSource.retryDelayNs(Integer.MAX_VALUE));
+	}
+
+	@Test
+	void lastLogLineIsTheLastNonEmptyLine() throws Exception {
+		Path log = dir.resolve("windows-media.log");
+		assertEquals("", WindowsMediaSource.lastLogLine(log), "no file");
+		Files.writeString(log, "");
+		assertEquals("", WindowsMediaSource.lastLogLine(log), "empty file");
+		Files.writeString(log, "first\r\nCannot run: blocked by policy  \r\n\r\n   \n");
+		assertEquals(" (Cannot run: blocked by policy)", WindowsMediaSource.lastLogLine(log));
+		Files.write(log, "\uFEFFh\0e\0y\0\n\0".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+		assertEquals(" (hey)", WindowsMediaSource.lastLogLine(log), "UTF-16 look-alike");
+	}
+
+	/** A new helper must not inherit the old one's unanswered questions, or it would be thrown away after one miss. */
+	@Test
+	@Timeout(60)
+	void missedRepliesDoNotCarryOverToANewHelper() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String body = "printf '{\"ready\":true}\\n'; while read l; do :; done";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, 20_000, 300);
+		try {
+			assertThrows(IOException.class, source::poll);
+			assertThrows(IOException.class, source::poll); // two misses on the first helper
+			source.close();
+			assertThrows(IOException.class, source::poll); // one miss on the second
+			assertThrows(IOException.class, source::poll); // two: must still be the same helper
+			assertEquals(2, starts[0]);
+		} finally {
+			source.close();
+		}
+	}
+
 	/** A helper that answers "ok":false and exits at once must not be started again on every poll. */
 	@Test
 	@Timeout(60)

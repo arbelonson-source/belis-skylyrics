@@ -157,6 +157,12 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			Steps.run("cover", () -> art.load(track), failed);
 			Steps.run("flash", hud::flash, failed);
 		});
+		tracker.onCoverChange(track -> {
+			java.util.function.BiConsumer<String, RuntimeException> failed =
+					(step, e) -> LOG.warn("Cover change step '{}' failed: {}", step, e.toString());
+			// The cover only: the lyrics and the song flash are already running for this song
+			Steps.run("cover", () -> art.load(track), failed);
+		});
 		tracker.start(500);
 
 		registerKeys();

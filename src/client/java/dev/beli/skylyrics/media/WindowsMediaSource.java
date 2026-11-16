@@ -48,8 +48,10 @@ public final class WindowsMediaSource implements MediaSource {
 	/** The very first start of the session gets longer: antivirus often scans PowerShell the first time. */
 	private static final long FIRST_START_TIMEOUT_MS = 45_000;
 	private static final long REPLY_TIMEOUT_MS = 4_000;
-	/** After the helper fails to start, wait before trying again instead of starting PowerShell on every poll. */
+	/** After the helper fails to start, wait before trying again instead of starting PowerShell on every poll: this long the first time. */
 	private static final long RETRY_NS = 15_000_000_000L;
+	/** The longest wait between tries. A PC that blocks PowerShell (AppLocker, Constrained Language Mode) logs an event per try. */
+	private static final long MAX_RETRY_NS = 300_000_000_000L;
 	/** A helper that stops this soon after starting counts as failing to start. */
 	private static final long EARLY_EXIT_NS = 10_000_000_000L;
 	/** Unanswered questions in a row before the helper counts as stuck and is restarted. */
@@ -77,6 +79,9 @@ public final class WindowsMediaSource implements MediaSource {
 	private long seq;
 	private int missed;
 	private long retryAt;
+	/** Starts that failed since a helper last answered, and the message last logged for them (so a stuck PC logs once). */
+	private int failuresInARow;
+	private String loggedStartError = "";
 	private long startedAt;
 	/** Whether a helper has been ready yet this session. */
 	private boolean everReady;
@@ -342,8 +347,7 @@ public final class WindowsMediaSource implements MediaSource {
 			}
 			if (line == null) {
 				if (++missed >= MAX_MISSED) {
-					stop();
-					missed = 0;
+					stop(); // also clears missed
 				}
 				throw new IOException(Tr.t("Windows didn't say what's playing in time"));
 			}
@@ -353,6 +357,10 @@ public final class WindowsMediaSource implements MediaSource {
 			}
 			missed = 0;
 			JsonElement ok = reply.get("ok");
+			if (ok != null && ok.isJsonPrimitive() && ok.getAsBoolean()) {
+				failuresInARow = 0; // a helper that answers works: the next failure starts the waits over
+				loggedStartError = "";
+			}
 			if (ok == null || !ok.isJsonPrimitive() || !ok.getAsBoolean()) {
 				String error = helperError(reply);
 				throw new IOException(error.isEmpty() ? Tr.t("The Windows music reader sent something unexpected") : error);
@@ -380,8 +388,13 @@ public final class WindowsMediaSource implements MediaSource {
 		} catch (IOException | RuntimeException e) {
 			stop();
 			startError = detail(e);
-			retryAt = System.nanoTime() + RETRY_NS;
-			LOG.warn("Couldn't read Windows' media controls: {}", startError);
+			failuresInARow++;
+			retryAt = System.nanoTime() + retryDelayNs(failuresInARow);
+			// A PC that can never run PowerShell fails the same way every time: say it once (and again only when it changes)
+			if (!startError.equals(loggedStartError)) {
+				loggedStartError = startError;
+				LOG.warn("Couldn't read Windows' media controls: {}", startError);
+			}
 			throw new IOException(startError, e);
 		}
 	}
@@ -413,8 +426,15 @@ public final class WindowsMediaSource implements MediaSource {
 		if (shouldBackOff(false, startedAt, System.nanoTime())) {
 			// Starting it again straight away would most likely end the same way
 			startError = Tr.t("The Windows music reader keeps stopping (see windows-media.log)");
-			retryAt = System.nanoTime() + RETRY_NS;
+			failuresInARow++;
+			retryAt = System.nanoTime() + retryDelayNs(failuresInARow);
 		}
+	}
+
+	/** How long to wait before starting the helper again after this many failed starts in a row: 15 s, 30 s, 60 s, ... up to 5 minutes. */
+	static long retryDelayNs(int failuresInARow) {
+		int doublings = Math.max(0, Math.min(failuresInARow, 31) - 1);
+		return Math.min(MAX_RETRY_NS, RETRY_NS << Math.min(doublings, 10));
 	}
 
 	/** A helper that is gone soon after it started would most likely stop again, so wait before starting another. */
@@ -481,10 +501,35 @@ public final class WindowsMediaSource implements MediaSource {
 			String error = hello == null ? "" : helperError(hello);
 			throw new IOException(!error.isEmpty() ? error
 					: first == null ? Tr.t("The Windows music reader took too long to start. Reopen the game and give it a moment.")
-					: Tr.t("The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game."));
+					: Tr.t("The Windows music reader stopped right away. Check that Windows PowerShell is installed, then reopen the game.")
+							+ lastLogLine(dir.resolve("windows-media.log")));
 		}
 		everReady = true;
 		LOG.info("Reading music from Windows' media controls");
+	}
+
+	/**
+	 * What the helper's own log says last, as " (that line)", or "" when there is none. The helper's error output goes to
+	 * windows-media.log, which is started empty for every helper run, so this is what this run said (PowerShell's own message
+	 * when, say, Constrained Language Mode or AppLocker stops the script).
+	 */
+	static String lastLogLine(Path log) {
+		try {
+			if (!Files.isRegularFile(log) || Files.size(log) > 1_000_000) {
+				return "";
+			}
+			// Some Windows setups write it as UTF-16: dropping the zero bytes leaves the ASCII text readable
+			String text = new String(Files.readAllBytes(log), StandardCharsets.UTF_8).replace("\0", "").replace("\uFEFF", "");
+			String last = "";
+			for (String line : text.split("\\R")) {
+				if (!line.isBlank()) {
+					last = line.strip();
+				}
+			}
+			return last.isEmpty() ? "" : " (" + (last.length() > 200 ? last.substring(0, 200) + "…" : last) + ")";
+		} catch (IOException | RuntimeException e) {
+			return "";
+		}
 	}
 
 	private static void read(Process p, BlockingQueue<String> queue) {
@@ -510,6 +555,7 @@ public final class WindowsMediaSource implements MediaSource {
 		Writer w = input;
 		process = null;
 		input = null;
+		missed = 0; // a new helper must not inherit the old one's unanswered questions
 		if (p == null) {
 			return;
 		}

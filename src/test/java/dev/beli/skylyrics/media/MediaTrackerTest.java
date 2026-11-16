@@ -103,6 +103,60 @@ class MediaTrackerTest {
 		assertEquals("file:///tmp/cover.png", changes.get(1).artUrl());
 	}
 
+	/** Runs the steps and returns the track changes and the cover changes. */
+	private static List<List<Track>> runWithCovers(Track... steps) throws InterruptedException {
+		FakeSource source = new FakeSource();
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		List<Track> changes = new CopyOnWriteArrayList<>();
+		List<Track> covers = new CopyOnWriteArrayList<>();
+		tracker.onTrackChange(changes::add);
+		tracker.onCoverChange(covers::add);
+		try {
+			for (Track t : steps) {
+				source.then(t);
+				tracker.refresh();
+			}
+			tracker.refresh();
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+			while (source.polls.get() < steps.length + 1) {
+				assertTrue(System.nanoTime() < until, "timed out");
+				Thread.sleep(5);
+			}
+			assertEquals(steps[steps.length - 1].artUrl(), tracker.track().artUrl(), "the tracker keeps the newest cover");
+		} finally {
+			tracker.shutdown();
+		}
+		return List.of(changes, covers);
+	}
+
+	private static Track other(String art) {
+		return new Track("Another Song", "Made Up Band", "", 215_000, art, "firefox");
+	}
+
+	@Test
+	void correctedCoverIsPassedOnAsACoverChangeOnly() throws InterruptedException {
+		List<List<Track>> r = runWithCovers(song(215_000, "file:///a.img"), song(215_000, "file:///b.img"));
+		assertEquals(1, r.get(0).size(), r.toString());
+		assertEquals(1, r.get(1).size(), r.toString());
+		assertEquals("file:///b.img", r.get(1).get(0).artUrl());
+	}
+
+	@Test
+	void coverChangesPerSongAreLimitedAndANewSongStartsOver() throws InterruptedException {
+		List<List<Track>> r = runWithCovers(song(215_000, "file:///a.img"), song(215_000, "file:///b.img"),
+				song(215_000, "file:///c.img"), song(215_000, "file:///d.img"), song(215_000, "file:///e.img"),
+				other("file:///f.img"), other("file:///g.img"));
+		assertEquals(2, r.get(0).size(), "two songs: " + r);
+		assertEquals(List.of("file:///b.img", "file:///c.img", "file:///g.img"), r.get(1).stream().map(Track::artUrl).toList());
+	}
+
+	@Test
+	void coverThatArrivesLateIsNotAlsoACoverChange() throws InterruptedException {
+		List<List<Track>> r = runWithCovers(song(215_000, ""), song(215_000, "file:///a.img"));
+		assertEquals(2, r.get(0).size(), r.toString());
+		assertEquals(0, r.get(1).size(), r.toString());
+	}
+
 	@Test
 	void sameSongDoesNotFireAgain() throws InterruptedException {
 		List<Track> changes = run(song(215_000, "file:///a.png"), song(215_000, "file:///a.png"), song(215_000, "file:///b.png"));
