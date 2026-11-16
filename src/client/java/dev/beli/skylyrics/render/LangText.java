@@ -7,7 +7,7 @@ import net.minecraft.locale.Language;
 /**
  * One translated text kept between frames. Translating formats a string each time, so a text drawn every frame is
  * translated once and again only when the game's {@code Language} object is replaced (the language changed or the
- * resources reloaded). Built from the translating call itself, {@code new LangText(() -> Tr.t("..."))}, so the
+ * resources reloaded). Built from the translating call itself, a lambda that calls Tr.t, so the
  * text still shows up for the translation checks. Render thread only.
  */
 final class LangText {
