@@ -149,6 +149,12 @@ final class WorldWords {
 	private static final float GLIDE_JUMP = 16f;
 	/** Faster than any dive or firework boost, in blocks a second. */
 	private static final float GLIDE_SPEED = 100f;
+	/**
+	 * Moving faster than this, in blocks a second, for {@link #FAST_FRAMES} frames in a row counts as flying even when
+	 * the game doesn't say so (a very fast fall, knockback): well above sprinting, riding or sailing.
+	 */
+	private static final float FAST_SPEED = 30f;
+	private static final int FAST_FRAMES = 3;
 	/** How far up or down, in degrees, cards turned along with your view may go, so they never flip over your head. */
 	private static final float SWING_PITCH = 80f;
 	/** Drop shadow: offset down-right in text units, colour, and opacity by night and by day (a bright sky needs it darker). */
@@ -281,6 +287,8 @@ final class WorldWords {
 	private @Nullable Vec3 lastEye;
 	private float lastYaw, lastPitch;
 	private long lastGlide;
+	/** How many frames in a row the camera moved faster than {@link #FAST_SPEED}. */
+	private int fastRun;
 	/** Elytra mode is carrying the words this frame. */
 	private boolean gliding;
 	private @Nullable Sentence sentence;
@@ -940,7 +948,10 @@ final class WorldWords {
 	 * Call once a frame, before {@link #update}.
 	 */
 	void glide(Vec3 eye, float yaw, float pitch, boolean gliding, long now) {
-		Vec3 moved = carry(lastEye, eye, gliding, (now - lastGlide) / 1e9f);
+		float seconds = (now - lastGlide) / 1e9f;
+		fastRun = fastRun(fastRun, lastEye, eye, seconds);
+		gliding |= fastRun >= FAST_FRAMES;
+		Vec3 moved = carry(lastEye, eye, gliding, seconds);
 		lastGlide = now;
 		this.gliding = gliding;
 		float turn = Mth.wrapDegrees(yaw - lastYaw), tilt = pitch - lastPitch;
@@ -1012,6 +1023,20 @@ final class WorldWords {
 		}
 		float pitch = pitchOf(offset);
 		return pitch + clip + tilt - shownPitch(pitch, clip, tilt);
+	}
+
+	/**
+	 * The run of frames in a row that the camera moved faster than {@link #FAST_SPEED}: one more if this frame did, none
+	 * if it was slower, or a teleport-sized jump (so a /tp never starts a run).
+	 */
+	static int fastRun(int run, @Nullable Vec3 last, Vec3 eye, float seconds) {
+		if (last == null || seconds <= 0) {
+			return 0;
+		}
+		float jump = Math.max(GLIDE_JUMP, GLIDE_SPEED * Mth.clamp(seconds, 0, 1));
+		double d2 = last.distanceToSqr(eye);
+		double fast = (double) FAST_SPEED * seconds;
+		return d2 > jump * jump || d2 <= fast * fast ? 0 : run + 1;
 	}
 
 	/**

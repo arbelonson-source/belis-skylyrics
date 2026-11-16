@@ -292,6 +292,21 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void aFastRunOfFramesCountsAsFlyingButATeleportDoesNot() {
+		Vec3 last = new Vec3(10, 80, 10);
+		// 1 block in 16 ms is 62 blocks a second: counts; walking pace (0.1 block) resets
+		assertEquals(1, WorldWords.fastRun(0, last, new Vec3(11, 80, 10), 0.016f));
+		assertEquals(3, WorldWords.fastRun(2, last, new Vec3(11, 80, 10), 0.016f));
+		assertEquals(0, WorldWords.fastRun(2, last, new Vec3(10.1, 80, 10), 0.016f));
+		// A /tp (past 16 blocks), the first frame and a stalled clock never start or keep a run
+		assertEquals(0, WorldWords.fastRun(2, last, new Vec3(500, 80, 10), 0.016f));
+		assertEquals(0, WorldWords.fastRun(2, null, new Vec3(11, 80, 10), 0.016f));
+		assertEquals(0, WorldWords.fastRun(2, last, new Vec3(11, 80, 10), 0f));
+		// ...and carry still drops the cards on that teleport even if the run was long
+		assertEquals(Vec3.ZERO, WorldWords.carry(last, new Vec3(500, 80, 10), true, 0.016f));
+	}
+
+	@Test
 	void wordsFlyAlongOnlyWhileYouGlide() {
 		Vec3 last = new Vec3(10, 80, 10), eye = new Vec3(12, 79, 10.5);
 		Vec3 moved = WorldWords.carry(last, eye, true, 0.016f);

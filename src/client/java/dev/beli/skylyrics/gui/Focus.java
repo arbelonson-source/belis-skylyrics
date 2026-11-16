@@ -58,4 +58,20 @@ final class Focus {
 		float max = maxScroll(contentH, viewH);
 		return toEnd ? max : Mth.clamp(target, 0, max);
 	}
+
+	/** Who gets Left, Right, Enter or Space: the row the keyboard is on, the row under the mouse, or nobody yet. */
+	enum KeyTarget { FOCUSED, MOUSE_ROW, FIRST_ROW }
+
+	/**
+	 * With the keyboard on a row it gets the keys. With nothing chosen, the row under the mouse gets them only once the
+	 * mouse has moved; before that the keys would change a setting nobody has been told about, so focus goes to the first row.
+	 */
+	static KeyTarget keyTarget(boolean hasFocus, boolean mouseMoved) {
+		return hasFocus ? KeyTarget.FOCUSED : mouseMoved ? KeyTarget.MOUSE_ROW : KeyTarget.FIRST_ROW;
+	}
+
+	/** Whether the mouse is somewhere else than where it was when the screen opened (a pixel of jitter doesn't count). */
+	static boolean mouseMoved(double fromX, double fromY, double x, double y) {
+		return Math.abs(x - fromX) >= 2 || Math.abs(y - fromY) >= 2;
+	}
 }

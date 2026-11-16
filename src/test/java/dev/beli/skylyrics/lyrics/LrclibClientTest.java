@@ -34,6 +34,8 @@ class LrclibClientTest {
 	/** When set, the searches that name an artist get this instead of {@link #searchBody} (the free-text one still gets that). */
 	private volatile String artistSearchBody;
 	private volatile String retryAfter;
+	/** When set, answers every /search from its decoded query instead of {@link #searchBody}. */
+	private volatile java.util.function.Function<String, String> searchByQuery;
 
 	@BeforeEach
 	void start() throws IOException {
@@ -56,6 +58,9 @@ class LrclibClientTest {
 		String rawQuery = ex.getRequestURI().getRawQuery();
 		if (artistSearchBody != null && path.endsWith("/search") && rawQuery != null && !rawQuery.startsWith("q=")) {
 			body = artistSearchBody;
+		}
+		if (searchByQuery != null && path.endsWith("/search")) {
+			body = searchByQuery.apply(java.net.URLDecoder.decode(rawQuery == null ? "" : rawQuery, StandardCharsets.UTF_8));
 		}
 		byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
 		if (retryAfter != null) {
@@ -354,5 +359,47 @@ class LrclibClientTest {
 		Track noLength = song("Made Song", BAND, 0);
 		String plain = "{\"trackName\":\"Made Song\",\"artistName\":\"" + BAND + "\",\"duration\":200,\"plainLyrics\":\"plain words\",\"instrumental\":false}";
 		assertEquals("[00:01.00]live", findWith(noLength, plain, hit("Made Song (Live)", BAND, 200, "[00:01.00]live")).synced());
+	}
+
+	/** A LRCLIB that only knows "Song" by "Artist" and finds nothing for a query with a version tag. */
+	private int searchesOnlyKnowingSong() {
+		searchByQuery = q -> q.contains("Remaster") ? "[]"
+				: "[" + hit("Song", "Artist", 200, "[00:01.00]right") + "]";
+		return 0;
+	}
+
+	@Test
+	void aVersionTagInBracketsIsSearchedAgainWithoutIt() throws Exception {
+		searchesOnlyKnowingSong();
+		LrclibClient.Result r = client.find(song("Song (2011 Remaster)", "Artist", 200));
+		assertEquals("[00:01.00]right", r.synced());
+		assertEquals(List.of("/api/get", "/api/search", "/api/search", "/api/search"), asked);
+	}
+
+	@Test
+	void aBracketFreeSearchStillRefusesAnotherLength() throws Exception {
+		searchesOnlyKnowingSong();
+		assertFalse(client.find(song("Song (Live)", "Artist", 260)).found());
+	}
+
+	@Test
+	void aRemixBracketIsNotSearchedWithoutIt() throws Exception {
+		searchByQuery = q -> q.contains("Remix") ? "[]" : "[" + hit("Song", "Artist", 200, "[00:01.00]right") + "]";
+		assertFalse(client.find(song("Song (Remix)", "Artist", 200)).found());
+		assertEquals(List.of("/api/get", "/api/search", "/api/search"), asked);
+	}
+
+	@Test
+	void aTitleWithoutBracketsMakesTheSameRequestsAsBefore() throws Exception {
+		searchByQuery = q -> "[]";
+		assertFalse(client.find(song("Song", "Artist", 200)).found());
+		assertEquals(List.of("/api/get", "/api/search", "/api/search"), asked);
+	}
+
+	@Test
+	void aFirstHitMakesNoExtraRequest() throws Exception {
+		searchByQuery = q -> "[" + hit("Song", "Artist", 200, "[00:01.00]right") + "]";
+		assertTrue(client.find(song("Song (2011 Remaster)", "Artist", 200)).found());
+		assertEquals(List.of("/api/get", "/api/search"), asked);
 	}
 }

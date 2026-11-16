@@ -65,4 +65,34 @@ class LibraryKeysTest {
 		assertFalse(LibraryKeys.tooSoonAfterOpen(LibraryKeys.DOUBLE_CLICK_NS));
 		assertFalse(LibraryKeys.tooSoonAfterOpen(Long.MAX_VALUE / 2), "a playlist that was never opened");
 	}
+
+	@Test
+	void theHeaderStopsAreWalkedAndLeftAtTheEnd() {
+		assertEquals(1, LibraryKeys.stopMove(0, 5, 1));
+		assertEquals(0, LibraryKeys.stopMove(0, 5, -1));
+		assertEquals(3, LibraryKeys.stopMove(4, 5, -1));
+		assertEquals(-1, LibraryKeys.stopMove(4, 5, 1));
+		assertEquals(-1, LibraryKeys.stopMove(0, 0, 1));
+	}
+
+	@Test
+	void theKeyboardEntersAtTheViewButtonOrTheFirstRecentSearch() {
+		assertEquals(2, LibraryKeys.enterStop(true, 2, 4));
+		assertEquals(2, LibraryKeys.enterStop(true, 2, -1));
+		assertEquals(2, LibraryKeys.enterStop(false, 2, -1));
+		assertEquals(4, LibraryKeys.enterStop(false, 2, 4));
+	}
+
+	@Test
+	void upLeavesTheSongsOnlyFromTheTopRow() {
+		var grid = dev.beli.skylyrics.config.SkyLyricsConfig.LibraryView.GRID;
+		var shelf = dev.beli.skylyrics.config.SkyLyricsConfig.LibraryView.SHELF;
+		var carousel = dev.beli.skylyrics.config.SkyLyricsConfig.LibraryView.CAROUSEL;
+		assertTrue(LibraryKeys.atTop(grid, -1, 4, 2));
+		assertTrue(LibraryKeys.atTop(grid, 3, 4, 2));
+		assertFalse(LibraryKeys.atTop(grid, 4, 4, 2));
+		assertTrue(LibraryKeys.atTop(shelf, 4, 4, 2));
+		assertFalse(LibraryKeys.atTop(shelf, 5, 4, 2));
+		assertTrue(LibraryKeys.atTop(carousel, 7, 4, 2));
+	}
 }

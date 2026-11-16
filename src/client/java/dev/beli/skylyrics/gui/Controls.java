@@ -43,6 +43,7 @@ final class Controls {
 		private BooleanSupplier shownIf = () -> true;
 		private boolean searchWhenHidden = true;
 		private @Nullable String narratedName;
+		private boolean narrateHint;
 
 		Row(String label, @Nullable String desc) {
 			this.label = label;
@@ -82,6 +83,12 @@ final class Controls {
 			return this;
 		}
 
+		/** Say the description too when this row has the keyboard, for hints that tell which way is which. */
+		Row narrateHint() {
+			this.narrateHint = true;
+			return this;
+		}
+
 		final String narratedLabel() {
 			return narratedName != null ? narratedName : label;
 		}
@@ -98,7 +105,7 @@ final class Controls {
 
 		/** What the Narrator says when this row has the keyboard focus. */
 		String narration() {
-			return Narration.join(narratedLabel(), kind(), spoken());
+			return Narration.join(narratedLabel(), kind(), spoken(), narrateHint && desc != null ? desc.get() : "");
 		}
 
 		/** The ring that shows this row has the keyboard focus. */
@@ -295,7 +302,7 @@ final class Controls {
 
 		@Override
 		String spoken() {
-			return Narration.speakable(format.apply(get.getAsDouble()), Tr.t("percent"), Tr.t("degrees"), Tr.t("times"));
+			return Narration.speakable(format.apply(get.getAsDouble()), Tr.t("percent"), Tr.t("degrees"), Tr.t("times"), Tr.t("seconds"));
 		}
 
 		@Override

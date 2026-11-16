@@ -85,6 +85,10 @@ public final class LibraryScreen extends Screen {
 	private int signInFocus = -1;
 	/** The section just changed, so the Narrator names it once; any later key or click ends that. */
 	private boolean sayNewSection;
+	/** Which header stop the keyboard is on (see {@link #stops}), or -1 when it is on the songs or the search box. */
+	private int stop = -1;
+	/** What the empty list or the search results said last, so the Narrator is told when that changes. */
+	private String lastStatus = "";
 	private boolean closed;
 	private @Nullable CompletableFuture<String> playing;
 	private String playingTitle = "";
@@ -121,7 +125,7 @@ public final class LibraryScreen extends Screen {
 	private String tip = "";
 
 	public LibraryScreen(@Nullable Screen parent) {
-		super(Component.literal("SkyLyrics library"));
+		super(Component.literal(Tr.t("Song library")));
 		this.parent = parent;
 	}
 
@@ -347,6 +351,11 @@ public final class LibraryScreen extends Screen {
 			renderSignIn(g, f);
 		} else {
 			shelf.poll();
+			String status = statusWords(shelf);
+			if (!status.equals(lastStatus)) {
+				lastStatus = status;
+				afterKeyboardAction(); // loading finished, nothing found, how many results: said when it changes
+			}
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget, 0, maxScroll(shelf));
 			shelf.scroll = Ui.approach(shelf.scroll, shelf.scrollTarget, dt, 18);
 			boolean nearEnd = switch (view()) {
@@ -446,6 +455,88 @@ public final class LibraryScreen extends Screen {
 		g.drawString(font, Ui.visual(Ui.clip(font, signInText(), pw - 20 - bw - 24)), px + 16, y + 4, Ui.MUTED, false);
 		int bx = px + pw - 10 - bw - 2;
 		Controls.drawButton(f, bx, y + 1, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, y + 1, bw, 14), true, true);
+		if (onStop(STOP_BANNER, 0)) {
+			Ui.outline(g, bx - 2, y - 1, bw + 4, 18, 7, Ui.TEXT);
+		}
+	}
+
+	private static final int STOP_BANNER = 0, STOP_VIEW = 1, STOP_CHIP = 2;
+
+	/** What the keyboard can reach above the songs, in order: {kind, which}. */
+	private List<int[]> stops() {
+		List<int[]> out = new ArrayList<>();
+		if (library == null) {
+			return out;
+		}
+		if (heardMode()) {
+			out.add(new int[] {STOP_BANNER, 0});
+		}
+		for (int i = 0; i < SkyLyricsConfig.LibraryView.values().length; i++) {
+			out.add(new int[] {STOP_VIEW, i});
+		}
+		if (chipsShown()) {
+			for (int i = 0; i < recentSearches().size(); i++) {
+				out.add(new int[] {STOP_CHIP, i});
+			}
+		}
+		return out;
+	}
+
+	/** The recent searches are on show: an empty search box in the Search section. */
+	private boolean chipsShown() {
+		return opened == null && section == Section.SEARCH && query.isBlank() && !recentSearches().isEmpty();
+	}
+
+	private boolean onStop(int kind, int which) {
+		if (stop < 0) {
+			return false;
+		}
+		List<int[]> all = stops();
+		return stop < all.size() && all.get(stop)[0] == kind && all.get(stop)[1] == which;
+	}
+
+	/** Presses the header stop the keyboard is on, like clicking it. */
+	private void pressStop(int[] at) {
+		switch (at[0]) {
+			case STOP_BANNER -> openMusicTab();
+			case STOP_VIEW -> chooseView(at[1]);
+			default -> {
+				edit(recentSearches().get(at[1]));
+				typedAt = 0;
+				stop = -1;
+			}
+		}
+	}
+
+	private void chooseView(int index) {
+		SkyLyricsConfig cfg = SkyLyricsConfig.get();
+		cfg.libraryView = SkyLyricsConfig.LibraryView.values()[index];
+		cfg.save();
+		typing = false;
+		Shelf current = shelf();
+		if (current != null) {
+			current.scrollTarget = 0;
+			current.scroll = 0;
+			carPos = Math.max(0, selected);
+			reveal(current);
+		}
+	}
+
+	/** What the Narrator says for a header stop. */
+	private String stopNarration(int[] at) {
+		return switch (at[0]) {
+			case STOP_BANNER -> Narration.button(Tr.t("Open Music tab"), Tr.t("button"));
+			case STOP_VIEW -> {
+				SkyLyricsConfig.LibraryView v = SkyLyricsConfig.LibraryView.values()[at[1]];
+				String name = switch (v) {
+					case GRID -> Tr.t("Grid");
+					case SHELF -> Tr.t("Shelf");
+					case CAROUSEL -> Tr.t("Carousel");
+				};
+				yield Narration.join(name, Tr.t("button"), v == view() ? Tr.t("selected") : "");
+			}
+			default -> Narration.join(Tr.t("Recent searches"), recentSearches().get(at[1]), Tr.t("button"));
+		};
 	}
 
 	private int toggleX(int i) {
@@ -480,6 +571,9 @@ public final class LibraryScreen extends Screen {
 					g.fill(cx - 2, cy - 4, cx + 2, cy + 4, c);
 					g.fill(cx + 3, cy - 2, cx + 5, cy + 2, c);
 				}
+			}
+			if (onStop(STOP_VIEW, i)) {
+				Ui.outline(g, x - 2, y - 2, TOGGLE_W + 4, 18, 7, Ui.TEXT);
 			}
 			if (hover) {
 				tip = switch (views[i]) {
@@ -766,6 +860,9 @@ public final class LibraryScreen extends Screen {
 			boolean hover = Ui.inside(f.mx(), f.my(), c[0], c[1], c[2], 16);
 			Ui.rect(g, c[0], c[1], c[2], 16, 8, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			g.drawCenteredString(font, Ui.visual(Ui.clip(font, recent.get(i), c[2] - 12)), c[0] + c[2] / 2, c[1] + 4, Ui.TEXT);
+			if (onStop(STOP_CHIP, i)) {
+				Ui.outline(g, c[0] - 2, c[1] - 2, c[2] + 4, 20, 10, Ui.TEXT);
+			}
 		}
 	}
 
@@ -905,6 +1002,7 @@ public final class LibraryScreen extends Screen {
 	private void say(String text) {
 		toast = text;
 		toastAge = 0;
+		afterKeyboardAction(); // the Narrator reads it while it shows
 	}
 
 	private void pollPlaying() {
@@ -953,6 +1051,7 @@ public final class LibraryScreen extends Screen {
 			openedAtNs = System.nanoTime();
 			openedName = list.name();
 			selected = -1;
+			sayNewSection = true;
 			return;
 		}
 		if (playing != null) {
@@ -992,6 +1091,7 @@ public final class LibraryScreen extends Screen {
 		closeOpened();
 		section = s;
 		selected = -1;
+		stop = -1;
 		sayNewSection = true;
 		if (s == Section.SEARCH) {
 			typing = true;
@@ -1003,6 +1103,7 @@ public final class LibraryScreen extends Screen {
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		sayNewSection = false;
+		stop = -1;
 		if (event.button() == 0 && !rescue.pressed()) {
 			return true;
 		}
@@ -1038,17 +1139,7 @@ public final class LibraryScreen extends Screen {
 		int y = py + 31;
 		for (int i = 0; i < 3; i++) {
 			if (Ui.inside(mx, my, toggleX(i), y, TOGGLE_W, 14)) {
-				SkyLyricsConfig cfg = SkyLyricsConfig.get();
-				cfg.libraryView = SkyLyricsConfig.LibraryView.values()[i];
-				cfg.save();
-				typing = false;
-				Shelf current = shelf();
-				if (current != null) {
-					current.scrollTarget = 0;
-					current.scroll = 0;
-					carPos = Math.max(0, selected);
-					reveal(current);
-				}
+				chooseView(i);
 				return true;
 			}
 		}
@@ -1056,6 +1147,7 @@ public final class LibraryScreen extends Screen {
 			if (Ui.inside(mx, my, px + 10, y, font.width("‹ " + Tr.t("Playlists")) + 14, 14)) {
 				closeOpened();
 				selected = -1;
+				sayNewSection = true;
 			}
 		} else {
 			int x = px + 10;
@@ -1231,9 +1323,11 @@ public final class LibraryScreen extends Screen {
 		if (event.isEscape()) {
 			if (typing) {
 				typing = false;
+				sayNewSection = true;
 			} else if (opened != null) {
 				closeOpened();
 				selected = -1;
+				sayNewSection = true;
 			} else {
 				onClose();
 			}
@@ -1278,6 +1372,41 @@ public final class LibraryScreen extends Screen {
 			return super.keyPressed(event);
 		}
 		SkyLyricsConfig.LibraryView mode = view();
+		List<int[]> stops = stops();
+		boolean arrow = event.isLeft() || event.isRight() || event.isUp() || event.isDown();
+		if (stop >= stops.size()) {
+			stop = -1;
+		}
+		boolean hasSongs = !shelf.items.isEmpty();
+		if (stop >= 0) {
+			if (event.isConfirmation() || event.key() == InputConstants.KEY_SPACE) {
+				swallowSpace = event.key() == InputConstants.KEY_SPACE;
+				pressStop(stops.get(stop));
+				return true;
+			}
+			if (arrow) {
+				// Down goes back to the songs; the other arrows walk along the stops, and past the last one go there too
+				stop = event.isDown() && hasSongs ? -1
+						: LibraryKeys.stopMove(stop, stops.size(), event.isLeft() || event.isUp() ? -1 : 1);
+				if (stop < 0 && hasSongs && !staleResults()) {
+					selected = Math.max(0, selected);
+					reveal(shelf);
+				}
+				return true;
+			}
+		} else if (arrow && !stops.isEmpty() && !(typing && (event.isLeft() || event.isRight()))
+				&& (event.isUp() ? LibraryKeys.atTop(mode, selected, cols, shelfRows) : !hasSongs)) {
+			int firstChip = -1;
+			for (int i = 0; i < stops.size() && firstChip < 0; i++) {
+				if (stops.get(i)[0] == STOP_CHIP) {
+					firstChip = i;
+				}
+			}
+			int viewStop = (heardMode() ? 1 : 0) + mode.ordinal();
+			typing = false;
+			stop = LibraryKeys.enterStop(hasSongs, viewStop, firstChip);
+			return true;
+		}
 		int rowStep = mode == SkyLyricsConfig.LibraryView.GRID ? cols : 1;
 		int step = event.isLeft() ? -1 : event.isRight() ? 1 : event.isUp() ? -rowStep : event.isDown() ? rowStep : 0;
 		if (step != 0 && !(typing && (event.isLeft() || event.isRight()))) {
@@ -1368,27 +1497,57 @@ public final class LibraryScreen extends Screen {
 		searchDirty = true;
 	}
 
-	/** What the Narrator says for what has the keyboard now: the button, the search box, or the chosen card. */
+	/** What an empty list or the search is doing, in words: loading, nothing found, or how many results. */
+	private String statusWords(Shelf shelf) {
+		boolean searchView = opened == null && section == Section.SEARCH;
+		boolean busy = shelf.pending != null || searchView && searchDirty && !query.isBlank();
+		String loading = searchView ? Tr.t("Searching") : Tr.t("Loading");
+		if (typing && searchView) {
+			if (!shelf.error.isEmpty()) {
+				return shelf.error;
+			}
+			if (query.isBlank()) {
+				return emptyText();
+			}
+			int n = shelf.items.size();
+			return Narration.resultCount(true, busy || !shelf.loaded, n, loading, emptyText(), Tr.t("1 result"), Tr.t("%s results", n));
+		}
+		return Narration.shelfState(shelf.items.size(), shelf.loaded, busy, shelf.error, loading, emptyText());
+	}
+
+	/** What the Narrator says for what has the keyboard now: a header button, the search box, or the chosen card. */
 	private String focusNarration() {
 		if (library == null) {
 			return signInFocus < 0 ? "" : Narration.button(signInFocus == 0 ? Tr.t("Open Music tab") : Tr.t("Try made-up songs"), Tr.t("button"));
 		}
-		if (typing) {
-			return Narration.searchBox(Tr.t("Search"), Tr.t("text box"), query);
+		List<int[]> all = stops();
+		if (stop >= 0 && stop < all.size()) {
+			return stopNarration(all.get(stop));
 		}
 		Shelf shelf = shelf();
+		if (typing) {
+			String box = Narration.searchBox(Tr.t("Search"), Tr.t("text box"), query);
+			return shelf == null ? box : Narration.join(box, statusWords(shelf));
+		}
 		if (shelf == null) {
 			return "";
 		}
-		String name = !sayNewSection ? "" : opened != null ? openedName : sectionName(section);
+		String name = Narration.section(sayNewSection, opened != null, openedName, sectionName(section));
 		if (shelf.items.isEmpty() && !shelf.error.isEmpty()) {
 			return Narration.join(Narration.card(name, shelf.error, "", "", ""), Tr.t("Try again"), Tr.t("button"));
 		}
 		if (selected >= 0 && selected < shelf.items.size()) {
-			String[] text = labels(shelf.items.get(selected));
-			return Narration.card(name, shelf.error, text[0], text[1], Tr.t("%s of %s", selected + 1, shelf.items.size()));
+			Object entry = shelf.items.get(selected);
+			String[] text = labels(entry);
+			String action = entry instanceof LibraryPlaylist list && list.openable() ? Tr.t("Press Enter to open") : Tr.t("button");
+			return Narration.tile(Narration.card(name, shelf.error, text[0], text[1], Tr.t("%s of %s", selected + 1, shelf.items.size())), action);
 		}
-		return Narration.card(name, shelf.error, "", "", "");
+		return Narration.join(Narration.card(name, shelf.error, "", "", ""), statusWords(shelf));
+	}
+
+	/** The message in the toast while it is still showing, for the Narrator. */
+	private String toastWords() {
+		return toastAge < TOAST_TIME ? toast : "";
 	}
 
 	@Override
@@ -1397,6 +1556,10 @@ public final class LibraryScreen extends Screen {
 		String now = focusNarration();
 		if (!now.isEmpty()) {
 			output.nest().add(NarratedElementType.TITLE, Component.literal(now));
+		}
+		String message = toastWords();
+		if (!message.isEmpty()) {
+			output.nest().nest().add(NarratedElementType.TITLE, Component.literal(message));
 		}
 	}
 
