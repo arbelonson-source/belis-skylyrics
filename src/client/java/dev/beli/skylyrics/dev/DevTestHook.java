@@ -462,6 +462,14 @@ public final class DevTestHook {
 						throw new IllegalStateException(e);
 					}
 				}
+				case "title" -> {
+					// The title screen, which "screen" can't open in the production client (its class name is remapped there)
+					//? if >=26.2 {
+					/*client.gui.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+					*///?} else {
+					client.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+					//?}
+				}
 				case "search" -> {
 					// Types into the settings screen's search box
 					//? if >=26.2 {
