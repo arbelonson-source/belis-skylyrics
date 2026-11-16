@@ -23,7 +23,7 @@ class SkyThrottleTest {
 
 		@Override
 		protected void put(float x, float y, float z, int argb) {
-			if (Math.abs(Math.sqrt(x * x + y * y + z * z) - want) < 1e-2) {
+			if (want < 0 || Math.abs(Math.sqrt(x * x + y * y + z * z) - want) < 1e-2) {
 				colours.add(argb);
 			}
 		}
@@ -81,7 +81,8 @@ class SkyThrottleTest {
 	}
 
 	private static List<Integer> ionAt(CometSky sky, float time) {
-		Layer layer = new Layer(RADIUS * CometSky.radii(1, false)[1]);
+		// Every layer: the dust and head don't change with the clock, only the gas does (so this holds whether or not they are at one distance)
+		Layer layer = new Layer(-1);
 		sky.draw(layer, RADIUS, BASE_YAW, 1, time, SkyView.ALL);
 		return layer.colours;
 	}
