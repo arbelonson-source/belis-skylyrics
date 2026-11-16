@@ -16,6 +16,8 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		album = clean(album);
 	}
 
+	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("[\\s\\p{Z}]+");
+
 	/** Control characters become a space, text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
 	public static String clean(String s) {
 		if (s == null) {
@@ -31,7 +33,7 @@ public record Track(String title, String artist, String album, long lengthMs, St
 			}
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
 		}
-		return b.toString().replaceAll("[\\s\\p{Z}]+", " ").strip();
+		return SPACES.matcher(b).replaceAll(" ").strip();
 	}
 
 	/**

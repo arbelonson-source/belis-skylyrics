@@ -96,4 +96,26 @@ class TrTest {
 		assertEquals(en.keySet(), he.keySet());
 		en.forEach((k, v) -> assertEquals(placeholders(v), placeholders(he.get(k)), k));
 	}
+
+	@Test
+	void keysStayTheSameAsBeforeTheRegexesWereCompiledOnce() {
+		String[][] golden = {
+				{"Hello World", "skylyrics.ui.hello_world"},
+				{"  Leading and trailing  ", "skylyrics.ui.leading_and_trailing"},
+				{"Don't stop!", "skylyrics.ui.don_t_stop"},
+				{"???", "skylyrics.ui."},
+				{"", "skylyrics.ui."},
+				{"Already_snake", "skylyrics.ui.already_snake"},
+				{"Caf\u00e9 \u00dcBER 42", "skylyrics.ui.caf_ber_42"},
+				{"A-b/c", "skylyrics.ui.a_b_c"},
+				{"__x__", "skylyrics.ui.x"},
+				{"Very long text that exceeds forty eight characters in length for sure", "skylyrics.ui.very_long_text_that_exceeds_forty_eight_characte"},
+				{"Seven chars then a break: aaaaaaaaaaaaaaaaa bbbbbbbbbbbbbb", "skylyrics.ui.seven_chars_then_a_break_aaaaaaaaaaaaaaaaa_bbbbb"},
+				{"Sync offset (ms)", "skylyrics.ui.sync_offset_ms"},
+				{"100% done", "skylyrics.ui.100_done"},
+		};
+		for (String[] g : golden) {
+			assertEquals(g[1], Tr.key(g[0]), g[0]);
+		}
+	}
 }
