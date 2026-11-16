@@ -210,6 +210,8 @@ public final class SkyLyricsScreen extends Screen {
 	private final float[] scroll = new float[TAB_COUNT + 1];
 	private final float[] scrollTarget = new float[TAB_COUNT + 1];
 	private String query = "";
+	/** How many results the last search edit found, in words; the Narrator says it with the search box. */
+	private String searchSaid = "";
 	private boolean typing;
 	/** The tab to go back to when the search is cleared. */
 	private int searchFrom;
@@ -1033,7 +1035,7 @@ public final class SkyLyricsScreen extends Screen {
 			return announcement;
 		}
 		if (typing) {
-			return Narration.join(Tr.t("Search"), Tr.t("text box"), query);
+			return Narration.join(Tr.t("Search"), Tr.t("text box"), query, searchSaid);
 		}
 		if (focus instanceof Row row) {
 			return rowNarration(row);
@@ -1251,6 +1253,9 @@ public final class SkyLyricsScreen extends Screen {
 			tabAnim = 0;
 		}
 		tabs.set(SEARCH_TAB, query.isBlank() ? List.of() : searchResults());
+		int found = tabs.get(SEARCH_TAB).stream().mapToInt(c -> c.rows().size()).sum();
+		searchSaid = query.isBlank() ? "" : Narration.resultCount(true, false, found, "", Tr.t("Nothing matches, try another word"),
+				Tr.t("1 result"), Tr.t("%s results", found));
 		scrollTarget[SEARCH_TAB] = 0;
 		scroll[SEARCH_TAB] = 0;
 	}
@@ -1264,6 +1269,7 @@ public final class SkyLyricsScreen extends Screen {
 	/** Empties the search box and goes back to the tab you were on. */
 	private void clearSearch() {
 		query = "";
+		searchSaid = "";
 		typing = false;
 		tabs.set(SEARCH_TAB, List.of());
 		if (tab == SEARCH_TAB) {
@@ -1318,7 +1324,7 @@ public final class SkyLyricsScreen extends Screen {
 			if (bottom < viewY - 20 || top - 12 > viewY + viewH) {
 				continue;
 			}
-			g.drawString(font, Ui.visual(card.title().toUpperCase(Locale.ROOT)), first.x + 2, top - 10, Ui.DIM, false);
+			g.drawString(font, Ui.visual(Ui.clip(font, card.title().toUpperCase(Locale.ROOT), first.w - 4)), first.x + 2, top - 10, Ui.DIM, false);
 			Ui.rect(g, first.x, top, first.w, bottom - top, 6, Ui.CARD);
 			for (Row row : rows) {
 				if (row != first) {
