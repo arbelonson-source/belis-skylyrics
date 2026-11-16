@@ -9,7 +9,7 @@ The **Music** tab in the settings (press **J**) is the best place to start. It s
 Go through these in order:
 
 1. **Is the mod turned on?** At the bottom left of the settings screen, under the list of tabs, there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
-2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to N, E, S or W (north, east, south or west). Then the lyrics stay on that side of the sky. Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
+2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to N, E, S or W (north, east, south or west). Then the lyrics stay on that side of the sky. (**Direction** only shows in the World layout, or with the Arc and Lines layouts when **Placement** is **Sky**; with **Floating** it is hidden.) Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
 3. **Are they hidden on purpose?** On the **Display** tab check **Hide with F1** (pressing F1 hides them along with the rest of the screen), **Hide in menus** (hidden while chat or any menu is open) and **Hide when paused** (hidden while the music is paused).
 4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" (on a Mac: "No Spotify or Music playing") or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen). With **Spotify Web**, "Can't reach the internet or Spotify" means your internet (or Spotify) isn't answering: check that a web page opens. The mod keeps asking and carries on by itself once it is back. If the mod can't read your music player (or reach the internet, with **Spotify Web**) for 10 seconds, a pop-up says so once per game start; the **Music** tab shows why.
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
@@ -30,7 +30,7 @@ Go through these in order:
 - **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want. The choices are different on Linux, Windows and macOS (see the [FAQ](FAQ.md#can-i-choose-which-player-it-follows)).
 - **A browser tab is playing something else.** A muted video in another tab still counts as playing. Pause it or close it.
 - **The song has no artist.** Browser audio often comes without an artist and without a length. Then the mod only accepts a lyrics match whose title is the same, and when different artists have a song with that title, it shows no lyrics rather than guess and show another song's words. If you play the song in a player that shows the artist (like Spotify), the lyrics are found.
-- **The song name is messy.** Video titles like "Artist - Song (Official Video)" are cleaned up before looking for lyrics, but some titles are too unusual to match, or LRCLIB matched a different version. Press **Retry** on the Music tab to look again.
+- **The song name is messy.** Video titles like "Artist - Song (Official Video)" are cleaned up before looking for lyrics, but some titles are too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. If the words are only early or late, use the **This song** slider on the Music tab.
 
 ## Lyrics come early or late
 
@@ -141,6 +141,8 @@ With the Arc and Lines layouts, the lyrics stay visible underground as long as *
 ## Shaders make the lyrics dim
 
 Shader packs darken the sky and draw clouds and fog over it. Open the settings, go to **Look** and set **Draw on top** to **Always**. Then the lyrics are drawn on top of the finished picture, so shaders, clouds, rain and fog can't dim them.
+
+**Draw on top** and **Shadow** only show with the Arc and Lines layouts. The World layout always draws its words in the world itself (it has **Soft edges** instead of Shadow), so for shaders it helps to try Arc or Lines.
 
 On **Auto** (the starting setting), the mod already draws on top when a shader pack is on, when it rains, when **See through blocks** is on, or when you are in a cave or under a roof (with **Show underground too** on). **Never** keeps the lyrics inside the world, so hills and buildings can hide them.
 

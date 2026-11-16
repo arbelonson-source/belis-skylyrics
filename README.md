@@ -18,7 +18,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - **Sky mode** puts the lyrics far away in the sky. **Floating mode** keeps them in front of you. **View lock** (under **Lyrics → Position**, or the "Lock lyrics here" key you set) pins the lyrics where you are looking right now, so they stay put while you look around.
 - The lyrics stay visible in caves and under roofs (**Show underground too**, under **Display → Hide lyrics**, on at first), instead of vanishing behind the rock.
 - Words fade in one by one and light up as they are sung. Five other line animations are included (Fade, Rise, Pop, Type and Slide), plus an optional glow pulse on each new line. With **Lazy follow** (in the sky, with **Direction** on **Follow**, for the Arc and Lines layouts) the lyrics wait until you turn away, then glide over. In the World layout, **Elytra mode** lets the words travel with you when you glide, ride or fly.
-- A bar at the top of the screen shows the round album cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own, and the album cover can spin slowly like a record.
+- A bar at the top of the screen shows the round album cover and the line being sung, with the current word highlighted. A clock sits on its left, and your ping and frames per second on its right. Each can be turned off on its own. **Song name only on change** is on at first, so the song name hides a few seconds after a song starts. **Bar position** puts the bar at the top or just above the hotbar. The album cover can spin slowly like a record.
 - The bar can show an **Equaliser** (on by default) and a **Song progress** line. An optional **Record card** sits in a corner of your choice: a spinning vinyl with the album cover in the middle, the song title and artist, and a progress line with the time played and the song length, with the line being sung on a strip underneath. **Card lines** (under **Display → Record card**) can show the line before and the line after it too, dimmed. It keeps clear of your hotbar, your off-hand slot and your potion effect icons.
 - The word being sung can grow a little in the sky (optional).
 - Five letter styles for the sky lyrics: Bold, Smooth, Round, Handwritten or the Minecraft font. **Depth** gives the letters a solid edge, so they look raised, like 3D.
@@ -62,6 +62,8 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 Each release has one jar per Minecraft version. Pick the one whose name ends in your version: `+1.21.1.jar`, `+1.21.4.jar`, `+1.21.5.jar`, `+1.21.8.jar` (for 1.21.6, 1.21.7 and 1.21.8), `+1.21.10.jar`, `+1.21.11.jar`, `+26.1.jar` (for 26.1, 26.1.1 and 26.1.2), `+26.2.jar` or `+26.3.jar`.
 
+You need Fabric Loader 0.17.0 or newer, and Java 21 for the 1.21.x jars or Java 25 for the 26.x jars (the Minecraft launcher already brings the right Java).
+
 Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether your launcher (Minecraft, Prism Launcher…) may control them: click **OK**.
 
 ### With Prism Launcher (easiest)
@@ -85,7 +87,7 @@ Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds y
 ### Using it
 
 - **J** opens the settings and **N** opens the song library. Change the keys under *Options → Controls → Key Binds → Beli's SkyLyrics*.
-- The same place has optional keys for play/pause, next and previous song, "lyrics are early / late" for the song playing now, and "Lock lyrics here" for View lock.
+- The same place has optional keys for "Show or hide lyrics", "Show now-playing card", play/pause, next and previous song, "lyrics are early / late" for the song playing now, and "Lock lyrics here" for View lock.
 - No lyrics showing? Open the settings and look at the **Music** tab. It tells you which player it's following and whether lyrics were found. Some songs simply have no lyrics on LRCLIB or NetEase. More help in [Troubleshooting](docs/TROUBLESHOOTING.md).
 
 ## Building it yourself
@@ -106,4 +108,4 @@ What's being worked on is tracked in [PLAN.md](PLAN.md).
 
 Lyrics are not part of this project. They're fetched from LRCLIB (or NetEase Cloud Music as a backup) while you play.
 
-The fonts are Poppins, Kaushan Script and Noto Sans Hebrew, all under the SIL Open Font License (see [FONTS-LICENSE.txt](src/main/resources/assets/skylyrics/font/FONTS-LICENSE.txt)).
+The fonts are Poppins, Nunito, Kaushan Script, Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License (see [FONTS-LICENSE.txt](src/main/resources/assets/skylyrics/font/FONTS-LICENSE.txt)).
