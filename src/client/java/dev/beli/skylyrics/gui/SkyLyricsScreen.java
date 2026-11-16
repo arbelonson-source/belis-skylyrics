@@ -80,6 +80,11 @@ public final class SkyLyricsScreen extends Screen {
 		};
 	}
 
+	/** Whether a layout is drawn by the flat lyrics code. The World layout has its own, which skips Draw on top, Depth, Shadow, Pulse, Karaoke fill and Bigger current word. */
+	static boolean flatLayout(Layout layout) {
+		return layout != Layout.WORLD;
+	}
+
 	private static final String LRCLIB = "https://lrclib.net";
 
 	private static final int TAB_COUNT = 5;
@@ -318,10 +323,11 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.showNext, v -> cfg.showNext = v)
 				.when(() -> cfg.layout == Layout.LINES);
 		Row karaoke = new Toggle(Tr.t("Karaoke fill"), Tr.t("Words light up as they are sung"),
-				() -> cfg.karaoke, v -> cfg.karaoke = v);
+				() -> cfg.karaoke, v -> cfg.karaoke = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row grow = new Toggle(Tr.t("Bigger current word"), Tr.t("The word being sung grows a little"),
 				() -> cfg.growWord, v -> cfg.growWord = v)
-				.when(() -> cfg.karaoke);
+				.when(() -> flatLayout(cfg.layout) && cfg.karaoke);
 		Row animation = new Segmented(Tr.t("Animation"), Tr.t("How lines come in"),
 				new String[] {Tr.t("Words"), Tr.t("Fade"), Tr.t("Rise"), Tr.t("Pop"), Tr.t("Type"), Tr.t("Slide")}, () -> cfg.animation.ordinal(),
 				i -> cfg.animation = Animation.values()[i])
@@ -356,7 +362,8 @@ public final class SkyLyricsScreen extends Screen {
 				() -> cfg.worldBig, v -> cfg.worldBig = v)
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row pulse = new Toggle(Tr.t("Pulse"), Tr.t("The glow flares up as each new line starts"),
-				() -> cfg.pulse, v -> cfg.pulse = v);
+				() -> cfg.pulse, v -> cfg.pulse = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row capitals = new Toggle(Tr.t("CAPITALS"), Tr.t("Write every lyric in capital letters"),
 				() -> cfg.uppercase, v -> cfg.uppercase = v);
 
@@ -400,7 +407,8 @@ public final class SkyLyricsScreen extends Screen {
 					}
 				});
 		Row depth = new Toggle(Tr.t("Depth"), Tr.t("A solid edge that makes the letters look 3D"),
-				() -> cfg.depth, v -> cfg.depth = v);
+				() -> cfg.depth, v -> cfg.depth = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row glow = new Slider(Tr.t("Glow"), Tr.t("Soft light around the letters"), 0, 1, 0.05,
 				() -> cfg.glow, v -> cfg.glow = (float) v, SkyLyricsScreen::percent);
 		Row glowMode = new Segmented(Tr.t("Glow colour"), Tr.t("The words' colour, or one of its own"),
@@ -412,7 +420,8 @@ public final class SkyLyricsScreen extends Screen {
 				.narrateAs(Tr.t("Glow colour"))
 				.when(() -> cfg.glow > 0.01f && cfg.glowPick);
 		Row shadow = new Toggle(Tr.t("Shadow"), Tr.t("A dark edge so text reads on bright skies"),
-				() -> cfg.shadow, v -> cfg.shadow = v);
+				() -> cfg.shadow, v -> cfg.shadow = v)
+				.when(() -> flatLayout(cfg.layout));
 		Row opacity = new Slider(Tr.t("Opacity"), null, 0.2, 1, 0.05,
 				() -> cfg.opacity, v -> cfg.opacity = (float) v, SkyLyricsScreen::percent);
 		Row seeThrough = new Toggle(Tr.t("See through blocks"), Tr.t("Stay visible behind hills and walls"),
@@ -422,7 +431,8 @@ public final class SkyLyricsScreen extends Screen {
 					case AUTO -> 0;
 					case SCREEN -> 1;
 					case WORLD -> 2;
-				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD);
+				}, i -> cfg.layer = i == 0 ? Layer.AUTO : i == 1 ? Layer.SCREEN : Layer.WORLD)
+				.when(() -> flatLayout(cfg.layout));
 
 		Row night = new Cycle(Tr.t("Night sky"), Tr.t("Shows at night with music"), skyNames(),
 				() -> cfg.sky.ordinal(), i -> cfg.sky = SkyEffect.values()[i]);
