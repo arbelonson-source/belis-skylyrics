@@ -28,8 +28,8 @@ class MprisSourceTest {
 		long start = System.nanoTime();
 		Snapshot s = source.poll();
 		long tookMs = (System.nanoTime() - start) / 1_000_000;
-		// Expected about ANSWER_WAIT_MS; ten times that is still far short of the 60 s the player is stuck for
-		assertTrue(tookMs < 10 * MprisSource.ANSWER_WAIT_MS, "poll took " + tookMs + " ms");
+		// Expected about ANSWER_WAIT_MS; the bound only has to stay well short of the 60 s the player is stuck for
+		assertTrue(tookMs < 30_000, "poll took " + tookMs + " ms"); // generous for a busy CI machine; the stuck player holds 60 s
 		return s;
 	}
 

@@ -119,7 +119,7 @@ class SafeFileTest {
 		for (int i = 0; i <= 9; i++) {
 			Path p = dir.resolve(i == 0 ? "a.json.bad" : "a.json.bad." + i);
 			Files.writeString(p, "copy " + i);
-			Files.setLastModifiedTime(p, java.nio.file.attribute.FileTime.fromMillis(1_000_000L - (i == 4 ? 500 : 0) + i));
+			Files.setLastModifiedTime(p, java.nio.file.attribute.FileTime.fromMillis(1_000_000_000L - (i == 4 ? 60_000 : 0) + i * 5_000L));
 		}
 		Files.writeString(file, "newest");
 		SafeFile.keepBad(file);
