@@ -308,7 +308,7 @@ public final class CoverCache {
 	 * Falls back to a plain {@link ImageIO#read} when no reader takes the bytes or subsampling fails.
 	 */
 	static @Nullable BufferedImage decodeSmall(byte[] bytes, int target) throws java.io.IOException {
-		try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+		try (javax.imageio.stream.ImageInputStream in = new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
 			Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
 			if (readers.hasNext()) {
 				javax.imageio.ImageReader reader = readers.next();
@@ -328,7 +328,7 @@ public final class CoverCache {
 				}
 			}
 		}
-		return ImageIO.read(new ByteArrayInputStream(bytes));
+		return ImageIO.read(new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes)));
 	}
 
 	/** Every how many pixels to read so the longer side lands in [2 * target, 4 * target] (the shrink's box filter needs a few samples per output pixel); 1 up to 4 * target. */
@@ -343,7 +343,7 @@ public final class CoverCache {
 
 	/** Checks the picture size from its header, before anything is decoded. */
 	static boolean dimensionsOk(byte[] bytes) {
-		try (javax.imageio.stream.ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+		try (javax.imageio.stream.ImageInputStream in = new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
 			Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
 			if (!readers.hasNext()) {
 				return false;
@@ -437,8 +437,11 @@ public final class CoverCache {
 			}
 		}
 		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
-		if (!ImageIO.write(out, "png", bytes)) {
-			throw new java.io.IOException("no PNG writer");
+		// In memory, not through a temp file: a locked temp folder (antivirus, a locked-down Windows PC) would stop every save
+		try (javax.imageio.stream.ImageOutputStream stream = new javax.imageio.stream.MemoryCacheImageOutputStream(bytes)) {
+			if (!ImageIO.write(out, "png", stream)) {
+				throw new java.io.IOException("no PNG writer");
+			}
 		}
 		return bytes.toByteArray();
 	}
