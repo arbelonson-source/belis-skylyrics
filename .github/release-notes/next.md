@@ -93,6 +93,8 @@
 - **Lighter Aurora and Nebula.** The default Aurora sky, the Nebula clouds and stars, and the constellations skip the parts behind you or off the side of the screen. They look the same and cost less each frame.
 - **Lighter top bar and Record card.** The bar keeps its line laid out instead of measuring it again every frame, and the card keeps its times and cut titles. Nothing looks different.
 - **Lighter sky effects.** The Moonlight clouds, the Comet streamers and the eclipse corona do less work each frame.
+- **Lighter settings window.** The settings window lays out each row once per frame instead of several times, and remembers the right-to-left text it has already put in order. Nothing looks different.
+- **Smaller saved album covers.** Album covers are saved as small 128-pixel pictures, so they load faster and take less disk space, and they are made in memory instead of through a temporary file.
 - **No hitch when a setting changes.** Settings are saved in the background, so pressing a timing key or closing the settings no longer makes the game pause for a moment while the file is written (most noticeable on Windows when an antivirus or OneDrive holds the file). A change made right before you quit is still saved.
 
 ### Changed
