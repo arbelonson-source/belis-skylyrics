@@ -73,6 +73,7 @@
 - **Spotify sign-in.** Pasting a different Client ID while a sign-in waits in the browser now cancels that sign-in, instead of ending in a silent sign-out. A broken reply from Spotify (for example a network login page) no longer stops the sign-in or the polling with no message, and a failed sign-in never says "null".
 - **Settings from a newer version.** When a newer SkyLyrics (or a newer Minecraft version of the mod sharing the folder) wrote the settings file, an older one no longer wipes the settings it doesn't know when you change a setting. Saved song timings for titles that carry hidden text-direction marks are found again.
 - **Lazy follow.** Joining another world no longer keeps the old world's anchor, so the lyrics and sky effects start where you look. A word blown away by the Blow leave no longer vanishes early near the edge of the view.
+- **Updates with a linked mod file.** If the mod's file is linked into the mods folder from somewhere else (Nix or GNU Stow, for example), you were never told about a new version. Now you are told, though it can't install itself there. On Linux and Mac, an update the mod installs keeps the old file's permissions.
 
 ### Faster
 
