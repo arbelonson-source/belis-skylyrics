@@ -87,15 +87,15 @@ class AlbumArtRaceTest {
 	@Test
 	void aCoverUploadedAfterTheNextSongLoadedIsNotShownAsItsCover() {
 		AlbumArt art = new AlbumArt(new RecordingExecutor());
-		art.load(song("file:///a.png"));
+		art.load(song("A", "file:///a.png"));
 		long genA = 1; // the first load
 		assertFalse(art.hasTexture());
-		art.load(song("file:///b.png"));
+		art.load(song("B", "file:///b.png"));
 		art.markUploaded(genA); // upload() finishing A's image after load(B)
 		assertFalse(art.hasTexture(), "A's cover is not B's");
 		art.markUploaded(2); // B's own cover arrives
 		assertTrue(art.hasTexture());
-		art.load(song("file:///c.png"));
+		art.load(song("C", "file:///c.png"));
 		assertFalse(art.hasTexture());
 	}
 
