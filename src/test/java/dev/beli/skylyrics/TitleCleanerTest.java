@@ -260,6 +260,18 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void aOneWordSongNamedLikeANoiseWordKeepsItsName() {
+		Track t = TitleCleaner.clean(track("Madonna - Music", "MadonnaVEVO", "firefox"));
+		assertEquals("Madonna", t.artist());
+		assertEquals("Music", t.title());
+		assertEquals("Video", TitleCleaner.clean(track("India.Arie - Video", "IndiaArieVEVO", "firefox")).title());
+		assertEquals("Audio", TitleCleaner.clean(track("Some Band - Audio", "x", "firefox")).title());
+		assertEquals("Song - Music", TitleCleaner.forSearch("Song - Music"));
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song | Lyrics", "x", "firefox")).title());
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song - Music Video", "x", "firefox")).title());
+	}
+
+	@Test
 	void fullwidthLettersMatchPlainOnes() {
 		assertTrue(TitleCleaner.sameSong("\uFF22\uFF4C\uFF55\uFF45", "Blue"));
 	}

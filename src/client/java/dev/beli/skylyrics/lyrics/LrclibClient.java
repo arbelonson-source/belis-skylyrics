@@ -177,15 +177,15 @@ public final class LrclibClient implements LyricsSource {
 		return plainOnly != null ? plainOnly : Result.NOT_FOUND;
 	}
 
+	/** Added to a hit whose title matches exactly (version brackets aside) when the song's length is unknown. */
+	private static final int EXACT_TITLE_BONUS = 5;
+
 	/**
 	 * @param title the wanted title: a result must be the same song
 	 * @param mainArtist when not null/empty, the result's artist must contain it or the reverse (free-text tier,
 	 *                   where nothing else ties the result to the artist)
 	 * @param titleOnly nothing but the title identifies the song: several artists sharing it means no match
 	 */
-	/** Added to a hit whose title matches exactly (version brackets aside) when the song's length is unknown. */
-	private static final int EXACT_TITLE_BONUS = 5;
-
 	private @Nullable Result searchBest(Map<String, String> query, double seconds, String title, @Nullable String mainArtist, boolean titleOnly) throws IOException, InterruptedException {
 		if (query.values().stream().allMatch(String::isBlank)) {
 			return null;

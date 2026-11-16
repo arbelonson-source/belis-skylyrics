@@ -31,9 +31,14 @@ public final class TitleCleaner {
 			"(?i).*\\b(remix|mix|edit|version|reverb|sped up|slowed(\\s+down)?|remaster(ed)?(\\s+\\d{4})?)$");
 
 	private static final String NOISE_WORD = "(?:official|music|video|audio|lyrics?|visuali[sz]er|hd|4k|mv|clip)";
-	/** " | Official Music Video" or " - Lyrics" at the end: only when every word of it is a noise word. */
+	/** Noise words that are never a song name on their own ("Madonna - Music", "India.Arie - Video" are songs). */
+	private static final String NOISE_ALONE = "(?:official|lyrics?|visuali[sz]er|hd|4k|mv)";
+	/**
+	 * " | Official Music Video" or " - Lyrics" at the end: only when every word of it is a noise word, and a single
+	 * word only when it can't be a song name.
+	 */
 	private static final Pattern NOISE_TAIL = Pattern.compile(
-			"(?i)\\s+[|\\-\u2013\u2014]\\s+" + NOISE_WORD + "(?:\\s+" + NOISE_WORD + ")*$");
+			"(?i)\\s+[|\\-\u2013\u2014]\\s+(?:" + NOISE_WORD + "(?:\\s+" + NOISE_WORD + ")+|" + NOISE_ALONE + ")$");
 
 	/** "(feat. X)", "[ft. X]", "(with X)", "(prod. X)", also in fullwidth brackets and 【】. */
 	private static final Pattern GUEST_BRACKETS = Pattern.compile(
