@@ -27,13 +27,13 @@ class SpotifyPaceTest {
 	}
 
 	@Test
-	void failuresBackOffByDoublingUpToAMinute() {
+	void failuresBackOffByDoublingUpTo30Seconds() {
 		assertEquals(4 * S, SpotifyPace.backoffNs(1));
 		assertEquals(8 * S, SpotifyPace.backoffNs(2));
 		assertEquals(16 * S, SpotifyPace.backoffNs(3));
-		assertEquals(32 * S, SpotifyPace.backoffNs(4));
-		assertEquals(60 * S, SpotifyPace.backoffNs(5));
-		assertEquals(60 * S, SpotifyPace.backoffNs(500));
+		assertEquals(30 * S, SpotifyPace.backoffNs(4));
+		assertEquals(30 * S, SpotifyPace.backoffNs(5));
+		assertEquals(30 * S, SpotifyPace.backoffNs(500));
 		assertEquals(4 * S, SpotifyPace.backoffNs(0));
 	}
 
