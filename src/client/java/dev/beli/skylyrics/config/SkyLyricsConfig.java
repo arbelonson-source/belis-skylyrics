@@ -798,6 +798,8 @@ public final class SkyLyricsConfig {
 		/** The snapshot of this game's last successful write and its number; only the writer (under the config's lock) touches them. */
 		JsonObject lastSnapshot;
 		long lastGen;
+		/** The newest save whose write failed (disk full, file held); tried once more when the game shuts down. */
+		Pending failed;
 	}
 
 	final transient Queue queue = new Queue();
@@ -838,21 +840,39 @@ public final class SkyLyricsConfig {
 	}
 
 	private void drain() {
-		while (true) {
-			Pending next;
-			synchronized (queue) {
-				next = queue.pending;
-				queue.pending = null;
-				if (next == null) {
-					queue.draining = false;
-					queue.notifyAll();
-					return;
+		boolean clean = false;
+		try {
+			while (true) {
+				Pending next;
+				synchronized (queue) {
+					next = queue.pending;
+					queue.pending = null;
+					if (next == null) {
+						queue.draining = false;
+						queue.notifyAll();
+						clean = true;
+						return;
+					}
+				}
+				boolean written = false;
+				try {
+					written = write(next.file(), next.snapshot(), next.base(), next.baseGen(), task -> mainThread.accept(task));
+				} catch (RuntimeException e) {
+					LOG.warn("Couldn't save settings: {}", e.toString());
+				}
+				synchronized (queue) {
+					queue.failed = written ? null : next;
 				}
 			}
-			try {
-				write(next.file(), next.snapshot(), next.base(), next.baseGen(), task -> mainThread.accept(task));
-			} catch (RuntimeException e) {
-				LOG.warn("Couldn't save settings: {}", e.toString());
+		} catch (Throwable t) {
+			LOG.warn("The settings writer stopped: {}", t.toString());
+			throw t;
+		} finally {
+			if (!clean) {
+				synchronized (queue) {
+					queue.draining = false; // else no later save would ever start the writer again
+					queue.notifyAll();
+				}
 			}
 		}
 	}
@@ -873,7 +893,25 @@ public final class SkyLyricsConfig {
 					return false;
 				}
 			}
+		}
+		return retryFailed();
+	}
+
+	/** Tries the save that failed once more, on this thread and only once: a newer save that went through has cleared it. */
+	private boolean retryFailed() {
+		Pending again;
+		synchronized (queue) {
+			again = queue.failed;
+			queue.failed = null; // not remembered again: one more try, no retry loop
+		}
+		if (again == null) {
 			return true;
+		}
+		try {
+			return write(again.file(), again.snapshot(), again.base(), again.baseGen(), Runnable::run);
+		} catch (RuntimeException e) {
+			LOG.warn("Couldn't save settings: {}", e.toString());
+			return false;
 		}
 	}
 
@@ -886,10 +924,10 @@ public final class SkyLyricsConfig {
 	 * Reads, merges and writes the file for a snapshot. {@code applier} runs what changes the live settings (on the game's
 	 * main thread when saving later): the other game's changes come in only for fields still equal to the snapshot.
 	 */
-	private void write(Path file, JsonObject mine, JsonObject base, long baseGen, java.util.function.Consumer<Runnable> applier) {
+	private boolean write(Path file, JsonObject mine, JsonObject base, long baseGen, java.util.function.Consumer<Runnable> applier) {
 		synchronized (this) {
 			if (saveBlocked && !reread(file, mine, applier)) {
-				return; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
+				return true; // still unreadable, or just loaded: writing the in-memory defaults would replace the player's settings
 			}
 			Path tmp = null;
 			try {
@@ -916,8 +954,10 @@ public final class SkyLyricsConfig {
 					}
 					setBase(text, tree, gen);
 				});
+				return true;
 			} catch (IOException e) {
 				LOG.warn("Couldn't save settings: {}", e.toString());
+				return false;
 			} finally {
 				if (tmp != null) {
 					try {
