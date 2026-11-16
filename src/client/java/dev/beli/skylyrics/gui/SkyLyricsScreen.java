@@ -532,7 +532,8 @@ public final class SkyLyricsScreen extends Screen {
 				return error == null || error.isEmpty() ? Tr.t("Can't reach music players") : error;
 			}
 			return tracker.track() == Track.NONE
-					? (SkyLyricsClient.mac() ? Tr.t("No Spotify or Music playing (browsers can't be read on a Mac)") : Tr.t("No music playing")) : Tr.t("Following %s", tracker.sourceName());
+					? (SkyLyricsClient.mac() && !SpotifyWebSource.KEY.equals(cfg.preferredPlayer)
+							? Tr.t("No Spotify or Music playing (browsers can't be read on a Mac)") : Tr.t("No music playing")) : Tr.t("Following %s", tracker.sourceName());
 		});
 		// The error often says what to allow or install, too long for the Status line
 		Row connectionHelp = new Paragraph(() -> tracker.error())
@@ -674,8 +675,10 @@ public final class SkyLyricsScreen extends Screen {
 				i -> cfg.barPosition = BarPosition.values()[i]).when(() -> cfg.nowPlayingHud);
 		Row barSize = new Slider(Tr.t("Bar size"), null, 0.75, 1.5, 0.05,
 				() -> cfg.barSize, v -> cfg.barSize = (float) v, SkyLyricsScreen::percent).when(() -> cfg.nowPlayingHud);
-		Row barBackground = new Slider(Tr.t("Background"), Tr.t("How dark the bar is"), 0, 1, 0.05,
-				() -> cfg.barBackground, v -> cfg.barBackground = (float) v, SkyLyricsScreen::percent).when(() -> cfg.nowPlayingHud);
+		// The Record card uses the same darkness, so the row stays while either is on
+		Row barBackground = new Slider(Tr.t("Background"), Tr.t("How dark the bar and the Record card are"), 0, 1, 0.05,
+				() -> cfg.barBackground, v -> cfg.barBackground = (float) v, SkyLyricsScreen::percent)
+				.when(() -> cfg.nowPlayingHud || cfg.recordCard);
 		Row barAccent = new Segmented(Tr.t("Accent colour"), Tr.t("Word highlight and equaliser"),
 				new String[] {Tr.t("Album"), Tr.t("Lyrics"), Tr.t("Pick")}, () -> cfg.barAccent.ordinal(),
 				i -> cfg.barAccent = BarAccent.values()[i]).when(() -> cfg.nowPlayingHud);
