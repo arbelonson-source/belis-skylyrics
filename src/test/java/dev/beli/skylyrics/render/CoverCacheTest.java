@@ -83,6 +83,78 @@ class CoverCacheTest {
 		return out.toByteArray();
 	}
 
+	private static BufferedImage bigPicture(int w, int h) {
+		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < h; y++) {
+			for (int x = 0; x < w; x++) {
+				int r = 40 + 200 * x / w, g = 30 + 150 * y / h, b = ((x / 64 + y / 64) & 1) == 0 ? 220 : 90;
+				img.setRGB(x, y, r << 16 | g << 8 | b);
+			}
+		}
+		return img;
+	}
+
+	private static byte[] encode(BufferedImage img, String format) throws IOException {
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ImageIO.write(img, format, out);
+		return out.toByteArray();
+	}
+
+	@Test
+	void aHugeCoverDecodesToAboutTwiceTheTargetKeepingItsAspect() throws IOException {
+		BufferedImage src = bigPicture(4000, 3000);
+		for (String format : new String[] {"png", "jpg"}) {
+			for (int target : new int[] {64, 128}) {
+				BufferedImage out = CoverCache.decodeSmall(encode(src, format), target);
+				int longer = Math.max(out.getWidth(), out.getHeight());
+				assertTrue(longer <= 2 * target && longer >= target, format + " " + target + " -> " + out.getWidth() + "x" + out.getHeight());
+				assertEquals(4000 / 3000.0, out.getWidth() / (double) out.getHeight(), 1.5 / out.getHeight(), format);
+			}
+		}
+	}
+
+	@Test
+	void aSmallCoverDecodesAsItIs() throws IOException {
+		BufferedImage out = CoverCache.decodeSmall(encode(bigPicture(300, 300), "png"), 128);
+		assertEquals(300, out.getWidth());
+		assertEquals(300, out.getHeight());
+		BufferedImage tiny = CoverCache.decodeSmall(encode(bigPicture(40, 40), "png"), 128);
+		assertEquals(40, tiny.getWidth());
+	}
+
+	@Test
+	void aCorruptCoverDecodesToNullOrThrowsLikeBefore() throws IOException {
+		byte[] bad = {1, 2, 3, 4, 5};
+		assertNull(CoverCache.decodeSmall(bad, 128));
+		byte[] cut = encode(bigPicture(2000, 2000), "png");
+		byte[] half = java.util.Arrays.copyOf(cut, cut.length / 2);
+		try {
+			ImageIO.read(new ByteArrayInputStream(half));
+			assertDoesNotThrow(() -> CoverCache.decodeSmall(half, 128));
+		} catch (IOException expected) {
+			org.junit.jupiter.api.Assertions.assertThrows(IOException.class, () -> CoverCache.decodeSmall(half, 128));
+		}
+	}
+
+	@Test
+	void theSubsampledColourStaysClose() throws IOException {
+		// A smooth cover: a green-to-blue sweep with a darker corner, like a real scan
+		BufferedImage src = new BufferedImage(3000, 3000, BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < 3000; y++) {
+			for (int x = 0; x < 3000; x++) {
+				float t = (x + y) / 6000f;
+				src.setRGB(x, y, java.awt.Color.HSBtoRGB(0.25f + 0.35f * t, 0.8f, 0.9f - 0.4f * (y / 3000f) * (x / 3000f)));
+			}
+		}
+		int whole = AlbumArt.pickColor(src);
+		int small = AlbumArt.pickColor(CoverCache.decodeSmall(encode(src, "png"), AlbumArt.SIZE));
+		System.out.printf("colour whole=%06x subsampled=%06x%n", whole, small);
+		float[] a = java.awt.Color.RGBtoHSB(whole >> 16 & 255, whole >> 8 & 255, whole & 255, null);
+		float[] b = java.awt.Color.RGBtoHSB(small >> 16 & 255, small >> 8 & 255, small & 255, null);
+		float dh = Math.abs(a[0] - b[0]);
+		assertTrue(Math.min(dh, 1 - dh) <= 1f / 24 + 1e-4, "hue moved from " + a[0] + " to " + b[0]);
+	}
+
 	@Test
 	void albumArtAppliesTheSameByteAndSizeLimits() throws IOException {
 		assertNull(AlbumArt.decode(null));
