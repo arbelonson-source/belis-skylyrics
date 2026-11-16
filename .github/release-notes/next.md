@@ -67,6 +67,9 @@
 - **Very long lyric lines.** A very long line, such as plain lyrics that arrive as one line or a long Chinese or Japanese line, no longer freezes or slows the game in the Arc layout or makes it stutter in the World layout. In the Arc layout such a line now scrolls so the words being sung stay in front of you (before, they could be above the view and the sky looked empty).
 - **Safer cover links.** A cover address that points at a shared folder on another computer is never opened (on Windows that could have sent your login details to that computer). A cover link from the internet can no longer redirect the game to this computer or your home network. Links your music player gives directly still work, so covers from a music server on your own network keep showing.
 - **Safer lyrics downloads.** Replies from the lyrics sites are limited in size and time. A lyrics file with a long run of odd characters can no longer slow the lyrics down. Odd data from the NetEase backup no longer makes a song's lyrics search fail for good.
+- **Quick skips and the backup site.** Skipping songs quickly no longer makes the mod use the backup lyrics site (NetEase) for two minutes: a lookup cut short by a skip isn't counted as the main site being down.
+- **Half-saved lyrics.** A lookup cut short by a skip no longer leaves a half-written lyrics file behind.
+- **Spotify accounts.** Signing in to another Spotify account now opens your own playlists without restarting the game.
 
 ### Faster
 

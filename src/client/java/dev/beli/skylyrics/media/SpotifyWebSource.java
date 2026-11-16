@@ -229,6 +229,11 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
+	/** Changes whenever someone signs in or out, so what was learned about one account isn't kept for the next. */
+	synchronized long signInGeneration() {
+		return signInGeneration;
+	}
+
 	public synchronized void signOut() {
 		cancelLogin();
 		signInGeneration++;

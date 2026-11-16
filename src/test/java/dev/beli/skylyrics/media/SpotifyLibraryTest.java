@@ -165,4 +165,19 @@ class SpotifyLibraryTest {
 		assertFalse(SpotifyLibrary.outcome(403, "spotify:track:a", uri -> false).isEmpty());
 		assertFalse(SpotifyLibrary.outcome(500, "spotify:track:a", uri -> true).isEmpty());
 	}
+
+	@Test
+	void ownIdIsAskedAgainAfterAnotherSignIn() throws Exception {
+		SpotifyLibrary.OwnId own = new SpotifyLibrary.OwnId();
+		assertEquals("first", own.get(1, () -> "first"));
+		assertEquals("first", own.get(1, () -> "never asked"));
+		assertEquals("second", own.get(2, () -> "second"));
+	}
+
+	@Test
+	void emptyOwnIdIsNotKept() throws Exception {
+		SpotifyLibrary.OwnId own = new SpotifyLibrary.OwnId();
+		assertEquals("", own.get(1, () -> ""));
+		assertEquals("real", own.get(1, () -> "real"));
+	}
 }

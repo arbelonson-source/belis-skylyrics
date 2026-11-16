@@ -60,7 +60,7 @@ public final class SpotifyLibrary implements Library {
 		t.setDaemon(true);
 		return t;
 	});
-	private volatile @Nullable String me;
+	private final OwnId me = new OwnId();
 
 	public SpotifyLibrary(SpotifyWebSource spotify) {
 		this(spotify, uri -> false);
@@ -170,13 +170,34 @@ public final class SpotifyLibrary implements Library {
 	}
 
 	private String myId() throws IOException, InterruptedException {
-		String id = me;
-		if (id == null) {
+		return me.get(spotify.signInGeneration(), () -> {
 			JsonObject json = object(get("/me"));
-			id = json == null ? "" : orEmpty(string(json, "id"));
-			me = id;
+			return json == null ? "" : orEmpty(string(json, "id"));
+		});
+	}
+
+	/** Reads the id of the signed-in account's /me once per sign-in, and never keeps an empty one. */
+	static final class OwnId {
+		interface Fetch {
+			String run() throws IOException, InterruptedException;
 		}
-		return id;
+
+		private @Nullable String id;
+		private long generation;
+
+		synchronized String get(long signIn, Fetch fetch) throws IOException, InterruptedException {
+			if (id != null && generation == signIn) {
+				return id;
+			}
+			String fresh = fetch.run();
+			if (fresh.isEmpty()) {
+				id = null; // a bad answer isn't remembered: the next call asks again
+			} else {
+				id = fresh;
+				generation = signIn;
+			}
+			return fresh;
+		}
 	}
 
 	static String encode(String s) {
