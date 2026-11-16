@@ -521,5 +521,8 @@
   "skylyrics.ui.couldn_t_prepare_the_windows_music_reader_s": "לא הצלחנו להכין את קורא המוזיקה של Windows (%s)",
   "skylyrics.ui.skylyrics_s_needs_s": "SkyLyrics %s דורשת %s",
   "skylyrics.ui.update_s_to_get_it": "עדכנו את %s כדי לקבל אותה",
-  "skylyrics.ui.skylyrics_s_needs_s_update_s_to_get_it": "SkyLyrics %s דורשת %s: עדכנו את %s כדי לקבל אותה"
+  "skylyrics.ui.skylyrics_s_needs_s_update_s_to_get_it": "SkyLyrics %s דורשת %s: עדכנו את %s כדי לקבל אותה",
+  "skylyrics.ui.s_or_newer": "%s ומעלה",
+  "skylyrics.ui.s_or_s": "%s או %s",
+  "skylyrics.ui.a_version_it_can_t_tell": "גרסה שלא ניתן לזהות"
 }

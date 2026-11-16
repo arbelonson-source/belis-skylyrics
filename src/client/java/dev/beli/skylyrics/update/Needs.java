@@ -98,13 +98,20 @@ final class Needs {
 		for (String c : constraints) {
 			String s = c.trim();
 			if (s.startsWith(">=") && s.indexOf(' ') < 0) {
-				parts.add(s.substring(2) + " or newer");
+				parts.add(dev.beli.skylyrics.Tr.t("%s or newer", s.substring(2)));
 			} else if (s.startsWith("~") && s.indexOf(' ') < 0) {
 				parts.add(s.substring(1) + ".x");
 			} else {
 				parts.add(s);
 			}
 		}
-		return parts.isEmpty() ? "a version it can't tell" : String.join(" or ", parts);
+		if (parts.isEmpty()) {
+			return dev.beli.skylyrics.Tr.t("a version it can't tell");
+		}
+		String all = parts.get(0);
+		for (int i = 1; i < parts.size(); i++) {
+			all = dev.beli.skylyrics.Tr.t("%s or %s", all, parts.get(i));
+		}
+		return all;
 	}
 }
