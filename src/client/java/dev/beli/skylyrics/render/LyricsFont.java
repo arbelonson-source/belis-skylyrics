@@ -1,6 +1,8 @@
 package dev.beli.skylyrics.render;
 
+import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.Font;
+import net.minecraft.util.FormattedCharSequence;
 //? if >=1.21.9 {
 import net.minecraft.network.chat.FontDescription;
 //?}
@@ -69,7 +71,32 @@ public final class LyricsFont {
 
 	/** Exact width in text units (the plain {@code Font.width(String)} always measures Minecraft's font). */
 	public static float width(Font font, Style style, String text) {
-		return font.getSplitter().stringWidth(FormattedText.of(text, style));
+		return width(font.getSplitter(), style, text);
+	}
+
+	/** {@link #width(Font, Style, String)} on a splitter; invisible direction marks take no room (they are never drawn). */
+	static float width(StringSplitter splitter, Style style, String text) {
+		return splitter.stringWidth(FormattedText.of(stripMarks(text), style));
+	}
+
+	/** An invisible direction mark: LRM, RLM, ALM, the embeddings and overrides, the isolates. Vanilla would draw each as a box. */
+	public static boolean isMark(int cp) {
+		return cp == 0x200E || cp == 0x200F || cp == 0x061C || cp >= 0x202A && cp <= 0x202E || cp >= 0x2066 && cp <= 0x2069;
+	}
+
+	/** The text without its direction marks (the same instance when it has none). */
+	public static String stripMarks(String text) {
+		if (text.codePoints().noneMatch(LyricsFont::isMark)) {
+			return text;
+		}
+		StringBuilder out = new StringBuilder(text.length());
+		text.codePoints().filter(cp -> !isMark(cp)).forEach(out::appendCodePoint);
+		return out.toString();
+	}
+
+	/** The same characters with the direction marks left out; apply it AFTER the reorder, so the marks still steered it. */
+	public static FormattedCharSequence dropMarks(FormattedCharSequence seq) {
+		return sink -> seq.accept((i, st, cp) -> isMark(cp) || sink.accept(i, st, cp));
 	}
 
 	/** Widths measured for the per-frame text (top bar, Record card, lyric rows); see {@link WidthCache}. */

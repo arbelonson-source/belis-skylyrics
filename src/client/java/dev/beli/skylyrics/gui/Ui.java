@@ -3,6 +3,7 @@ package dev.beli.skylyrics.gui;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
+import dev.beli.skylyrics.render.LyricsFont;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.ARGB;
@@ -32,7 +33,8 @@ final class Ui {
 	 * skips this, which wrote the Hebrew settings backwards.
 	 */
 	static FormattedCharSequence visual(String text) {
-		return Language.getInstance().getVisualOrder(FormattedText.of(text));
+		// Direction marks (LRM and the like) steer the order, then are dropped: vanilla would draw each as a box
+		return LyricsFont.dropMarks(Language.getInstance().getVisualOrder(FormattedText.of(text)));
 	}
 
 	/** Filled rectangle with rounded corners, drawn without overlapping fills so alpha stays even. */
