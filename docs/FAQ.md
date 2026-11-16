@@ -141,7 +141,7 @@ In the World layout, some settings are hidden because that layout doesn't use th
 
 ## Is the mod in Hebrew?
 
-The settings screen and the top bar are in English and Hebrew. They follow your Minecraft language, so pick Hebrew in Minecraft's language settings to get it. A Hebrew or Arabic lyric line with an English phrase in it (or the other way round) reads each part in its own direction in the Arc layout, and in World with **Flowing line** on.
+The settings screen and the top bar are in English and Hebrew. They follow your Minecraft language, so pick Hebrew in Minecraft's language settings to get it. A Hebrew or Arabic lyric line with an English phrase in it (or the other way round) reads each part in its own direction in the Arc layout, and in World with **Flowing line** on. Invisible direction marks in copied lyrics no longer show as boxes, and the time left on the **Record card** reads "-2:35" with the game in Hebrew or Arabic.
 
 ## Can I try it without music?
 
