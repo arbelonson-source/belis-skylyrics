@@ -511,6 +511,7 @@ public final class LyricsRenderer {
 	/** Lines are wrapped once and kept; this drops them when the width or the font changes. */
 	private void wrapAt(Minecraft mc, SkyLyricsConfig cfg, float wrapWidth) {
 		Style wrapStyle = LyricsFont.sky(cfg);
+		LyricsFont.checkFonts(mc.font);
 		// Remembered until a resource reload, which is what can change it; measured again only then
 		float probe = LyricsFont.cachedWidth(mc.font, wrapStyle, "Mw0♪漢א ع");
 		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {

@@ -96,4 +96,18 @@ class WidthCacheTest {
 		text.get(hebrew);
 		assertEquals(2, made.get());
 	}
+
+	@Test
+	void aReloadWhileNothingDrewIsNoticedByTheProbe() {
+		WidthCache cache = new WidthCache(8);
+		float[] glyph = {3.5f};
+		WidthCache.Measure live = (f, st, t) -> t.length() * glyph[0];
+		cache.probe(9 * glyph[0]);
+		assertEquals(17.5f, cache.get(FONT, STYLE, "hello", LANG, live));
+		cache.probe(9 * glyph[0]);
+		assertEquals(1, cache.size(), "an unchanged probe keeps the widths");
+		glyph[0] = 4f; // a resource pack changed the glyphs in a menu, with no frame of ours drawn
+		cache.probe(9 * glyph[0]); // the next frame's probe
+		assertEquals(20f, cache.get(FONT, STYLE, "hello", LANG, live));
+	}
 }

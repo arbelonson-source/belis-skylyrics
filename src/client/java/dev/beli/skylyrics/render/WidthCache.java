@@ -19,6 +19,7 @@ final class WidthCache {
 	private final int limit;
 	private final LinkedHashMap<Key, Float> map;
 	private long epoch;
+	private float seen = Float.NaN;
 
 	WidthCache(int limit) {
 		this.limit = limit;
@@ -39,6 +40,18 @@ final class WidthCache {
 	/** How many reloads were seen; part of every key that is cached elsewhere on top of these widths. */
 	long epoch() {
 		return epoch;
+	}
+
+	/**
+	 * Called once per frame with the width of a fixed probe text, measured fresh (not from this cache). A resource
+	 * pack or font change moves it, which is how a reload is noticed even when nothing was drawing during it (a menu,
+	 * the title screen, F1). The first call only remembers it.
+	 */
+	void probe(float canary) {
+		if (!Float.isNaN(seen) && canary != seen) {
+			invalidate();
+		}
+		seen = canary;
 	}
 
 	int size() {

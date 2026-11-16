@@ -87,6 +87,24 @@ public final class LyricsFont {
 		return width((Font) font, (Style) style, text);
 	}
 
+	private static final String CANARY = "Mw0♪漢א ع";
+	private static final Style[] CANARY_STYLES = {Style.EMPTY, Style.EMPTY.withFont(SMOOTH), Style.EMPTY.withFont(BOLD),
+			Style.EMPTY.withFont(SCRIPT), Style.EMPTY.withFont(ROUND)};
+
+	/**
+	 * Notices a resource or font change that happened while nothing here was drawing: measures a probe text in each of
+	 * the mod's fonts and the game's own, fresh, and drops the remembered widths when it moved. Call once per frame
+	 * before the first {@link #cachedWidth}. This is used instead of a reload listener because it needs no per-version
+	 * Fabric API or mixin, and it sees exactly what matters: glyph widths.
+	 */
+	static void checkFonts(Font font) {
+		float sum = 0;
+		for (Style style : CANARY_STYLES) {
+			sum = sum * 1.0009f + width(font, style, CANARY);
+		}
+		WIDTHS.probe(sum);
+	}
+
 	/** Drops every remembered width: a resource reload can change glyph widths. Called while the loading screen is up. */
 	static void fontsReloaded() {
 		WIDTHS.invalidate();

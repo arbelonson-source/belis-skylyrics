@@ -137,6 +137,7 @@ public final class RecordCard {
 		}
 
 		Font font = mc.font;
+		LyricsFont.checkFonts(font);
 		Style style = LyricsFont.base(cfg);
 		Style bold = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
 		float scale = cfg.smoothFont ? TEXT_SCALE : 1;

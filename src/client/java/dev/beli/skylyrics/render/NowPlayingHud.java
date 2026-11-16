@@ -183,7 +183,7 @@ public final class NowPlayingHud {
 	private record ClipKey(Object font, Style style, String str, int maxW, Object language, long reloads) {}
 	private static final SmallCache<ClipKey, String> CLIPS = new SmallCache<>(8);
 	/** The song's name and what follows it, cut to the room there is; see {@link #titleCut}. */
-	private record TitleKey(Object font, Style style, String title, String sub, int limit, Object language, long reloads) {}
+	private record TitleKey(Object font, Style style, String title, String sub, int limit, int floor, Object language, long reloads) {}
 	private record TitleCut(String title, float used, @Nullable String sub) {}
 	private static final SmallCache<TitleKey, TitleCut> TITLES = new SmallCache<>(3);
 	/** The sub text with its separator in front, so the joined string isn't built again every frame. */
@@ -220,6 +220,7 @@ public final class NowPlayingHud {
 			LyricsFont.fontsReloaded();
 		}
 		wasLoading = loading;
+		LyricsFont.checkFonts(mc.font);
 		guiScale = mc.getWindow().getGuiScale();
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
@@ -716,11 +717,12 @@ public final class NowPlayingHud {
 	 * text that fit before still does; the drawing is clipped to the pill anyway.
 	 */
 	private static TitleCut titleCut(Font font, Style style, String title, String sub, float limit) {
-		TitleKey key = new TitleKey(font, style, title, sub, titleRoom(limit), Language.getInstance(), LyricsFont.reloadCount());
+		TitleKey key = new TitleKey(font, style, title, sub, titleRoom(limit), clipRoom(limit), Language.getInstance(), LyricsFont.reloadCount());
 		return TITLES.get(key, k -> {
 			Font f = (Font) k.font();
 			float room = k.limit();
-			String t = clip(f, k.style(), k.title(), room);
+			// A title that fits the rounded-up room is kept whole; a longer one is cut to the rounded-down room
+			String t = LyricsFont.cachedWidth(f, k.style(), k.title()) <= room ? k.title() : clip(f, k.style(), k.title(), k.floor());
 			float used = LyricsFont.cachedWidth(f, k.style(), t);
 			String s = null;
 			if (!k.sub().isEmpty() && used < room - 12) {
