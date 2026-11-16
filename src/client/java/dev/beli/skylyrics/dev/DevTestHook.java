@@ -344,7 +344,7 @@ public final class DevTestHook {
 						.filter(c -> ((Enum<?>) c).name().equals(kv[1]))
 						.findFirst().orElseThrow();
 			} else {
-				value = kv[1];
+				value = SetValue.string(kv[1]);
 			}
 			field.set(SkyLyricsConfig.get(), value);
 		} catch (ReflectiveOperationException e) {
