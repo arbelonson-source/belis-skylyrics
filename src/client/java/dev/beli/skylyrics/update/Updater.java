@@ -168,8 +168,8 @@ public final class Updater {
 			LOG.info("Update not downloaded: the mods folder path is not plain ASCII");
 			return false;
 		}
-		// The download keeps a name Fabric ignores until it is checked
-		Path part = dir.resolve(asset.name() + ".part");
+		// The download keeps a name Fabric ignores until it is checked, and one of its own: a second game sharing this folder may be updating too
+		Path part = Files.createTempFile(dir, asset.name() + ".", ".part");
 		try {
 			if (!fetch(http, asset.url(), part, MAX_DOWNLOAD, Updater::allowedRedirect)) {
 				Files.deleteIfExists(part);
@@ -183,9 +183,16 @@ public final class Updater {
 			if (windows()) {
 				return installLater(oldJar, part, target);
 			}
-			Files.move(part, target, StandardCopyOption.REPLACE_EXISTING);
+			try {
+				Files.move(part, target); // never over a jar another game just installed
+			} catch (java.nio.file.FileAlreadyExistsException e) {
+				LOG.info("Another game already installed {}", target.getFileName());
+				return false;
+			}
 			try {
 				Files.delete(oldJar);
+			} catch (java.nio.file.NoSuchFileException e) {
+				// The other game removed it first: the update is in place, and the new jar is ours to keep
 			} catch (IOException e) {
 				// Two jars with the mod's id would stop the game from starting, so never leave both
 				LOG.warn("Could not remove the old jar, dropping the update: {}", e.toString());

@@ -6,6 +6,7 @@
 
 ### Fixed
 
+- **Updating with two games.** When two games share one mods folder and both update, a game no longer deletes the new jar the other one just installed.
 - **Windows covers with two games.** On Windows, starting a second game no longer deletes the first game's album cover files.
 - **Spotify with two games.** When two games share one Spotify sign-in and renew it at the same moment, the second one now waits a moment for the first one's new sign-in instead of signing you out.
 - **Saving with two games open.** Two games saving at the same moment can no longer break each other's settings file or lose a renewed Spotify sign-in.

@@ -145,6 +145,22 @@ class UpdaterChecksTest {
 	}
 
 	@Test
+	void anOldJarAnotherGameAlreadyRemovedDoesNotCostTheNewJarOrAnotherGamesDownload() throws Exception {
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		byte[] data = jarBytes();
+		Path old = dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"); // the other game updated first and deleted it
+		Path otherPart = Files.writeString(dir.resolve(NAME + ".part"), "half"); // and its download is still running
+		Net net = new Net(data);
+		var asset = new UpdateCheck.Asset(NAME, URL, sha(data));
+		assertTrue(Updater.install(net, old, asset));
+		assertTrue(Files.exists(dir.resolve(NAME)), "the new jar stays");
+		assertEquals("half", Files.readString(otherPart));
+		try (var files = Files.list(dir)) {
+			assertEquals(java.util.Set.of(NAME, NAME + ".part"), files.map(f -> f.getFileName().toString()).collect(java.util.stream.Collectors.toSet()));
+		}
+	}
+
+	@Test
 	void notifyModeMakesNoDownloadRequestAndOnlyTellsThePlayer() throws Exception {
 		Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
 		Net net = new Net(jarBytes());
