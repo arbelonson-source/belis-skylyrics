@@ -62,7 +62,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 
 Each release has one jar per Minecraft version. Pick the one whose name ends in your version: `+1.21.1.jar`, `+1.21.4.jar`, `+1.21.5.jar`, `+1.21.8.jar` (for 1.21.6, 1.21.7 and 1.21.8), `+1.21.10.jar`, `+1.21.11.jar`, `+26.1.jar` (for 26.1, 26.1.1 and 26.1.2), `+26.2.jar` or `+26.3.jar`.
 
-Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether Minecraft may control them: click **OK**.
+Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds your song through MPRIS. On Windows it reads the media controls that pop up when you press a media key. On macOS it works with the **Spotify** and **Apple Music** apps only, not browsers or other players. The first time, macOS asks whether your launcher (Minecraft, Prism Launcher…) may control them: click **OK**.
 
 ### With Prism Launcher (easiest)
 
