@@ -5,6 +5,8 @@ import java.util.List;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.narration.NarratedElementType;
+import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
@@ -37,6 +39,9 @@ public final class IntroScreen extends Screen {
 	private int px, py;
 	/** The panel, fitted to the window (300 x 190 when there is room). */
 	private int pw = PANEL_W, ph = PANEL_H;
+	/** The buttons of the page by name, so the keyboard can be put back on the one it was on after the page is rebuilt. */
+	private final java.util.Map<String, Button> buttons = new java.util.HashMap<>();
+	private @Nullable String keepFocus;
 
 	public IntroScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
@@ -76,15 +81,16 @@ public final class IntroScreen extends Screen {
 		py = Math.max(MARGIN, (height - ph) / 2);
 		int bottom = py + ph - 28;
 		int mid = py + vy(100, ph);
+		buttons.clear();
 		switch (page) {
 			case 0 -> {
-				add(Tr.t("Skip"), px + 12, bottom, bw(80, pw), this::finish);
-				add(Tr.t("Show me around"), px + pw - 12 - bw(120, pw), bottom, bw(120, pw), () -> go(1));
+				add("skip", Tr.t("Skip"), null, px + 12, bottom, bw(80, pw), this::finish);
+				add("next", Tr.t("Show me around"), null, px + pw - 12 - bw(120, pw), bottom, bw(120, pw), () -> go(1));
 				return;
 			}
 			case 1 -> {
-				add("<", px + 40, mid, 20, () -> pickTheme(-1));
-				add(">", px + pw - 60, mid, 20, () -> pickTheme(1));
+				add("look-", "<", Tr.t("Previous look"), px + 40, mid, 20, () -> pickTheme(-1));
+				add("look+", ">", Tr.t("Next look"), px + pw - 60, mid, 20, () -> pickTheme(1));
 			}
 			case 2 -> {
 				Layout[] layouts = {Layout.WORLD, Layout.ARC, Layout.LINES};
@@ -92,44 +98,71 @@ public final class IntroScreen extends Screen {
 				int x = px + (pw - 3 * w3 - 16) / 2;
 				for (Layout layout : layouts) {
 					String name = layoutName(layout);
-					add(cfg.layout == layout ? "> " + name + " <" : name, x, mid - 24, w3, () -> {
+					add("layout" + layout.ordinal(), cfg.layout == layout ? "> " + name + " <" : name,
+							Narration.join(name, cfg.layout == layout ? Tr.t("selected") : ""), x, mid - 24, w3, () -> {
 						cfg.layout = layout;
-						rebuildWidgets();
+						rebuild();
 					});
 					x += w3 + 8;
 				}
 			}
-			case 3 -> add(cfg.demoMode ? Tr.t("Demo song: on") : Tr.t("Demo song: off"), px + 70 * pw / PANEL_W, Math.min(mid + 28, bottom - 24), pw - 140 * pw / PANEL_W, () -> {
+			case 3 -> add("demo", cfg.demoMode ? Tr.t("Demo song: on") : Tr.t("Demo song: off"), null, px + 70 * pw / PANEL_W, Math.min(mid + 28, bottom - 24), pw - 140 * pw / PANEL_W, () -> {
 				cfg.demoMode = !cfg.demoMode;
 				SkyLyricsClient mod = SkyLyricsClient.get();
 				if (mod != null) {
 					mod.tracker().refresh();
 				}
-				rebuildWidgets();
+				rebuild();
 			});
 			case 4 -> {
-				add(Tr.t("Back"), px + 12, bottom, bw(60, pw), () -> go(3));
-				add(Tr.t("All settings"), px + pw / 2 - bw(100, pw) / 2, bottom, bw(100, pw), () -> {
+				add("back", Tr.t("Back"), null, px + 12, bottom, bw(60, pw), () -> go(3));
+				add("settings", Tr.t("All settings"), null, px + pw / 2 - bw(100, pw) / 2, bottom, bw(100, pw), () -> {
 					finish();
 					setScreen(new SkyLyricsScreen(parent));
 				});
-				add(Tr.t("Done"), px + pw - 12 - bw(60, pw), bottom, bw(60, pw), this::finish);
+				add("done", Tr.t("Done"), null, px + pw - 12 - bw(60, pw), bottom, bw(60, pw), this::finish);
 				return;
 			}
 			default -> {
 			}
 		}
-		add(Tr.t("Back"), px + 12, bottom, bw(60, pw), () -> go(page - 1));
-		add(Tr.t("Next"), px + pw - 12 - bw(60, pw), bottom, bw(60, pw), () -> go(page + 1));
+		add("back", Tr.t("Back"), null, px + 12, bottom, bw(60, pw), () -> go(page - 1));
+		add("next", Tr.t("Next"), null, px + pw - 12 - bw(60, pw), bottom, bw(60, pw), () -> go(page + 1));
 	}
 
-	private void add(String label, int x, int y, int w, Runnable action) {
-		addRenderableWidget(Button.builder(Component.literal(label), b -> action.run()).bounds(x, y, w, 20).build());
+	/**
+	 * A button of the page. {@code tag} names its place, so the keyboard can stay on it when the page is rebuilt;
+	 * {@code spoken} is what the Narrator calls it when the label is only a sign.
+	 */
+	private void add(String tag, String label, @Nullable String spoken, int x, int y, int w, Runnable action) {
+		Button.Builder builder = Button.builder(Component.literal(label), b -> {
+			if (getFocused() == b) {
+				keepFocus = tag;
+			}
+			action.run();
+			afterKeyboardAction(); // say what changed
+		}).bounds(x, y, w, 20);
+		if (spoken != null) {
+			builder.createNarration(say -> Component.translatable("gui.narrate.button", Component.literal(spoken)));
+		}
+		Button button = builder.build();
+		buttons.put(tag, button);
+		addRenderableWidget(button);
+	}
+
+	/** Rebuilds the page's buttons and puts the keyboard back on the one that was pressed (a rebuild would drop it to the first). */
+	private void rebuild() {
+		rebuildWidgets();
+		Button button = keepFocus == null ? null : buttons.get(keepFocus);
+		keepFocus = null;
+		if (button != null) {
+			setFocused(button);
+		}
 	}
 
 	private void go(int to) {
 		page = Mth.clamp(to, 0, PAGES - 1);
-		rebuildWidgets();
+		rebuild();
 	}
 
 	private void pickTheme(int step) {
@@ -143,6 +176,50 @@ public final class IntroScreen extends Screen {
 			case ARC -> Tr.t("Arc");
 			case LINES -> Tr.t("Lines");
 		};
+	}
+
+	/** The words of a page, for drawing and for the Narrator. {@code keys} are the settings and library keys' names (null when unbound). */
+	static IntroPage content(int page, boolean mac, Theme look, Layout layout, @Nullable String settingsKey, @Nullable String libraryKey) {
+		return switch (page) {
+			case 0 -> new IntroPage("Beli's SkyLyrics", List.of(
+					Tr.t("The lyrics of the song you're playing, floating in the sky and sung along in time."),
+					Tr.t("Let's set it up. It takes a few seconds.")), List.of(), "");
+			case 1 -> new IntroPage(Tr.t("Pick a look"), List.of(Tr.t("You can change every part of it later.")), List.of(), look.name().get());
+			case 2 -> new IntroPage(Tr.t("Where should the lyrics go?"), List.of(), List.of(), Narration.join(layoutName(layout), layoutText(layout)));
+			case 3 -> new IntroPage(Tr.t("Where the songs come from"), List.of(mac
+					? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if your launcher may control them, click OK.")
+					: Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
+					Tr.t("Optional: signing in to Spotify (needs Premium and a free developer app) can help with timing."),
+					Tr.t("No music right now? Try the demo song.")), List.of(), "");
+			default -> new IntroPage(Tr.t("You're all set"), List.of(
+					Tr.t("In a world, press these keys. You can change them in Minecraft's Controls settings.")),
+					settingsKey == null && libraryKey == null ? List.of() : List.of(
+							Tr.t("Settings") + ": " + (settingsKey == null ? "-" : settingsKey),
+							Tr.t("Song library") + ": " + (libraryKey == null ? "-" : libraryKey)), "");
+		};
+	}
+
+	private IntroPage content() {
+		SkyLyricsClient mod = SkyLyricsClient.get();
+		return content(page, SkyLyricsClient.mac(), Themes.ALL.get(theme), cfg.layout,
+				mod == null || mod.openSettingsKey() == null ? null : mod.openSettingsKey().getTranslatedKeyMessage().getString(),
+				mod == null || mod.libraryKey() == null ? null : mod.libraryKey().getTranslatedKeyMessage().getString());
+	}
+
+	/** What the Narrator says for the screen: its name, then the page's words once when the page shows. */
+	@Override
+	public Component getNarrationMessage() {
+		return Component.literal(Narration.join(getTitle().getString(), content().spoken()));
+	}
+
+	@Override
+	protected void updateNarrationState(NarrationElementOutput output) {
+		super.updateNarrationState(output);
+		// The choice made on the page (the look, the layout) is its own line, so a change says only that
+		String chosen = content().chosen();
+		if (!chosen.isEmpty()) {
+			output.add(NarratedElementType.HINT, Component.literal(chosen));
+		}
 	}
 
 	private static String layoutText(Layout layout) {
@@ -194,15 +271,15 @@ public final class IntroScreen extends Screen {
 		super.render(g, mouseX, mouseY, partialTick);
 	//?}
 		int cx = px + pw / 2;
+		IntroPage text = content();
 		switch (page) {
 			case 0 -> {
-				heading(g, "Beli's SkyLyrics", py + vy(22, ph));
-				lines(g, py + vy(50, ph), Tr.t("The lyrics of the song you're playing, floating in the sky and sung along in time."),
-						Tr.t("Let's set it up. It takes a few seconds."));
+				heading(g, text.heading(), py + vy(22, ph));
+				lines(g, py + vy(50, ph), text.paragraphs().toArray(new String[0]));
 			}
 			case 1 -> {
-				heading(g, Tr.t("Pick a look"), py + vy(22, ph));
-				lines(g, py + vy(42, ph), Tr.t("You can change every part of it later."));
+				heading(g, text.heading(), py + vy(22, ph));
+				lines(g, py + vy(42, ph), text.paragraphs().toArray(new String[0]));
 				Theme t = Themes.ALL.get(theme);
 				SkyLyricsConfig look = t.preview();
 				String name = Ui.clip(font, t.name().get(), pw - 140 * pw / PANEL_W);
@@ -211,22 +288,17 @@ public final class IntroScreen extends Screen {
 				g.drawString(font, styled, cx - font.width(styled) / 2, py + vy(106, ph), 0xFFFFFFFF, look.shadow);
 			}
 			case 2 -> {
-				heading(g, Tr.t("Where should the lyrics go?"), py + vy(22, ph));
+				heading(g, text.heading(), py + vy(22, ph));
 				lines(g, py + vy(106, ph), layoutText(cfg.layout));
 			}
 			case 3 -> {
-				heading(g, Tr.t("Where the songs come from"), py + vy(22, ph));
-				lines(g, py + vy(38, ph), SkyLyricsClient.mac()
-								? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if your launcher may control them, click OK.")
-								: Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
-						Tr.t("Optional: signing in to Spotify (needs Premium and a free developer app) can help with timing."),
-						Tr.t("No music right now? Try the demo song."));
+				heading(g, text.heading(), py + vy(22, ph));
+				lines(g, py + vy(38, ph), text.paragraphs().toArray(new String[0]));
 			}
 			case 4 -> {
-				heading(g, Tr.t("You're all set"), py + vy(22, ph));
+				heading(g, text.heading(), py + vy(22, ph));
 				SkyLyricsClient mod = SkyLyricsClient.get();
-				int y = lines(g, py + vy(40, ph),
-						Tr.t("In a world, press these keys. You can change them in Minecraft's Controls settings."));
+				int y = lines(g, py + vy(40, ph), text.paragraphs().toArray(new String[0]));
 				if (mod != null) {
 					y = keyLine(g, Tr.t("Settings"), mod.openSettingsKey(), y + 2);
 					keyLine(g, Tr.t("Song library"), mod.libraryKey(), y);
