@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -130,31 +131,27 @@ class CoverCacheTest {
 		assertNull(CoverCache.decodeSmall(bad, 128));
 		byte[] cut = encode(bigPicture(2000, 2000), "png");
 		byte[] half = java.util.Arrays.copyOf(cut, cut.length / 2);
-		try {
-			ImageIO.read(new ByteArrayInputStream(half));
-			assertDoesNotThrow(() -> CoverCache.decodeSmall(half, 128));
-		} catch (IOException expected) {
-			org.junit.jupiter.api.Assertions.assertThrows(IOException.class, () -> CoverCache.decodeSmall(half, 128));
-		}
+		// the subsampled read fails on the cut file and so does the whole read it falls back to: the caller sees the IOException
+		assertThrows(IOException.class, () -> CoverCache.decodeSmall(half, 128));
 	}
 
 	@Test
 	void theSubsampledColourStaysClose() throws IOException {
 		// A smooth cover: a green-to-blue sweep with a darker corner, like a real scan
-		BufferedImage src = new BufferedImage(3000, 3000, BufferedImage.TYPE_INT_RGB);
-		for (int y = 0; y < 3000; y++) {
-			for (int x = 0; x < 3000; x++) {
-				float t = (x + y) / 6000f;
-				src.setRGB(x, y, java.awt.Color.HSBtoRGB(0.25f + 0.35f * t, 0.8f, 0.9f - 0.4f * (y / 3000f) * (x / 3000f)));
+		BufferedImage src = new BufferedImage(2000, 2000, BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < 2000; y++) {
+			for (int x = 0; x < 2000; x++) {
+				float t = (x + y) / 4000f;
+				src.setRGB(x, y, java.awt.Color.HSBtoRGB(0.25f + 0.35f * t, 0.8f, 0.9f - 0.4f * (y / 2000f) * (x / 2000f)));
 			}
 		}
 		int whole = AlbumArt.pickColor(src);
 		int small = AlbumArt.pickColor(CoverCache.decodeSmall(encode(src, "png"), AlbumArt.SIZE));
-		System.out.printf("colour whole=%06x subsampled=%06x%n", whole, small);
 		float[] a = java.awt.Color.RGBtoHSB(whole >> 16 & 255, whole >> 8 & 255, whole & 255, null);
 		float[] b = java.awt.Color.RGBtoHSB(small >> 16 & 255, small >> 8 & 255, small & 255, null);
 		float dh = Math.abs(a[0] - b[0]);
-		assertTrue(Math.min(dh, 1 - dh) <= 1f / 24 + 1e-4, "hue moved from " + a[0] + " to " + b[0]);
+		// the hue is the middle of a 1/24 bucket, so under half a bucket apart is the very same bucket
+		assertTrue(Math.min(dh, 1 - dh) < 1f / 48, "hue moved from " + a[0] + " to " + b[0]);
 	}
 
 	@Test

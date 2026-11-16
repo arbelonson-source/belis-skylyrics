@@ -483,12 +483,29 @@ public final class RecordCard {
 	/** The same, with {@code actionBar} saying a message shows above the hotbar. */
 	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
 			float bossClear, float liftUp, float[] bar, boolean actionBar) {
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear, liftUp, bar, actionBar, null);
+	}
+
+	/** A top card's top: at least {@link #BAR_GAP} below the top bar's box ({@code topBar}, null when none) when their widths overlap. */
+	static float belowTopBar(float[] topBar, float x, float top) {
+		if (topBar == null || x + W <= topBar[0] || x >= topBar[2]) {
+			return top;
+		}
+		return Math.max(top, topBar[3] + BAR_GAP);
+	}
+
+	/** The same, with the top bar's box ({@code topBar}: left, top, right, bottom; null when it isn't at the top). */
+	static float[] corner(CardCorner corner, int guiW, int guiH, int effects, float h, boolean rightHanded, boolean indicator,
+			float bossClear, float liftUp, float[] bar, boolean actionBar, float[] topBar) {
 		float left = MARGIN, right = guiW - MARGIN - W;
 		float top = MARGIN, bottom = guiH - MARGIN - h;
 		if (corner == CardCorner.TOP_RIGHT && effects > 0) {
 			top = effects + 2;
 		}
 		top = Math.max(top, bossClear);
+		if (corner == CardCorner.TOP_LEFT || corner == CardCorner.TOP_RIGHT) {
+			top = belowTopBar(topBar, corner == CardCorner.TOP_LEFT ? left : right, top);
+		}
 		// On a narrow screen a bottom corner would cover the hotbar or what sits beside it, so the card moves up above it
 		boolean onLeft = corner == CardCorner.BOTTOM_LEFT;
 		float reach = sideReach(onLeft, rightHanded, indicator);
@@ -518,7 +535,7 @@ public final class RecordCard {
 		int bars = NowPlayingHud.bossBarCount(mc);
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
 		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars),
-				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc));
+				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc), NowPlayingHud.topBox());
 	}
 
 	/** The last {@link #times}, kept while the same whole seconds are asked for (the card asks every frame). */

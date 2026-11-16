@@ -89,5 +89,11 @@ class FocusTest {
 		assertEquals(false, Focus.mouseMoved(100, 100, 101, 100));
 		assertEquals(true, Focus.mouseMoved(100, 100, 100, 103));
 		assertEquals(true, Focus.mouseMoved(100, 100, 90, 100));
+		// exactly 2 px is already movement, just under it is not, on either axis and either way
+		assertEquals(true, Focus.mouseMoved(100, 100, 102, 100));
+		assertEquals(true, Focus.mouseMoved(100, 100, 98, 100));
+		assertEquals(true, Focus.mouseMoved(100, 100, 100, 102));
+		assertEquals(true, Focus.mouseMoved(100, 100, 100, 98));
+		assertEquals(false, Focus.mouseMoved(100, 100, 101.9, 98.1));
 	}
 }

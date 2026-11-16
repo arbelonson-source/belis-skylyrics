@@ -136,6 +136,16 @@ final class TopBarLayout {
 	}
 
 	/**
+	 * The top bar's box in screen units (left, top, right, bottom), for a bar drawn {@code size} times bigger about its top
+	 * edge and the screen's middle: the same widths as {@link #barBox}, hanging down from {@code top}.
+	 */
+	static float[] topBarBox(float guiWidth, float size, float pill, float clockW, boolean clock, float statsW, boolean stats,
+			float top) {
+		float[] b = barBox(guiWidth, size, pill, clockW, clock, statsW, stats, top);
+		return new float[] {b[0], top, b[2], top + PILL_H * size};
+	}
+
+	/**
 	 * The line the bar grows from when {@code barSize} scales it: its own edge on the side of the screen it sits on, so a
 	 * bigger bar never grows off the screen or into the hotbar.
 	 */

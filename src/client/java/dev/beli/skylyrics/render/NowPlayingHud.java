@@ -248,6 +248,7 @@ public final class NowPlayingHud {
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			bottomBox = null;
+			topBox = null;
 			content = null;
 			old = null;
 			width = -1;
@@ -303,6 +304,8 @@ public final class NowPlayingHud {
 		float y = top - (1 - easeOut(alpha)) * 10;
 		bottomBox = cfg.barPosition == BarPosition.BOTTOM
 				? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top) : null;
+		topBox = cfg.barPosition == BarPosition.BOTTOM
+				? null : TopBarLayout.topBarBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top);
 		bottomBoxAt = now;
 
 		float barSize = cfg.barSize;
@@ -373,7 +376,14 @@ public final class NowPlayingHud {
 	/** The bar's box (left, top, right, bottom) while it sits at the bottom of the screen, else null; the Record card keeps clear of it. */
 	private static volatile float[] bottomBox;
 
+	/** The same for a bar at the top of the screen (else null); the Record card in a top corner keeps below it. */
+	private static volatile float[] topBox;
+
 	private static volatile long bottomBoxAt;
+
+	static float[] topBox() {
+		return System.nanoTime() - bottomBoxAt > BOX_STALE_NS ? null : topBox;
+	}
 
 	/**
 	 * The box, or null when the bar didn't draw it in the last moment (hidden, GUI off, or the bar moved to the top). It
@@ -725,11 +735,19 @@ public final class NowPlayingHud {
 			String t = LyricsFont.cachedWidth(f, k.style(), k.title()) <= room ? k.title() : clip(f, k.style(), k.title(), k.floor());
 			float used = LyricsFont.cachedWidth(f, k.style(), t);
 			String s = null;
-			if (!k.sub().isEmpty() && used < room - 12) {
+			if (!k.sub().isEmpty() && subFits(used, room)) {
 				s = clip(f, k.style(), dotted(k.sub()), room - used);
 			}
 			return new TitleCut(t, used, s);
 		});
+	}
+
+	/** Room the sub text needs beyond the title: "  ·  " and a few characters, so it never ends up as a lone ellipsis. */
+	static final float SUB_MIN = 30;
+
+	/** Whether the "  ·  Artist" part is shown after a title that used {@code used} of {@code room}. */
+	static boolean subFits(float used, float room) {
+		return used < room - SUB_MIN;
 	}
 
 	/** The room a cut is worked out for, in whole GUI units, rounded down so a cut never overflows. */

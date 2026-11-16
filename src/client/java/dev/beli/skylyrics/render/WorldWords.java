@@ -950,7 +950,7 @@ final class WorldWords {
 	void glide(Vec3 eye, float yaw, float pitch, boolean gliding, long now) {
 		float seconds = (now - lastGlide) / 1e9f;
 		fastRun = fastRun(fastRun, lastEye, eye, seconds);
-		gliding |= fastRun >= FAST_FRAMES;
+		gliding = travelling(gliding, fastRun);
 		Vec3 moved = carry(lastEye, eye, gliding, seconds);
 		lastGlide = now;
 		this.gliding = gliding;
@@ -1023,6 +1023,11 @@ final class WorldWords {
 		}
 		float pitch = pitchOf(offset);
 		return pitch + clip + tilt - shownPitch(pitch, clip, tilt);
+	}
+
+	/** Whether the cards travel with you: while gliding or riding, or once you have been moving fast for {@link #FAST_FRAMES} frames. */
+	static boolean travelling(boolean gliding, int fastRun) {
+		return gliding || fastRun >= FAST_FRAMES;
 	}
 
 	/**
@@ -1404,26 +1409,37 @@ final class WorldWords {
 		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
 		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
+		openRun(sentence, lineRuns, lineHalf, placing, wordScale, halfH);
+		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
+		closeRun(sentence, run);
+		return new float[] {at2[0], at2[1], distance, at2[2]};
+	}
+
+	/** Before piece {@code placing} is written: along the line, or as the first of a stretch against it, which takes room for all its pieces. */
+	static void openRun(Sentence sentence, int[] runs, float[] half, int placing, float wordScale, float halfH) {
+		int run = placing >= 0 && placing < runs.length ? runs[placing] : RUN_NONE;
 		if (run == RUN_NONE) {
 			sentence.forward();
 		} else if (run == RUN_FIRST) {
 			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it
 			float span = 0;
 			int count = 0;
-			for (int k = placing; k < lineRuns.length; k++) {
-				span += 2 * halfAngle(lineHalf[k] * wordScale, sentence.distance);
+			for (int k = placing; k < runs.length; k++) {
+				span += 2 * halfAngle(half[k] * wordScale, sentence.distance);
 				count++;
-				if (lineRuns[k] == RUN_LAST) {
+				if (runs[k] == RUN_LAST) {
 					break;
 				}
 			}
 			sentence.reverse(span + (count - 1) * Sentence.GAP * halfH);
 		}
-		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
+	}
+
+	/** After a piece of kind {@code run} is written: the end of a stretch goes back to writing along the line. */
+	static void closeRun(Sentence sentence, int run) {
 		if (run == RUN_LAST) {
 			sentence.forward();
 		}
-		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
 
 	/** How far either side of where you look, in degrees, a line's rows may reach and still be on screen. */
