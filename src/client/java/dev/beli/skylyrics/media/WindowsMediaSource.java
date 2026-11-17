@@ -87,9 +87,9 @@ public final class WindowsMediaSource implements MediaSource {
 	private final LongSupplier clock;
 	private final Requester requester;
 	private boolean wasLooking = true;
-	/** The last poll's answer, reused while nobody is looking; null when there is none worth reusing. */
 	/** Counts close() calls, so a poll in flight (which holds the lock close() must not wait for) can tell. */
 	private volatile int closes;
+	/** The last poll's answer, reused while nobody is looking; null when there is none worth reusing. */
 	private volatile @Nullable Snapshot cached;
 	private long cachedAt;
 
