@@ -481,8 +481,10 @@ public final class CoverCache {
 
 	/** Keeps a downloaded cover on disk for next time; a full or locked disk only costs the next download. */
 	static void store(Path dir, Path file, byte[] bytes) {
-		store(dir, file, bytes, Files::write);
+		store(dir, file, bytes, Files::write, DISK_FILES);
 	}
+
+	private static final java.util.concurrent.atomic.AtomicInteger SAVES = new java.util.concurrent.atomic.AtomicInteger();
 
 	/** The write itself, so tests can make it fail. */
 	interface Writer {
@@ -490,6 +492,11 @@ public final class CoverCache {
 	}
 
 	static void store(Path dir, Path file, byte[] bytes, Writer writer) {
+		store(dir, file, bytes, writer, DISK_FILES);
+	}
+
+	/** Every tenth of {@code keep} saves also trims the folder, so a long session can't run far past the cap. */
+	static void store(Path dir, Path file, byte[] bytes, Writer writer, int keep) {
 		Path temp = null;
 		try {
 			Files.createDirectories(dir);
@@ -507,6 +514,9 @@ public final class CoverCache {
 					// the next tidy-up of the folder takes it
 				}
 			}
+		}
+		if (SAVES.incrementAndGet() % Math.max(1, keep / 10) == 0) {
+			tidy(dir.toFile().listFiles(), keep);
 		}
 	}
 
