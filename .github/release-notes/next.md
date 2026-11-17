@@ -98,6 +98,7 @@
 - **Longer button texts.** The song library's Spotify sign-in buttons, **Done** and **Try again** grow to fit their text, so Spanish, Portuguese and Hebrew words no longer run out of them or overlap; when the sign-in card is too narrow, its buttons go one above the other.
 - **Linux without a session bus.** Where Linux has no desktop message bus (some containers and launchers), the mod no longer tries to reach it twice a second: it waits longer each time, up to 30 seconds, and still finds a bus that shows up later.
 - **Spotify sign-out.** Signing out of Spotify just as the mod asks it for the song no longer brings the old account's song back for a moment.
+- **Album cover on a song change.** The last song's album cover no longer shows for a moment next to the new song's title.
 
 ### Faster
 
