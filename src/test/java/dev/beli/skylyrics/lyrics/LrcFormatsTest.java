@@ -1,7 +1,6 @@
 package dev.beli.skylyrics.lyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import org.junit.jupiter.api.Test;
 
@@ -28,22 +27,7 @@ class LrcFormatsTest {
 	}
 
 	@Test
-	void wordTagsBetweenSpacedWordsLeaveASpace() {
-		assertEquals("Hello world", LrcParser.parseSynced("[00:01.00]<00:01.00>Hello<00:01.50>world").get(0).text());
-		assertEquals("привет мир", LrcParser.parseSynced("[00:01.00]<00:01.00>привет<00:01.50>мир").get(0).text());
-	}
-
-	@Test
-	void wordTagsNeverSplitScriptsWithoutSpaces() {
-		assertEquals("你好", LrcParser.parseSynced("[00:01.00]<00:01.00>你<00:01.50>好").get(0).text());
-		assertEquals("こんにちは", LrcParser.parseSynced("[00:01.00]<00:01.00>こん<00:01.50>にちは").get(0).text());
-		assertEquals("สวัสดี", LrcParser.parseSynced("[00:01.00]<00:01.00>สวั<00:01.50>สดี").get(0).text());
-	}
-
-	@Test
-	void wordTagsWithTheSpaceAlreadyThereDoNotDouble() {
-		assertEquals("Hello world", LrcParser.parseSynced("[00:01.00]<00:01.00>Hello <00:01.50>world").get(0).text());
-		assertEquals("Hello world", LrcParser.parseSynced("[00:01.00]<00:01.00>Hello<00:01.50> world").get(0).text());
-		assertFalse(LrcParser.parseSynced("[00:01.00]<00:01.00>Hello<00:01.50>, world").get(0).text().contains(" ,"));
+	void syllableTagsInsideAWordAddNoSpace() {
+		assertEquals("Hello world", LrcParser.parseSynced("[00:01.00]<00:01.00>Hel<00:01.20>lo <00:01.50>world").get(0).text());
 	}
 }

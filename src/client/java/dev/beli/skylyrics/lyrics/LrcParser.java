@@ -83,39 +83,6 @@ public final class LrcParser {
 		return note && (word.equalsIgnoreCase("instrumental") || word.equalsIgnoreCase("music"));
 	}
 
-	/**
-	 * Removes the word tags of enhanced LRC. A tag between two letters of a script that spaces its words ("Hello<..>world") leaves
-	 * a space so the words don't join; scripts without spaces (Chinese, Japanese, Korean, Thai...) are joined as they are.
-	 */
-	static String stripWordTags(String s) {
-		Matcher m = WORD_TIME.matcher(s);
-		StringBuilder b = new StringBuilder(s.length());
-		int last = 0;
-		while (m.find()) {
-			b.append(s, last, m.start());
-			last = m.end();
-			if (m.start() > 0 && last < s.length()) {
-				int before = s.codePointBefore(m.start());
-				int after = s.codePointAt(last);
-				if (spacedLetter(before) && spacedLetter(after)) {
-					b.append(' ');
-				}
-			}
-		}
-		return b.append(s, last, s.length()).toString();
-	}
-
-	private static boolean spacedLetter(int cp) {
-		if (!Character.isLetter(cp)) {
-			return false;
-		}
-		Character.UnicodeScript script = Character.UnicodeScript.of(cp);
-		return switch (script) {
-			case LATIN, CYRILLIC, GREEK, HEBREW, ARABIC, ARMENIAN, GEORGIAN, DEVANAGARI -> true;
-			default -> false;
-		};
-	}
-
 	public static Lyrics parseSynced(String lrc) {
 		if (lrc == null || lrc.isBlank()) {
 			return Lyrics.NONE;
@@ -144,7 +111,7 @@ public final class LrcParser {
 			if (times.isEmpty()) {
 				continue;
 			}
-			String text = tidy(TIME.matcher(stripWordTags(raw.substring(end))).replaceAll(" "));
+			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
 			text = LEADING_TAG.matcher(text).replaceFirst("");
 			if (NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
 				text = "";
