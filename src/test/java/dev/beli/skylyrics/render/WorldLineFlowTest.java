@@ -118,4 +118,23 @@ class WorldLineFlowTest {
 		assertTrue(s.full(low), "the line fills up");
 		assertTrue(s.top < 90, "rows end at " + s.top);
 	}
+
+	@Test
+	void aRowFitsOnTheScreenByWhereItsWordsReachNotByItsPitchAlone() {
+		float half = WorldWords.halfView(0, 70);
+		assertFalse(WorldWords.rowFits(34, 0, 0, half), "reaches 34 degrees down");
+		assertTrue(WorldWords.rowFits(30, 0, 0, half));
+		assertFalse(WorldWords.rowFits(31, 25, 0, half), "the same row off to the side is lower on the screen");
+		assertTrue(WorldWords.rowFits(31, 0, 0, half));
+	}
+
+	@Test
+	void lookingUpMovesTheRowFitUpAndAWiderViewMovesItDown() {
+		float half = WorldWords.halfView(0, 70);
+		assertTrue(WorldWords.rowFits(30, 0, 0, half));
+		assertFalse(WorldWords.rowFits(30, 0, -30, half));
+		assertTrue(WorldWords.rowFits(0, 0, -30, half));
+		assertFalse(WorldWords.rowFits(45, 0, 0, half));
+		assertTrue(WorldWords.rowFits(45, 0, 0, WorldWords.halfView(0, 110)));
+	}
 }

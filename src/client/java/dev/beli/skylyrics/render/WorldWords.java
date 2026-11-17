@@ -300,6 +300,8 @@ final class WorldWords {
 	private boolean gliding;
 	/** The lowest pitch a new row may start on to still be on screen, worked out as each word is placed. */
 	private float seenLow = Sentence.ROW_LIMIT;
+	/** Half the height of the screen in degrees, as of the last card placed. */
+	private float seenHalf = 35f;
 	private @Nullable Sentence sentence;
 	/** The line written before it, which the next line of a verse goes under. */
 	private @Nullable Sentence last;
@@ -1415,7 +1417,8 @@ final class WorldWords {
 		float[] spot;
 		float halfW, halfH, shrink;
 		Vec3 pos;
-		seenLow = lowestSeen(camera.xRot(), halfView(ScreenLayer.tanHalfV(), sliderFov()));
+		seenHalf = halfView(ScreenLayer.tanHalfV(), sliderFov());
+		seenLow = lowestSeen(camera.xRot(), seenHalf);
 		for (boolean again = false;; again = true) {
 			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
 			Vec3 dir = direction(spot[0], spot[1]);
@@ -1590,6 +1593,10 @@ final class WorldWords {
 	 * pushes one onto a row of its own.
 	 */
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm, long now) {
+		return follow(centre, at, size, taken, firm, now, false);
+	}
+
+	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm, long now, boolean again) {
 		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
 		if (sentence != null && (sentence.lost(centre[0], centre[1] - LIFT, aside) || sentence.full(seenLow))) {
 			startsOver(() -> sentence.full(seenLow) ? "full: top " + sentence.top + " rows " + sentence.rows : "lost: view " + centre[0] + "/" + centre[1] + " line " + sentence.left + "+" + sentence.width + " home " + sentence.home);
@@ -1653,7 +1660,19 @@ final class WorldWords {
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
 		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
 		openRun(sentence, lineRuns, lineHalf, placing, wordScale, halfH);
+		float[] mark = sentence.mark();
+		int rowsBefore = sentence.rows;
 		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
+		if (!again && sentence.rows > rowsBefore && !rowFits(at2[1] + halfH, Mth.wrapDegrees(at2[0] - centre[0]), centre[1], seenHalf)) {
+			// This piece started a row whose words would run off the bottom of the screen: the line starts over at the top
+			// instead, and this piece begins it
+			startsOver(() -> "below: top " + sentence.top + " rows " + sentence.rows);
+			sentence.back(mark);
+			clearLine(cards, sentence, earlier, now);
+			sentence = null;
+			last = null;
+			return follow(centre, at, size, taken, firm, now, true);
+		}
 		closeRun(sentence, run);
 		return new float[] {at2[0], at2[1], distance, at2[2]};
 	}
@@ -1719,6 +1738,24 @@ final class WorldWords {
 	/** The lowest pitch a row may start on while you look at {@code pitch}: the bottom of the screen less a margin, never past {@link Sentence#rowLimit}. */
 	static float lowestSeen(float pitch, float halfView) {
 		return Math.min(Sentence.rowLimit(pitch), pitch + halfView - ROW_MARGIN);
+	}
+
+	/** Share of the screen's half height, from the bottom, that the hotbar and a word's hang keep a row clear of. */
+	static final float HOTBAR_SHARE = 0.12f;
+
+	/**
+	 * Whether a row whose words reach down to pitch {@code reach}, {@code yawOff} degrees to the side of where you look
+	 * at {@code view}, still shows on a screen {@code halfView} degrees tall either way. A point at pitch p and yaw offset y
+	 * sits at tan(p) / cos(y) up or down the screen, so a row's ends sit lower than its pitch says; the bottom
+	 * {@link #HOTBAR_SHARE} is kept clear.
+	 */
+	static boolean rowFits(float reach, float yawOff, float view, float halfView) {
+		float down = reach - view;
+		if (down <= 0) {
+			return true;
+		}
+		float cos = (float) Math.cos(Mth.clamp(Math.abs(yawOff), 0, 89) * DEG);
+		return down < 89 && Math.tan(down * DEG) / cos <= Math.tan(halfView * DEG) * (1 - HOTBAR_SHARE);
 	}
 
 	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
