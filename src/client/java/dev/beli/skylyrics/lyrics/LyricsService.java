@@ -451,8 +451,12 @@ public final class LyricsService {
 				// tidyDisk or the next write of this song cleans it
 			}
 		}
-		if (SAVES.incrementAndGet() % Math.max(1, keep / 10) == 0) {
-			tidyDisk(file.getParent(), keep);
+		if (SAVES.incrementAndGet() % Math.max(1, keep / 10) == 0 && file.getParent() != null) {
+			try {
+				tidyDisk(file.getParent(), keep);
+			} catch (RuntimeException e) {
+				LOG.debug("Could not trim the lyrics folder", e); // the save itself worked; the next trim tries again
+			}
 		}
 	}
 
@@ -462,7 +466,12 @@ public final class LyricsService {
 		if (files == null || files.length <= keep) {
 			return;
 		}
-		Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+		// Read each time once: another game touching a file mid-sort would otherwise break the sort's contract and throw
+		java.util.Map<File, Long> times = new java.util.HashMap<>();
+		for (File f : files) {
+			times.put(f, f.lastModified());
+		}
+		Arrays.sort(files, Comparator.comparingLong(times::get));
 		for (int i = 0; i < files.length - keep; i++) {
 			files[i].delete();
 		}
