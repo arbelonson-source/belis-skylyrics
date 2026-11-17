@@ -1102,10 +1102,11 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private void renderToast(GuiGraphics g) {
-		if (toast.isEmpty() || toastAge >= TOAST_TIME) {
+		float shown = toastShown();
+		if (toast.isEmpty() || toastAge >= shown) {
 			return;
 		}
-		float a = Mth.clamp(Math.min(toastAge * 6, (TOAST_TIME - toastAge) * 3), 0, 1);
+		float a = Mth.clamp(Math.min(toastAge * 6, (shown - toastAge) * 3), 0, 1);
 		String text = Ui.clip(font, toast, pw - 60);
 		int w = font.width(text) + 20, x = px + (pw - w) / 2, y = py + ph - 24 + Math.round((1 - a) * 6);
 		Ui.rect(g, x, y, w, 16, 8, Ui.alpha(Ui.CONTROL_HOVER, a));
@@ -1723,7 +1724,12 @@ public final class LibraryScreen extends Screen {
 
 	/** The message in the toast while it is still showing, for the Narrator. */
 	private String toastWords() {
-		return toastAge < TOAST_TIME ? toast : "";
+		return toastAge < toastShown() ? toast : "";
+	}
+
+	/** How long the toast stays: its time scaled by Minecraft's Notification Display Time. */
+	private static float toastShown() {
+		return ToastTime.shownFor(TOAST_TIME, ToastTime.multiplier());
 	}
 
 	@Override
