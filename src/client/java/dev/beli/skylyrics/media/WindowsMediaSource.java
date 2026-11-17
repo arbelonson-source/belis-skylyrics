@@ -88,6 +88,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private final Requester requester;
 	private boolean wasLooking = true;
 	/** The last poll's answer, reused while nobody is looking; null when there is none worth reusing. */
+	/** Counts close() calls, so a poll in flight (which holds the lock close() must not wait for) can tell. */
+	private volatile int closes;
 	private volatile @Nullable Snapshot cached;
 	private long cachedAt;
 
@@ -161,9 +163,12 @@ public final class WindowsMediaSource implements MediaSource {
 			return reuse;
 		}
 		cached = null; // a failed ask must not leave an old answer to reuse
+		int generation = closes;
 		Snapshot fresh = ask();
-		cached = fresh;
-		cachedAt = clock.getAsLong();
+		if (generation == closes) { // a close() during the ask means this answer is from before it: use it once, don't keep it
+			cached = fresh;
+			cachedAt = clock.getAsLong();
+		}
 		return fresh;
 	}
 
@@ -768,6 +773,7 @@ public final class WindowsMediaSource implements MediaSource {
 	/** Stops the helper; the next poll starts it again straight away. Safe from any thread. */
 	@Override
 	public void close() {
+		closes++;
 		cached = null;
 		stop();
 		retryAt = 0;

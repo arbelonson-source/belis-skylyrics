@@ -657,6 +657,25 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void aReadThatFinishesAfterCloseIsNotKeptForTheNextPolls() throws Exception {
+		int[] asks = {0};
+		long[] now = {1_000_000_000L};
+		WindowsMediaSource[] box = new WindowsMediaSource[1];
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS,
+				() -> false, () -> now[0], cmd -> {
+					if (asks[0]++ == 0) {
+						box[0].close(); // the game closes the source while the first question is still being answered
+					}
+					return playingReply();
+				});
+		box[0] = source;
+		source.poll();
+		now[0] += 500_000_000L;
+		source.poll(); // not looking, 0.5 s on: would reuse the 15 s reading, but that one began before the close
+		assertEquals(2, asks[0]);
+	}
+
+	@Test
 	void notLookingAsksTheHelperOncePer15Seconds() throws Exception {
 		assertEquals(4, asksOver(new boolean[] {false}, 60));
 	}
