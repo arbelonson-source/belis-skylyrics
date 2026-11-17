@@ -83,6 +83,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private final long startTimeoutMs;
 	private final long replyTimeoutMs;
 	private final BooleanSupplier looking;
+	/** "No update time" for a count start: a steady-clock value can be zero or below, so 0 cannot mean none. */
+	static final long NO_TIME = Long.MIN_VALUE;
 	/** Pacing clock; tests swap it. */
 	private final LongSupplier clock;
 	/** The computer's wall clock in ms; tests swap it to move the clock. Only used to take a report's age. */
@@ -233,7 +235,7 @@ public final class WindowsMediaSource implements MediaSource {
 	 * {@code updatedMs}, when the player wrote it. But an app can flip to Playing before it rewrites its update
 	 * time: then {@code updatedMs} is from before the pause, and counting from it adds the whole pause on top of
 	 * the old position. A report no newer than the poll that still saw it paused counts from now instead. A
-	 * player that never says when (updatedMs 0) counts from when we first saw this position, rather than
+	 * player that never says when (NO_TIME) counts from when we first saw this position, rather than
 	 * standing still. A report that changed, or an update time newer than the one we count from, starts over.
 	 */
 	static long countFrom(boolean playing, long reportedMs, long updatedMs, long nowMs, @Nullable Seen prev) {
@@ -241,13 +243,13 @@ public final class WindowsMediaSource implements MediaSource {
 			return updatedMs;
 		}
 		if (prev == null) {
-			return updatedMs > 0 ? updatedMs : nowMs;
+			return updatedMs != NO_TIME ? updatedMs : nowMs;
 		}
 		if (!prev.playing()) {
 			return updatedMs > prev.polledMs() ? updatedMs : nowMs;
 		}
 		if (reportedMs != prev.reportedMs() || updatedMs > prev.countFromMs()) {
-			return updatedMs > 0 ? updatedMs : nowMs;
+			return updatedMs != NO_TIME ? updatedMs : nowMs;
 		}
 		return prev.countFromMs();
 	}
@@ -307,7 +309,7 @@ public final class WindowsMediaSource implements MediaSource {
 				if (length > 0) {
 					age = Math.min(age, length);
 				}
-				from = countFrom(playing, reported, updated > 0 ? monoMs - age : 0, nowMs, same);
+				from = countFrom(playing, reported, updated > 0 ? monoMs - age : NO_TIME, nowMs, same);
 			}
 			after.put(key, new Seen(title, length, playing, reported, nowMs, from, updated));
 			long position = position(reported, from, playing, length, nowMs, rate);
@@ -328,7 +330,7 @@ public final class WindowsMediaSource implements MediaSource {
 	/** As above, for a player running at {@code rate} (1.5 = song time passes 1.5 times faster than the clock). */
 	static long position(long positionMs, long updatedMs, boolean playing, long lengthMs, long nowMs, double rate) {
 		long pos = positionMs;
-		if (playing && updatedMs > 0 && nowMs > updatedMs) {
+		if (playing && updatedMs != NO_TIME && nowMs > updatedMs) {
 			pos += (long) ((nowMs - updatedMs) * saneRate(rate));
 		}
 		if (lengthMs > 0) {
