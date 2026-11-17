@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.media;
 
+import dev.beli.skylyrics.util.LogText;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -234,7 +235,7 @@ public final class HeardLibrary implements Library {
 		} catch (IOException e) {
 			if (!blockedLogged) {
 				blockedLogged = true;
-				LOG.warn("Recently heard songs not saved: {} can't be read right now ({})", file, e.toString());
+				LOG.warn("Recently heard songs not saved: {} can't be read right now ({})", LogText.of(file), LogText.of(e));
 			}
 			return false;
 		} catch (RuntimeException e) {
@@ -300,7 +301,7 @@ public final class HeardLibrary implements Library {
 			}
 			return true;
 		} catch (IOException e) {
-			LOG.warn("Couldn't save the recently heard songs: {}", e.toString());
+			LOG.warn("Couldn't save the recently heard songs: {}", LogText.of(e));
 			return false;
 		}
 	}
@@ -354,7 +355,7 @@ public final class HeardLibrary implements Library {
 		} catch (java.nio.file.NoSuchFileException e) {
 			return new Loaded(out, false);
 		} catch (java.nio.charset.CharacterCodingException e) {
-			LOG.warn("The recently heard file isn't valid text, starting empty (kept a copy as heard.json.bad): {}", e.toString());
+			LOG.warn("The recently heard file isn't valid text, starting empty (kept a copy as heard.json.bad): {}", LogText.of(e));
 			keepCopy(file);
 			return new Loaded(out, false);
 		} catch (IOException e) {
@@ -362,13 +363,13 @@ public final class HeardLibrary implements Library {
 				// Not readable by permissions (a sharing lock leaves it readable): it will never read, so move it aside and start a new one.
 				try {
 					Path moved = SafeFile.moveAside(file);
-					LOG.warn("The recently heard file {} can't be read (permissions), so it was moved to {} and a new one will be started.", file, moved);
+					LOG.warn("The recently heard file {} can't be read (permissions), so it was moved to {} and a new one will be started.", LogText.of(file), LogText.of(moved));
 					return new Loaded(out, false);
 				} catch (IOException | RuntimeException moveError) {
-					LOG.warn("The recently heard file {} can't be read and couldn't be moved aside: {}", file, moveError.toString());
+					LOG.warn("The recently heard file {} can't be read and couldn't be moved aside: {}", LogText.of(file), LogText.of(moveError));
 				}
 			}
-			LOG.warn("Couldn't read {}; recently heard songs won't be saved this session. Check the file's permissions or whether another program has it open: {}", file, e.toString());
+			LOG.warn("Couldn't read {}; recently heard songs won't be saved this session. Check the file's permissions or whether another program has it open: {}", LogText.of(file), LogText.of(e));
 			return new Loaded(out, true);
 		}
 		if (text.isBlank()) {
@@ -378,7 +379,7 @@ public final class HeardLibrary implements Library {
 			readSongs(text, out);
 		} catch (RuntimeException e) {
 			out.clear();
-			LOG.warn("The recently heard file is damaged, starting empty (kept a copy as heard.json.bad): {}", e.toString());
+			LOG.warn("The recently heard file is damaged, starting empty (kept a copy as heard.json.bad): {}", LogText.of(e));
 			keepCopy(file);
 		}
 		return new Loaded(out, false);
@@ -388,7 +389,7 @@ public final class HeardLibrary implements Library {
 		try {
 			SafeFile.keepBad(file);
 		} catch (IOException | RuntimeException e) {
-			LOG.warn("Couldn't keep a copy of the damaged recently heard file: {}", e.toString());
+			LOG.warn("Couldn't keep a copy of the damaged recently heard file: {}", LogText.of(e));
 		}
 	}
 

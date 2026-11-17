@@ -264,7 +264,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
 		Updater.start(cfg.updates, version);
 		if (FabricLoader.getInstance().isModLoaded("exordium")) {
-			LOG.warn("Exordium is installed: it redraws the HUD less often, so the lyrics may trail behind when you turn. Turn off Exordium's HUD buffering if they do.");
+			LOG.info("Exordium is installed: it redraws the HUD less often, so the lyrics may trail behind when you turn. Turn off Exordium's HUD buffering if they do.");
 		}
 		LOG.info("Beli's SkyLyrics {} ready (placement {}, demo {})", version, cfg.placement, cfg.demoMode);
 	}

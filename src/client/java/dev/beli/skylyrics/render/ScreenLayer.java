@@ -198,7 +198,8 @@ public final class ScreenLayer {
 					irisInstance = api.getMethod("getInstance");
 					irisShadersOn = api.getMethod("isShaderPackInUse");
 				} catch (ReflectiveOperationException e) {
-					SkyLyricsClient.LOG.warn("Couldn't reach the Iris API, assuming no shaders", e);
+					SkyLyricsClient.LOG.warn("Couldn't reach the Iris API, assuming no shaders: {}", e.toString());
+					SkyLyricsClient.LOG.debug("Iris API lookup failed", e);
 				}
 			}
 		}
