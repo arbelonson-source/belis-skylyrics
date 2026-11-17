@@ -207,12 +207,12 @@ final class EclipseSky {
 	 * @param baseYaw Minecraft yaw the lyrics face; the sun sits just below them
 	 * @param level 0..1, how much of the effect shows
 	 */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time) {
 		draw(c, radius, baseYaw, level, time, SkyView.ALL);
 	}
 
 	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, SkyView view) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, SkyView view) {
 		c.fadeBelowHorizon(HORIZON_FADE);
 		band(c, radius * BAND, baseYaw, level, view);
 		corona(c, radius * CORONA, baseYaw, level, time, view);
@@ -246,14 +246,14 @@ final class EclipseSky {
 		}
 	}
 
-	private void corona(SkyCanvas c, float r, float baseYaw, float level, float time, SkyView view) {
+	private void corona(SkyCanvas c, float r, float baseYaw, float level, double time, SkyView view) {
 		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
 		if (!view.capVisible(frame.dx, frame.dy, frame.dz, CORONA_REACH)) {
 			return;
 		}
 		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
 		// A slow, slight breathing so the corona feels alive
-		float alpha = level * (0.94f + 0.06f * (float) Math.sin(time * 0.8f));
+		float alpha = level * (0.94f + 0.06f * (float) Math.sin(SkyClock.phase(time, 0.8, 0)));
 		for (int j = 0; j < SEGMENTS; j++) {
 			wedgeShown[j] = wedgeVisible(j, view);
 		}

@@ -76,7 +76,7 @@ class GalaxySkyTest {
 		SkyCanvas.SkyFrame frame = new SkyCanvas.SkyFrame().aim(baseYaw + GalaxySky.YAW, GalaxySky.ELEV);
 		int n = GalaxySky.SEGMENTS;
 		float[] cos = new float[n + 1], sin = new float[n + 1], ring = new float[GalaxySky.RINGS + 1];
-		float spin = (time * GalaxySky.SPIN) % (2 * (float) Math.PI);
+		float spin = SkyClock.phase(time, GalaxySky.SPIN, 0);
 		float cs = (float) Math.cos(spin), sn = (float) Math.sin(spin);
 		for (int j = 0; j <= n; j++) {
 			double a = 2 * Math.PI * j / n;

@@ -105,18 +105,18 @@ final class GalaxySky {
 	 * @param level 0..1, how much of the effect shows
 	 * @param time seconds of sky clock, which sets how far it has turned
 	 */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time) {
 		draw(c, radius, baseYaw, level, time, SkyView.ALL);
 	}
 
 	/** As above, drawing nothing when the camera {@code view} can't see the galaxy. */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, SkyView view) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, SkyView view) {
 		frame.aim(baseYaw + YAW, ELEV);
 		// The disc is no wider than its radius in any direction (leaning only squashes it)
 		if (!view.capVisible(frame.dx, frame.dy, frame.dz, RADIUS * DEG * 1.05f)) {
 			return;
 		}
-		float spin = (time * SPIN) % (2 * (float) Math.PI);
+		float spin = SkyClock.phase(time, SPIN, 0);
 		float cs = (float) Math.cos(spin), sn = (float) Math.sin(spin);
 		for (int j = 0; j <= SEGMENTS; j++) {
 			turnedCos[j] = COS[j] * cs - SIN[j] * sn;
