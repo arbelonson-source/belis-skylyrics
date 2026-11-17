@@ -1817,7 +1817,8 @@ public final class SkyLyricsScreen extends Screen {
 		void render(Frame f) {
 			GuiGraphics g = f.g();
 			MediaTracker tracker = mod.tracker();
-			Track track = tracker.track();
+			dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
+			Track track = reading.track();
 			int cx = x + 7;
 			int cy = y + 7;
 			AlbumArt art = mod.art();
@@ -1843,7 +1844,7 @@ public final class SkyLyricsScreen extends Screen {
 			String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
 			g.drawString(font, Ui.visual(Ui.clip(font, sub, textW)), tx, y + 19, Ui.MUTED, false);
 
-			String[] glyphs = {"◀◀", tracker.playing() ? "❚❚" : "▶", "▶▶"};
+			String[] glyphs = {"◀◀", reading.playing() ? "❚❚" : "▶", "▶▶"};
 			for (int i = 0; i < 3; i++) {
 				int bx = buttonX(i);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), bx, y + 7, 18, 18);
@@ -1856,7 +1857,7 @@ public final class SkyLyricsScreen extends Screen {
 			}
 
 			long length = track.lengthMs();
-			long pos = Math.max(0, tracker.positionMs());
+			long pos = Math.max(0, tracker.positionMs(reading));
 			float t = length > 0 ? Mth.clamp(pos / (float) length, 0, 1) : 0;
 			int bx = barX();
 			int bw = barW();

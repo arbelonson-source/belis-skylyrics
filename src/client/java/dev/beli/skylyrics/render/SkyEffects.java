@@ -647,12 +647,14 @@ public final class SkyEffects {
 
 	/** How long the line being sung lasts, or 0 between lines and without synced lyrics. */
 	private float lineSeconds(SkyLyricsConfig cfg) {
-		Track playing = tracker.track();
+		// One read of the tracker, so the song and its position belong together
+		dev.beli.skylyrics.media.Snapshot now = tracker.snapshot();
+		Track playing = now.track();
 		Lyrics shown = service.snapshot().forSong(playing).lyrics();
 		if (shown == null || !shown.synced() || shown.isEmpty()) {
 			return 0;
 		}
-		int index = shown.indexAt(tracker.positionMs() + cfg.offsetFor(playing) + LyricsRenderer.LEAD_MS);
+		int index = shown.indexAt(tracker.positionMs(now) + cfg.offsetFor(playing) + LyricsRenderer.LEAD_MS);
 		LyricLine line = shown.get(index);
 		if (line == null || line.isBreak()) {
 			return 0;

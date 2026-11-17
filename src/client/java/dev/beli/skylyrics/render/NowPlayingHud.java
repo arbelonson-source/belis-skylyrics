@@ -782,8 +782,9 @@ public final class NowPlayingHud {
 			}
 
 			// Song progress: a thin line under the words that fills as the song plays
-			Track track = tracker.track();
-			float done = track == null ? -1 : TopBarLayout.progress(tracker.positionMs(), track.lengthMs());
+			dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
+			Track track = reading.track();
+			float done = track == null ? -1 : TopBarLayout.progress(tracker.positionMs(reading), track.lengthMs());
 			if (cfg.barProgress && done >= 0) {
 				float lx = Math.round((x + ART_INSET + ART + TEXT_GAP) * s);
 				float lw = Math.round(TopBarLayout.textRoom(width) * s);
@@ -1186,7 +1187,8 @@ public final class NowPlayingHud {
 	}
 
 	private long lyricsTime(SkyLyricsConfig cfg) {
-		return tracker.positionMs() + cfg.offsetFor(tracker.track()) + LyricsRenderer.LEAD_MS;
+		dev.beli.skylyrics.media.Snapshot now = tracker.snapshot();
+		return tracker.positionMs(now) + cfg.offsetFor(now.track()) + LyricsRenderer.LEAD_MS;
 	}
 
 	/**
