@@ -43,12 +43,16 @@ final class ClickRescue {
 		return !replaying;
 	}
 
-	/** A left release reached the screen. Returns false when this replays the click instead. */
+	/** A left release reached the screen. Returns false when this replays the click instead (and then its release too). */
 	boolean released() {
 		if (inside) {
 			return true;
 		}
-		sawRelease = true;
+		if (!replaying) {
+			sawRelease = true;
+		}
+		// While replaying, the screen ignores the real release and poll() hands it the replay's own, exactly once;
+		// marking it seen here would leave a replayed press (a held slider or scrollbar) never released
 		return !replaying;
 	}
 
