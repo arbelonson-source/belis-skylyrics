@@ -1446,10 +1446,15 @@ class WorldWordsTest {
 
 	/** One 34 word flowing line written a piece at a time, up to the moment it first starts over (or the end of it). */
 	private static WorldWords longLine(java.util.function.Predicate<Vec3> buried, boolean stopAtRestart) {
+		return longLine(buried, stopAtRestart, Float.NaN, 0, 12345);
+	}
+
+	private static WorldWords longLine(java.util.function.Predicate<Vec3> buried, boolean stopAtRestart, float fixedYaw, float fixedPitch, long seed) {
 		WorldWords.measureHook = t -> t.length() * 4.0;
 		WorldWords.buriedHook = buried;
 		try {
 			WorldWords words = new WorldWords();
+			words.seed(seed);
 			words.tune(30, 6, 1, 1, 1, true, true, false, 1);
 			words.players(false, false);
 			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
@@ -1458,7 +1463,7 @@ class WorldWordsTest {
 				text.append(w == 0 ? "" : " ").append("word").append(w);
 			}
 			for (int k = 1; k <= 400; k++) {
-				words.update(0, text.toString(), (k - 1) * 3f, false, Float.NaN, Float.NaN, camera, null, null, net.minecraft.network.chat.Style.EMPTY, k * 100_000_000L);
+				words.update(0, text.toString(), (k - 1) * 3f, false, fixedYaw, fixedPitch, camera, null, null, net.minecraft.network.chat.Style.EMPTY, k * 100_000_000L);
 				if (stopAtRestart && !words.earlierSentences().isEmpty()) {
 					break;
 				}
@@ -1470,15 +1475,46 @@ class WorldWordsTest {
 		}
 	}
 
-	/** Looking at the horizon, the piece that would start a row below the screen begins the line over instead of sitting under it. */
+	/**
+	 * Looking at the horizon, the piece that would start a row below the screen begins the line over instead of sitting
+	 * under it: every word the old line shows is on the screen, whatever way its words bobbed and the line rose (tried
+	 * with many random layouts).
+	 */
 	@Test
 	void aPieceThatWouldWrapBelowTheScreenStartsTheLineOverInsteadOfSittingThere() throws Exception {
-		WorldWords words = longLine(pos -> false, true);
+		float half = WorldWords.halfView(0, 70);
+		for (long seed = 1; seed <= 200; seed++) {
+			WorldWords words = longLine(pos -> false, true, Float.NaN, 0, seed);
+			assertFalse(words.earlierSentences().isEmpty(), "the line started over, seed " + seed);
+			WorldWords.Sentence old = words.earlierSentences().get(0);
+			@SuppressWarnings("unchecked")
+			List<Object> cards = (List<Object>) get(words, "cards");
+			int own = 0;
+			for (Object card : cards) {
+				if (get(card, "of") != old) {
+					continue;
+				}
+				own++;
+				Vec3 pos = (Vec3) get(card, "pos");
+				float yaw = (float) Math.toDegrees(Math.atan2(-pos.x, pos.z)), pitch = (float) Math.toDegrees(-Math.asin(pos.y / pos.length()));
+				// The check judges the word that starts a row, at its own yaw: no word of the old line may sit lower than the
+				// straight-ahead limit, which is the most any row start can have
+				boolean shown = WorldWords.rowFits(pitch, 0, 0, half);
+				assertTrue(shown, "a word of the old line sits below the limit at " + yaw + "/" + pitch + ", seed " + seed);
+			}
+			assertTrue(own > 0, "the old line has words, seed " + seed);
+			assertTrue(((WorldWords.Sentence) get(words, "sentence")).top < old.top, "the new line is back up at the top, seed " + seed);
+		}
+	}
+
+	/** Words fixed at a pitch the camera is not looking at: the line is judged from where it is laid out, not from the camera. */
+	@Test
+	void aLineFixedAwayFromTheCameraFillsUpByItsOwnPitch() {
+		// Camera at the horizon (pitch 0), words fixed 40 degrees down: the line may go down to about 50 there, not stop at the camera's 33
+		WorldWords words = longLine(pos -> false, true, 0f, 40f, 12345);
 		assertFalse(words.earlierSentences().isEmpty(), "the line started over");
-		WorldWords.Sentence old = words.earlierSentences().get(0);
-		float seen = (float) Math.toDegrees(Math.atan(Math.tan(Math.toRadians(35)) * (1 - WorldWords.HOTBAR_SHARE)));
-		assertTrue(old.top <= seen, "the old line's last row is at " + old.top + ", past " + seen);
-		assertTrue(((WorldWords.Sentence) get(words, "sentence")).top < old.top, "the new line is back up at the top");
+		float old = words.earlierSentences().get(0).top;
+		assertTrue(old > 45, "the old line went on down to " + old);
 	}
 
 	/** A hillside below: a flowing line that reaches it starts over at the top, and every word of the old one is cut. */

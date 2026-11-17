@@ -345,6 +345,11 @@ final class WorldWords {
 	private int placing = -1;
 	private long rng = System.nanoTime();
 
+	/** For tests: fixes the random numbers, so a layout comes out the same every run. */
+	void seed(long seed) {
+		rng = seed;
+	}
+
 	/** You died: every word up drops out of the sky, spinning as it fades. */
 	void fall(long now) {
 		for (Card c : cards) {
@@ -1418,7 +1423,8 @@ final class WorldWords {
 		float halfW, halfH, shrink;
 		Vec3 pos;
 		seenHalf = halfView(ScreenLayer.tanHalfV(), sliderFov());
-		seenLow = lowestSeen(camera.xRot(), seenHalf);
+		// The line is laid out round centre, so the bottom of what it may use is judged from there, as rowFits does
+		seenLow = lowestSeen(centre[1], seenHalf);
 		for (boolean again = false;; again = true) {
 			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
 			Vec3 dir = direction(spot[0], spot[1]);
@@ -1682,8 +1688,9 @@ final class WorldWords {
 		int run = placing >= 0 && placing < runs.length ? runs[placing] : RUN_NONE;
 		if (run == RUN_NONE) {
 			sentence.forward();
-		} else if (run == RUN_FIRST) {
-			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it
+		} else if (run == RUN_FIRST || sentence.run <= 0) {
+			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it.
+			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left
 			float span = 0;
 			int count = 0;
 			for (int k = placing; k < runs.length; k++) {
