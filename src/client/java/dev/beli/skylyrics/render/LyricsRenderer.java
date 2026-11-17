@@ -196,6 +196,7 @@ public final class LyricsRenderer {
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
 	private float wrapCacheProbe;
+	private long wrapCacheEpoch;
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
 	/** The song time the World words were last updated at, to notice a jump back; MIN_VALUE when they weren't. */
@@ -546,8 +547,10 @@ public final class LyricsRenderer {
 		LyricsFont.checkFonts(mc.font);
 		// Remembered until a resource reload, which is what can change it; measured again only then
 		float probe = LyricsFont.cachedWidth(mc.font, wrapStyle, "Mw0♪漢א ع");
-		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe) {
+		long epoch = LyricsFont.reloadCount(); // moves on a reload and on Force Unicode Font / Japanese glyph variants
+		if (wrapWidth != wrapCacheWidth || !wrapStyle.equals(wrapCacheStyle) || probe != wrapCacheProbe || epoch != wrapCacheEpoch) {
 			wrapCacheProbe = probe;
+			wrapCacheEpoch = epoch;
 			wrapCache.clear();
 			offsetCache.clear();
 			offsetCacheRtl.clear();

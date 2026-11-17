@@ -167,6 +167,7 @@ public final class LyricsFont {
 	 * Fabric API or mixin, and it sees exactly what matters: glyph widths.
 	 */
 	static void checkFonts(Font font) {
+		WIDTHS.mode(dev.beli.skylyrics.util.GlyphMode.current());
 		checkFonts(font.getSplitter(), System.nanoTime());
 	}
 

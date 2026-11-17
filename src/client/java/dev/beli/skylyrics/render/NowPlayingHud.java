@@ -164,8 +164,6 @@ public final class NowPlayingHud {
 	private String clockText = "";
 	/** The last few lines laid out (the one sung, the one fading out, one spare); see {@link LineKey}. */
 	private final SmallCache<LineKey, Laid> laid = new SmallCache<>(3);
-	/** How many resource reloads were seen, so a reload drops every laid-out line. */
-	private long reloads;
 	private double guiScale;
 	private boolean wasLoading;
 	private int fpsShown = -1;
@@ -288,8 +286,7 @@ public final class NowPlayingHud {
 		// A resource reload can change glyph widths: every laid-out line is dropped by it
 		boolean loading = loadingScreenUp(mc);
 		if (loading || wasLoading) {
-			reloads++;
-			LyricsFont.fontsReloaded();
+			LyricsFont.fontsReloaded(); // also moves LyricsFont.reloadCount(), which keys every laid-out line
 		}
 		wasLoading = loading;
 		LyricsFont.checkFonts(mc.font);
@@ -1050,7 +1047,7 @@ public final class NowPlayingHud {
 	 * only changes with its {@link LineKey}, so it is kept while the line is on screen.
 	 */
 	private Laid laid(Font font, Style style, float scale, String text) {
-		LineKey key = new LineKey(text, font, style, scale, Language.getInstance(), guiScale, reloads);
+		LineKey key = new LineKey(text, font, style, scale, Language.getInstance(), guiScale, LyricsFont.reloadCount());
 		return laid.get(key, NowPlayingHud::lay);
 	}
 

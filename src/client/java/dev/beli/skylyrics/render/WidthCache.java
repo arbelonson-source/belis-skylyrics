@@ -52,6 +52,7 @@ final class WidthCache {
 	private final LinkedHashMap<Key, Float> map;
 	private long epoch;
 	private float seen = Float.NaN;
+	private int mode = -1;
 
 	WidthCache(int limit) {
 		this.limit = limit;
@@ -67,6 +68,17 @@ final class WidthCache {
 	void invalidate() {
 		epoch++;
 		map.clear();
+	}
+
+	/**
+	 * Called once per frame with the glyph mode (Force Unicode Font, Japanese glyph variants): those change widths in place,
+	 * with no reload, so a change drops every width like a reload does. The first call only remembers it.
+	 */
+	void mode(int glyphMode) {
+		if (mode != -1 && glyphMode != mode) {
+			invalidate();
+		}
+		mode = glyphMode;
 	}
 
 	/** How many reloads were seen; part of every key that is cached elsewhere on top of these widths. */
