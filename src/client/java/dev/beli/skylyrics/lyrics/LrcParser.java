@@ -11,7 +11,7 @@ public final class LrcParser {
 	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
-	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:]\\d+)?>");
+	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:,]\\d+)?>");
 	// Also old Mac files that end lines with a bare \r
 	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n|\\u2028|\\u2029");
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
@@ -138,10 +138,22 @@ public final class LrcParser {
 		}
 		shifted.sort(Comparator.comparingLong(LyricLine::timeMs));
 		// Lines pushed before the start of the song can't have a negative time (the rest of the mod reads time 0 as the start),
-		// but all sitting on 0 would merge them into one line: they take 0, 1, 2 ms and keep their order
-		int clamped = 0;
-		for (int i = 0; i < shifted.size() && shifted.get(i).timeMs() < 0; i++) {
-			shifted.set(i, new LyricLine(clamped++, shifted.get(i).text()));
+		// but all sitting on 0 would merge them into one line: each distinct time takes the next of 0, 1, 2 ms and keeps its
+		// order, while lines that shared a time keep sharing one (an original and its translation still join). The first
+		// line that was not pushed back has priority: clamped times stay below its time, so groups that don't fit share the last free ms
+		int firstKept = 0;
+		while (firstKept < shifted.size() && shifted.get(firstKept).timeMs() < 0) {
+			firstKept++;
+		}
+		long cap = firstKept < shifted.size() ? Math.max(0, shifted.get(firstKept).timeMs() - 1) : Long.MAX_VALUE;
+		long clamped = -1;
+		long previous = Long.MIN_VALUE;
+		for (int i = 0; i < firstKept; i++) {
+			if (shifted.get(i).timeMs() != previous) {
+				previous = shifted.get(i).timeMs();
+				clamped++;
+			}
+			shifted.set(i, new LyricLine(Math.min(clamped, cap), shifted.get(i).text()));
 		}
 		// Stamps with nothing but notes or blanks (some sites do this for songs without words) is an instrumental
 		if (shifted.stream().allMatch(LyricLine::isBreak)) {
@@ -230,7 +242,7 @@ public final class LrcParser {
 				long next = j < lines.size() ? lines.get(j).timeMs() : t + texts.size() * SPREAD_MS;
 				long step = Math.max(1, (next - t) / texts.size());
 				for (int k = 0; k < texts.size(); k++) {
-					out.add(new LyricLine(t + k * step, texts.get(k)));
+					out.add(new LyricLine(Math.min(t + k * step, Math.max(t, next - 1)), texts.get(k)));
 				}
 			}
 			i = j;
