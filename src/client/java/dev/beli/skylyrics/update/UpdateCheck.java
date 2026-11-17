@@ -25,6 +25,10 @@ public final class UpdateCheck {
 		try {
 			JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 			String tag = string(root, "tag_name");
+			if (tag != null) {
+				// The version is shown to the player: no control characters and no § (a Minecraft formatting code)
+				tag = tag.replaceAll("[\\p{Cntrl}\u00a7]", "");
+			}
 			if (tag == null || root.has("draft") && root.get("draft").getAsBoolean()
 					|| root.has("prerelease") && root.get("prerelease").getAsBoolean()) {
 				return null;

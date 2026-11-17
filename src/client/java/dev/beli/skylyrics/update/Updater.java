@@ -98,20 +98,74 @@ public final class Updater {
 			cleanLeftovers(jar.getParent(), now);
 			cleanLeftovers(Path.of(System.getProperty("java.io.tmpdir")), now);
 		}
-		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
-		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
+		// Neither client follows redirects by itself: both follow them by hand after checking each one
+		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
 		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
 		Path memory = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(SkyLyricsClient.MOD_ID)
 				.resolve("update-refused.json");
 		notice = look(mode, () -> {
-			HttpResponse<String> response = api.send(request(LATEST).header("Accept", "application/vnd.github+json").build(),
-					HttpResponse.BodyHandlers.ofString());
-			if (response.statusCode() != 200) {
-				LOG.info("Update check got HTTP {}", response.statusCode());
-				return null;
-			}
-			return response.body();
+			return fetchReply(api, LATEST, Updater::allowedApiRedirect);
 		}, http, jar, runningVersion, mcKey, memory, Updater::running);
+	}
+
+	/**
+	 * The release API's reply as text: follows at most MAX_HOPS redirects by hand, each only where redirectOk accepts.
+	 * Null (with one line in the log) for a refused redirect, a non-200 answer or a reply that is too big.
+	 */
+	static String fetchReply(HttpClient api, String url, java.util.function.Predicate<URI> redirectOk)
+			throws IOException, InterruptedException {
+		if (api.followRedirects() != HttpClient.Redirect.NEVER) {
+			throw new IllegalArgumentException("the API client must not follow redirects by itself");
+		}
+		URI uri = URI.create(url);
+		for (int hop = 0; hop <= MAX_HOPS; hop++) {
+			HttpResponse<InputStream> response = api.send(request(uri.toString()).header("Accept", "application/vnd.github+json").build(),
+					HttpResponse.BodyHandlers.ofInputStream());
+			try (InputStream in = response.body()) {
+				int status = response.statusCode();
+				if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
+					String location = response.headers().firstValue("Location").orElse(null);
+					URI next;
+					try {
+						next = location == null ? null : uri.resolve(location);
+					} catch (IllegalArgumentException e) {
+						next = null;
+					}
+					if (next == null || !redirectOk.test(next)) {
+						LOG.info("Update check refused a redirect to {}", next == null ? "nowhere" : next.getHost());
+						return null;
+					}
+					uri = next;
+					continue;
+				}
+				if (status != 200) {
+					LOG.info("Update check got HTTP {}", status);
+					return null;
+				}
+				return readReply(in);
+			}
+		}
+		LOG.info("Update check refused: too many redirects");
+		return null;
+	}
+
+	/** The redirect rule for the API call: the download's rule, plus https to api.github.com itself. */
+	static boolean allowedApiRedirect(URI uri) {
+		if (allowedRedirect(uri)) {
+			return true;
+		}
+		return uri != null && "https".equalsIgnoreCase(uri.getScheme()) && uri.getRawUserInfo() == null
+				&& (uri.getPort() == -1 || uri.getPort() == 443) && "api.github.com".equalsIgnoreCase(uri.getHost());
+	}
+
+	/** The release API's reply as text, or null (with one line in the log) when it is bigger than 1 MB. */
+	static String readReply(InputStream in) throws IOException {
+		byte[] bytes = readCapped(in, MAX_API_REPLY);
+		if (bytes == null) {
+			LOG.info("Update check ignored a reply bigger than {} bytes", MAX_API_REPLY);
+			return null;
+		}
+		return new String(bytes, StandardCharsets.UTF_8);
 	}
 
 	/** Asks for the latest release's JSON (null when there is none). */
@@ -225,6 +279,12 @@ public final class Updater {
 
 	/** As above, with the running versions given (see {@link Needs#unmet}): the jar is refused when it would not load on them. */
 	static boolean install(HttpClient http, Path oldJar, UpdateCheck.Asset asset, UnaryOperator<String> running) throws Exception {
+		return install(http, oldJar, asset, running, Files::move);
+	}
+
+	/** As above, with the move of the jars given, so a test can make one fail. */
+	static boolean install(HttpClient http, Path oldJar, UpdateCheck.Asset asset, UnaryOperator<String> running,
+			dev.beli.skylyrics.util.SafeFile.Mover mover) throws Exception {
 		Path dir = oldJar.getParent();
 		Path target = dir.resolve(asset.name());
 		if (!target.getFileName().toString().equals(asset.name()) || Files.exists(target)) {
@@ -260,21 +320,31 @@ public final class Updater {
 				return installLater(oldJar, part, target);
 			}
 			keepMode(oldJar, part);
+			// Like the Windows script: the old jar is set aside first, so a kill half way never leaves two jars with the mod's id
+			Path aside = oldJar.resolveSibling(oldJar.getFileName() + ".skylyrics-old");
+			boolean setAside = true;
 			try {
-				Files.move(part, target); // never over a jar another game just installed
-			} catch (java.nio.file.FileAlreadyExistsException e) {
-				LOG.info("Another game already installed {}", target.getFileName());
-				return false;
+				mover.move(oldJar, aside, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			} catch (java.nio.file.NoSuchFileException e) {
+				setAside = false; // The other game removed it first: the new jar is ours to put in place
 			}
 			try {
-				Files.delete(oldJar);
-			} catch (java.nio.file.NoSuchFileException e) {
-				// The other game removed it first: the update is in place, and the new jar is ours to keep
-			} catch (IOException e) {
-				// Two jars with the mod's id would stop the game from starting, so never leave both
-				LOG.warn("Could not remove the old jar, dropping the update: {}", LogText.of(e));
-				Files.deleteIfExists(target);
+				mover.move(part, target); // never over a jar another game just installed
+			} catch (java.nio.file.FileAlreadyExistsException e) {
+				putBack(mover, aside, oldJar, setAside);
+				LOG.info("Another game already installed {}", target.getFileName());
 				return false;
+			} catch (IOException | RuntimeException e) {
+				putBack(mover, aside, oldJar, setAside);
+				throw e;
+			}
+			if (setAside) {
+				try {
+					Files.deleteIfExists(aside);
+				} catch (IOException e) {
+					// The game ignores the .skylyrics-old name, and the next start sweeps it
+					LOG.info("Could not delete the old jar set aside: {}", LogText.of(e));
+				}
 			}
 			LOG.info("Updated SkyLyrics: {} replaces {}", target.getFileName(), oldJar.getFileName());
 			return true;
@@ -286,6 +356,26 @@ public final class Updater {
 			}
 		}
 	}
+
+	private static void putBack(dev.beli.skylyrics.util.SafeFile.Mover mover, Path aside, Path oldJar, boolean setAside) {
+		if (!setAside) {
+			return;
+		}
+		try {
+			mover.move(aside, oldJar);
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("Could not put the old jar back: {}", LogText.of(e));
+		}
+	}
+
+	/** The stream's bytes, or null when there are more than max (a small jar can inflate a file to any size). */
+	static byte[] readCapped(InputStream in, int max) throws IOException {
+		byte[] bytes = in.readNBytes(max + 1);
+		return bytes.length > max ? null : bytes;
+	}
+
+	private static final int MAX_MOD_JSON = 256 * 1024;
+	private static final int MAX_API_REPLY = 1024 * 1024;
 
 	/** The temp file is private (0600); give the new jar the old one's permissions, so what could read the old jar can read it. */
 	private static void keepMode(Path oldJar, Path part) {
@@ -416,30 +506,35 @@ public final class Updater {
 
 	/** A readable jar whose fabric.mod.json is this mod at the expected version, and the published checksum when there is one. */
 	static boolean valid(Path file, String sha256, String expectedVersion) throws Exception {
+		if (sha256 != null) {
+			// The checksum first: nothing of a file that is not the published one is read as JSON
+			MessageDigest digest = MessageDigest.getInstance("SHA-256");
+			try (InputStream in = Files.newInputStream(file)) {
+				byte[] buffer = new byte[65536];
+				for (int n; (n = in.read(buffer)) > 0; ) {
+					digest.update(buffer, 0, n);
+				}
+			}
+			if (!HexFormat.of().formatHex(digest.digest()).equals(sha256)) {
+				return false;
+			}
+		}
 		try (ZipFile zip = new ZipFile(file.toFile())) {
 			var entry = zip.getEntry("fabric.mod.json");
 			if (entry == null) {
 				return false;
 			}
 			try (InputStream in = zip.getInputStream(entry)) {
-				JsonObject json = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
-				if (!SkyLyricsClient.MOD_ID.equals(string(json, "id"))
-						|| expectedVersion != null && !expectedVersion.equals(string(json, "version"))) {
+				byte[] bytes = readCapped(in, MAX_MOD_JSON);
+				if (bytes == null) {
+					LOG.info("Downloaded update's fabric.mod.json is bigger than {} bytes", MAX_MOD_JSON);
 					return false;
 				}
+				JsonObject json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+				return SkyLyricsClient.MOD_ID.equals(string(json, "id"))
+						&& (expectedVersion == null || expectedVersion.equals(string(json, "version")));
 			}
 		}
-		if (sha256 == null) {
-			return true;
-		}
-		MessageDigest digest = MessageDigest.getInstance("SHA-256");
-		try (InputStream in = Files.newInputStream(file)) {
-			byte[] buffer = new byte[65536];
-			for (int n; (n = in.read(buffer)) > 0; ) {
-				digest.update(buffer, 0, n);
-			}
-		}
-		return HexFormat.of().formatHex(digest.digest()).equals(sha256);
 	}
 
 	/** The "depends" of the jar's fabric.mod.json, or null when it has none or can't be read. */
@@ -450,7 +545,11 @@ public final class Updater {
 				return null;
 			}
 			try (InputStream in = zip.getInputStream(entry)) {
-				JsonObject json = JsonParser.parseString(new String(in.readAllBytes(), StandardCharsets.UTF_8)).getAsJsonObject();
+				byte[] bytes = readCapped(in, MAX_MOD_JSON);
+				if (bytes == null) {
+					throw new IOException("fabric.mod.json is bigger than " + MAX_MOD_JSON + " bytes");
+				}
+				JsonObject json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
 				return json.has("depends") && json.get("depends").isJsonObject() ? json.getAsJsonObject("depends") : null;
 			}
 		}

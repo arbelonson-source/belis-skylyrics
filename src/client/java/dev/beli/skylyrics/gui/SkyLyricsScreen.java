@@ -140,9 +140,19 @@ public final class SkyLyricsScreen extends Screen {
 		List<String> all = Stream.concat(Stream.of(auto), names.stream()).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
 		// A key from a shared settings file that this system doesn't list is still applied when a player matches, so show it
 		if (!preferred.isBlank() && playerIndex(keys, preferred) >= keys.length) {
-			all.add(preferred);
+			all.add(shortKey(preferred));
 		}
 		return all;
+	}
+
+	private static final int PLAYER_LABEL_MAX = 24;
+
+	/** A long hand-edited key would make the button as wide as the row, so show at most 24 characters (code points) and an ellipsis. */
+	static String shortKey(String key) {
+		if (key.codePointCount(0, key.length()) <= PLAYER_LABEL_MAX) {
+			return key;
+		}
+		return key.substring(0, key.offsetByCodePoints(0, PLAYER_LABEL_MAX - 1)) + "\u2026";
 	}
 
 	/** Which choice is on: the one whose key is saved, else Auto. */
@@ -1807,7 +1817,8 @@ public final class SkyLyricsScreen extends Screen {
 		void render(Frame f) {
 			GuiGraphics g = f.g();
 			MediaTracker tracker = mod.tracker();
-			Track track = tracker.track();
+			dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
+			Track track = reading.track();
 			int cx = x + 7;
 			int cy = y + 7;
 			AlbumArt art = mod.art();
@@ -1833,7 +1844,7 @@ public final class SkyLyricsScreen extends Screen {
 			String sub = track.artist().isEmpty() ? tracker.sourceName() : track.artist();
 			g.drawString(font, Ui.visual(Ui.clip(font, sub, textW)), tx, y + 19, Ui.MUTED, false);
 
-			String[] glyphs = {"◀◀", tracker.playing() ? "❚❚" : "▶", "▶▶"};
+			String[] glyphs = {"◀◀", reading.playing() ? "❚❚" : "▶", "▶▶"};
 			for (int i = 0; i < 3; i++) {
 				int bx = buttonX(i);
 				boolean hover = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), bx, y + 7, 18, 18);
@@ -1846,7 +1857,7 @@ public final class SkyLyricsScreen extends Screen {
 			}
 
 			long length = track.lengthMs();
-			long pos = Math.max(0, tracker.positionMs());
+			long pos = Math.max(0, tracker.positionMs(reading));
 			float t = length > 0 ? Mth.clamp(pos / (float) length, 0, 1) : 0;
 			int bx = barX();
 			int bw = barW();
