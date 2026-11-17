@@ -2,6 +2,7 @@ package dev.beli.skylyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -302,5 +303,16 @@ class TitleCleanerTest {
 		assertEquals("Song (Instrumental)", TitleCleaner.withoutVersionBrackets("Song (Instrumental)"));
 		assertEquals("Song (Karaoke)", TitleCleaner.withoutVersionBrackets("Song (Karaoke)"));
 		assertEquals("Song (Instrumental Version)", TitleCleaner.withoutVersionBrackets("Song (Instrumental Version)"));
+	}
+
+	@Test
+	void marksOnOtherScriptsStillTellWordsApart() {
+		assertFalse(TitleCleaner.sameSong("\u0915\u093e", "\u0915\u0940"));
+		assertFalse(TitleCleaner.sameSong("\u30d0", "\u30cf"));
+		assertTrue(TitleCleaner.sameSong("Beyonc\u00e9", "Beyonce"));
+		assertTrue(TitleCleaner.sameSong("Cafe\u0301", "Cafe"));
+		assertTrue(TitleCleaner.sameSong("\u0439", "\u0438\u0306"));
+		assertNotEquals(TitleCleaner.key("\u0915\u093e"), TitleCleaner.key("\u0915\u0940"));
+		assertEquals(TitleCleaner.key("Beyonc\u00e9"), TitleCleaner.key("beyonce"));
 	}
 }

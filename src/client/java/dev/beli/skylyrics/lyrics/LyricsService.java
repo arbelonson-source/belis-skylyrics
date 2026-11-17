@@ -38,6 +38,8 @@ public final class LyricsService {
 	private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().create();
 	/** Don't re-ask LRCLIB about a song it didn't have for this long. */
 	private static final long NOT_FOUND_TTL_MS = 3L * 24 * 60 * 60 * 1000;
+	/** A saved plain-only answer, or one from the backup site, is asked about again after this long. */
+	static final long WEAK_TTL_MS = 7L * 24 * 60 * 60 * 1000;
 	/** Waits between tries while LRCLIB is having trouble; the last one repeats. */
 	private static final long[] RETRY_DELAYS_MS = {2_000, 5_000, 10_000, 20_000, 30_000, 45_000, 60_000};
 	/** Songs kept on disk (a few KB each); past this the ones not played for longest go. */
@@ -54,8 +56,25 @@ public final class LyricsService {
 	/**
 	 * @param v which version wrote the file; 0 (missing) for 0.7.8 and older, which also saved the backup site's
 	 *          stand-ins, so those can't be told apart from a real answer
+	 * @param backup the answer came from the backup site; missing in older files, which count as the main site's
 	 */
-	record CacheEntry(String synced, String plain, boolean instrumental, long savedAt, int v) {
+	record CacheEntry(String synced, String plain, boolean instrumental, long savedAt, int v, boolean backup) {
+		CacheEntry(String synced, String plain, boolean instrumental, long savedAt, int v) {
+			this(synced, plain, instrumental, savedAt, v, false);
+		}
+
+		static CacheEntry of(LrclibClient.Result r) {
+			return new CacheEntry(r.synced(), r.plain(), r.instrumental(), System.currentTimeMillis(), CACHE_VERSION, r.fromBackup());
+		}
+
+		LrclibClient.Result result() {
+			return new LrclibClient.Result(synced, plain, instrumental, false, backup);
+		}
+
+		/** Whether this answer is worth asking about again after {@link #WEAK_TTL_MS}: plain text only, or the backup's. */
+		boolean weak() {
+			return backup || !result().hasSynced() && !instrumental;
+		}
 	}
 
 	private final LyricsSource client;
@@ -220,18 +239,20 @@ public final class LyricsService {
 			CacheEntry cached = skipCache ? null : readCache(file);
 			LrclibClient.Result result;
 			CacheEntry unchecked = null; // a found answer saved by an older version, to ask the main site about once more
-			if (cached != null && keepCached(parse(new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental), t.lengthMs()),
-					cached.savedAt, System.currentTimeMillis())) {
-				result = new LrclibClient.Result(cached.synced, cached.plain, cached.instrumental);
+			CacheEntry stale = null; // a plain-only or backup answer that has aged, to ask about once more
+			if (cached != null && keepCached(parse(cached.result(), t.lengthMs()), cached.savedAt, System.currentTimeMillis())) {
+				result = cached.result();
 				file.toFile().setLastModified(System.currentTimeMillis()); // played again, so kept longer
 				if (cached.v < CACHE_VERSION && found(parse(result, t.lengthMs()))) {
 					unchecked = cached;
+				} else if (cached.weak() && found(parse(result, t.lengthMs())) && System.currentTimeMillis() - cached.savedAt >= WEAK_TTL_MS) {
+					stale = cached;
 				}
 			} else {
 				result = client.find(t);
 				// A stand-in from the backup (main site was down) isn't saved, so the next play asks the main site again
 				if (!result.stopgap()) {
-					writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis(), CACHE_VERSION));
+					writeCache(file, CacheEntry.of(result));
 				}
 			}
 			if (generation.get() != gen) {
@@ -245,7 +266,9 @@ public final class LyricsService {
 				return;
 			}
 			if (unchecked != null) {
-				recheckLater(t, gen, file, unchecked);
+				recheckLater(t, gen, file, unchecked, false);
+			} else if (stale != null) {
+				recheckLater(t, gen, file, stale, true);
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -283,13 +306,19 @@ public final class LyricsService {
 		}
 	}
 
-	private void recheckLater(Track t, long gen, Path file, CacheEntry old) {
+	private void recheckLater(Track t, long gen, Path file, CacheEntry old, boolean aged) {
 		synchronized (fetchLock) {
 			if (generation.get() != gen) {
 				return; // a new song's load() came in meanwhile and owns pendingFetch now
 			}
 			try {
-				pendingFetch = executor.submit(() -> recheck(t, gen, file, old));
+				pendingFetch = executor.submit(() -> {
+					if (aged) {
+						recheckAged(t, gen, file, old);
+					} else {
+						recheck(t, gen, file, old);
+					}
+				});
 			} catch (RejectedExecutionException ignored) {
 				// shutting down
 			}
@@ -326,10 +355,41 @@ public final class LyricsService {
 					&& result.instrumental() == old.instrumental;
 			// The same lyrics again (most songs) aren't applied again, which would start the shown line over
 			if (!same && found(parse(result, t.lengthMs()))) {
-				writeCache(file, new CacheEntry(result.synced(), result.plain(), result.instrumental(), System.currentTimeMillis(), CACHE_VERSION));
+				writeCache(file, CacheEntry.of(result));
 				apply(t, gen, result);
 			} else {
 				writeCache(file, new CacheEntry(old.synced, old.plain, old.instrumental, old.savedAt, CACHE_VERSION));
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} catch (Exception e) {
+			LOG.debug("Couldn't check the saved lyrics for {} again: {}", t.key(), e.toString());
+		}
+	}
+
+	/**
+	 * Asks again about a saved plain-only or backup answer that has aged. Better lyrics (synced ones for plain text,
+	 * the main site's for the backup's) replace the file and the shown lyrics; otherwise the old answer stays and
+	 * is stamped so it isn't asked again for another {@link #WEAK_TTL_MS}. A failure or a stand-in leaves the file
+	 * as it is, so the next play tries again.
+	 */
+	private void recheckAged(Track t, long gen, Path file, CacheEntry old) {
+		if (generation.get() != gen) {
+			return;
+		}
+		try {
+			LrclibClient.Result result = client.find(t);
+			if (result.stopgap()) {
+				return;
+			}
+			boolean oldSynced = old.result().hasSynced();
+			boolean better = found(parse(result, t.lengthMs()))
+					&& (result.hasSynced() ? !oldSynced || !result.fromBackup() : !oldSynced && old.backup && !result.fromBackup());
+			if (better) {
+				writeCache(file, CacheEntry.of(result));
+				apply(t, gen, result);
+			} else {
+				writeCache(file, new CacheEntry(old.synced, old.plain, old.instrumental, System.currentTimeMillis(), CACHE_VERSION, old.backup));
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
