@@ -361,11 +361,26 @@ final class WorldWords {
 		}
 	}
 
+	/**
+	 * Whether a flowing line's piece with no clear place on the way in starts the line over instead of being lifted
+	 * out (which would land it on the line's own earlier rows): only a line already under way that wrote a whole
+	 * clear row before (it has been placed in {@code s} already) and began on clear ground. In a tunnel or by a wall
+	 * nearly every piece is buried, and starting over each time would leave one word blinking at a time.
+	 */
+	static boolean startsOverInsteadOfLift(boolean flow, @Nullable Sentence s, boolean nowhereClear) {
+		return flow && nowhereClear && s != null && s.pieces > 1 && s.rows >= 2 && !s.startedBuried;
+	}
+
 	/** Says why a flowing line starts over, in the dev game only (never in normal play). */
 	private static void startsOver(Supplier<String> why) {
 		if (HOOK) {
 			SkyLyricsClient.LOG.info("Test hook: world line starts over ({})", why.get());
 		}
+	}
+
+	/** For tests: the sentences this lyric line has started over from. */
+	List<Sentence> earlierSentences() {
+		return earlier;
 	}
 
 	void clear() {
@@ -1273,6 +1288,9 @@ final class WorldWords {
 	/** Tests only: measures text in place of the font (null: the font does). */
 	static java.util.function.@Nullable ToDoubleFunction<String> measureHook;
 
+	/** For tests, which have no level: says whether a card at this spot is inside something solid. */
+	static java.util.function.@Nullable Predicate<Vec3> buriedHook;
+
 	private static java.util.function.ToDoubleFunction<String> measurer(Font font, Style style) {
 		java.util.function.ToDoubleFunction<String> hook = measureHook;
 		return hook != null ? hook : text -> LyricsFont.width(font, style, text);
@@ -1391,29 +1409,55 @@ final class WorldWords {
 		}
 		placing = lineChunks.indexOf(chunk);
 		Sentence before = sentence;
-		float[] spot = flow ? follow(centre, at, size, avoid, firm, now) : scatter(centre, at, size, avoid);
-		Vec3 dir = direction(spot[0], spot[1]);
-		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
-		// nor hidden behind one
-		float meant = spot[2] * away;
-		// A very long word would stretch right across the view and wipe out the other cards: it is scaled to fit
-		size = fitSize(size, at[at.length - 1] * size * away * wordScale, meant, MAX_CARD_DEGREES);
-		float halfW = at[at.length - 1] * size * away * wordScale / 2, halfH = 5 * size * away * wordScale;
-		// A card brought in is shrunk to match, so it covers just the patch of sky it was given and no more
-		float distance = clearReach(CLOSEST, meant, 1,
-				out -> buried(level, eye.add(dir.scale(out)), dir, halfW * (float) out / meant, halfH * (float) out / meant));
-		float shrink = distance / meant;
-		Vec3 pos = eye.add(dir.scale(distance));
-		if (buried(level, pos, dir, halfW * shrink, halfH * shrink)) {
-			// Nowhere clear on the way in (standing in a cave or by a hill): lift it out where it was meant to be
-			Vec3 there = eye.add(dir.scale(meant));
-			for (int up = 1; up <= LIFT_STEPS; up++) {
-				if (!buried(level, there.add(0, up, 0), dir, halfW, halfH)) {
-					pos = there.add(0, up, 0);
-					shrink = 1;
-					break;
+		float base = size;
+		float[] spot;
+		float halfW, halfH, shrink;
+		Vec3 pos;
+		for (boolean again = false;; again = true) {
+			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
+			Vec3 dir = direction(spot[0], spot[1]);
+			// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
+			// nor hidden behind one
+			float meant = spot[2] * away;
+			// A very long word would stretch right across the view and wipe out the other cards: it is scaled to fit
+			size = fitSize(base, at[at.length - 1] * base * away * wordScale, meant, MAX_CARD_DEGREES);
+			float w = at[at.length - 1] * size * away * wordScale / 2, h = 5 * size * away * wordScale;
+			// A card brought in is shrunk to match, so it covers just the patch of sky it was given and no more
+			float distance = clearReach(CLOSEST, meant, 1,
+					out -> buried(level, eye.add(dir.scale(out)), dir, w * (float) out / meant, h * (float) out / meant));
+			shrink = distance / meant;
+			pos = eye.add(dir.scale(distance));
+			halfW = w;
+			halfH = h;
+			if (buried(level, pos, dir, w * shrink, h * shrink)) {
+				if (sentence != null && (sentence != before || sentence.pieces <= 1)) {
+					// The line began with no clear place (a tunnel, a wall): it keeps lifting, it never starts over
+					sentence.startedBuried = true;
+				}
+				if (!again && startsOverInsteadOfLift(flow, sentence, true)) {
+					// Nowhere clear on the way in for a line already under way: lifting the card would put it on the
+					// line's own earlier rows, so the line starts over at the top and this piece begins it
+					startsOver(() -> "buried: pieces " + sentence.pieces + " top " + sentence.top + " rows " + sentence.rows);
+					Sentence cut = sentence;
+					clearLine(cards, cut, earlier, now);
+					if (!earlier.contains(cut)) {
+						earlier.add(cut);
+					}
+					sentence = null;
+					last = null;
+					continue;
+				}
+				// Nowhere clear on the way in (standing in a cave or by a hill): lift it out where it was meant to be
+				Vec3 there = eye.add(dir.scale(meant));
+				for (int up = 1; up <= LIFT_STEPS; up++) {
+					if (!buried(level, there.add(0, up, 0), dir, w, h)) {
+						pos = there.add(0, up, 0);
+						shrink = 1;
+						break;
+					}
 				}
 			}
+			break;
 		}
 		// Older words this one still lands on (a crowded sky, or the last line still fading) go at once, rather than
 		// show through it for the whole fade
@@ -1697,6 +1741,10 @@ final class WorldWords {
 	 * solid. Grass, flowers and water don't count; they're see-through enough.
 	 */
 	static boolean buried(@Nullable ClientLevel level, Vec3 pos, Vec3 dir, float halfW, float halfH) {
+		java.util.function.Predicate<Vec3> hook = buriedHook;
+		if (hook != null) {
+			return hook.test(pos);
+		}
 		if (level == null) {
 			return false;
 		}
@@ -1827,6 +1875,8 @@ final class WorldWords {
 		int rows;
 		/** How many pieces have been written. */
 		int pieces;
+		/** Whether the line's first piece had no clear place on the way in (a tunnel, a wall); such a line never starts over for it. */
+		boolean startedBuried;
 
 		Sentence(float left, float top, float distance, float turn) {
 			this(left, top, distance, turn, 0, false);
