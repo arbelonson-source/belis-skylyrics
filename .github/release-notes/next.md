@@ -105,6 +105,7 @@
 - **Lighter settings window.** The settings window lays out each row once per frame instead of several times, and remembers the right-to-left text it has already put in order. Nothing looks different.
 - **Smaller saved album covers.** Album covers are saved as small 128-pixel pictures, so they load faster and take less disk space, and they are made in memory instead of through a temporary file.
 - **No hitch when a setting changes.** Settings are saved in the background, so pressing a timing key or closing the settings no longer makes the game pause for a moment while the file is written (most noticeable on Windows when an antivirus or OneDrive holds the file). A change made right before you quit is still saved.
+- **Mac: lighter in the background.** On a Mac, while the lyrics are switched off and no SkyLyrics screen is open, the mod checks Spotify or Music about every 15 seconds instead of every second; it checks at once when you switch the lyrics back on.
 
 ### Changed
 
