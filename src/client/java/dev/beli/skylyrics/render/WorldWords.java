@@ -607,9 +607,39 @@ final class WorldWords {
 		return (rtl ? 1 : -1) * blowAside(leave, seconds, fade);
 	}
 
+	/** {@link #leaveUp(WorldLeave, float, float)} with Distortion Effects {@code still} (0 to 1): 0 leaves the card where it was. */
+	static float leaveUp(WorldLeave leave, float seconds, float fade, float still) {
+		return leaveUp(leave, seconds, fade) * still;
+	}
+
+	/** {@link #blownBack(WorldLeave, float, float, boolean)} with Distortion Effects {@code still}. */
+	static float blownBack(WorldLeave leave, float seconds, float fade, boolean rtl, float still) {
+		return blownBack(leave, seconds, fade, rtl) * still;
+	}
+
+	/** {@link #leaveSize(float, float)} with Distortion Effects {@code still}. */
+	static float leaveSize(float seconds, float fade, float still) {
+		return Calm.around(leaveSize(seconds, fade), 1, still);
+	}
+
+	/** {@link #fallDrop(float)} with Distortion Effects {@code still}. */
+	static float fallDrop(float seconds, float still) {
+		return fallDrop(seconds) * still;
+	}
+
+	/** {@link #slideIn(float)} with Distortion Effects {@code still}. */
+	static float slideIn(float seconds, float still) {
+		return slideIn(seconds) * still;
+	}
+
+	/** How much of the way to its target a gliding word covers in {@code dt} seconds; with Distortion Effects at 0 it doesn't glide. */
+	static float glideEase(float dt, float still) {
+		return Calm.around(1 - (float) Math.exp(-SLIDE_SPEED * dt), 1, still);
+	}
+
 	/** How many blocks card {@code c} has moved up or down while leaving, {@code ahead} seconds from now. */
 	private float leftUp(Card c, long now, float ahead) {
-		return c.goneAt < 0 ? 0 : leaveUp(leave, (now - c.goneAt) / 1e9f + ahead, fade);
+		return c.goneAt < 0 ? 0 : leaveUp(leave, (now - c.goneAt) / 1e9f + ahead, fade, Calm.motion());
 	}
 
 	/** How visible a card cut short {@code seconds} ago still is. */
@@ -1954,7 +1984,7 @@ final class WorldWords {
 			}
 			seen.add(mine);
 		}
-		float ease = 1 - (float) Math.exp(-SLIDE_SPEED * dt);
+		float ease = glideEase(dt, Calm.motion());
 		for (Card c : cards) {
 			c.slid = c.slid.add(c.slide.subtract(c.slid).scale(ease));
 		}
@@ -2139,7 +2169,7 @@ final class WorldWords {
 			float x = (float) (c.pos.x + c.slid.x - eye.x), z = (float) (c.pos.z + c.slid.z - eye.z);
 			float sway = swayAngle(age, c.born);
 			float rocking = tilt * still, flashing = Calm.flash(noFlash, 1);
-			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + leftUp(c, now, 0) + rocking * SWAY_BOB * Mth.sin(sway) - fallDrop(fell);
+			float y = (float) (c.pos.y + c.slid.y - eye.y) + riseAfter(age, rise) * c.lift + leftUp(c, now, 0) + rocking * SWAY_BOB * Mth.sin(sway) - fallDrop(fell, still);
 			float hit = c.hitAt < 0 ? -1 : (now - c.hitAt) / 1e9f, spin = 0, squash = 1, shove = knockOut(hit) * still;
 			if (shove > 0) {
 				x += (float) c.knock.x * shove;
@@ -2154,10 +2184,10 @@ final class WorldWords {
 			float replaced = i + 1 < cards.size() ? (now - cards.get(i + 1).born) / 1e9f : -1;
 			float since = c == sung || c.title ? -1 : replaced >= 0 ? replaced : c.goneAt >= 0 ? gone : -1;
 			float grow = c.size * scale * enter * settled(since)
-					* (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade)) * squash;
+					* (c.goneAt < 0 || leave != WorldLeave.SHRINK ? 1 : leaveSize(gone, fade, still)) * squash;
 			a *= settledAlpha(since);
 			Vector3f centre = CENTRE.set(x, y, z);
-			float blown = blownBack(leave, gone, fade, c.rtl);
+			float blown = blownBack(leave, gone, fade, c.rtl, still);
 			if (!showing(centre, c.at[n] * grow / 2, grow, look, blown)) {
 				continue;
 			}
@@ -2187,7 +2217,7 @@ final class WorldWords {
 					.rotateZ((c.lean + rocking * SWAY_LEAN * Mth.cos(sway) + ((c.born & 1) == 0 ? FALL_SPIN : -FALL_SPIN) * still * fell + spin
 					- BLOW_TIP * blown / BLOW) * DEG));
 			pose.scale(grow, -grow, grow);
-			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age) : 0) + blown,
+			float x0 = -c.at[n] / 2f - (flow && popping ? (c.rtl ? -1 : 1) * slideIn(age, still) : 0) + blown,
 					y0 = -CAP_MIDDLE - (arrival == WorldArrival.DROP ? dropIn(age) * still : 0);
 			if (!soft) {
 				// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge

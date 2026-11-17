@@ -1412,10 +1412,24 @@ public final class LibraryScreen extends Screen {
 				edit(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 				return true;
 			}
-			if (event.isPaste()) {
-				edit(query + minecraft.keyboardHandler.getClipboard().replaceAll("\\s+", " "));
+			int copy = ScreenKeys.copyOrCut(event.key(), event.hasControlDownWithQuirk());
+			if (copy >= 0) {
+				if (!query.isEmpty()) {
+					minecraft.keyboardHandler.setClipboard(query);
+					if (copy == 1) {
+						edit("");
+					}
+				}
 				return true;
 			}
+		}
+		if (event.isPaste()) {
+			// Pasting anywhere starts a search, like typing does
+			if (!typing) {
+				showSection(Section.SEARCH);
+			}
+			edit(ScreenKeys.libraryPasted(query, minecraft.keyboardHandler.getClipboard()));
+			return true;
 		}
 		if (event.isCycleFocus()) {
 			Section[] all = sections();
@@ -1529,6 +1543,9 @@ public final class LibraryScreen extends Screen {
 	private boolean handleChar(CharacterEvent event) {
 		if (library == null || !event.isAllowedChatCharacter()) {
 			return false;
+		}
+		if (!ScreenKeys.acceptsTypedChar(closeKeyHeld)) {
+			return true;
 		}
 		Shelf now = shelf();
 		if (event.codepoint() == ' ' && (swallowSpace || now != null && LibraryKeys.spacePlays(typing, selected, now.items.size()))) {

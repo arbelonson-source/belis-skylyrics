@@ -427,6 +427,13 @@ public final class LyricsService {
 	}
 
 	static void writeCache(Path file, CacheEntry entry) {
+		writeCache(file, entry, DISK_FILES);
+	}
+
+	private static final java.util.concurrent.atomic.AtomicInteger SAVES = new java.util.concurrent.atomic.AtomicInteger();
+
+	/** Saves, and every tenth of {@code keep} saves trims the folder, so a long session can't run far past the cap. */
+	static void writeCache(Path file, CacheEntry entry, int keep) {
 		if (Thread.currentThread().isInterrupted()) {
 			return; // this lookup was cancelled by a skip: the write would only fail halfway
 		}
@@ -444,6 +451,13 @@ public final class LyricsService {
 				// tidyDisk or the next write of this song cleans it
 			}
 		}
+		if (SAVES.incrementAndGet() % Math.max(1, keep / 10) == 0 && file.getParent() != null) {
+			try {
+				tidyDisk(file.getParent(), keep);
+			} catch (RuntimeException e) {
+				LOG.debug("Could not trim the lyrics folder", e); // the save itself worked; the next trim tries again
+			}
+		}
 	}
 
 	/** Keeps the folder from growing forever: removes the songs not played for longest. */
@@ -452,7 +466,12 @@ public final class LyricsService {
 		if (files == null || files.length <= keep) {
 			return;
 		}
-		Arrays.sort(files, Comparator.comparingLong(File::lastModified));
+		// Read each time once: another game touching a file mid-sort would otherwise break the sort's contract and throw
+		java.util.Map<File, Long> times = new java.util.HashMap<>();
+		for (File f : files) {
+			times.put(f, f.lastModified());
+		}
+		Arrays.sort(files, Comparator.comparingLong(times::get));
 		for (int i = 0; i < files.length - keep; i++) {
 			files[i].delete();
 		}

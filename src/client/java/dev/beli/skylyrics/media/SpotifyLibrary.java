@@ -148,7 +148,7 @@ public final class SpotifyLibrary implements Library {
 					response = spotify.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 				}
 			}
-			return outcome(response.statusCode(), uri, openHere);
+			return outcome(response.statusCode(), response.body(), uri, openHere);
 		}).exceptionally(e -> {
 			Throwable cause = e instanceof java.util.concurrent.CompletionException && e.getCause() != null ? e.getCause() : e;
 			boolean specific = cause instanceof SpotifyWebSource.NotSetUp || MediaTracker.networkFailure(cause);
@@ -158,12 +158,25 @@ public final class SpotifyLibrary implements Library {
 
 	/** What to tell the user after Spotify answered {@code status}, trying the app on this computer if it said no. */
 	static String outcome(int status, String uri, Predicate<String> openHere) {
+		return outcome(status, null, uri, openHere);
+	}
+
+	static String outcome(int status, @Nullable String body, String uri, Predicate<String> openHere) {
 		return switch (status) {
 			case 200, 202, 204 -> "";
-			case 403 -> openHere.test(uri) ? "" : Tr.t("Spotify Premium is needed to start songs");
+			case 403 -> openHere.test(uri) ? "" : premiumMissing(body) ? Tr.t("Spotify Premium is needed to start songs")
+					: Tr.t("Spotify didn't allow that on this device");
 			case 404 -> openHere.test(uri) ? "" : Tr.t("Open Spotify on your computer or phone first");
 			default -> Tr.t("Spotify didn't start the song, try again");
 		};
+	}
+
+	/** False only when Spotify's 403 says in {@code error.reason} that it is something other than Premium; no readable reason keeps the old Premium text. */
+	private static boolean premiumMissing(@Nullable String body) {
+		JsonObject json = body == null ? null : object(body);
+		JsonObject error = json == null ? null : child(json, "error");
+		String reason = error == null ? null : string(error, "reason");
+		return reason == null || reason.equals("PREMIUM_REQUIRED");
 	}
 
 	/** What the library shows for a failed load: the step to do or the internet's fault in words, never a raw network error. */
@@ -212,9 +225,10 @@ public final class SpotifyLibrary implements Library {
 			response = spotify.call("GET", path, null);
 		}
 		if (response.statusCode() >= 300) {
-			throw new IOException(response.statusCode() == 403
-					? Tr.t("Sign out and sign in again on the Music tab to use the song library")
-					: Tr.t("Spotify didn't answer, try again"));
+			// With the library scopes granted a 403 is Spotify refusing this app or account (development mode), and signing in again can't change that
+			throw new IOException(response.statusCode() != 403 ? Tr.t("Spotify didn't answer, try again")
+					: spotify.canBrowse() ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management")
+					: Tr.t("Sign out and sign in again on the Music tab to use the song library"));
 		}
 		if (object(response.body()) == null) {
 			// An empty reply or a login page from the Wi-Fi is no answer: say so instead of showing an end of the list
@@ -323,7 +337,7 @@ public final class SpotifyLibrary implements Library {
 				continue;
 			}
 			JsonObject owner = child(p, "owner");
-			boolean mine = owner != null && me.equals(string(owner, "id"));
+			boolean mine = me.isEmpty() || owner != null && me.equals(string(owner, "id"));
 			boolean shared = p.get("collaborative") instanceof JsonElement e && e.isJsonPrimitive() && e.getAsBoolean();
 			JsonObject count = child(p, "items");
 			if (count == null) {
@@ -416,18 +430,33 @@ public final class SpotifyLibrary implements Library {
 		return body.toString();
 	}
 
+	/** The device to start on: the one playing now, else a computer, else any that isn't restricted. */
 	static @Nullable String firstDevice(String body) {
 		JsonObject json = object(body);
-		List<JsonObject> devices = objects(json == null ? null : array(json, "devices"));
-		for (JsonObject d : devices) {
-			if (d.get("is_restricted") instanceof JsonElement e && e.isJsonPrimitive() && e.getAsBoolean()) {
+		String computer = null;
+		String any = null;
+		for (JsonObject d : objects(json == null ? null : array(json, "devices"))) {
+			if (flag(d, "is_restricted")) {
 				continue;
 			}
 			String id = string(d, "id");
-			if (id != null) {
+			if (id == null) {
+				continue;
+			}
+			if (flag(d, "is_active")) {
 				return id;
 			}
+			if (computer == null && "Computer".equals(string(d, "type"))) {
+				computer = id;
+			}
+			if (any == null) {
+				any = id;
+			}
 		}
-		return null;
+		return computer != null ? computer : any;
+	}
+
+	private static boolean flag(JsonObject o, String key) {
+		return o.get(key) instanceof JsonElement e && e.isJsonPrimitive() && e.getAsBoolean();
 	}
 }

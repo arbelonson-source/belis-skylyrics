@@ -346,6 +346,7 @@
   "skylyrics.ui.open_spotify_on_your_computer_or_phone_first": "Primero abre Spotify en tu PC o teléfono",
   "skylyrics.ui.spotify_premium_is_needed_to_start_songs": "Hace falta Spotify Premium para iniciar canciones",
   "skylyrics.ui.spotify_didn_t_start_the_song_try_again": "Spotify no inició la canción, inténtalo de nuevo",
+  "skylyrics.ui.spotify_didn_t_allow_that_on_this_device": "Spotify no permitió eso en este dispositivo",
   "skylyrics.ui.sign_out_and_sign_in_again_on_the_music_tab_to_u": "Cierra sesión y vuelve a iniciarla en la pestaña Música para usar la biblioteca de canciones",
   "skylyrics.ui.spotify_didn_t_answer_try_again": "Spotify no respondió, inténtalo de nuevo",
   "skylyrics.ui.from_your_spotify": "De tu Spotify",

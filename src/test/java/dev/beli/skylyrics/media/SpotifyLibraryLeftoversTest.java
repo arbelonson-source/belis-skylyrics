@@ -218,4 +218,51 @@ class SpotifyLibraryLeftoversTest {
 		assertEquals(List.of(c), SpotifyLibrary.withoutRepeats(shown, List.of(b, c)));
 		assertFalse(SpotifyLibrary.withoutRepeats(shown, List.of(a, b)).contains(a));
 	}
+
+	private static SpotifyLibrary libraryWithScopes(Path dir, Net net, String scopes) throws IOException {
+		Path login = dir.resolve("login.json");
+		Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"r\",\"scopes\":\"" + scopes + "\"}");
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
+		source.useHttp(net);
+		return new SpotifyLibrary(source);
+	}
+
+	@Test
+	void aBlockedAppIsNotToldToSignInAgain(@TempDir Path dir) throws Exception {
+		Net net = new Net(what -> new Reply(403, null, "{\"error\":{\"status\":403}}"));
+		Throwable blocked = failure(libraryWithScopes(dir, net, SpotifyWebSource.LIBRARY_SCOPES).liked(0));
+		assertEquals(Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management"), blocked.getMessage());
+		Throwable missing = failure(libraryWithScopes(dir, net, "user-read-playback-state").liked(0));
+		assertEquals(Tr.t("Sign out and sign in again on the Music tab to use the song library"), missing.getMessage());
+	}
+
+	@Test
+	void onlyAMissingPremiumIsToldAsPremium() {
+		String premium = Tr.t("Spotify Premium is needed to start songs");
+		String neutral = Tr.t("Spotify didn't allow that on this device");
+		assertEquals(premium, SpotifyLibrary.outcome(403, "{\"error\":{\"status\":403,\"reason\":\"PREMIUM_REQUIRED\"}}", "u", uri -> false));
+		assertEquals(premium, SpotifyLibrary.outcome(403, null, "u", uri -> false));
+		assertEquals(premium, SpotifyLibrary.outcome(403, "<html>", "u", uri -> false));
+		assertEquals(neutral, SpotifyLibrary.outcome(403, "{\"error\":{\"status\":403,\"reason\":\"UNKNOWN\"}}", "u", uri -> false));
+		assertEquals(neutral, SpotifyLibrary.outcome(403, "{\"error\":{\"reason\":\"RESTRICTION_VIOLATED\"}}", "u", uri -> false));
+		assertEquals("", SpotifyLibrary.outcome(403, "{\"error\":{\"reason\":\"UNKNOWN\"}}", "u", uri -> true));
+	}
+
+	@Test
+	void theActiveDeviceThenTheComputerArePreferred() {
+		String body = "{\"devices\":[{\"id\":\"phone\",\"type\":\"Smartphone\",\"is_active\":false},"
+				+ "{\"id\":\"laptop\",\"type\":\"Computer\",\"is_active\":false},"
+				+ "{\"id\":\"tv\",\"type\":\"TV\",\"is_active\":true,\"is_restricted\":true},"
+				+ "{\"id\":\"speaker\",\"type\":\"Speaker\",\"is_active\":true}]}";
+		assertEquals("speaker", SpotifyLibrary.firstDevice(body));
+		assertEquals("laptop", SpotifyLibrary.firstDevice(body.replace("\"is_active\":true}]", "\"is_active\":false}]")));
+		assertEquals("phone", SpotifyLibrary.firstDevice("{\"devices\":[{\"id\":\"phone\",\"type\":\"Smartphone\"},{\"id\":\"tv\",\"type\":\"TV\"}]}"));
+	}
+
+	@Test
+	void playlistsAreOpenableWhenTheOwnIdIsUnknown() {
+		String body = "{\"total\":1,\"offset\":0,\"items\":[{\"id\":\"p\",\"uri\":\"spotify:playlist:p\",\"name\":\"Mix\",\"owner\":{\"id\":\"x\"}}]}";
+		assertTrue(SpotifyLibrary.parsePlaylists(body, "").items().getFirst().openable());
+		assertFalse(SpotifyLibrary.parsePlaylists(body, "me").items().getFirst().openable());
+	}
 }
