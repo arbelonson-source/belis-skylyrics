@@ -191,4 +191,12 @@ class SpotifyLibraryTest {
 		assertEquals("Something went wrong, try again", SpotifyLibrary.errorText(new IllegalStateException("x")));
 		assertEquals("Something went wrong, try again", SpotifyLibrary.errorText(null));
 	}
+
+	@Test
+	void libraryNamesGetTheSameCleaningAsNowPlayingTitles() {
+		assertEquals("Mix txt", SpotifyLibrary.plain("\u202EMix\ttxt"));
+		assertEquals("a b", SpotifyLibrary.plain("a \u00a0 \n b"));
+		assertEquals(500, SpotifyLibrary.plain("x".repeat(5000)).length());
+		assertEquals("", SpotifyLibrary.plain(null));
+	}
 }
