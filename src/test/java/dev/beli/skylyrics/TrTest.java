@@ -2,6 +2,7 @@ package dev.beli.skylyrics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.gson.Gson;
@@ -131,12 +132,22 @@ class TrTest {
 		}
 		for (String file : files) {
 			String base = file.substring(0, 2);
+			// pt_pt is its own European Portuguese translation since 2026-11-17, so pt_br is no copy of it.
+			if (file.equals("pt_br.json")) {
+				continue;
+			}
 			if (file.length() == "es_es.json".length() && !file.equals(base + "_" + base + ".json")
 					&& files.contains(base + "_" + base + ".json")) {
 				assertEquals(Files.readString(LANG.resolve(base + "_" + base + ".json")),
 						Files.readString(LANG.resolve(file)), file + " differs from " + base + "_" + base + ".json");
 			}
 		}
+	}
+
+	@Test
+	void europeanPortugueseIsNotTheBrazilianCopy() throws IOException {
+		assertNotEquals(Files.readString(LANG.resolve("pt_br.json")), Files.readString(LANG.resolve("pt_pt.json")),
+				"pt_pt.json must stay its own European Portuguese translation, not a copy of pt_br.json");
 	}
 
 	@Test
