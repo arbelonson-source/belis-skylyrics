@@ -7,12 +7,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -54,8 +56,12 @@ public final class MacMediaSource implements MediaSource {
 	 * (which never launches anything), and one that just opened is noticed a moment later.
 	 */
 	private static final long RUNNING_TTL_NS = 3_000_000_000L;
+	/** The same, while nothing on screen shows the song: nobody notices an app being noticed 15 s late. */
+	static final long RUNNING_QUIET_TTL_NS = 15_000_000_000L;
 	/** Every read starts a process; the tracker's smooth clock fills the gaps, so about once a second is plenty. */
 	private static final long MIN_POLL_NS = 900_000_000L;
+	/** While nothing on screen shows the song, a reading is reused this long (the Spotify Web poller's quiet pace). */
+	static final long QUIET_POLL_NS = SpotifyPace.QUIET_NS;
 	/** errAEEventNotPermitted / errAEEventWouldRequireUserConsent: Automation permission was refused. */
 	private static final int NOT_ALLOWED = -1743;
 	private static final int NEEDS_CONSENT = -1744;
@@ -231,6 +237,10 @@ public final class MacMediaSource implements MediaSource {
 	private final Runner runner;
 	private final long minPollNs;
 	private final Predicate<App> running;
+	private final BooleanSupplier looking;
+	/** Pacing clock; tests swap it. */
+	private final LongSupplier clock;
+	private boolean wasLooking = true;
 
 	/** The osascript that hasn't finished yet, if any. */
 	private volatile @Nullable Run pending;
@@ -253,8 +263,20 @@ public final class MacMediaSource implements MediaSource {
 	private @Nullable App current;
 	private volatile String currentDisplayName = "";
 
-	public MacMediaSource(Supplier<String> preferredPlayer) {
-		this(preferredPlayer, MacMediaSource::startProcess, MIN_POLL_NS, cached(MacMediaSource::isRunning, System::nanoTime, RUNNING_TTL_NS));
+	/** @param looking whether anything on screen shows the song; when not, osascript runs far less often */
+	public MacMediaSource(Supplier<String> preferredPlayer, BooleanSupplier looking) {
+		this(preferredPlayer, MacMediaSource::startProcess, MIN_POLL_NS,
+				scanned(MacMediaSource::runningApps, System::nanoTime, () -> ttlNs(looking.getAsBoolean())),
+				looking, System::nanoTime);
+	}
+
+	static long ttlNs(boolean looking) {
+		return looking ? RUNNING_TTL_NS : RUNNING_QUIET_TTL_NS;
+	}
+
+	/** How long a reading is reused for. */
+	static long gapNs(boolean looking, long minPollNs) {
+		return looking ? minPollNs : Math.max(minPollNs, QUIET_POLL_NS);
 	}
 
 	/** @param minPollNs how long a reading is reused for; tests use 0 */
@@ -263,6 +285,13 @@ public final class MacMediaSource implements MediaSource {
 	}
 
 	MacMediaSource(Supplier<String> preferredPlayer, Runner runner, long minPollNs, Predicate<App> running) {
+		this(preferredPlayer, runner, minPollNs, running, () -> true, System::nanoTime);
+	}
+
+	MacMediaSource(Supplier<String> preferredPlayer, Runner runner, long minPollNs, Predicate<App> running,
+			BooleanSupplier looking, LongSupplier clock) {
+		this.looking = looking;
+		this.clock = clock;
 		this.preferredPlayer = preferredPlayer;
 		this.runner = runner;
 		this.minPollNs = minPollNs;
@@ -286,6 +315,40 @@ public final class MacMediaSource implements MediaSource {
 		};
 	}
 
+	/**
+	 * Like {@link #cached} but one walk of the process table answers both apps, and the lifetime of the answer
+	 * is asked for each time (it is longer while nobody is looking).
+	 */
+	static Predicate<App> scanned(Supplier<Set<String>> scan, LongSupplier nanos, LongSupplier ttlNs) {
+		Object lock = new Object();
+		java.util.concurrent.atomic.AtomicReference<Set<String>> found = new java.util.concurrent.atomic.AtomicReference<>();
+		long[] at = {0};
+		return app -> {
+			synchronized (lock) {
+				long now = nanos.getAsLong();
+				if (found.get() == null || now - at[0] >= ttlNs.getAsLong()) {
+					found.set(scan.get());
+					at[0] = now;
+				}
+				return found.get().contains(app.name());
+			}
+		};
+	}
+
+	/** The names of the apps among this user's processes, from one walk of the process table. */
+	static Set<String> runningApps() {
+		Set<String> out = new java.util.HashSet<>();
+		ProcessHandle.allProcesses().forEach(p -> {
+			String c = p.info().command().orElse("");
+			for (App app : APPS) {
+				if (c.endsWith("/" + app.name() + ".app/Contents/MacOS/" + app.name())) {
+					out.add(app.name());
+				}
+			}
+		});
+		return out;
+	}
+
 	/** The most a reading is believed to be older than the moment osascript finished. */
 	static final long MAX_LAG_NS = 500_000_000L;
 
@@ -306,15 +369,12 @@ public final class MacMediaSource implements MediaSource {
 		return code == NOT_ALLOWED || code == NEEDS_CONSENT;
 	}
 
-	/** Looks for the app's program among this user's processes; needs no permission and opens nothing. */
-	static boolean isRunning(App app) {
-		String program = "/" + app.name() + ".app/Contents/MacOS/" + app.name();
-		return ProcessHandle.allProcesses().anyMatch(p -> p.info().command().map(c -> c.endsWith(program)).orElse(false));
-	}
-
 	@Override
 	public synchronized Snapshot poll() throws Exception {
-		if (!haveLast || System.nanoTime() - lastAt >= minPollNs) {
+		boolean lookingNow = looking.getAsBoolean();
+		boolean returned = lookingNow && !wasLooking; // the song may have changed while nobody looked: read at once
+		wasLooking = lookingNow;
+		if (!haveLast || returned || clock.getAsLong() - lastAt >= gapNs(lookingNow, minPollNs)) {
 			List<String> args = new ArrayList<>();
 			List<Failure> denied = new ArrayList<>();
 			long now = System.nanoTime();
@@ -332,8 +392,8 @@ public final class MacMediaSource implements MediaSource {
 			boolean late = pending != null;
 			if (args.isEmpty() && !late) {
 				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied); // nothing to ask, no osascript to start
-				lastAt = System.nanoTime();
-				lastReadAt = lastAt;
+				lastAt = clock.getAsLong();
+				lastReadAt = System.nanoTime();
 				haveLast = true;
 			} else {
 				String out = osascript(args, true);
@@ -346,7 +406,7 @@ public final class MacMediaSource implements MediaSource {
 				}
 				failures.addAll(denied);
 				last = new Answer(answer.players(), failures);
-				lastAt = System.nanoTime();
+				lastAt = clock.getAsLong();
 				lastReadAt = readStamp(ranFromNs, ranToNs);
 				haveLast = !late; // a late answer may be old: read again next time
 			}
