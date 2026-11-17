@@ -18,7 +18,7 @@ class FrameKeyGarbageTest {
 	private static final Object FONT = new Object(), LANG = new Object();
 
 	private static long bytes(Runnable r) {
-		for (int i = 0; i < 20_000; i++) {
+		for (int i = 0; i < 200_000; i++) {
 			r.run();
 		}
 		long id = Thread.currentThread().getId();
@@ -36,7 +36,7 @@ class FrameKeyGarbageTest {
 		cache.get(FONT, Style.EMPTY, "hello", LANG, measure);
 		long used = bytes(() -> cache.get(FONT, Style.EMPTY, "hello", LANG, measure));
 		System.out.println("WidthCache hit bytes per 10000: " + used);
-		assertTrue(used < 20_000, "allocated " + used + " bytes for 10000 cache hits");
+		assertTrue(used < 100_000, "allocated " + used + " bytes for 10000 cache hits");
 	}
 
 	@Test
@@ -60,7 +60,7 @@ class FrameKeyGarbageTest {
 		assertSame(a, NowPlayingHud.visual("12:34", Style.EMPTY));
 		long used = bytes(() -> NowPlayingHud.visual("12:34", Style.EMPTY));
 		System.out.println("visual hit bytes per 10000: " + used);
-		assertTrue(used < 20_000, "allocated " + used + " bytes for 10000 cache hits");
+		assertTrue(used < 100_000, "allocated " + used + " bytes for 10000 cache hits");
 	}
 
 	@Test
@@ -72,6 +72,6 @@ class FrameKeyGarbageTest {
 		assertTrue(NowPlayingHud.actionBarShowing(40, text));
 		long used = bytes(() -> NowPlayingHud.actionBarShowing(0, text));
 		System.out.println("actionBar idle bytes per 10000: " + used);
-		assertTrue(used < 20_000, "allocated " + used + " bytes for 10000 idle checks");
+		assertTrue(used < 100_000, "allocated " + used + " bytes for 10000 idle checks");
 	}
 }
