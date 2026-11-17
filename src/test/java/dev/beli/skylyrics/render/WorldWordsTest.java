@@ -1437,10 +1437,11 @@ class WorldWordsTest {
 	@Test
 	void aLineThatBeganBuriedNeverStartsOver() {
 		WorldWords words = longLine(pos -> true, false);
-		// Looking at the horizon with the default FOV: a line is full once its rows reach the bottom of the screen
+		// Looking at the horizon with the default FOV: a line starts over when its next row would go below the screen,
+		// so each old one stops above the bottom of what is shown and never in the first row
 		float low = WorldWords.lowestSeen(0, WorldWords.halfView(0, 70));
-		assertTrue(words.earlierSentences().isEmpty() || words.earlierSentences().get(0).full(low), "no buried restart");
-		assertFalse(words.earlierSentences().stream().anyMatch(e -> !e.full(low)), "only a full line may have started over");
+		assertFalse(words.earlierSentences().isEmpty(), "a line fills the screen and starts over");
+		assertFalse(words.earlierSentences().stream().anyMatch(e -> e.top > low || e.rows < 1), "only a line with its rows down the screen may have started over");
 	}
 
 	/** One 34 word flowing line written a piece at a time, up to the moment it first starts over (or the end of it). */
@@ -1467,6 +1468,17 @@ class WorldWordsTest {
 			WorldWords.measureHook = null;
 			WorldWords.buriedHook = null;
 		}
+	}
+
+	/** Looking at the horizon, the piece that would start a row below the screen begins the line over instead of sitting under it. */
+	@Test
+	void aPieceThatWouldWrapBelowTheScreenStartsTheLineOverInsteadOfSittingThere() throws Exception {
+		WorldWords words = longLine(pos -> false, true);
+		assertFalse(words.earlierSentences().isEmpty(), "the line started over");
+		WorldWords.Sentence old = words.earlierSentences().get(0);
+		float seen = (float) Math.toDegrees(Math.atan(Math.tan(Math.toRadians(35)) * (1 - WorldWords.HOTBAR_SHARE)));
+		assertTrue(old.top <= seen, "the old line's last row is at " + old.top + ", past " + seen);
+		assertTrue(((WorldWords.Sentence) get(words, "sentence")).top < old.top, "the new line is back up at the top");
 	}
 
 	/** A hillside below: a flowing line that reaches it starts over at the top, and every word of the old one is cut. */
