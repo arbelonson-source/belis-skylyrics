@@ -88,7 +88,7 @@ class WindowsMediaSourceTest {
 		assertEquals(61_000, WindowsMediaSource.position(61_000, 1_000_000, false, 200_000, 1_002_000));
 		// Never past the end, never below zero, and no guessing without a timestamp
 		assertEquals(200_000, WindowsMediaSource.position(199_000, 1_000_000, true, 200_000, 1_500_000));
-		assertEquals(0, WindowsMediaSource.position(-50, 0, true, 0, 1_000));
+		assertEquals(0, WindowsMediaSource.position(-50, WindowsMediaSource.NO_TIME, true, 0, 1_000));
 		assertEquals(61_000, WindowsMediaSource.position(61_000, WindowsMediaSource.NO_TIME, true, 200_000, 1_002_000));
 	}
 
