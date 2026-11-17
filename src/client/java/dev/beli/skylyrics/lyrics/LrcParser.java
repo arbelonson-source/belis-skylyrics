@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /** Parses LRC text ("[01:23.45]words") into {@link Lyrics}. */
 public final class LrcParser {
-	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:](\\d+))?\\s*]");
+	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
 	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:]\\d+)?>");
@@ -134,9 +134,15 @@ public final class LrcParser {
 		long shift = -offset;
 		List<LyricLine> shifted = new ArrayList<>(lines.size());
 		for (LyricLine line : lines) {
-			shifted.add(new LyricLine(Math.max(0, line.timeMs() + shift), line.text()));
+			shifted.add(new LyricLine(line.timeMs() + shift, line.text()));
 		}
 		shifted.sort(Comparator.comparingLong(LyricLine::timeMs));
+		// Lines pushed before the start of the song can't have a negative time (the rest of the mod reads time 0 as the start),
+		// but all sitting on 0 would merge them into one line: they take 0, 1, 2 ms and keep their order
+		int clamped = 0;
+		for (int i = 0; i < shifted.size() && shifted.get(i).timeMs() < 0; i++) {
+			shifted.set(i, new LyricLine(clamped++, shifted.get(i).text()));
+		}
 		// Stamps with nothing but notes or blanks (some sites do this for songs without words) is an instrumental
 		if (shifted.stream().allMatch(LyricLine::isBreak)) {
 			return Lyrics.INSTRUMENTAL;
