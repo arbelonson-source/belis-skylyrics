@@ -139,4 +139,43 @@ class AlbumArtRetryTest {
 		assertFalse(CoverRetry.temporary(new java.io.IOException("Refused a redirect to nowhere")));
 		assertTrue(CoverRetry.temporary(new java.net.UnknownHostException("img.example")));
 	}
+
+	@Test
+	void aCutShortPictureIsNotRetried() {
+		AlbumArt art = art();
+		art.fetcher = url -> {
+			fetches++;
+			throw new javax.imageio.IIOException("Error reading PNG image data", new java.io.EOFException());
+		};
+		art.load(song("T", "https://img.example/a.png"));
+		assertEquals(1, fetches);
+		assertTrue(delays.isEmpty());
+	}
+
+	private static Throwable withCause(Throwable t, Throwable cause) {
+		t.initCause(cause);
+		return t;
+	}
+
+	@Test
+	void aBadCertificateIsNotRetried() {
+		assertFalse(CoverRetry.temporary(withCause(new javax.net.ssl.SSLHandshakeException("No subject alternative DNS name")
+			, new java.security.cert.CertificateException("bad"))));
+		assertTrue(CoverRetry.temporary(new javax.net.ssl.SSLException("Connection reset")));
+	}
+
+	@Test
+	void retriesStopAfterSix() {
+		AlbumArt art = art();
+		art.fetcher = url -> {
+			fetches++;
+			throw new java.net.http.HttpTimeoutException("slow");
+		};
+		art.load(song("T", "https://img.example/a.jpg"));
+		for (int i = 0; i < 30 && !scheduled.get(scheduled.size() - 1).isDone(); i++) {
+			runLast(scheduled);
+		}
+		assertEquals(List.of(5_000L, 15_000L, 30_000L, 60_000L, 60_000L, 60_000L), delays);
+		assertEquals(7, fetches, "the first try and six retries");
+	}
 }

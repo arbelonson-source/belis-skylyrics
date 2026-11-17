@@ -353,4 +353,38 @@ class CoverCacheTest {
 		assertFalse(CoverCache.countsAsFailure(429));
 		assertFalse(CoverCache.countsAsFailure(408));
 	}
+
+	@Test
+	void aCoverThatDownloadsButWontDecodeIsGivenUp(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		CoverCache cache = new CoverCache(dir, url -> {
+			reads.incrementAndGet();
+			throw new javax.imageio.IIOException("Unsupported Image Type");
+		});
+		try {
+			String url = "https://example.test/cmyk";
+			long later = System.nanoTime();
+			long end = System.nanoTime() + 10_000_000_000L;
+			while (reads.get() < 3 && System.nanoTime() < end) {
+				later += CoverCache.RETRY_NS * 2;
+				cache.get(url, later);
+				Thread.sleep(5);
+			}
+			Object cover = ((java.util.Map<?, ?>) field(cache, "covers").get(cache)).get(url);
+			java.lang.reflect.Field failures = field(cover, "failures");
+			long settle = System.nanoTime() + 20_000_000_000L;
+			while (failures.getInt(cover) < 3 && System.nanoTime() < settle) {
+				Thread.sleep(5);
+			}
+			assertEquals(3, failures.getInt(cover), "decode failures are counted");
+			for (int i = 0; i < 20; i++) {
+				later += CoverCache.RETRY_NS * 2;
+				assertNull(cache.get(url, later));
+				Thread.sleep(5);
+			}
+			assertEquals(3, reads.get());
+		} finally {
+			cache.close();
+		}
+	}
 }

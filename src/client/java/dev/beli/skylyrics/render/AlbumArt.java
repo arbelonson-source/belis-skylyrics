@@ -244,7 +244,7 @@ public final class AlbumArt {
 							color = FALLBACK_COLOR;
 						}
 						// No network at song start must not mean no cover for the whole song
-						if (e instanceof Exception && CoverRetry.temporary(e)) {
+						if (e instanceof Exception && failures < CoverRetry.MAX_RETRIES && CoverRetry.temporary(e)) {
 							retryLater(url, gen, failures + 1, keepOnFail);
 						}
 					}
@@ -519,6 +519,9 @@ public final class AlbumArt {
 		for (int y = 0; y < image.getHeight(); y += stepY) {
 			for (int x = 0; x < image.getWidth(); x += stepX) {
 				int p = image.getRGB(x, y);
+				if ((p >>> 24) < 32) {
+					continue; // (nearly) clear: its colour isn't shown
+				}
 				java.awt.Color.RGBtoHSB((p >> 16) & 0xFF, (p >> 8) & 0xFF, p & 0xFF, hsb);
 				float sat = hsb[1], bri = hsb[2];
 				if (sat < 0.25f || bri < 0.2f) {
