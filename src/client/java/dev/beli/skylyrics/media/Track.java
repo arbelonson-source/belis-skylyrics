@@ -11,14 +11,14 @@ package dev.beli.skylyrics.media;
 public record Track(String title, String artist, String album, long lengthMs, String artUrl, String player, String uri) {
 	/** Players can send line breaks, tabs and text-direction marks in a title; those draw as boxes or flip the title. */
 	public Track {
-		title = clean(title);
-		artist = clean(artist);
-		album = clean(album);
+		title = cap(clean(title), MAX_TEXT);
+		artist = cap(clean(artist), MAX_TEXT);
+		album = cap(clean(album), MAX_TEXT);
 	}
 
 	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("[\\s\\p{Z}]+");
 
-	/** Control characters become a space, text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
+	/** Control characters become a space (no length limit: saved timing keys are cleaned with this and must come back whole; the fields are cut in the constructor), text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
 	public static String clean(String s) {
 		if (s == null) {
 			return "";
@@ -33,7 +33,7 @@ public record Track(String title, String artist, String album, long lengthMs, St
 			}
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
 		}
-		return cap(SPACES.matcher(b).replaceAll(" ").strip(), MAX_TEXT);
+		return SPACES.matcher(b).replaceAll(" ").strip();
 	}
 
 	/** A title, artist or album longer than this is cut: a player can send anything, and it is drawn and compared all the time. */
