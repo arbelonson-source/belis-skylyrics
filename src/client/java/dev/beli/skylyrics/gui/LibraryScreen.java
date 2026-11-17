@@ -299,7 +299,16 @@ public final class LibraryScreen extends Screen {
 
 	/** Room for the "sign in to Spotify" strip above the recently heard songs. */
 	private int bannerH() {
-		return heardMode() ? 19 : 0;
+		return heardMode() ? bannerStripH() + 3 : 0;
+	}
+
+	/** Height of the sign-in strip: 16 for one line of text, 26 when the text has to wrap onto two. */
+	private int bannerStripH() {
+		return LibraryViews.bannerStripH(font.width(signInText()), bannerRoom());
+	}
+
+	private int bannerRoom() {
+		return Math.min(460, width - 16) - 20 - bannerButtonW() - 24;
 	}
 
 	private int bannerButtonW() {
@@ -489,14 +498,32 @@ public final class LibraryScreen extends Screen {
 
 	/** A slim strip telling the user their own Spotify songs are one sign-in away. */
 	private void renderBanner(GuiGraphics g, Frame f) {
-		int y = py + HEADER_H + 3, bw = bannerButtonW();
-		Ui.rect(g, px + 10, y, pw - 20, 16, 5, Ui.CARD);
-		g.drawString(font, Ui.visual(Ui.clip(font, signInText(), pw - 20 - bw - 24)), px + 16, y + 4, Ui.MUTED, false);
-		int bx = px + pw - 10 - bw - 2;
-		Controls.drawButton(f, bx, y + 1, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, y + 1, bw, 14), true, true);
-		if (onStop(STOP_BANNER, 0)) {
-			Ui.outline(g, bx - 2, y - 1, bw + 4, 18, 7, Ui.TEXT);
+		int y = py + HEADER_H + 3, bw = bannerButtonW(), sh = bannerStripH(), room = bannerRoom();
+		Ui.rect(g, px + 10, y, pw - 20, sh, 5, Ui.CARD);
+		String text = signInText();
+		if (sh == LibraryViews.BANNER_ONE) {
+			g.drawString(font, Ui.visual(Ui.clip(font, text, room)), px + 16, y + 4, Ui.MUTED, false);
+		} else {
+			List<net.minecraft.network.chat.FormattedText> lines = font.getSplitter().splitLines(text, room, net.minecraft.network.chat.Style.EMPTY);
+			boolean rtl = Ui.paragraphRtl(text);
+			for (int i = 0; i < Math.min(2, lines.size()); i++) {
+				String line = lines.get(i).getString();
+				// a third line cannot fit: the second keeps its end clipped rather than losing the words silently
+				if (i == 1 && lines.size() > 2) {
+					line = Ui.clip(font, line + " " + lines.get(2).getString(), room);
+				}
+				g.drawString(font, Ui.visual(line, rtl), px + 16, y + 3 + i * 10, Ui.MUTED, false);
+			}
 		}
+		int bx = px + pw - 10 - bw - 2, by = bannerButtonY(y, sh);
+		Controls.drawButton(f, bx, by, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, by, bw, 14), true, true);
+		if (onStop(STOP_BANNER, 0)) {
+			Ui.outline(g, bx - 2, by - 2, bw + 4, 18, 7, Ui.TEXT);
+		}
+	}
+
+	private static int bannerButtonY(int stripY, int stripH) {
+		return stripY + (stripH - 14) / 2;
 	}
 
 	private static final int STOP_BANNER = 0, STOP_VIEW = 1, STOP_CHIP = 2;
@@ -1175,7 +1202,7 @@ public final class LibraryScreen extends Screen {
 			}
 			return true;
 		}
-		if (heardMode() && Ui.inside(mx, my, px + pw - 12 - bannerButtonW(), py + HEADER_H + 4, bannerButtonW(), 14)) {
+		if (heardMode() && Ui.inside(mx, my, px + pw - 12 - bannerButtonW(), bannerButtonY(py + HEADER_H + 3, bannerStripH()), bannerButtonW(), 14)) {
 			openMusicTab();
 			return true;
 		}

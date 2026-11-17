@@ -74,4 +74,17 @@ class LibraryViewsTest {
 		assertEquals(slow, fast, 0.05f);
 		assertEquals(5f, slow, 0.05f);
 	}
+
+	@Test
+	void signInStripWrapsOnlyWhenTheTextDoesNotFit() {
+		assertEquals(16, LibraryViews.bannerStripH(200, 200));
+		assertEquals(16, LibraryViews.bannerStripH(0, 50));
+		assertEquals(26, LibraryViews.bannerStripH(201, 200));
+		assertEquals(26, LibraryViews.bannerStripH(400, 60));
+		assertEquals(26, LibraryViews.bannerStripH(400, 30));
+		// too little room to wrap into: stay one clipped line, never a splitter at a tiny width
+		assertEquals(16, LibraryViews.bannerStripH(400, 29));
+		assertEquals(16, LibraryViews.bannerStripH(5, -4));
+		assertEquals(16, LibraryViews.bannerStripH(400, 0));
+	}
 }
