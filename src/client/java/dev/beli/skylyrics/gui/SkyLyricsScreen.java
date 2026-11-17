@@ -131,7 +131,28 @@ public final class SkyLyricsScreen extends Screen {
 		if (placement == Placement.SKY) {
 			return String.valueOf(Math.round(Math.max(8, Math.min(value, renderChunks * 16 * 0.8f))));
 		}
-		return String.format(Locale.ROOT, "%.1f", LyricsRenderer.floatingDistance((float) value));
+		// Past 64 a slider step moves under 0.1 block, so it needs the second decimal to read differently
+		return String.format(Locale.ROOT, value > 64 ? "%.2f" : "%.1f", LyricsRenderer.floatingDistance((float) value));
+	}
+
+	/** The Player button's choices: Auto, then this system's players. */
+	static List<String> playerChoices(String[] keys, List<String> names, String preferred, String auto) {
+		List<String> all = Stream.concat(Stream.of(auto), names.stream()).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+		// A key from a shared settings file that this system doesn't list is still applied when a player matches, so show it
+		if (!preferred.isBlank() && playerIndex(keys, preferred) >= keys.length) {
+			all.add(preferred);
+		}
+		return all;
+	}
+
+	/** Which choice is on: the one whose key is saved, else Auto. */
+	static int playerIndex(String[] keys, String preferred) {
+		for (int i = 0; i < keys.length; i++) {
+			if (keys[i].equalsIgnoreCase(preferred)) {
+				return i;
+			}
+		}
+		return preferred.isBlank() ? 0 : keys.length;
 	}
 
 	private static final String LRCLIB = "https://lrclib.net";
@@ -546,17 +567,11 @@ public final class SkyLyricsScreen extends Screen {
 						false))
 				.describe(this::lyricsStatus);
 
-		Row player = new Cycle(Tr.t("Player"), Tr.t("Which app to follow"), Stream.concat(Stream.of(Tr.t("Auto")), PLAYER_NAMES.stream()).toList(),
-				() -> {
-					for (int i = 0; i < PLAYER_KEYS.length; i++) {
-						if (PLAYER_KEYS[i].equalsIgnoreCase(cfg.preferredPlayer)) {
-							return i;
-						}
-					}
-					return 0;
-				},
+		String savedPlayer = cfg.preferredPlayer;
+		Row player = new Cycle(Tr.t("Player"), Tr.t("Which app to follow"), playerChoices(PLAYER_KEYS, PLAYER_NAMES, savedPlayer, Tr.t("Auto")),
+				() -> playerIndex(PLAYER_KEYS, cfg.preferredPlayer),
 				i -> {
-					cfg.preferredPlayer = PLAYER_KEYS[i];
+					cfg.preferredPlayer = i < PLAYER_KEYS.length ? PLAYER_KEYS[i] : savedPlayer;
 					tracker.refresh();
 				});
 		Row connection = new Info(Tr.t("Status"), null, () -> {
@@ -675,7 +690,7 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	public static String seconds(double ms) {
-		return Math.abs(ms) < 1 ? "0 s" : String.format(Locale.ROOT, "%+.2f s", ms / 1000);
+		return Math.abs(ms) < 5 ? "0 s" : String.format(Locale.ROOT, "%+.2f s", ms / 1000);
 	}
 
 	private List<Card> displayTab() {
