@@ -298,6 +298,8 @@ final class WorldWords {
 	private int fastRun;
 	/** Elytra mode is carrying the words this frame. */
 	private boolean gliding;
+	/** The lowest pitch a new row may start on to still be on screen, worked out as each word is placed. */
+	private float seenLow = Sentence.ROW_LIMIT;
 	private @Nullable Sentence sentence;
 	/** The line written before it, which the next line of a verse goes under. */
 	private @Nullable Sentence last;
@@ -1413,6 +1415,7 @@ final class WorldWords {
 		float[] spot;
 		float halfW, halfH, shrink;
 		Vec3 pos;
+		seenLow = lowestSeen(camera.xRot(), halfView(ScreenLayer.tanHalfV(), sliderFov()));
 		for (boolean again = false;; again = true) {
 			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
 			Vec3 dir = direction(spot[0], spot[1]);
@@ -1588,8 +1591,8 @@ final class WorldWords {
 	 */
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm, long now) {
 		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
-		if (sentence != null && (sentence.lost(centre[0], centre[1] - LIFT, aside) || sentence.full())) {
-			startsOver(() -> sentence.full() ? "full: top " + sentence.top + " rows " + sentence.rows : "lost: view " + centre[0] + "/" + centre[1] + " line " + sentence.left + "+" + sentence.width + " home " + sentence.home);
+		if (sentence != null && (sentence.lost(centre[0], centre[1] - LIFT, aside) || sentence.full(seenLow))) {
+			startsOver(() -> sentence.full(seenLow) ? "full: top " + sentence.top + " rows " + sentence.rows : "lost: view " + centre[0] + "/" + centre[1] + " line " + sentence.left + "+" + sentence.width + " home " + sentence.home);
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
 			clearLine(cards, sentence, earlier, now);
 			sentence = null;
@@ -1696,6 +1699,26 @@ final class WorldWords {
 		float up = Math.max(0, width * (float) Math.tan(slope * Mth.DEG_TO_RAD)) + Math.max(0, bend);
 		// A line's top is the foot of its first row, so its words stand a whole row above it
 		return pitch - VIEW_UP + up + row + drift;
+	}
+
+	/** Degrees a row's start keeps above the bottom of the screen, so the row itself isn't cut off by it. */
+	static final float ROW_MARGIN = 2f;
+
+	/** The FOV slider, or the default 70 where there is no game (tests). */
+	private static double sliderFov() {
+		Minecraft mc = Minecraft.getInstance();
+		return mc == null ? 70 : mc.options.fov().get();
+	}
+
+	/** Half the screen's height in degrees: from the projection the world was drawn with (zoom, Speed and so on), else the FOV slider. */
+	static float halfView(float tanHalfV, double sliderFovDeg) {
+		double tan = tanHalfV > 0 && !Float.isInfinite(tanHalfV) ? tanHalfV : Math.tan(sliderFovDeg * DEG / 2);
+		return (float) Math.toDegrees(Math.atan(tan));
+	}
+
+	/** The lowest pitch a row may start on while you look at {@code pitch}: the bottom of the screen less a margin, never past {@link Sentence#ROW_LIMIT}. */
+	static float lowestSeen(float pitch, float halfView) {
+		return Math.min(Sentence.ROW_LIMIT, pitch + halfView - ROW_MARGIN);
 	}
 
 	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
@@ -2024,7 +2047,15 @@ final class WorldWords {
 
 		/** Whether the rows have gone as far down as they may, so the next piece starts the line over higher up. */
 		boolean full() {
-			return top > ROW_LIMIT;
+			return full(ROW_LIMIT);
+		}
+
+		/**
+		 * The same, also when the next row would start below {@code low}, the bottom of what the screen shows. The first
+		 * row never counts: a line that can't fit even one row stays where it is.
+		 */
+		boolean full(float low) {
+			return top > ROW_LIMIT || rows > 0 && top > low;
 		}
 
 		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */
