@@ -312,6 +312,10 @@ class TitleCleanerTest {
 		assertTrue(TitleCleaner.sameSong("Beyonc\u00e9", "Beyonce"));
 		assertTrue(TitleCleaner.sameSong("Cafe\u0301", "Cafe"));
 		assertTrue(TitleCleaner.sameSong("\u0439", "\u0438\u0306"));
+		// Hebrew points and Arabic harakat are optional in writing, so they fold away
+		assertTrue(TitleCleaner.sameSong("\u05e9\u05dc\u05d5\u05dd", "\u05e9\u05c1\u05b8\u05dc\u05d5\u05b9\u05dd"));
+		assertTrue(TitleCleaner.sameSong("\u0645\u062d\u0645\u062f", "\u0645\u064f\u062d\u064e\u0645\u0651\u064e\u062f"));
+		assertEquals(TitleCleaner.key("\u0645\u062d\u0645\u062f"), TitleCleaner.key("\u0645\u064f\u062d\u064e\u0645\u0651\u064e\u062f"));
 		assertNotEquals(TitleCleaner.key("\u0915\u093e"), TitleCleaner.key("\u0915\u0940"));
 		assertEquals(TitleCleaner.key("Beyonc\u00e9"), TitleCleaner.key("beyonce"));
 	}

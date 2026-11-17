@@ -500,9 +500,9 @@ class SpotifyWebSourceTest {
 				return 'a';
 			}
 		};
-		InputStream bounded = SpotifyWebSource.bounded(trickle, 10_000_000_000L, () -> clock[0], ms -> timeout[0] = ms, 5000);
+		InputStream bounded = SpotifyWebSource.bounded(trickle, SpotifyWebSource.REQUEST_DEADLINE_NS, () -> clock[0], ms -> timeout[0] = ms, 5000);
 		assertThrows(java.net.SocketTimeoutException.class, () -> SpotifyWebSource.requestLine(bounded));
-		assertTrue(clock[0] <= 11_000_000_000L, "gave up around the 10 s mark, not later");
+		assertTrue(clock[0] >= SpotifyWebSource.REQUEST_DEADLINE_NS && clock[0] <= SpotifyWebSource.REQUEST_DEADLINE_NS + 1_000_000_000L, "gave up at the deadline, not earlier or later");
 		assertTrue(timeout[0] > 0 && timeout[0] <= 5000, "each read waits no longer than what is left");
 	}
 
