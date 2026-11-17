@@ -130,6 +130,34 @@ public final class SafeFile {
 		return false;
 	}
 
+	/** A settings-sized file (heard list, sign-in) bigger than this is not ours: reading it whole could run the game out of memory. */
+	public static final long MAX_SMALL_FILE = 1_000_000;
+
+	/** True when the file is bigger than {@link #MAX_SMALL_FILE}; false when it can't be sized (the read will say why). */
+	public static boolean tooBig(Path file) {
+		try {
+			return Files.size(file) > MAX_SMALL_FILE;
+		} catch (IOException e) {
+			return false;
+		}
+	}
+
+	/**
+	 * Writes text into the (existing) temp file and forces it to the disk before returning, so a rename that follows can't
+	 * survive a crash or power cut as a zero-length file. For files whose loss would hurt (settings, sign-in); not for caches.
+	 */
+	public static void writeDurably(Path tmp, String text) throws IOException {
+		byte[] bytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+		try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(tmp,
+				java.nio.file.StandardOpenOption.WRITE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)) {
+			java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(bytes);
+			while (buffer.hasRemaining()) {
+				channel.write(buffer);
+			}
+			channel.force(true);
+		}
+	}
+
 	/** Replaces target with tmp. If it can't be done, tmp is deleted and the last error is thrown. */
 	public static void replace(Path tmp, Path target) throws IOException {
 		replace(tmp, target, Files::move, TRIES, PAUSE_MS);

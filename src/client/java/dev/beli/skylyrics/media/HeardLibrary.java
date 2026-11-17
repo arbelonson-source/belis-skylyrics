@@ -295,7 +295,7 @@ public final class HeardLibrary implements Library {
 			Files.createDirectories(dir);
 			Path tmp = Files.createTempFile(dir, file.getFileName() + ".", ".tmp");
 			try {
-				Files.writeString(tmp, toJson(entries), StandardCharsets.UTF_8);
+				SafeFile.writeDurably(tmp, toJson(entries));
 				SafeFile.replace(tmp, file, mover, SafeFile.TRIES, SafeFile.PAUSE_MS);
 			} finally {
 				Files.deleteIfExists(tmp);
@@ -348,6 +348,11 @@ public final class HeardLibrary implements Library {
 			dev.beli.skylyrics.util.Leftovers.cleanTemps(file.toAbsolutePath().getParent(), OLD_TEMP, System.currentTimeMillis());
 		}
 		if (!Files.isRegularFile(file)) {
+			return new Loaded(out, false);
+		}
+		if (SafeFile.tooBig(file)) {
+			LOG.warn("The recently heard file is far too big to be ours, starting empty (kept a copy as heard.json.bad)");
+			keepCopy(file);
 			return new Loaded(out, false);
 		}
 		String text;

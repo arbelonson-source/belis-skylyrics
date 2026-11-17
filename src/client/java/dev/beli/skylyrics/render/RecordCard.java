@@ -119,6 +119,11 @@ public final class RecordCard {
 			at = place(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), h);
 			// No room clear of the scoreboard sidebar or the chat: fade out like for the player list
 			want = at != null;
+			// A bottom left card stacked up tall (above a bottom bar, a narrow screen) reaches F3's left column
+			if (want && f3Covers(cfg.cardCorner, at[1], NowPlayingHud.f3Open(mc))) {
+				want = false;
+				at = null;
+			}
 		}
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
@@ -356,6 +361,17 @@ public final class RecordCard {
 	/** Whether the corner is at the top of the screen, where the debug screen (F3) draws its text. */
 	static boolean topCorner(CardCorner corner) {
 		return corner == CardCorner.TOP_LEFT || corner == CardCorner.TOP_RIGHT;
+	}
+
+	/** How far down F3's left text column can reach, in GUI pixels (about 30 lines; it can't be measured exactly). */
+	static final float F3_REACH = 320;
+
+	/**
+	 * Whether the open debug screen (F3) would be drawn over a card at this top edge: always in the top corners, and in
+	 * the bottom left only when the card stands high enough to reach F3's left column (not on tall screens).
+	 */
+	static boolean f3Covers(CardCorner corner, float top, boolean f3Open) {
+		return f3Open && (topCorner(corner) || corner == CardCorner.BOTTOM_LEFT && top < F3_REACH);
 	}
 
 	/** How many good and bad potion effect icons Minecraft shows in the top right corner. */
