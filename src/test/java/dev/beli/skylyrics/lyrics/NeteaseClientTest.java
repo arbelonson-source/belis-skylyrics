@@ -262,4 +262,11 @@ class NeteaseClientTest {
 		lyric(22, LYRIC);
 		assertFalse(client.find(track("A Made-Up Song (Instrumental)", "Made Up Band", 200_000)).found());
 	}
+
+	@Test
+	void theLongInstrumentalWordingIsAPlaceholderButARealLyricIsNot() {
+		org.junit.jupiter.api.Assertions.assertTrue(NeteaseClient.isPlaceholder("[00:00.00] 此歌曲为没有填词的纯音乐，请您欣赏"));
+		org.junit.jupiter.api.Assertions.assertFalse(NeteaseClient.isPlaceholder("[00:00.00]他说纯音乐很好听\n[00:05.00]请欣赏"));
+		org.junit.jupiter.api.Assertions.assertFalse(NeteaseClient.isPlaceholder("[00:00.00]" + "我喜欢".repeat(20) + "纯音乐，请欣赏"));
+	}
 }

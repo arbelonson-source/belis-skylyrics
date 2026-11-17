@@ -32,7 +32,9 @@ class LrcOffsetFloorTest {
 	@Test
 	void aHugeOffsetFloorsEverythingAndKeepsTheOrder() {
 		Lyrics l = LrcParser.parseSynced("[offset:900000]\n[00:02.00] a\n[00:04.00] b");
-		assertTrue(l.lines().stream().allMatch(line -> line.timeMs() == 0));
-		assertTrue(l.lines().size() >= 1);
+		assertEquals(0, l.get(0).timeMs());
+		assertEquals("a", l.get(0).text());
+		assertEquals("b", l.get(1).text());
+		assertTrue(l.get(1).timeMs() > l.get(0).timeMs());
 	}
 }

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /** Parses LRC text ("[01:23.45]words") into {@link Lyrics}. */
 public final class LrcParser {
-	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:](\\d+))?\\s*]");
+	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
 	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:]\\d+)?>");
@@ -83,6 +83,39 @@ public final class LrcParser {
 		return note && (word.equalsIgnoreCase("instrumental") || word.equalsIgnoreCase("music"));
 	}
 
+	/**
+	 * Removes the word tags of enhanced LRC. A tag between two letters of a script that spaces its words ("Hello<..>world") leaves
+	 * a space so the words don't join; scripts without spaces (Chinese, Japanese, Korean, Thai...) are joined as they are.
+	 */
+	static String stripWordTags(String s) {
+		Matcher m = WORD_TIME.matcher(s);
+		StringBuilder b = new StringBuilder(s.length());
+		int last = 0;
+		while (m.find()) {
+			b.append(s, last, m.start());
+			last = m.end();
+			if (m.start() > 0 && last < s.length()) {
+				int before = s.codePointBefore(m.start());
+				int after = s.codePointAt(last);
+				if (spacedLetter(before) && spacedLetter(after)) {
+					b.append(' ');
+				}
+			}
+		}
+		return b.append(s, last, s.length()).toString();
+	}
+
+	private static boolean spacedLetter(int cp) {
+		if (!Character.isLetter(cp)) {
+			return false;
+		}
+		Character.UnicodeScript script = Character.UnicodeScript.of(cp);
+		return switch (script) {
+			case LATIN, CYRILLIC, GREEK, HEBREW, ARABIC, ARMENIAN, GEORGIAN, DEVANAGARI -> true;
+			default -> false;
+		};
+	}
+
 	public static Lyrics parseSynced(String lrc) {
 		if (lrc == null || lrc.isBlank()) {
 			return Lyrics.NONE;
@@ -111,7 +144,7 @@ public final class LrcParser {
 			if (times.isEmpty()) {
 				continue;
 			}
-			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
+			String text = tidy(TIME.matcher(stripWordTags(raw.substring(end))).replaceAll(" "));
 			text = LEADING_TAG.matcher(text).replaceFirst("");
 			if (NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
 				text = "";
@@ -134,9 +167,15 @@ public final class LrcParser {
 		long shift = -offset;
 		List<LyricLine> shifted = new ArrayList<>(lines.size());
 		for (LyricLine line : lines) {
-			shifted.add(new LyricLine(Math.max(0, line.timeMs() + shift), line.text()));
+			shifted.add(new LyricLine(line.timeMs() + shift, line.text()));
 		}
 		shifted.sort(Comparator.comparingLong(LyricLine::timeMs));
+		// Lines pushed before the start of the song can't have a negative time (the rest of the mod reads time 0 as the start),
+		// but all sitting on 0 would merge them into one line: they take 0, 1, 2 ms and keep their order
+		int clamped = 0;
+		for (int i = 0; i < shifted.size() && shifted.get(i).timeMs() < 0; i++) {
+			shifted.set(i, new LyricLine(clamped++, shifted.get(i).text()));
+		}
 		// Stamps with nothing but notes or blanks (some sites do this for songs without words) is an instrumental
 		if (shifted.stream().allMatch(LyricLine::isBreak)) {
 			return Lyrics.INSTRUMENTAL;
