@@ -1688,8 +1688,9 @@ final class WorldWords {
 		int run = placing >= 0 && placing < runs.length ? runs[placing] : RUN_NONE;
 		if (run == RUN_NONE) {
 			sentence.forward();
-		} else if (run == RUN_FIRST) {
-			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it
+		} else if (run == RUN_FIRST || sentence.run <= 0) {
+			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it.
+			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left
 			float span = 0;
 			int count = 0;
 			for (int k = placing; k < runs.length; k++) {
