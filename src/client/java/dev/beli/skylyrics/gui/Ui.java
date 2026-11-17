@@ -4,6 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
@@ -135,10 +136,22 @@ final class Ui {
 		if (maxW <= 0) {
 			return "";
 		}
-		return CLIPS.get(Language.getInstance(), font, text, maxW, () -> clip(font, text, maxW, font.width(text)));
+		return CLIPS.get(Language.getInstance(), glyphMode(), font, text, maxW, () -> clip(font, text, maxW, font.width(text)));
 	}
 
-	/** Cuts remembered between frames, per (font, text, room), dropped when the language object changes (a reload). Render thread only. */
+	/**
+	 * Which glyph set the game uses: Force Unicode Font and Japanese glyph variants change glyph widths in place
+	 * (Options callback -> Minecraft.updateFontOptions -> FontManager.updateOptions), with no resource reload and no new Language.
+	 */
+	private static int glyphMode() {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc == null || mc.options == null) {
+			return 0;
+		}
+		return (mc.options.forceUnicodeFont().get() ? 1 : 0) | (mc.options.japaneseGlyphVariants().get() ? 2 : 0);
+	}
+
+	/** Cuts remembered between frames, per (font, text, room), dropped when the language object or the glyph mode changes. Render thread only. */
 	private static final ClipCache CLIPS = new ClipCache(512);
 
 	/** {@link #clip(Font, String, int)} when the width of {@code text} is already known. */
@@ -149,7 +162,7 @@ final class Ui {
 		if (textW <= maxW) {
 			return text;
 		}
-		return CLIPS.get(Language.getInstance(), font, text, maxW, () -> clipBy(text, maxW, font::width));
+		return CLIPS.get(Language.getInstance(), glyphMode(), font, text, maxW, () -> clipBy(text, maxW, font::width));
 	}
 
 	/** The text cut to fit {@code maxW} and ending in "…", cut between whole characters (never inside a flag or an accent). */
@@ -191,6 +204,7 @@ final class Ui {
 		private final int limit;
 		private final LinkedHashMap<Key, String> map;
 		private Object language;
+		private int mode;
 
 		ClipCache(int limit) {
 			this.limit = limit;
@@ -203,9 +217,15 @@ final class Ui {
 		}
 
 		String get(Object language, Object font, String text, int room, Supplier<String> compute) {
-			if (language != this.language) {
+			return get(language, 0, font, text, room, compute);
+		}
+
+		/** {@code mode} stands for the glyph options (Force Unicode Font and the like) that change widths without a new language object. */
+		String get(Object language, int mode, Object font, String text, int room, Supplier<String> compute) {
+			if (language != this.language || mode != this.mode) {
 				map.clear();
 				this.language = language;
+				this.mode = mode;
 			}
 			Key key = new Key(font, text, room);
 			String known = map.get(key);

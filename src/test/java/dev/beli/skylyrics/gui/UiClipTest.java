@@ -57,6 +57,24 @@ class UiClipTest {
 	}
 
 	@Test
+	void aChangedGlyphModeDropsTheCuts() {
+		Ui.ClipCache cache = new Ui.ClipCache(8);
+		Object lang = new Object();
+		Object font = new Object();
+		int[] runs = {0};
+		java.util.function.Supplier<String> work = () -> {
+			runs[0]++;
+			return "x";
+		};
+		cache.get(lang, 0, font, "t", 5, work);
+		cache.get(lang, 0, font, "t", 5, work);
+		assertEquals(1, runs[0]);
+		cache.get(lang, 1, font, "t", 5, work);
+		assertEquals(2, runs[0]);
+		assertEquals(1, cache.size());
+	}
+
+	@Test
 	void theCacheStaysBounded() {
 		Ui.ClipCache cache = new Ui.ClipCache(4);
 		for (int i = 0; i < 20; i++) {
