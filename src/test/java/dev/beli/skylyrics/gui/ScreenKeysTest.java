@@ -149,6 +149,30 @@ class ScreenKeysTest {
 		assertFalse(new LegacyInput.KeyEvent(tab, 0, 8).hasControlDown()); // Super (Cmd)
 		assertFalse(new LegacyInput.KeyEvent(tab, 0, 1).hasControlDown());
 	}
+
+	@Test
+	void theLegacyEventsShiftAndAltAreTheirOwnBitsOnly() {
+		// GLFW's modifier bits, written out so no GLFW is needed: Shift 1, Ctrl 2, Alt 4, Super (Cmd) 8
+		int tab = com.mojang.blaze3d.platform.InputConstants.KEY_TAB;
+		assertTrue(new LegacyInput.KeyEvent(tab, 0, 1).hasShiftDown());
+		assertTrue(new LegacyInput.KeyEvent(tab, 0, 1 | 2).hasShiftDown());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 2 | 4 | 8).hasShiftDown());
+		assertTrue(new LegacyInput.KeyEvent(tab, 0, 4).hasAltDown());
+		assertTrue(new LegacyInput.KeyEvent(tab, 0, 4 | 1).hasAltDown());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 1 | 2 | 8).hasAltDown());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 0).hasShiftDown());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 0).hasAltDown());
+	}
+
+	@Test
+	void theLegacyEventsEditShortcutKeyIsCmdOnAMacAndCtrlElsewhere() {
+		int tab = com.mojang.blaze3d.platform.InputConstants.KEY_TAB;
+		boolean mac = net.minecraft.client.Minecraft.ON_OSX;
+		assertEquals(!mac, new LegacyInput.KeyEvent(tab, 0, 2).hasControlDownWithQuirk());
+		assertEquals(mac, new LegacyInput.KeyEvent(tab, 0, 8).hasControlDownWithQuirk());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 1 | 4).hasControlDownWithQuirk());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 0).hasControlDownWithQuirk());
+	}
 	*///?}
 
 	@Test
