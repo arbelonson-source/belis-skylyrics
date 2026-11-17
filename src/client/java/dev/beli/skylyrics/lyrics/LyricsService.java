@@ -427,6 +427,13 @@ public final class LyricsService {
 	}
 
 	static void writeCache(Path file, CacheEntry entry) {
+		writeCache(file, entry, DISK_FILES);
+	}
+
+	private static final java.util.concurrent.atomic.AtomicInteger SAVES = new java.util.concurrent.atomic.AtomicInteger();
+
+	/** Saves, and every tenth of {@code keep} saves trims the folder, so a long session can't run far past the cap. */
+	static void writeCache(Path file, CacheEntry entry, int keep) {
 		if (Thread.currentThread().isInterrupted()) {
 			return; // this lookup was cancelled by a skip: the write would only fail halfway
 		}
@@ -443,6 +450,9 @@ public final class LyricsService {
 			} catch (IOException ignored) {
 				// tidyDisk or the next write of this song cleans it
 			}
+		}
+		if (SAVES.incrementAndGet() % Math.max(1, keep / 10) == 0) {
+			tidyDisk(file.getParent(), keep);
 		}
 	}
 
