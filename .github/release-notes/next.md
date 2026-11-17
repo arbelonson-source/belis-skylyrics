@@ -15,6 +15,10 @@
 - **Two games updating at once.** On Linux and Mac, two Minecraft copies that share one mods folder and install the same SkyLyrics update at the same moment no longer leave two SkyLyrics files there (the game would refuse to start).
 - **Very long folder paths on Windows.** If the mods folder's path is very long (about 225 characters or more), an update is no longer downloaded again at every start without being installed: SkyLyrics tells you an update is available so you can install it by hand.
 - **Music on Linux.** When the desktop's message-bus address can't be used (an old address left after logging in again, or a kind the mod can't open), SkyLyrics also tries your user's usual bus before saying it can't reach your music players.
+- **Song position on Windows right after the PC starts.** The lyrics no longer stand still until the player's next update when Windows has only just started.
+- **Song library after "too many requests".** Closing the song library while Spotify asks SkyLyrics to wait no longer leaves the next list you open stuck on loading for up to 30 seconds.
+- **Seeking on more Linux players.** Clicking the progress bar now also moves the song on Linux music players that don't name their tracks the usual way (some older Spotify builds and MPD bridges).
+- **Ctrl on a Mac with 1.21.9 and 1.21.10.** Ctrl+Tab and Ctrl+Page Up/Down switch the settings tabs, and Ctrl with the song library key closes the library, as on the other versions (Cmd works too).
 - **Song library messages.** The short messages in the song library ("Playing …", errors) stay up as long as Minecraft's **Notification Display Time** says, like Minecraft's own pop-ups.
 - **Mac keys.** On a Mac, Cmd+Page Up and Cmd+Page Down switch the settings tabs (on Minecraft 1.21.9 and newer only Ctrl did), and Cmd with the library key closes the song library, like Ctrl.
 - **Player list and action bar.** Holding Tab on a server no longer draws the player list over the top bar or a **Record card** in a top corner: they fade out while it shows and back when you let go. A bottom bar no longer lifts when a server sends an empty action bar message to clear it.
@@ -129,6 +133,7 @@
 - **Long lines in World, sparkles, faint glow.** A long line in the World layout (a fast rap verse) is measured once when it starts instead of once per letter, which could stall that frame. Sparkles that are out of view are no longer drawn, and a faint glow in the Arc layout uses the same lighter drawing the Lines layout already did.
 - **Lighter lyrics and Galaxy.** Lines and Arc lyrics and the Galaxy sky do less work each frame.
 - **Lighter Aurora and Nebula.** The default Aurora sky, the Nebula clouds and stars, and the constellations skip the parts behind you or off the side of the screen. They look the same and cost less each frame.
+- **Stars.** While the day goes by, the stars' brightness is worked out once a frame instead of twice.
 - **Lighter top bar and Record card.** The bar keeps its line laid out instead of measuring it again every frame, and the card keeps its times and cut titles. Nothing looks different.
 - **Lighter sky effects.** The Moonlight clouds, the Comet streamers and the eclipse corona do less work each frame.
 - **Lighter settings window.** The settings window lays out each row once per frame instead of several times, and remembers the right-to-left text it has already put in order. Nothing looks different.
