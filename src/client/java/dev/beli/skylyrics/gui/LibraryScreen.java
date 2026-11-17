@@ -627,7 +627,8 @@ public final class LibraryScreen extends Screen {
 	/** What the Narrator says for a header stop. */
 	private String stopNarration(int[] at) {
 		return switch (at[0]) {
-			case STOP_BANNER -> Narration.button(Tr.t("Open Music tab"), Tr.t("button"));
+			// the strip's own words first, so a screen reader says why the button is there
+			case STOP_BANNER -> Narration.join(signInText(), Narration.button(Tr.t("Open Music tab"), Tr.t("button")));
 			case STOP_VIEW -> {
 				SkyLyricsConfig.LibraryView v = SkyLyricsConfig.LibraryView.values()[at[1]];
 				String name = switch (v) {
