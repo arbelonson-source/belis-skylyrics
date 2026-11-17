@@ -87,7 +87,7 @@ Works on **Linux**, **Windows 10 or 11** and **macOS**. On Linux the mod finds y
 
 ### Using it
 
-- **J** opens the settings and **N** opens the song library. Change the keys under *Options → Controls → Key Binds → Beli's SkyLyrics*.
+- **J** opens the settings and **N** opens the song library (**Esc** closes it). Change the keys under *Options → Controls → Key Binds → Beli's SkyLyrics*.
 - The same place has optional keys for "Show or hide lyrics", "Show now-playing card", play/pause, next and previous song, "lyrics are early / late" for the song playing now, and "Lock lyrics here" for View lock.
 - No lyrics showing? Open the settings and look at the **Music** tab. It tells you which player it's following and whether lyrics were found. Some songs simply have no lyrics on LRCLIB or NetEase. More help in [Troubleshooting](docs/TROUBLESHOOTING.md).
 

@@ -72,7 +72,7 @@ If neither has a song, the mod can't show lyrics for it.
 
 No. To show lyrics you don't need Spotify at all, and no Premium: the mod follows whatever player you already use (see "Which music players work?" above).
 
-Spotify only matters for the **song library** (press **N**). If you have signed in to Spotify on the **Music** tab, it shows your liked songs and playlists. Starting a song from there needs Spotify Premium (on Linux, a single song can also open in the Spotify app without it). If you haven't signed in, the library shows a **Recently heard** list instead: the songs you have played lately. It is kept on your computer only, and you can switch it off or empty it on the **Music** tab (**Recently heard**, and the **Forget recently heard** row with its **Clear** button that empties the list). Clicking a song in that list asks the player that played it to play it again. That works on Linux, when that player is open and can do it; on Windows and macOS the list is there to look at, and the mod says so when a player can't start the song.
+Spotify only matters for the **song library** (press **N**; inside it, a plain **N** starts a search, and **Esc**, or **Ctrl** or **Alt** with **N**, closes it). If you have signed in to Spotify on the **Music** tab, it shows your liked songs and playlists. Starting a song from there needs Spotify Premium (on Linux, a single song can also open in the Spotify app without it). If you haven't signed in, the library shows a **Recently heard** list instead: the songs you have played lately. It is kept on your computer only, and you can switch it off or empty it on the **Music** tab (**Recently heard**, and the **Forget recently heard** row with its **Clear** button that empties the list). Clicking a song in that list asks the player that played it to play it again. That works on Linux, when that player is open and can do it; on Windows and macOS the list is there to look at, and the mod says so when a player can't start the song.
 
 ## Does it need internet?
 
@@ -94,7 +94,7 @@ The mod runs, but it follows the music on your PC right now, not the music from 
 
 ## Can I calm the flashes and the motion?
 
-Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Lightning Flashes** turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. The mod also never starts more than three flashes in one second.
+Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Lightning Flashes** turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. At 0 the World words also just fade when they leave, fall, join a flowing line or make room for each other, with no rising, falling, sliding or gliding. The mod also never starts more than three flashes in one second.
 
 ## Does it work with Distant Horizons?
 
