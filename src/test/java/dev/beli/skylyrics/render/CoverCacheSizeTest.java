@@ -137,12 +137,17 @@ class CoverCacheSizeTest {
 
 	@Test
 	void aFailedShrinkKeepsTheBigFileAndTheRead(@TempDir Path dir) throws IOException {
+		// A read-only folder still takes new files on Windows, so the failing save can't be made there this way
+		org.junit.jupiter.api.Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows"),
+				"Windows ignores a read-only folder");
 		Path file = dir.resolve("old.img");
 		byte[] big = encode(noisy(1000, 1000, BufferedImage.TYPE_INT_RGB), "png");
 		Files.write(file, big);
 		// The folder can't be written to: make "dir" a file for the temp step by shrinking via a read-only parent
 		dir.toFile().setWritable(false);
 		try {
+			// Running as root (or a file system that ignores it) can still write: then this can't be tested here
+			org.junit.jupiter.api.Assumptions.assumeFalse(Files.isWritable(dir), "the folder is still writable");
 			BufferedImage back = CoverCache.readCached(file);
 			assertNotNull(back);
 			assertTrue(back.getWidth() >= CoverCache.SIZE, "width " + back.getWidth());
