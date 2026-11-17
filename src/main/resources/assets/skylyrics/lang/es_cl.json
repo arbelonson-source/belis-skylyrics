@@ -296,6 +296,7 @@
   "skylyrics.ui.spotify_sign_in_needs_port_s_but_another_program": "El inicio de sesión de Spotify necesita el puerto %s, pero otro programa lo está usando. Cierra el otro juego o app e inténtalo de nuevo",
   "skylyrics.ui.sign_in_to_spotify_below": "Inicia sesión en Spotify abajo",
   "skylyrics.ui.spotify_signed_you_out_sign_in_again": "Spotify cerró tu sesión, vuelve a iniciarla",
+  "skylyrics.ui.spotify_no_longer_accepts_your_client_id_check_i": "Spotify ya no acepta tu Client ID, revísalo y vuelve a iniciar sesión",
   "skylyrics.ui.spotify_answered_with_error_s": "Spotify respondió con el error %s",
   "skylyrics.ui.spotify_blocked_this_app_on_the_spotify_dashboar": "Spotify bloqueó esta app. En el panel de Spotify, añade tu cuenta en User Management",
   "skylyrics.ui.follows_your_spotify_account_on_any_device_even": "Sigue tu cuenta de Spotify en cualquier dispositivo, incluso tu teléfono. Spotify necesita que crees una app gratuita para esto: abre el panel, crea una app con la Redirect URI de abajo y Web API marcada, y pega aquí su Client ID.",

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -145,6 +146,7 @@ class SpotifyWebSourceTest {
 
 	/** Runs the sign-in wait on the given server with the given idle limit. */
 	private static Thread wait(SpotifyWebSource source, ServerSocket server, int idleMs) {
+		source.loginServer = server; // this sign-in is the current one, as startLogin would make it
 		Thread t = new Thread(() -> source.awaitBrowser(server, ID, "verifier", "st", idleMs));
 		t.setDaemon(true);
 		t.start();
@@ -341,6 +343,12 @@ class SpotifyWebSourceTest {
 		String tokenBadBody;
 		/** Runs inside every Web API call, before the answer is handed back. */
 		volatile Runnable duringApi;
+		/** Runs inside every token call, before the answer is handed back. */
+		volatile Runnable duringToken;
+		/** When set, the token endpoint answers this status with {@link #tokenBadBody} (or "{}"). */
+		int tokenStatus;
+		/** A Retry-After header on the token answer, or null. */
+		String tokenRetryAfter;
 
 		FakeHttp(int apiStatus) {
 			this.apiStatus = apiStatus;
@@ -368,6 +376,13 @@ class SpotifyWebSourceTest {
 				String sent = bodyOf(request);
 				String used = sent.replaceAll(".*refresh_token=([^&]*).*", "$1");
 				refreshed.add(used);
+				if (duringToken != null) {
+					duringToken.run();
+				}
+				if (tokenStatus != 0) {
+					status = tokenStatus;
+					body = tokenBadBody == null ? "{}" : tokenBadBody;
+				}
 				if (tokenBadBody != null) {
 					status = 400;
 					body = tokenBadBody;
@@ -390,7 +405,9 @@ class SpotifyWebSourceTest {
 				public int statusCode() { return statusF; }
 				public HttpRequest request() { return request; }
 				public Optional<HttpResponse<String>> previousResponse() { return Optional.empty(); }
-				public HttpHeaders headers() { return HttpHeaders.of(Map.of(), (a, b) -> true); }
+				public HttpHeaders headers() {
+					return HttpHeaders.of(token && tokenRetryAfter != null ? Map.of("Retry-After", List.of(tokenRetryAfter)) : Map.of(), (a, b) -> true);
+				}
 				public String body() { return bodyF; }
 				public Optional<SSLSession> sslSession() { return Optional.empty(); }
 				public URI uri() { return request.uri(); }
@@ -440,6 +457,133 @@ class SpotifyWebSourceTest {
 		long now = System.nanoTime();
 		assertFalse(source.pollDue(now + 2 * SEC, true));
 		assertTrue(source.pollDue(now + 5 * SEC, true));
+	}
+
+	@Test
+	void aTooManyRequestsFromTheTokenCallHoldsThePollerForItsRetryAfter(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenStatus = 429;
+		http.tokenRetryAfter = "120";
+		SpotifyWebSource source = signedIn(dir, http);
+		IOException e = assertThrows(IOException.class, source::poll);
+		assertEquals("HTTP 429", e.getMessage());
+		long now = System.nanoTime();
+		assertFalse(source.pollDue(now + 100 * SEC, true), "still held at 100 s");
+		assertTrue(source.pollDue(now + 125 * SEC, true), "free after the 120 s it asked for");
+	}
+
+	@Test
+	void aDeletedSpotifyAppSignsOutInsteadOfRetryingForever(@TempDir Path dir) throws Exception {
+		for (String error : new String[] {"invalid_client", "unauthorized_client"}) {
+			FakeHttp http = new FakeHttp(200);
+			http.tokenStatus = 400;
+			http.tokenBadBody = "{\"error\":\"" + error + "\",\"error_description\":\"Invalid client\"}";
+			SpotifyWebSource source = signedIn(dir, http);
+			source.sleeper = ms -> fail("a rejected app has no other login worth waiting for");
+			IOException e = assertThrows(IOException.class, source::poll, error);
+			assertEquals("Spotify no longer accepts your Client ID, check it and sign in again", e.getMessage(), error);
+			assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account(), error);
+			assertEquals(e.getMessage(), source.problem(), error);
+			assertFalse(Files.exists(dir.resolve("login.json")), error);
+		}
+	}
+
+	@Test
+	void aConnectionIsCutOffAfterItsTotalTimeEvenIfBytesKeepTrickling() {
+		long[] clock = {0};
+		int[] timeout = {-1};
+		// An endless header that never ends its line, one byte per read, each read taking one second
+		InputStream trickle = new InputStream() {
+			@Override
+			public int read() {
+				clock[0] += 1_000_000_000L;
+				return 'a';
+			}
+		};
+		InputStream bounded = SpotifyWebSource.bounded(trickle, 10_000_000_000L, () -> clock[0], ms -> timeout[0] = ms, 5000);
+		assertThrows(java.net.SocketTimeoutException.class, () -> SpotifyWebSource.requestLine(bounded));
+		assertTrue(clock[0] <= 11_000_000_000L, "gave up around the 10 s mark, not later");
+		assertTrue(timeout[0] > 0 && timeout[0] <= 5000, "each read waits no longer than what is left");
+	}
+
+	@Test
+	void theTimeoutDoesNotReplaceAnExchangeThatIsStillRunning(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenStatus = 400;
+		java.util.concurrent.CountDownLatch inToken = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		http.duringToken = () -> {
+			inToken.countDown();
+			try {
+				release.await(30, java.util.concurrent.TimeUnit.SECONDS);
+			} catch (InterruptedException ignored) {
+			}
+		};
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		source.useHttp(http);
+		source.loginTimeoutMs = 300;
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			java.util.concurrent.CompletableFuture<String> page = java.util.concurrent.CompletableFuture
+					.supplyAsync(() -> {
+						try {
+							return get(server.getLocalPort(), "/callback?state=st&code=c");
+						} catch (IOException e) {
+							return "";
+						}
+					});
+			assertTrue(inToken.await(30, java.util.concurrent.TimeUnit.SECONDS));
+			// The deadline passes while the exchange is still out: it closes the listener, the exchange goes on
+			long limit = System.nanoTime() + 30 * SEC;
+			while (!server.isClosed() && System.nanoTime() < limit) {
+				Thread.onSpinWait();
+			}
+			assertTrue(server.isClosed());
+			assertEquals("", source.problem(), "the exchange's own result is still to come");
+			release.countDown();
+			assertTrue(page.get(30, java.util.concurrent.TimeUnit.SECONDS).contains("Sign-in failed"));
+			t.join(30_000);
+			assertEquals("Sign-in failed: HTTP 400", source.problem());
+		}
+	}
+
+	@Test
+	void anOldSignInCannotWriteTheNewAttemptsProblem(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenStatus = 400;
+		java.util.concurrent.CountDownLatch inToken = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		http.duringToken = () -> {
+			inToken.countDown();
+			try {
+				release.await(30, java.util.concurrent.TimeUnit.SECONDS);
+			} catch (InterruptedException ignored) {
+			}
+		};
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		source.useHttp(http);
+		source.loginPort = 0;
+		try {
+			String url = source.startLogin();
+			int oldPort = source.boundLoginPort();
+			String state = java.util.regex.Pattern.compile("state=([^&]*)").matcher(url).results().findFirst().get().group(1);
+			java.util.concurrent.CompletableFuture<String> page = java.util.concurrent.CompletableFuture
+					.supplyAsync(() -> {
+						try {
+							return get(oldPort, "/callback?state=" + state + "&code=c");
+						} catch (IOException e) {
+							return "";
+						}
+					});
+			assertTrue(inToken.await(30, java.util.concurrent.TimeUnit.SECONDS));
+			source.startLogin(); // cancel and start over while the old exchange is out
+			release.countDown();
+			// The old browser tab still gets its answer, and by then the old thread has done everything it will do
+			assertTrue(page.get(30, java.util.concurrent.TimeUnit.SECONDS).contains("Sign-in failed"));
+			assertEquals("", source.problem(), "the new attempt starts clean");
+		} finally {
+			source.cancelLogin();
+		}
 	}
 
 	@Test
