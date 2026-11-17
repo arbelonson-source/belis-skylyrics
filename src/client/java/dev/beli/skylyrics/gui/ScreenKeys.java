@@ -1,8 +1,27 @@
 package dev.beli.skylyrics.gui;
 
+import net.minecraft.client.input.KeyEvent;
+
 /** Key decisions of the settings and library screens, kept free of the screens so they can be tested. */
 final class ScreenKeys {
 	private ScreenKeys() {
+	}
+
+	/** Whether GLFW's Ctrl modifier bit is set: the real Ctrl key, which on a Mac is not Cmd (GLFW_MOD_CONTROL is 2). */
+	static boolean hasCtrlBit(int modifiers) {
+		return (modifiers & 2) != 0;
+	}
+
+	/**
+	 * The real Ctrl key, also on a Mac. On 1.21.9 and 1.21.10 KeyEvent.hasControlDown() is Cmd on a Mac (and there is no
+	 * hasControlDownWithQuirk), so Ctrl+Tab would be the app switcher's Cmd+Tab; from 1.21.11 on, and in LegacyInput before 1.21.9, it is the real key.
+	 */
+	static boolean realCtrl(KeyEvent event) {
+		//? if >=1.21.9 && <1.21.11 {
+		/*return hasCtrlBit(event.modifiers());
+		*///?} else {
+		return event.hasControlDown();
+		//?}
 	}
 
 	/** Keys that type a character on a keyboard: space, digits, punctuation and letters. */

@@ -23,14 +23,15 @@ final class StarMemo {
 	 * The kept answer if it still holds, else {@code read}'s, which is then kept. When the time of day has just moved,
 	 * the game's attribute probe may still hold the old sky until its next client tick, which can be several frames
 	 * away, so an answer read within {@link #SETTLE_MS} of the move is not kept: it is read again until one comes from
-	 * after that.
+	 * after that. The day running on by a tick or so at a time is not such a move: the probe is at most a tick behind
+	 * and the sky hardly changes in one, so it is kept and the sky and the lyrics share one read a frame.
 	 */
 	float get(Object level, Object camera, long tick, long dayTime, float partial, double x, double y, double z, long nowMs,
 			java.util.function.DoubleSupplier read) {
 		if (hit(level, camera, tick, dayTime, partial, x, y, z) && storedAt >= settledAt) {
 			return value;
 		}
-		if (this.level == level && this.dayTime != dayTime) {
+		if (this.level == level && Math.abs(this.dayTime - dayTime) > 1) {
 			settledAt = nowMs + SETTLE_MS;
 		}
 		float fresh = (float) read.getAsDouble();

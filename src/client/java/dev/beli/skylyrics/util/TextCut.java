@@ -60,6 +60,19 @@ public final class TextCut {
 		return s.isEmpty() ? "" : firstOf(s);
 	}
 
+	/** Longest first character kept whole: a family emoji is 11 units, so a bigger one is a pile of marks. */
+	public static final int MAX_INITIAL = 12;
+
+	/** {@link #first}, but a character with more than {@link #MAX_INITIAL} units (hundreds of combining marks) is cut to its base character. */
+	public static String initial(String text) {
+		String s = text.strip();
+		if (s.isEmpty()) {
+			return "";
+		}
+		String f = firstOf(s.length() > 64 ? s.substring(0, 64) : s);
+		return f.length() <= MAX_INITIAL ? f : f.substring(0, f.offsetByCodePoints(0, 1));
+	}
+
 	private static String firstOf(String s) {
 		BreakIterator it = BreakIterator.getCharacterInstance();
 		it.setText(s);

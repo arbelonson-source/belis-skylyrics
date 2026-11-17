@@ -137,4 +137,15 @@ class ScreenKeysTest {
 		assertFalse(new LegacyInput.KeyEvent(tab, 0, 1).hasControlDown());
 	}
 	*///?}
+
+	@Test
+	void theRealCtrlBitIsCtrlAndNotCmdOrShift() {
+		// GLFW's modifier bits, written out because 26.3 has no GLFW: Shift 1, Ctrl 2, Alt 4, Super (Cmd) 8
+		int shift = 1, ctrl = 2, alt = 4, superKey = 8;
+		assertTrue(ScreenKeys.hasCtrlBit(ctrl));
+		assertTrue(ScreenKeys.hasCtrlBit(ctrl | shift));
+		assertFalse(ScreenKeys.hasCtrlBit(superKey));
+		assertFalse(ScreenKeys.hasCtrlBit(shift | alt));
+		assertFalse(ScreenKeys.hasCtrlBit(0));
+	}
 }

@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -1166,6 +1167,33 @@ class WorldWordsTest {
 		assertEquals(-1L, (long) get(plainTitle, "cutAt"), "nor a fading title card");
 	}
 
+	@Test
+	void aLineStartingOverFadesAllItsOwnWordsAtOnceButNotOtherLinesOrTitles() throws Exception {
+		WorldWords words = new WorldWords();
+		words.tune(30, 6, 1, 1, 1, true, true, false, 1);
+		WorldWords.Sentence older = new WorldWords.Sentence(0, 0, 10, 0), leaving = new WorldWords.Sentence(0, 0, 10, 0),
+				other = new WorldWords.Sentence(0, 0, 10, 0);
+		long t0 = 1_000_000_000L;
+		// Far apart: no overlap at all, the restart alone must clear them
+		Object a = newCard(older, false, -1L, new Vec3(0, 0, 5)), b = newCard(leaving, false, -1L, new Vec3(0, 20, 5)),
+				c = newCard(leaving, false, t0 - 1L, new Vec3(0, 40, 5)), foreign = newCard(other, false, -1L, new Vec3(0, 60, 5)),
+				title = newCard(leaving, true, -1L, new Vec3(0, 80, 5));
+		@SuppressWarnings("unchecked")
+		List<Object> cards = (List<Object>) get(words, "cards");
+		cards.addAll(List.of(a, b, c, foreign, title));
+		var clear = WorldWords.class.getDeclaredMethod("clearLine", List.class, WorldWords.Sentence.class, List.class, long.class);
+		clear.setAccessible(true);
+		clear.invoke(null, cards, leaving, List.of(older), t0);
+		for (Object own : List.of(a, b, c)) {
+			assertEquals(t0, (long) get(own, "cutAt"));
+			assertEquals(0.1f, (float) get(own, "cutFor"), 1e-6);
+		}
+		assertEquals(-1L, (long) get(foreign, "cutAt"), "another line's word is untouched");
+		assertEquals(-1L, (long) get(title, "cutAt"), "a title card is untouched");
+		words.expire(Vec3.ZERO, t0 + 150_000_000L);
+		assertEquals(List.of(foreign, title), cards, "150 ms later every word of the line is gone");
+	}
+
 	@SuppressWarnings("unchecked")
 	private static List<WorldWords.Sentence> earlierOf(WorldWords words) throws Exception {
 		return (List<WorldWords.Sentence>) get(words, "earlier");
@@ -1382,6 +1410,90 @@ class WorldWordsTest {
 		} finally {
 			WorldWords.measureHook = null;
 		}
+	}
+
+	@Test
+	void theDecisionToStartOverInsteadOfLiftNeedsAFlowingLineUnderWayAndNoClearPlace() {
+		WorldWords.Sentence none = null, fresh = new WorldWords.Sentence(0, 0, 10, 0), firstRow = new WorldWords.Sentence(0, 0, 10, 0),
+				under = new WorldWords.Sentence(0, 0, 10, 0), tunnel = new WorldWords.Sentence(0, 0, 10, 0);
+		under.pieces = 9;
+		under.rows = 2;
+		firstRow.pieces = 5; // still on its first row
+		fresh.pieces = 1; // only the piece being placed
+		fresh.rows = 2;
+		tunnel.pieces = 9;
+		tunnel.rows = 3;
+		tunnel.startedBuried = true;
+		assertTrue(WorldWords.startsOverInsteadOfLift(true, under, true));
+		assertFalse(WorldWords.startsOverInsteadOfLift(false, under, true), "scatter keeps the lift");
+		assertFalse(WorldWords.startsOverInsteadOfLift(true, fresh, true), "a line's first piece keeps the lift");
+		assertFalse(WorldWords.startsOverInsteadOfLift(true, firstRow, true), "a line still on its first row keeps the lift");
+		assertFalse(WorldWords.startsOverInsteadOfLift(true, tunnel, true), "a line that began buried keeps the lift");
+		assertFalse(WorldWords.startsOverInsteadOfLift(true, none, true));
+		assertFalse(WorldWords.startsOverInsteadOfLift(true, under, false), "a clear place needs no start over");
+	}
+
+	/** In a tunnel (everything buried) the line is only ever lifted: no restart, no blinking single word. */
+	@Test
+	void aLineThatBeganBuriedNeverStartsOver() {
+		WorldWords words = longLine(pos -> true, false);
+		assertTrue(words.earlierSentences().isEmpty() || words.earlierSentences().get(0).full(), "no buried restart");
+		assertFalse(words.earlierSentences().stream().anyMatch(e -> !e.full()), "only a full line may have started over");
+	}
+
+	/** One 34 word flowing line written a piece at a time, up to the moment it first starts over (or the end of it). */
+	private static WorldWords longLine(java.util.function.Predicate<Vec3> buried, boolean stopAtRestart) {
+		WorldWords.measureHook = t -> t.length() * 4.0;
+		WorldWords.buriedHook = buried;
+		try {
+			WorldWords words = new WorldWords();
+			words.tune(30, 6, 1, 1, 1, true, true, false, 1);
+			words.players(false, false);
+			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
+			StringBuilder text = new StringBuilder();
+			for (int w = 0; w < 34; w++) {
+				text.append(w == 0 ? "" : " ").append("word").append(w);
+			}
+			for (int k = 1; k <= 400; k++) {
+				words.update(0, text.toString(), (k - 1) * 3f, false, Float.NaN, Float.NaN, camera, null, null, net.minecraft.network.chat.Style.EMPTY, k * 100_000_000L);
+				if (stopAtRestart && !words.earlierSentences().isEmpty()) {
+					break;
+				}
+			}
+			return words;
+		} finally {
+			WorldWords.measureHook = null;
+			WorldWords.buriedHook = null;
+		}
+	}
+
+	/** A hillside below: a flowing line that reaches it starts over at the top, and every word of the old one is cut. */
+	@Test
+	void aBuriedPieceOfALineUnderWayStartsTheLineOverAndCutsItsOldWords() throws Exception {
+		WorldWords words = longLine(pos -> pos.y < -0.5, true);
+		assertFalse(words.earlierSentences().isEmpty(), "the line started over at the hill");
+		assertFalse(words.earlierSentences().get(0).full(), "the sentence was not full: it was the hill that cut it");
+		Object now = get(words, "sentence");
+		assertNotNull(now);
+		@SuppressWarnings("unchecked")
+		List<Object> cards = (List<Object>) get(words, "cards");
+		int own = 0, cut = 0;
+		double lowestOld = Double.POSITIVE_INFINITY, highestNew = Double.NEGATIVE_INFINITY;
+		for (Object c : cards) {
+			double y = ((Vec3) get(c, "pos")).y;
+			if (get(c, "of") != now) {
+				assertTrue((long) get(c, "cutAt") >= 0, "an old word of the line is cut");
+				assertEquals(0.1f, (float) get(c, "cutFor"), 1e-6);
+				cut++;
+				lowestOld = Math.min(lowestOld, y);
+			} else {
+				own++;
+				highestNew = Math.max(highestNew, y);
+			}
+		}
+		assertTrue(cut > 0, "old words were there");
+		assertEquals(1, own, "the buried piece is the first of the new sentence");
+		assertTrue(highestNew > lowestOld, "the new sentence starts above where the old rows ended");
 	}
 
 	@Test

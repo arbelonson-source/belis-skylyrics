@@ -71,6 +71,60 @@ class SkyNightFixesTest {
 	}
 
 	@Test
+	void aRunningDayCycleStillSharesOneReadPerFrame() {
+		Object level = new Object(), camera = new Object();
+		StarMemo memo = new StarMemo();
+		int[] reads = {0};
+		java.util.function.DoubleSupplier read = () -> ++reads[0];
+		// the day moves one tick at a time, a client tick every 50 ms, the sky and the lyrics asking twice a frame
+		for (int t = 0; t < 5; t++) {
+			long now = t * 50L;
+			memo.get(level, camera, 100L + t, 6000L + t, 0.5f, 1, 2, 3, now, read);
+			memo.get(level, camera, 100L + t, 6000L + t, 0.5f, 1, 2, 3, now + 2, read);
+		}
+		assertEquals(5, reads[0], "one read per frame, the second caller reuses it");
+	}
+
+	@Test
+	void aBigTimeJumpStillReadsAgainDuringTheSettleWindow() {
+		Object level = new Object(), camera = new Object();
+		StarMemo memo = new StarMemo();
+		int[] reads = {0};
+		java.util.function.DoubleSupplier read = () -> ++reads[0];
+		memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 0, read);
+		memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, 1000, read);
+		memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, 1010, read);
+		assertEquals(3, reads[0], "inside the window the answer is not kept");
+	}
+
+	@Test
+	void aTwoTickJumpIsAMoveAndSettles() {
+		Object level = new Object(), camera = new Object();
+		StarMemo memo = new StarMemo();
+		int[] reads = {0};
+		java.util.function.DoubleSupplier read = () -> ++reads[0];
+		memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 0, read);
+		memo.get(level, camera, 100L, 6002L, 1f, 1, 2, 3, 1000, read);
+		memo.get(level, camera, 100L, 6002L, 1f, 1, 2, 3, 1010, read);
+		assertEquals(3, reads[0], "two ticks is more than the probe lags: inside the window the answer is not kept");
+	}
+
+	@Test
+	void aOneTickStepIsNotAMove() {
+		Object level = new Object(), camera = new Object();
+		StarMemo memo = new StarMemo();
+		int[] reads = {0};
+		java.util.function.DoubleSupplier read = () -> ++reads[0];
+		memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 0, read);
+		memo.get(level, camera, 100L, 6001L, 1f, 1, 2, 3, 1000, read);
+		memo.get(level, camera, 100L, 6001L, 1f, 1, 2, 3, 1010, read);
+		assertEquals(2, reads[0], "one tick on is kept straight away");
+		memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 2000, read);
+		memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 2010, read);
+		assertEquals(3, reads[0], "and so is one tick back");
+	}
+
+	@Test
 	void hidingTheSkyResetsSparklesAndMeteors() throws Exception {
 		SkyEffects sky = new SkyEffects(null, null, null, null);
 		set(sky, "sparkleShow", 1f);

@@ -265,7 +265,15 @@ public final class SpotifyWebSource implements MediaSource {
 		return signInGeneration;
 	}
 
-	public synchronized void signOut() {
+	public void signOut() {
+		synchronized (this) {
+			signOutInMemory();
+		}
+		flush();
+	}
+
+	/** The in-memory half of a sign-out; the file goes through {@link #flush} once the lock is free. */
+	private synchronized void signOutInMemory() {
 		cancelLogin();
 		signInGeneration++;
 		refreshToken = null;
@@ -274,11 +282,7 @@ public final class SpotifyWebSource implements MediaSource {
 		accessToken = null;
 		last = Snapshot.NOTHING;
 		problem = "";
-		try {
-			Files.deleteIfExists(loginFile);
-		} catch (IOException e) {
-			LOG.warn("Couldn't remove the Spotify sign-in: {}", e.toString());
-		}
+		pendingWrite = new Write(null);
 	}
 
 	private byte[] bytes(int n) {
@@ -381,7 +385,9 @@ public final class SpotifyWebSource implements MediaSource {
 			try {
 				JsonObject tokens = token(form("grant_type", "authorization_code", "code", code, "redirect_uri", REDIRECT,
 						"client_id", id, "code_verifier", verifier));
-				if (finishLogin(server, id, tokens)) {
+				boolean finished = finishLogin(server, id, tokens);
+				flush();
+				if (finished) {
 					message = Tr.t("Signed in. You can close this tab and go back to Minecraft.");
 				} else {
 					// Cancelled or signed out while Spotify was answering: don't sign the player back in
@@ -587,7 +593,7 @@ public final class SpotifyWebSource implements MediaSource {
 			changed = true;
 		}
 		if (changed && refreshToken != null) {
-			save();
+			pendingWrite = new Write(snapshotJson());
 		}
 		problem = "";
 		pollNow = true;
@@ -640,23 +646,28 @@ public final class SpotifyWebSource implements MediaSource {
 					}
 				}
 			}
-			synchronized (this) {
-				if (!keepRefresh(started, signInGeneration)) {
-					throw notSetUp(id);
+			try {
+				synchronized (this) {
+					if (!keepRefresh(started, signInGeneration)) {
+						throw notSetUp(id);
+					}
+					if (refused) {
+						signOutInMemory();
+						problem = appRejected ? Tr.t("Spotify no longer accepts your Client ID, check it and sign in again")
+								: Tr.t("Spotify signed you out, sign in again");
+						throw new IOException(problem);
+					}
+					if (adopted != null) {
+						refreshToken = adopted[0];
+						tokenClient = id;
+						grantedScopes = adopted[1];
+					}
+					accept(id, result);
+					return accessToken;
 				}
-				if (refused) {
-					signOut();
-					problem = appRejected ? Tr.t("Spotify no longer accepts your Client ID, check it and sign in again")
-							: Tr.t("Spotify signed you out, sign in again");
-					throw new IOException(problem);
-				}
-				if (adopted != null) {
-					refreshToken = adopted[0];
-					tokenClient = id;
-					grantedScopes = adopted[1];
-				}
-				accept(id, result);
-				return accessToken;
+			} finally {
+				// The file is written with the main lock free, so a click on Sign out never waits for the disk
+				flush();
 			}
 		}
 	}
@@ -739,11 +750,72 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
-	private void save() {
+	/** What the login file should hold next: the text to write, or null to remove the file. */
+	private record Write(@Nullable String json) {
+	}
+
+	/** The newest file change nobody has written yet; a newer one replaces an older one. Guarded by this. */
+	private @Nullable Write pendingWrite;
+	/** True while one thread is writing the login file; the others leave their change in {@link #pendingWrite} for it. */
+	private final java.util.concurrent.atomic.AtomicBoolean writing = new java.util.concurrent.atomic.AtomicBoolean();
+	/** The tests' way to hold a save on its way to the disk. */
+	volatile Runnable beforeSave = () -> { };
+
+	/** Call with the main lock held. */
+	private String snapshotJson() {
 		JsonObject json = new JsonObject();
 		json.addProperty("clientId", tokenClient);
 		json.addProperty("refreshToken", refreshToken);
 		json.addProperty("scopes", grantedScopes);
+		return json.toString();
+	}
+
+	/** Package-private for the tests: stores tokens the way a refresh does, then writes the file. */
+	void acceptAndSave(String id, JsonObject json) {
+		synchronized (this) {
+			accept(id, json);
+		}
+		flush();
+	}
+
+	/**
+	 * Writes the pending file change without holding the main lock. One writer at a time, in the order the changes
+	 * were made; a thread that finds a write running leaves its change to that writer and returns at once (so the
+	 * render thread never waits for a slow disk). A sign-out's removal is queued like any save, so it always lands
+	 * after a save that was already on its way.
+	 */
+	private void flush() {
+		while (writing.compareAndSet(false, true)) {
+			try {
+				Write w;
+				synchronized (this) {
+					w = pendingWrite;
+					pendingWrite = null;
+				}
+				if (w != null) {
+					if (w.json() == null) {
+						try {
+							Files.deleteIfExists(loginFile);
+						} catch (IOException e) {
+							LOG.warn("Couldn't remove the Spotify sign-in: {}", e.toString());
+						}
+					} else {
+						beforeSave.run();
+						writeFile(w.json());
+					}
+				}
+			} finally {
+				writing.set(false);
+			}
+			synchronized (this) {
+				if (pendingWrite == null) {
+					return;
+				}
+			}
+		}
+	}
+
+	private void writeFile(String text) {
 		try {
 			Files.createDirectories(loginFile.getParent());
 			// A temp file of our own: a second game saving at the same moment must not write to or delete it
@@ -754,7 +826,7 @@ public final class SpotifyWebSource implements MediaSource {
 				if (Files.getFileAttributeView(tmp, java.nio.file.attribute.PosixFileAttributeView.class) == null) {
 					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 				}
-				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, json.toString());
+				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, text);
 				dev.beli.skylyrics.util.SafeFile.replace(tmp, loginFile);
 				done = true;
 			} finally {

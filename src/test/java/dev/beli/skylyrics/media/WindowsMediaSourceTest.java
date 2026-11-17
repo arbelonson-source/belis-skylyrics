@@ -88,8 +88,8 @@ class WindowsMediaSourceTest {
 		assertEquals(61_000, WindowsMediaSource.position(61_000, 1_000_000, false, 200_000, 1_002_000));
 		// Never past the end, never below zero, and no guessing without a timestamp
 		assertEquals(200_000, WindowsMediaSource.position(199_000, 1_000_000, true, 200_000, 1_500_000));
-		assertEquals(0, WindowsMediaSource.position(-50, 0, true, 0, 1_000));
-		assertEquals(61_000, WindowsMediaSource.position(61_000, 0, true, 200_000, 1_002_000));
+		assertEquals(0, WindowsMediaSource.position(-50, WindowsMediaSource.NO_TIME, true, 0, 1_000));
+		assertEquals(61_000, WindowsMediaSource.position(61_000, WindowsMediaSource.NO_TIME, true, 200_000, 1_002_000));
 	}
 
 	@Test
@@ -558,6 +558,18 @@ class WindowsMediaSourceTest {
 			seen = next;
 		}
 		return out;
+	}
+
+	@Test
+	void aReportOlderThanTheSteadyClockStillMovesTheSong() {
+		// Just after boot the steady clock is small: a 60 s old report puts the count start below zero
+		Map<String, WindowsMediaSource.Seen> next = new HashMap<>();
+		long wall = 1_700_000_000_000L;
+		long pos = WindowsMediaSource.sessions(poll("Playing", 60_000, wall - 60_000), wall, 10_000L, Map.of(), next).getFirst().positionMs();
+		assertEquals(120_000, pos, "60 s reported, 60 s old");
+		Map<String, WindowsMediaSource.Seen> after = new HashMap<>();
+		long later = WindowsMediaSource.sessions(poll("Playing", 60_000, wall - 60_000), wall + 2_000, 12_000L, next, after).getFirst().positionMs();
+		assertEquals(122_000, later, "keeps moving on the next poll");
 	}
 
 	@Test

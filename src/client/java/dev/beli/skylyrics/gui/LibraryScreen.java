@@ -995,6 +995,14 @@ public final class LibraryScreen extends Screen {
 		return new String[] {list.name(), list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs())};
 	}
 
+	/** The letter drawn on a card without a cover, by title: worked out once, not every frame. */
+	private final java.util.Map<String, String> initials = new java.util.LinkedHashMap<>() {
+		@Override
+		protected boolean removeEldestEntry(java.util.Map.Entry<String, String> eldest) {
+			return size() > 512;
+		}
+	};
+
 	/** Draws one cover of the given size; xSquash below 1 narrows it to fake a turned cover. */
 	private void renderCard(GuiGraphics g, Object entry, int x, int y, int size, float xSquash, boolean withLabels, float scale,
 			float alpha, float lift, boolean chosen, boolean current, boolean moving) {
@@ -1031,7 +1039,7 @@ public final class LibraryScreen extends Screen {
 				// Coloured stand-in until the real cover arrives, then the cover fades in over it
 				Ui.rect(g, x, y, size, size, 5, Ui.alpha(0xFF000000 | rgb, alpha));
 				Ui.rect(g, x, y + size / 2, size, size / 2, 5, Ui.alpha(0x30000000, alpha));
-				String initial = dev.beli.skylyrics.util.TextCut.first(title).toUpperCase(Locale.ROOT);
+				String initial = initials.computeIfAbsent(title, t -> dev.beli.skylyrics.util.TextCut.initial(t).toUpperCase(Locale.ROOT));
 				if (initial.isEmpty()) {
 					initial = "♪";
 				}
@@ -1478,7 +1486,7 @@ public final class LibraryScreen extends Screen {
 		KeyMapping key = mod.libraryKey();
 		if (key != null && key.matches(event)) {
 			// A letter here starts a search, and a key held since it opened us only repeats
-			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), event.hasControlDown() || event.hasControlDownWithQuirk(), event.hasAltDown(), closeKeyHeld)) {
+			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), ScreenKeys.realCtrl(event) || event.hasControlDownWithQuirk(), event.hasAltDown(), closeKeyHeld)) {
 				onClose();
 				return true;
 			}

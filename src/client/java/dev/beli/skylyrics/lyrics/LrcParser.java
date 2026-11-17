@@ -36,8 +36,9 @@ public final class LrcParser {
 	// Lyrics copied from websites often use thin, wide or no-break spaces between words, which the floating words
 	// would not split on; any run of them becomes one plain space
 	private static final Pattern SPACES = Pattern.compile("[\\s\\p{Zs}]+");
-	// Zero-width spaces and stray byte order marks are invisible but would sit inside words
-	private static final Pattern INVISIBLE = Pattern.compile("[\\u200B\\u2060\\uFEFF]");
+	// Zero-width spaces and stray byte order marks are invisible but would sit inside words; embeddings, overrides and
+	// isolates would flip a line (RLM, LRM and ALM stay, right-to-left lyrics need them), the same as in Track.clean
+	private static final Pattern INVISIBLE = Pattern.compile("[\\u200B\\u2060\\uFEFF\\u202A-\\u202E\\u2066-\\u2069]");
 
 	// Control characters would show as boxes (tab becomes a space with the other spaces)
 	private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}&&[^\\t]]");
