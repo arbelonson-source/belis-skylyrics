@@ -84,17 +84,25 @@ public final class FallbackSource implements LyricsSource {
 		return backupFailed && !result.found() ? result.asStopgap() : result;
 	}
 
-	/** Main had nothing: the backup may. */
+	/**
+	 * Main had nothing, or only plain text: the backup may do better. Its answer replaces a plain-only one only
+	 * when it is synced; a backup that fails never loses the main answer.
+	 */
 	private LrclibClient.Result withBackup(Track track, LrclibClient.Result result) throws InterruptedException {
-		if (result.found()) {
+		boolean plainOnly = result.found() && !result.hasSynced() && !result.instrumental();
+		if (result.found() && !plainOnly) {
 			return result;
 		}
 		try {
-			return backup.find(track);
+			LrclibClient.Result other = backup.find(track);
+			if (plainOnly) {
+				return other.hasSynced() ? other.asFromBackup() : result;
+			}
+			return other.found() ? other.asFromBackup() : other;
 		} catch (IOException | RuntimeException backupDown) {
 			cancelledOrThrow(backupDown);
 			// The backup didn't answer, so this isn't a real "no lyrics": show nothing now, but don't keep it
-			return result.asStopgap();
+			return plainOnly ? result : result.asStopgap();
 		}
 	}
 

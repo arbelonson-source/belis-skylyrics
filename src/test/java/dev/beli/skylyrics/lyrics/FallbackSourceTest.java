@@ -49,8 +49,35 @@ class FallbackSourceTest {
 	@Test
 	void backupFillsInWhenMainHasNothing() throws Exception {
 		LrclibClient.Result r = fallback(t -> LrclibClient.Result.NOT_FOUND, t -> BACKUP).find(TRACK);
-		assertSame(BACKUP, r);
+		assertEquals(BACKUP.synced(), r.synced());
+		assertTrue(r.fromBackup());
 		assertFalse(r.stopgap()); // LRCLIB is up and just lacks the song, so this is kept as usual
+	}
+
+	private static final LrclibClient.Result PLAIN_MAIN = new LrclibClient.Result(null, "Only plain words", false);
+	private static final LrclibClient.Result PLAIN_BACKUP = new LrclibClient.Result(null, "Other plain words", false);
+
+	@Test
+	void plainMainLyricsGiveWayToSyncedBackupLyrics() throws Exception {
+		LrclibClient.Result r = fallback(t -> PLAIN_MAIN, t -> BACKUP).find(TRACK);
+		assertEquals(BACKUP.synced(), r.synced());
+		assertTrue(r.fromBackup());
+		assertFalse(r.stopgap());
+	}
+
+	@Test
+	void plainMainLyricsStayWhenTheBackupHasOnlyPlainOrNothingOrFails() throws Exception {
+		assertSame(PLAIN_MAIN, fallback(t -> PLAIN_MAIN, t -> PLAIN_BACKUP).find(TRACK));
+		assertSame(PLAIN_MAIN, fallback(t -> PLAIN_MAIN, t -> LrclibClient.Result.NOT_FOUND).find(TRACK));
+		assertSame(PLAIN_MAIN, fallback(t -> PLAIN_MAIN, t -> {
+			throw new IOException("backup down");
+		}).find(TRACK));
+	}
+
+	@Test
+	void syncedMainLyricsStillSkipTheBackup() throws Exception {
+		fallback(t -> MAIN, t -> BACKUP).find(TRACK);
+		assertEquals(0, backupAsked.get());
 	}
 
 	@Test

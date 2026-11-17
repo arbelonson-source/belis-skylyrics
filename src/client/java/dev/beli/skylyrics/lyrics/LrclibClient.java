@@ -31,18 +31,29 @@ public final class LrclibClient implements LyricsSource {
 	private static final double DURATION_SLACK_S = 4;
 	/** A record this much longer or shorter than the track is another recording; never used. */
 	private static final double DURATION_MAX_S = 20;
+	/** With no artist to check, only a hit this close in length counts as the same recording. */
+	private static final double NO_ARTIST_SLACK_S = 3;
 
 	/** What LRCLIB gave us, before parsing. */
-	public record Result(@Nullable String synced, @Nullable String plain, boolean instrumental, boolean stopgap) {
+	public record Result(@Nullable String synced, @Nullable String plain, boolean instrumental, boolean stopgap, boolean fromBackup) {
 		public static final Result NOT_FOUND = new Result(null, null, false);
 
 		public Result(@Nullable String synced, @Nullable String plain, boolean instrumental) {
-			this(synced, plain, instrumental, false);
+			this(synced, plain, instrumental, false, false);
+		}
+
+		public Result(@Nullable String synced, @Nullable String plain, boolean instrumental, boolean stopgap) {
+			this(synced, plain, instrumental, stopgap, false);
+		}
+
+		/** Same lyrics, marked as the backup site's: asked about again later, in case the main site gains a better copy. */
+		public Result asFromBackup() {
+			return new Result(synced, plain, instrumental, stopgap, true);
 		}
 
 		/** Same lyrics, but only a stand-in used because the main source was down: don't keep it. */
 		public Result asStopgap() {
-			return new Result(synced, plain, instrumental, true);
+			return new Result(synced, plain, instrumental, true, fromBackup);
 		}
 
 		/** Whether the synced text has any line (tags alone parse to nothing, and don't count). */
@@ -159,9 +170,9 @@ public final class LrclibClient implements LyricsSource {
 			}
 		}
 
-		// With no artist and no length, nothing but the title says which song this is (browser audio is often
-		// like that), so then several artists sharing the title also count as no match
-		boolean titleOnly = artist.isEmpty() && seconds <= 0;
+		// With no artist, nothing but the title (and the length, when known) says which song this is (browser audio
+		// is often like that), so then several artists sharing the title also count as no match
+		boolean titleOnly = artist.isEmpty();
 		String main = TitleCleaner.mainArtist(artist);
 
 		// 2. Search with title + artist, then title + main artist, then free text (which also checks the artist)
@@ -196,7 +207,8 @@ public final class LrclibClient implements LyricsSource {
 	 * @param title the wanted title: a result must be the same song
 	 * @param mainArtist when not null/empty, the result's artist must contain it or the reverse (free-text tier,
 	 *                   where nothing else ties the result to the artist)
-	 * @param titleOnly nothing but the title identifies the song: several artists sharing it means no match
+	 * @param titleOnly no artist is known: several artists sharing the title means no match, and a known length
+	 *                  must match closely
 	 */
 	private @Nullable Result searchBest(Map<String, String> query, double seconds, String title, @Nullable String mainArtist, boolean titleOnly) throws IOException, InterruptedException {
 		if (query.values().stream().allMatch(String::isBlank)) {
@@ -234,10 +246,17 @@ public final class LrclibClient implements LyricsSource {
 			} else if (!bool(o, "instrumental")) {
 				continue;
 			}
-			if (seconds > 0 && o.has("duration") && !o.get("duration").isJsonNull()) {
+			Double duration = duration(o);
+			if (seconds > 0 && duration == null && o.has("duration") && !o.get("duration").isJsonNull()) {
+				continue; // a length that isn't a number: skip this hit, the others still count
+			}
+			if (titleOnly && seconds > 0 && duration == null) {
+				continue; // nothing to tell this hit from another artist's song of the same name
+			}
+			if (seconds > 0 && duration != null) {
 				lengthScored = true;
-				double diff = Math.abs(o.get("duration").getAsDouble() - seconds);
-				if (diff > DURATION_MAX_S) {
+				double diff = Math.abs(duration - seconds);
+				if (diff > DURATION_MAX_S || titleOnly && diff > NO_ARTIST_SLACK_S) {
 					continue; // showing another recording's timing is worse than none
 				}
 				if (diff <= DURATION_SLACK_S) {
@@ -270,6 +289,18 @@ public final class LrclibClient implements LyricsSource {
 			return null;
 		}
 		return toResult(best);
+	}
+
+	/** The hit's length in seconds, or null when it has none or it isn't a number. */
+	private static @Nullable Double duration(JsonObject o) {
+		if (!hasText(o, "duration")) {
+			return null;
+		}
+		try {
+			return o.get("duration").getAsDouble();
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	private static Result toResult(JsonObject o) {
