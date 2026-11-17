@@ -199,4 +199,35 @@ class SpotifyLibraryTest {
 		assertEquals(500, SpotifyLibrary.plain("x".repeat(5000)).length());
 		assertEquals("", SpotifyLibrary.plain(null));
 	}
+
+	private record Reply(int status, java.net.http.HttpHeaders headers, String body) implements java.net.http.HttpResponse<String> {
+		public int statusCode() { return status; }
+		public java.net.http.HttpRequest request() { return null; }
+		public java.util.Optional<java.net.http.HttpResponse<String>> previousResponse() { return java.util.Optional.empty(); }
+		public java.net.http.HttpHeaders headers() { return headers; }
+		public String body() { return body; }
+		public java.util.Optional<javax.net.ssl.SSLSession> sslSession() { return java.util.Optional.empty(); }
+		public java.net.URI uri() { return java.net.URI.create("https://api.spotify.com/"); }
+		public java.net.http.HttpClient.Version version() { return java.net.http.HttpClient.Version.HTTP_1_1; }
+	}
+
+	@Test
+	void aClosedListStopsWaitingOutTooManyRequests() throws Exception {
+		java.util.concurrent.CountDownLatch asked = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+		SpotifyLibrary library = new SpotifyLibrary(null, uri -> false, (method, path, json) -> {
+			if (calls.getAndIncrement() == 0) {
+				asked.countDown();
+				return new Reply(429, java.net.http.HttpHeaders.of(java.util.Map.of("Retry-After", List.of("25")), (a, b) -> true), "");
+			}
+			return new Reply(200, java.net.http.HttpHeaders.of(java.util.Map.of(), (a, b) -> true), "{\"items\":[],\"total\":0}");
+		});
+		var old = library.liked(0);
+		assertTrue(asked.await(5, java.util.concurrent.TimeUnit.SECONDS));
+		old.cancel(true);
+		long start = System.nanoTime();
+		var next = library.liked(0);
+		assertEquals(0, next.get(5, java.util.concurrent.TimeUnit.SECONDS).items().size());
+		assertTrue(System.nanoTime() - start < 5_000_000_000L);
+	}
 }
