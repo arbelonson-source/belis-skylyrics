@@ -928,10 +928,26 @@ final class WorldWords {
 		return changed;
 	}
 
+	/** The font reload count ({@link LyricsFont#reloadCount()}) the current line was measured at. */
+	private long measuredAt = Long.MIN_VALUE;
+
+	/** Measures the current line's chunks: their half widths, and the letter positions {@link #spawn} reuses. */
+	private void measureLine(Font font, Style style) {
+		lineHalf = new float[lineChunks.size()];
+		lineDisplay = new Display[lineChunks.size()];
+		lineAt = new float[lineChunks.size()][];
+		for (int k = 0; k < lineHalf.length; k++) {
+			if (lineRuns[k] != RUN_NONE) {
+				lineHalf[k] = nominalHalf(lineText, lineChunks, k, font, style);
+			}
+		}
+	}
+
 	void update(int index, @Nullable String text, float sungChars, boolean over, float fixedYaw, float fixedPitch, Camera camera,
 			@Nullable ClientLevel level, Font font, Style style, long now) {
 		boolean fresh = false;
 		restyled(style);
+		long epoch = LyricsFont.reloadCount();
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			fresh = true;
 			line = index;
@@ -942,20 +958,20 @@ final class WorldWords {
 			lineWidth = Float.NaN;
 			lineRtl = lineText != null && rightToLeft(lineText);
 			lineRuns = lineText == null ? new int[0] : runs(pieces(lineText, lineChunks), lineRtl);
-			lineHalf = new float[lineChunks.size()];
-			lineDisplay = new Display[lineChunks.size()];
-			lineAt = new float[lineChunks.size()][];
-			for (int k = 0; k < lineHalf.length; k++) {
-				if (lineRuns[k] != RUN_NONE) {
-					lineHalf[k] = nominalHalf(lineText, lineChunks, k, font, style);
-				}
-			}
+			measureLine(font, style);
+			measuredAt = epoch;
 			spawned = 0;
 			last = sentence;
 			sentence = null;
 			if (hold) {
 				letGo(now);
 			}
+		} else if (epoch != measuredAt) {
+			// The fonts were reloaded (F3+T, a font pack, another language) during this line: its words still to come
+			// are measured again, so they don't keep the old widths
+			lineWidth = Float.NaN;
+			measureLine(font, style);
+			measuredAt = epoch;
 		}
 		int due = 0;
 		while (due < lineChunks.size() && lineChunks.get(due)[0] <= sungChars) {
