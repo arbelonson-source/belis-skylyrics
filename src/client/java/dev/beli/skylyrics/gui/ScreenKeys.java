@@ -47,9 +47,34 @@ final class ScreenKeys {
 		return SettingsSearch.pasted(query, clip);
 	}
 
-	/** Ctrl+C (0) or Ctrl+X (1) on the search box; -1 for any other key. */
-	static int copyOrCut(int key, boolean ctrl) {
-		return !ctrl ? -1 : key == com.mojang.blaze3d.platform.InputConstants.KEY_C ? 0 : key == com.mojang.blaze3d.platform.InputConstants.KEY_X ? 1 : -1;
+	/**
+	 * The code of the letter a shortcut compares: on 26.3 the keycode of the letter the layout types
+	 * ({@code event.shortcutKey()}), because {@code event.key()} is the scancode of the key's place; before it the GLFW key code.
+	 */
+	static final int LETTER_C;
+	static final int LETTER_X;
+	static final int LETTER_F;
+
+	static {
+		//? if >=26.3 {
+		/*LETTER_C = com.mojang.blaze3d.platform.InputConstants.KEYCODE_C;
+		LETTER_X = com.mojang.blaze3d.platform.InputConstants.KEYCODE_X;
+		LETTER_F = com.mojang.blaze3d.platform.InputConstants.KEYCODE_F;
+		*///?} else {
+		LETTER_C = com.mojang.blaze3d.platform.InputConstants.KEY_C;
+		LETTER_X = com.mojang.blaze3d.platform.InputConstants.KEY_X;
+		LETTER_F = com.mojang.blaze3d.platform.InputConstants.KEY_F;
+		//?}
+	}
+
+	/** Ctrl+C (0) or Ctrl+X (1) on the search box; -1 for any other key. {@code letter} is as for {@link #LETTER_C}. */
+	static int copyOrCut(int letter, boolean ctrl) {
+		return !ctrl ? -1 : letter == LETTER_C ? 0 : letter == LETTER_X ? 1 : -1;
+	}
+
+	/** Whether the key is Ctrl+F, the settings search. {@code letter} is as for {@link #LETTER_C}. */
+	static boolean isCtrlF(int letter, boolean ctrl) {
+		return ctrl && letter == LETTER_F;
 	}
 
 	/** A typed character is ignored while the key that opened the library is still held: its repeats are not a search. */

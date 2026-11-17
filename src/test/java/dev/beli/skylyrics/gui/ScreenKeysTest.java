@@ -49,12 +49,30 @@ class ScreenKeysTest {
 
 	@Test
 	void ctrlCAndCtrlXCopyAndCutOnlyWithCtrlHeld() {
-		assertEquals(0, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, true));
-		assertEquals(1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_X, true));
-		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, false));
+		assertEquals(0, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, true));
+		assertEquals(1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_X, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, false));
 		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_V, true));
 	}
 
+	@Test
+	void ctrlFNeedsCtrlAndTheLetterF() {
+		assertTrue(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, true));
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, false));
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_C, true));
+	}
+
+	//? if >=26.3 {
+	/*@Test
+	void onSdlTheScancodeOfCsPlaceIsNotTheLetterC() {
+		// Dvorak: the key in the QWERTY C place types another letter; its scancode must not copy, and the keycode of C must
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEYCODE_V, true));
+		assertEquals(0, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEYCODE_C, true));
+		assertFalse(ScreenKeys.isCtrlF(com.mojang.blaze3d.platform.InputConstants.KEY_F, true));
+	}
+
+	*///?}
 	@Test
 	void lettersFromTheOpeningKeyStillHeldDoNotTypeIntoTheSearch() {
 		assertFalse(ScreenKeys.acceptsTypedChar(true));
