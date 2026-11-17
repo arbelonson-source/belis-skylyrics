@@ -371,7 +371,8 @@ public final class LyricsService {
 			if (!parsed.isEmpty()) {
 				return parsed;
 			}
-			if (parsed.instrumental()) {
+			// Only stamps, no words: plain lyrics with words are better than "instrumental", unless the site says so itself
+			if (parsed.instrumental() && (result.instrumental() || !hasPlainWords(result, lengthMs))) {
 				return Lyrics.INSTRUMENTAL;
 			}
 		}
@@ -382,6 +383,10 @@ public final class LyricsService {
 			}
 		}
 		return result.instrumental() ? Lyrics.INSTRUMENTAL : Lyrics.NONE;
+	}
+
+	private static boolean hasPlainWords(LrclibClient.Result result, long lengthMs) {
+		return result.plain() != null && !LrcParser.parsePlain(result.plain(), lengthMs).isEmpty();
 	}
 
 	private static boolean found(Lyrics l) {
