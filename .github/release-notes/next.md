@@ -19,6 +19,7 @@
 - **Song library after "too many requests".** Closing the song library while Spotify asks SkyLyrics to wait no longer leaves the next list you open stuck on loading for up to 30 seconds.
 - **Seeking on more Linux players.** Clicking the progress bar now also moves the song on Linux music players that don't name their tracks the usual way (some older Spotify builds and MPD bridges).
 - **Ctrl on a Mac with 1.21.9 and 1.21.10.** Ctrl+Tab and Ctrl+Page Up/Down switch the settings tabs, and Ctrl with the song library key closes the library, as on the other versions (Cmd works too).
+- **Spotify sign-in and the game.** Clicking Sign out or Sign in while SkyLyrics is saving a renewed Spotify sign-in no longer freezes the game for a moment on a slow disk.
 - **Song library messages.** The short messages in the song library ("Playing …", errors) stay up as long as Minecraft's **Notification Display Time** says, like Minecraft's own pop-ups.
 - **Mac keys.** On a Mac, Cmd+Page Up and Cmd+Page Down switch the settings tabs (on Minecraft 1.21.9 and newer only Ctrl did), and Cmd with the library key closes the song library, like Ctrl.
 - **Player list and action bar.** Holding Tab on a server no longer draws the player list over the top bar or a **Record card** in a top corner: they fade out while it shows and back when you let go. A bottom bar no longer lifts when a server sends an empty action bar message to clear it.
