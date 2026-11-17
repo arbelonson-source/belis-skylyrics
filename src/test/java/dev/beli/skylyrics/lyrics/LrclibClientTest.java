@@ -249,8 +249,10 @@ class LrclibClientTest {
 
 	@Test
 	void noArtistWithALengthNeedsACloseLength() throws Exception {
-		assertTrue(findWith(UNTAGGED, hit("Intro", "Some Band", 202, "[00:01.00]one")).found());
-		assertFalse(findWith(UNTAGGED, hit("Intro", "Some Band", 212, "[00:01.00]far")).found());
+		assertTrue(findWith(UNTAGGED, hit("Intro", "Some Band", 203, "[00:01.00]one")).found()); // NO_ARTIST_SLACK_S = 3
+		assertTrue(findWith(UNTAGGED, hit("Intro", "Some Band", 197, "[00:01.00]one")).found());
+		assertFalse(findWith(UNTAGGED, hit("Intro", "Some Band", 204, "[00:01.00]far")).found());
+		assertFalse(findWith(UNTAGGED, hit("Intro", "Some Band", 196, "[00:01.00]far")).found());
 	}
 
 	@Test
@@ -262,10 +264,11 @@ class LrclibClientTest {
 
 	@Test
 	void aHitWhoseLengthIsNotANumberSlipsPastNoLengthCheck() throws Exception {
-		for (String weird : new String[] {"NaN", "Infinity"}) {
-			String bad = "{\"trackName\":\"A Made-Up Song\",\"artistName\":\"" + BAND + "\",\"duration\":\"" + weird + "\",\"syncedLyrics\":\"[00:01.00]bad\",\"instrumental\":false}";
-			assertFalse(findWith(TRACK, bad).found(), weird);
-		}
+		// Only NaN discriminates: "Infinity" is skipped by the length limit anyway, but NaN fails every comparison.
+		String bad = "{\"trackName\":\"A Made-Up Song\",\"artistName\":\"" + BAND + "\",\"duration\":\"NaN\",\"syncedLyrics\":\"[00:01.00]bad\",\"instrumental\":false}";
+		assertFalse(findWith(TRACK, bad).found());
+		String ok = "{\"trackName\":\"A Made-Up Song\",\"artistName\":\"" + BAND + "\",\"duration\":\"200.5\",\"syncedLyrics\":\"[00:01.00]ok\",\"instrumental\":false}";
+		assertTrue(findWith(TRACK, ok).found());
 	}
 
 	@Test

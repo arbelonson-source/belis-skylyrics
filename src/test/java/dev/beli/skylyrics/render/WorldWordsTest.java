@@ -1218,4 +1218,51 @@ class WorldWordsTest {
 	void sideStepStraightUpHasNoSideToStepTo() {
 		assertEquals(Vec3.ZERO, WorldWords.sideStep(new Vec3(0, 5, 0), 5));
 	}
+
+	/** Two Hebrew words in an English line read against it, so measureLine measures them (other words are measured as they spawn). */
+	private static final String SUNG_LINE = "hello \u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd bye";
+
+	/** Runs updates of one line through measureLine and spawn with a counting measure in place of the font. */
+	private static int[] measuredLine(boolean flow, boolean reloadBetween) {
+		java.util.concurrent.atomic.AtomicInteger whole = new java.util.concurrent.atomic.AtomicInteger();
+		java.util.concurrent.atomic.AtomicInteger all = new java.util.concurrent.atomic.AtomicInteger();
+		WorldWords.measureHook = t -> {
+			if (t.length() == SUNG_LINE.length()) {
+				whole.incrementAndGet(); // only the whole line is this long
+			} else if (t.codePoints().anyMatch(c -> c >= 0x05d0 && c <= 0x05ea)) {
+				all.incrementAndGet(); // a piece of the reversed stretch
+			}
+			return t.length() * 4.0;
+		};
+		try {
+			WorldWords words = new WorldWords();
+			words.tune(30, 6, 1, 1, 1, flow, true, false, 1);
+			words.players(false, false); // no Minecraft instance to look for other players in
+			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
+			words.update(0, SUNG_LINE, 0, false, Float.NaN, Float.NaN, camera, null, null, net.minecraft.network.chat.Style.EMPTY, 1_000_000_000L);
+			int afterFirst = all.get();
+			if (reloadBetween) {
+				LyricsFont.fontsReloaded();
+			}
+			words.update(0, SUNG_LINE, 1000, false, Float.NaN, Float.NaN, camera, null, null, net.minecraft.network.chat.Style.EMPTY, 2_000_000_000L);
+			return new int[] {whole.get(), afterFirst, all.get()};
+		} finally {
+			WorldWords.measureHook = null;
+		}
+	}
+
+	@Test
+	void theWholeLineIsMeasuredOnlyWhenTheLineFlows() {
+		assertEquals(0, measuredLine(false, false)[0], "a line that doesn't flow never needs its whole width");
+		assertEquals(1, measuredLine(true, false)[0], "a flowing line measures its whole width once, not per word");
+	}
+
+	@Test
+	void afterAFontReloadTheWordsStillToComeAreMeasuredAgain() {
+		int[] steady = measuredLine(false, false);
+		assertTrue(steady[1] > 0, "the reversed stretch is measured with the line");
+		assertEquals(steady[1], steady[2], "no reload: the second update measures nothing again");
+		int[] reloaded = measuredLine(false, true);
+		assertTrue(reloaded[2] > reloaded[1], "a reload during the line measures the words again");
+	}
 }

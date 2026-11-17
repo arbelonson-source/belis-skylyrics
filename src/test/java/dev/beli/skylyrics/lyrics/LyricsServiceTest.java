@@ -435,12 +435,15 @@ class LyricsServiceTest {
 	@Test
 	void agedPlainLyricsStayWhenTheNewAskFindsNothingBetterOrFails() throws Exception {
 		Path file = saveAged(OLD_SONG, PLAIN);
-		for (LyricsSource answer : new LyricsSource[] {
-			x -> LrclibClient.Result.NOT_FOUND,
-			x -> new LrclibClient.Result(null, "Other plain words", false),
-			x -> {
+		// {answer, whether the file is stamped afterwards}: a failure leaves the old stamp, so the next play asks again
+		Object[][] cases = {
+			{(LyricsSource) x -> LrclibClient.Result.NOT_FOUND, true},
+			{(LyricsSource) x -> new LrclibClient.Result(null, "Other plain words", false), true},
+			{(LyricsSource) x -> {
 				throw new LrclibClient.StatusException(503);
-			}}) {
+			}, false}};
+		for (Object[] c : cases) {
+			LyricsSource answer = (LyricsSource) c[0];
 			Files.writeString(file, readFile(file).replaceAll("\"savedAt\":\\d+", "\"savedAt\":1000")); // old again
 			AtomicInteger asks = new AtomicInteger();
 			service = new LyricsService(x -> {
@@ -449,16 +452,126 @@ class LyricsServiceTest {
 			}, cache, attempt -> 30);
 			service.load(OLD_SONG);
 			waitFor(() -> asks.get() == 1);
+			if ((boolean) c[1]) {
+				waitFor(() -> savedAt(file) != 1000); // the stamp is written after the ask returns
+			} else {
+				Thread.sleep(500); // a failed ask writes nothing: give a stray write time to show
+			}
 			service.shutdownAndWait(5, TimeUnit.SECONDS);
 			assertTrue(readFile(file).contains("Only plain words"));
+			if ((boolean) c[1]) {
+				assertTrue(savedAt(file) > System.currentTimeMillis() - 60_000, "stamped so it isn't asked again for a week");
+			} else {
+				assertEquals(1000, savedAt(file), "a failed ask leaves the old stamp");
+			}
 			assertEquals(LyricsService.State.READY, service.state());
 			assertTrue(service.lyrics().lines().get(0).text().contains("Only plain words"));
 		}
 	}
 
+	private static long savedAt(Path file) {
+		var m = java.util.regex.Pattern.compile("\"savedAt\":(\\d+)").matcher(readFile(file));
+		return m.find() ? Long.parseLong(m.group(1)) : -1;
+	}
+
+	private static void stampFile(Path file, long savedAt) throws Exception {
+		Files.writeString(file, Files.readString(file).replaceAll("\"savedAt\":\\d+", "\"savedAt\":" + savedAt));
+	}
+
+	private static final long DAY_MS = 24L * 60 * 60 * 1000;
+	private static final LrclibClient.Result BACKUP_SYNCED = new LrclibClient.Result("[00:01.00]Backup synced", null, false).asFromBackup();
+
+	@Test
+	void aWeakAnswerIsAskedAgainOnlyAfterSevenDays() throws Exception {
+		Path file = saveAged(OLD_SONG, PLAIN);
+		for (int[] c : new int[][] {{6, 0}, {8, 1}}) {
+			stampFile(file, System.currentTimeMillis() - c[0] * DAY_MS);
+			AtomicInteger asks = new AtomicInteger();
+			service = new LyricsService(x -> {
+				asks.incrementAndGet();
+				return PLAIN;
+			}, cache);
+			service.load(OLD_SONG);
+			waitFor(() -> service.state() == LyricsService.State.READY);
+			if (c[1] == 1) {
+				waitFor(() -> asks.get() == 1);
+				waitFor(() -> savedAt(file) > System.currentTimeMillis() - 60_000); // the ask finished and stamped the file
+			} else {
+				Thread.sleep(500); // time for a recheck to run, if one were going to
+			}
+			service.shutdownAndWait(5, TimeUnit.SECONDS);
+			assertEquals(c[1], asks.get(), c[0] + " days old");
+		}
+	}
+
+	@Test
+	void anOlderWeakAnswerAskedAboutAgainIsStampedAndKeepsItsBackupMark() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, STANDIN.asFromBackup(), ",\"v\":2");
+		stampFile(file, 1000);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return STANDIN; // the main site has the same words: nothing to replace
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		waitFor(() -> savedAt(file) != 1000);
+		service.shutdownAndWait(5, TimeUnit.SECONDS);
+		assertEquals(1, asks.get());
+		assertTrue(savedAt(file) > System.currentTimeMillis() - 60_000, "its week starts now");
+		assertTrue(readFile(file).contains("\"backup\":true"), "still the backup's lyrics");
+		assertTrue(readFile(file).contains("\"v\":3"));
+	}
+
+	@Test
+	void anOlderSyncedAnswerAskedAboutAgainKeepsItsOldStamp() throws Exception {
+		Path file = saveOldVersionFile(OLD_SONG, BETTER, ",\"v\":2");
+		stampFile(file, 1000);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return BETTER;
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> readFile(file).contains("\"v\":3"));
+		service.shutdownAndWait(5, TimeUnit.SECONDS);
+		assertEquals(1, asks.get());
+		assertEquals(1000, savedAt(file), "not weak, so no new week");
+	}
+
+	@Test
+	void agedSyncedBackupLyricsAreAskedAgainAndOnlyTheMainSitesReplaceThem() throws Exception {
+		Path file = saveAged(OLD_SONG, BACKUP_SYNCED);
+		// the backup again (even synced) is no better: kept, stamped
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return new LrclibClient.Result("[00:01.00]Other backup", null, false).asFromBackup();
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> savedAt(file) != 1000);
+		service.shutdownAndWait(5, TimeUnit.SECONDS);
+		assertEquals(1, asks.get(), "a backup answer counts as weak even when synced");
+		assertTrue(readFile(file).contains("Backup synced"));
+		assertTrue(readFile(file).contains("\"backup\":true"));
+		// plain words from the main site don't beat the backup's synced lyrics
+		stampFile(file, 1000);
+		service = new LyricsService(x -> PLAIN, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> savedAt(file) != 1000);
+		service.shutdownAndWait(5, TimeUnit.SECONDS);
+		assertTrue(readFile(file).contains("Backup synced"));
+		// synced lyrics from the main site do
+		stampFile(file, 1000);
+		service = new LyricsService(x -> BETTER, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> readFile(file).contains("Main version"));
+		assertFalse(readFile(file).contains("\"backup\":true"));
+	}
+
 	@Test
 	void agedBackupLyricsAreReplacedByTheMainSitesWhenItHasThem() throws Exception {
-		Path file = saveAged(OLD_SONG, STANDIN.asFromBackup());
+		Path file = saveAged(OLD_SONG, BACKUP_SYNCED); // synced, so only the backup mark makes it weak
 		assertTrue(readFile(file).contains("\"backup\":true"));
 		service = new LyricsService(x -> BETTER, cache);
 		service.load(OLD_SONG);

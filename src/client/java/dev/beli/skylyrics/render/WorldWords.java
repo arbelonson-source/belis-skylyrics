@@ -1227,7 +1227,15 @@ final class WorldWords {
 
 	/** How far along each letter of a card starts, in text units, and its whole width last. */
 	private static float[] widths(Display d, Font font, Style style) {
-		return prefixWidths(d.cps(), text -> LyricsFont.width(font, style, text));
+		return prefixWidths(d.cps(), measurer(font, style));
+	}
+
+	/** Tests only: measures text in place of the font (null: the font does). */
+	static java.util.function.@Nullable ToDoubleFunction<String> measureHook;
+
+	private static java.util.function.ToDoubleFunction<String> measurer(Font font, Style style) {
+		java.util.function.ToDoubleFunction<String> hook = measureHook;
+		return hook != null ? hook : text -> LyricsFont.width(font, style, text);
 	}
 
 	/** The last entry of {@link #prefixWidths}, from one measure of the whole text on a short line. */
@@ -1291,7 +1299,7 @@ final class WorldWords {
 			at = widths(d, font, style);
 		}
 		if (flow && Float.isNaN(lineWidth)) {
-			lineWidth = lineText == null ? 0 : wholeWidth(Display.of(lineText).cps(), text -> LyricsFont.width(font, style, text));
+			lineWidth = lineText == null ? 0 : wholeWidth(Display.of(lineText).cps(), measurer(font, style));
 		}
 		int letters = 0;
 		for (int cp : d.cps()) {
