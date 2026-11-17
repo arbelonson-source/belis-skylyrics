@@ -120,7 +120,7 @@ If you clicked **Don't Allow**, the Music tab says "Allow your launcher (Minecra
 
 1. Open **System Settings**, then **Privacy & Security**, then **Automation**.
 2. Find your launcher (Minecraft, Prism Launcher…) or "java" in the list, and turn on **Spotify** and **Music** under it.
-3. Go back to the game. The mod notices within a second or two.
+3. Go back to the game. The mod notices within about 15 seconds.
 
 If nothing like that is in the list, you can make macOS ask again. Quit Minecraft, open the Terminal app and type:
 
