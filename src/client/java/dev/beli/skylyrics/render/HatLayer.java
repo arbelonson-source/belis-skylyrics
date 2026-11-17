@@ -154,14 +154,12 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	//?} else if >=1.21.2 {
 	/*@Override
 	public void render(PoseStack pose, MultiBufferSource buffers, int light, AvatarRenderState state, float yaw, float pitch) {
-		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
 	*///?} else {
 	/*@Override
 	public void render(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player, float limbSwing,
 			float limbSwingAmount, float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
-		SubmitNodeCollector out = new SubmitNodeCollector(buffers);
 	*///?}
-		// Settled before the closure below exists, so every other player each frame costs no allocation
+		// Settled before anything is built, so every other player each frame costs no allocation on any version
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		Minecraft mc = Minecraft.getInstance();
 		//? if >=1.21.2 {
@@ -171,6 +169,9 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		*///?}
 			return;
 		}
+		//? if <1.21.9 {
+		/*SubmitNodeCollector out = new SubmitNodeCollector(buffers);
+		*///?}
 		float still = Calm.motion(); // Minecraft's Distortion Effects
 		Guard.run("hat", () -> {
 			float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
@@ -339,13 +340,16 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	}
 
 	/** Four corners (x, y, z each), drawn both ways round; the first two take {@code from}, the last two {@code to}. */
-	private static void face(PoseStack.Pose p, VertexConsumer vc, int light, int from, int to, float... xyz) {
-		for (int k = 0; k < 4; k++) {
-			vc.addVertex(p, xyz[k * 3], xyz[k * 3 + 1], xyz[k * 3 + 2]).setColor(k < 2 ? from : to).setUv(0.5f, 0.5f).setLight(light);
-		}
-		for (int k = 3; k >= 0; k--) {
-			vc.addVertex(p, xyz[k * 3], xyz[k * 3 + 1], xyz[k * 3 + 2]).setColor(k < 2 ? from : to).setUv(0.5f, 0.5f).setLight(light);
-		}
+	static void face(PoseStack.Pose p, VertexConsumer vc, int light, int from, int to, float x0, float y0, float z0, float x1,
+			float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3) {
+		vc.addVertex(p, x0, y0, z0).setColor(from).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x1, y1, z1).setColor(from).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x2, y2, z2).setColor(to).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x3, y3, z3).setColor(to).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x3, y3, z3).setColor(to).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x2, y2, z2).setColor(to).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x1, y1, z1).setColor(from).setUv(0.5f, 0.5f).setLight(light);
+		vc.addVertex(p, x0, y0, z0).setColor(from).setUv(0.5f, 0.5f).setLight(light);
 	}
 
 	/** A box between two corners, all one colour. */
