@@ -5,9 +5,24 @@ final class ScreenKeys {
 	private ScreenKeys() {
 	}
 
-	/** Keys that type a character on a keyboard: space, digits, punctuation and letters (GLFW codes 32 to 96, plus 161 and 162). */
+	/** Keys that type a character on a keyboard: space, digits, punctuation and letters. */
 	static boolean typesCharacter(int key) {
+		//? if >=26.3 {
+		/*// SDL scancodes: letters 4 to 29, digits 30 to 39, then space and punctuation up to 56
+		return key >= 4 && key <= 39 || key >= 44 && key <= 56;
+		*///?} else {
+		// GLFW codes 32 to 96, plus 161 and 162
 		return key >= 32 && key <= 96 || key == 161 || key == 162;
+		//?}
+	}
+
+	/** Whether the modifier bits of a key event include Ctrl or Alt (GLFW bits, or SDL's left and right bits on 26.3). */
+	static boolean ctrlOrAlt(int modifiers) {
+		//? if >=26.3 {
+		/*return (modifiers & (0xC0 | 0x300)) != 0;
+		*///?} else {
+		return (modifiers & 6) != 0;
+		//?}
 	}
 
 	/**
@@ -33,7 +48,7 @@ final class ScreenKeys {
 
 	/** Ctrl+C (0) or Ctrl+X (1) on the search box; -1 for any other key. */
 	static int copyOrCut(int key, boolean ctrl) {
-		return !ctrl ? -1 : key == 67 ? 0 : key == 88 ? 1 : -1;
+		return !ctrl ? -1 : key == com.mojang.blaze3d.platform.InputConstants.KEY_C ? 0 : key == com.mojang.blaze3d.platform.InputConstants.KEY_X ? 1 : -1;
 	}
 
 	/** A typed character is ignored while the key that opened the library is still held: its repeats are not a search. */
