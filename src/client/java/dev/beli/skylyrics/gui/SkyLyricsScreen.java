@@ -1681,7 +1681,7 @@ public final class SkyLyricsScreen extends Screen {
 			}
 			return true;
 		}
-		if (event.hasControlDown() && (event.isCycleFocus() || event.key() == InputConstants.KEY_PAGEUP
+		if ((event.hasControlDown() || event.hasControlDownWithQuirk()) && (event.isCycleFocus() || event.key() == InputConstants.KEY_PAGEUP
 				|| event.key() == InputConstants.KEY_PAGEDOWN)) {
 			// Ctrl+Tab, Ctrl+Shift+Tab and Ctrl+Page Up/Down change tab, like tabs in a browser
 			boolean back = event.isCycleFocus() ? event.hasShiftDown() : event.key() == InputConstants.KEY_PAGEUP;
