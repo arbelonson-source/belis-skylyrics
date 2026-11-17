@@ -43,6 +43,8 @@ public final class IntroScreen extends Screen {
 	/** The buttons of the page by name, so the keyboard can be put back on the one it was on after the page is rebuilt. */
 	private final java.util.Map<String, Button> buttons = new java.util.HashMap<>();
 	private @Nullable String keepFocus;
+	/** {@link #init} put the keyboard back on a button, so the screen's own first-focus step is skipped once. */
+	private boolean focusRestored;
 
 	public IntroScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
@@ -153,12 +155,27 @@ public final class IntroScreen extends Screen {
 	/** Builds the page and puts the keyboard back where it was, also after a resize or a GUI scale change. */
 	@Override
 	protected void init() {
+		focusRestored = false;
 		build();
 		String tag = focusAfter(keepFocus, buttons.keySet());
 		keepFocus = null;
 		if (tag != null) {
 			setFocused(buttons.get(tag));
+			focusRestored = true;
 		}
+	}
+
+	/**
+	 * Minecraft calls this right after {@link #init} (first open and every rebuild); with the keyboard in use it tabs
+	 * from the focused button to the next one, so after {@link #init} put the keyboard back it must not run.
+	 */
+	@Override
+	protected void setInitialFocus() {
+		if (focusRestored) {
+			focusRestored = false;
+			return;
+		}
+		super.setInitialFocus();
 	}
 
 	private void build() {

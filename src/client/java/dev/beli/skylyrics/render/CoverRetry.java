@@ -33,8 +33,8 @@ final class CoverRetry {
 	static boolean temporary(Throwable failure) {
 		for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
 			if (t instanceof javax.imageio.IIOException) {
-				return false; // a picture that won't decode (even if cut short) never will; a certificate failure may be a
-				// hotel or airport sign-in page, so that one is retried (up to the cap)
+				return false; // a picture that won't decode (even if cut short) never will; a certificate failure inside an
+				// SSL error may be a hotel or airport sign-in page, so that one is retried (up to the cap)
 			}
 		}
 		for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
