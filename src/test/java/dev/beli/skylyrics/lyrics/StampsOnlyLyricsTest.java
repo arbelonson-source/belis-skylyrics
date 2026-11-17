@@ -33,4 +33,17 @@ class StampsOnlyLyricsTest {
 		Lyrics l = LyricsService.parse(new LrclibClient.Result("[00:01.00]sung", "plain", false), 200_000);
 		assertEquals(1, l.lines().size());
 	}
+
+	@Test
+	void aPlainTextThatIsOnlyAMarkerIsNotWords() {
+		for (String marker : new String[] {"Instrumental", "(Instrumental)", "\u266a Instrumental \u266a", "[Instrumental]", "(music)", "\uD83C\uDFB5"}) {
+			assertSame(Lyrics.INSTRUMENTAL, LyricsService.parse(new LrclibClient.Result(STAMPS, marker, false), 200_000), marker);
+		}
+	}
+
+	@Test
+	void aPlainTextWithWordsBesideAMarkerIsStillLyrics() {
+		Lyrics l = LyricsService.parse(new LrclibClient.Result(STAMPS, "(Instrumental)\nreal words here", false), 200_000);
+		assertFalse(l.isEmpty());
+	}
 }

@@ -386,7 +386,11 @@ public final class LyricsService {
 	}
 
 	private static boolean hasPlainWords(LrclibClient.Result result, long lengthMs) {
-		return result.plain() != null && !LrcParser.parsePlain(result.plain(), lengthMs).isEmpty();
+		if (result.plain() == null) {
+			return false;
+		}
+		// A plain text that is only "Instrumental", "(music)" or notes has no words, like the same line in synced text
+		return LrcParser.parsePlain(result.plain(), lengthMs).lines().stream().anyMatch(l -> !l.isBreak() && !LrcParser.isMarkerOnly(l.text()));
 	}
 
 	private static boolean found(Lyrics l) {

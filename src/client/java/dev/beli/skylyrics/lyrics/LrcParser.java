@@ -58,6 +58,11 @@ public final class LrcParser {
 		return cp == '\u2669' || cp == '\u266A' || cp == '\u266B' || cp == '\u266C' || cp == 0x1F3B5 || cp == 0x1F3B6;
 	}
 
+	/** A whole line that is only notes, blanks or a marker like "(Instrumental)" or "[Chorus]": it has no sung words. */
+	static boolean isMarkerOnly(String text) {
+		return NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches();
+	}
+
 	/** "♪ instrumental ♪": the marker word with notes on at least one side and nothing else (plain code: no backtracking on hostile text). */
 	static boolean notesAroundWord(String text) {
 		int start = 0;
@@ -113,7 +118,7 @@ public final class LrcParser {
 			}
 			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
 			text = LEADING_TAG.matcher(text).replaceFirst("");
-			if (NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
+			if (isMarkerOnly(text)) {
 				text = "";
 			}
 			text = dev.beli.skylyrics.media.Track.cap(text, MAX_LINE);
