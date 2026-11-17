@@ -393,7 +393,7 @@ public final class WindowsMediaSource implements MediaSource {
 			// A PC that can never run PowerShell fails the same way every time: say it once (and again only when it changes)
 			if (!startError.equals(loggedStartError)) {
 				loggedStartError = startError;
-				LOG.warn("Couldn't read Windows' media controls: {}", startError);
+				LOG.warn("Couldn't read Windows' media controls: {}", dev.beli.skylyrics.util.LogText.redact(startError, System.getProperty("user.home")));
 			}
 			throw new IOException(startError, e);
 		}

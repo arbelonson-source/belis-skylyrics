@@ -238,7 +238,8 @@ public final class LyricsService {
 				return;
 			}
 			if (failures > 0) {
-				LOG.info("Got lyrics for {} after {} failed tries", t.key(), failures);
+				LOG.info("Got lyrics after {} failed tries", failures);
+				LOG.debug("Those lyrics were for {}", t.key());
 			}
 			if (!apply(t, gen, result)) {
 				return;
@@ -254,14 +255,16 @@ public final class LyricsService {
 			}
 			if (!temporary(e)) {
 				// The site answered (an odd status) or something broke here: not the internet's fault, so it isn't blamed
-				LOG.warn("Couldn't get lyrics for {}: {}", t.key(), e.toString());
+				LOG.warn("Couldn't get lyrics: {}", e.toString());
+				LOG.debug("That was for {}", t.key());
 				setNotFound(gen);
 				return;
 			}
 			// Keep trying while the song plays; never saved to the cache, so it isn't "no lyrics"
 			long delay = delayFor(e, retryDelayMs.applyAsLong(failures + 1));
 			if (failures == 0) {
-				LOG.warn("Couldn't get lyrics for {}: {}. Trying again while it plays.", t.key(), e.toString());
+				LOG.info("Couldn't get lyrics yet: {}. Trying again while it plays.", e.toString());
+				LOG.debug("That was for {}", t.key());
 			} else {
 				LOG.debug("Still no lyrics for {} ({}), try {} in {} ms", t.key(), e.toString(), failures + 2, delay);
 			}
@@ -368,7 +371,8 @@ public final class LyricsService {
 			if (!parsed.isEmpty()) {
 				return parsed;
 			}
-			if (parsed.instrumental()) {
+			// Only stamps, no words: plain lyrics with words are better than "instrumental", unless the site says so itself
+			if (parsed.instrumental() && (result.instrumental() || !hasPlainWords(result, lengthMs))) {
 				return Lyrics.INSTRUMENTAL;
 			}
 		}
@@ -379,6 +383,14 @@ public final class LyricsService {
 			}
 		}
 		return result.instrumental() ? Lyrics.INSTRUMENTAL : Lyrics.NONE;
+	}
+
+	private static boolean hasPlainWords(LrclibClient.Result result, long lengthMs) {
+		if (result.plain() == null) {
+			return false;
+		}
+		// A plain text that is only "Instrumental", "(music)" or notes has no words, like the same line in synced text
+		return LrcParser.parsePlain(result.plain(), lengthMs).lines().stream().anyMatch(l -> !l.isBreak() && !LrcParser.isMarkerOnly(l.text()));
 	}
 
 	private static boolean found(Lyrics l) {

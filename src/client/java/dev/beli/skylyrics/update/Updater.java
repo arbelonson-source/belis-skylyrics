@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.update;
 
+import dev.beli.skylyrics.util.LogText;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -77,7 +78,7 @@ public final class Updater {
 			try {
 				check(mode, runningVersion);
 			} catch (Exception e) {
-				LOG.info("Update check skipped: {}", e.toString());
+				LOG.info("Update check skipped: {}", LogText.of(e));
 			}
 		}, "SkyLyrics-update");
 		thread.setDaemon(true);
@@ -175,7 +176,7 @@ public final class Updater {
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			} catch (Exception e) {
-				LOG.warn("Could not install the update, telling the player instead: {}", e.toString());
+				LOG.warn("Could not install the update, telling the player instead: {}", LogText.of(e));
 				Refusal.forget(memory);
 			}
 		}
@@ -271,7 +272,7 @@ public final class Updater {
 				// The other game removed it first: the update is in place, and the new jar is ours to keep
 			} catch (IOException e) {
 				// Two jars with the mod's id would stop the game from starting, so never leave both
-				LOG.warn("Could not remove the old jar, dropping the update: {}", e.toString());
+				LOG.warn("Could not remove the old jar, dropping the update: {}", LogText.of(e));
 				Files.deleteIfExists(target);
 				return false;
 			}
@@ -293,7 +294,7 @@ public final class Updater {
 				Files.setPosixFilePermissions(part, Files.getPosixFilePermissions(oldJar));
 			}
 		} catch (IOException | RuntimeException e) {
-			LOG.info("Could not copy the old jar's permissions to the update: {}", e.toString());
+			LOG.info("Could not copy the old jar's permissions to the update: {}", LogText.of(e));
 		}
 	}
 
@@ -551,11 +552,11 @@ public final class Updater {
 						deleted++;
 					}
 				} catch (IOException | RuntimeException e) {
-					LOG.info("Could not remove the old leftover {}: {}", name, e.toString());
+					LOG.info("Could not remove the old leftover {}: {}", name, LogText.of(e));
 				}
 			}
 		} catch (IOException | RuntimeException e) {
-			LOG.info("Could not look for old update leftovers: {}", e.toString());
+			LOG.info("Could not look for old update leftovers: {}", LogText.of(e));
 		}
 		return deleted;
 	}

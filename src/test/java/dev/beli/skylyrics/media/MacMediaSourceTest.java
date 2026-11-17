@@ -34,7 +34,7 @@ class MacMediaSourceTest {
 	@Test
 	void runsTheRealAppleScript() throws Exception {
 		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
-		MacMediaSource source = new MacMediaSource(() -> "");
+		MacMediaSource source = new MacMediaSource(() -> "", () -> true);
 		try {
 			Snapshot s = null;
 			// A cold start can take longer than one poll waits; the poll says so and the next one picks it up
@@ -364,6 +364,72 @@ class MacMediaSourceTest {
 		now[0] = 3_000;
 		assertTrue(p.test(MacMediaSource.SPOTIFY));
 		assertEquals(3, asked[0], "asked again once it is old");
+	}
+
+	/** Polls every 500 ms for the given seconds on a fake clock; returns how many osascript runs started. */
+	private static int runsOver(boolean[] looking, long seconds) throws Exception {
+		FakeRunner runner = new FakeRunner();
+		long[] now = {1_000_000_000L};
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 900_000_000L, app -> true, () -> looking[0], () -> now[0]);
+		for (long t = 0; t < seconds * 2; t++) {
+			runner.answer(SPOTIFY_PLAYING);
+			source.poll();
+			now[0] += 500_000_000L;
+		}
+		return runner.starts;
+	}
+
+	@Test
+	void notLookingRunsOsascriptRarely() throws Exception {
+		assertTrue(runsOver(new boolean[] {false}, 60) <= 6, "at most one run per 10 s while nobody looks");
+	}
+
+	@Test
+	void lookingKeepsTheOldPace() throws Exception {
+		// 500 ms polls, 0.9 s reuse: every second poll starts a run
+		assertEquals(30, runsOver(new boolean[] {true}, 30));
+	}
+
+	@Test
+	void lookingAgainReadsAtOnce() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		long[] now = {1_000_000_000L};
+		boolean[] looking = {false};
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 900_000_000L, app -> true, () -> looking[0], () -> now[0]);
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		now[0] += 300_000_000L;
+		source.poll();
+		assertEquals(1, runner.starts, "reused while not looking");
+		now[0] += 300_000_000L; // still inside even the looking pace, so only the switch can cause a read
+		looking[0] = true;
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertEquals(2, runner.starts, "the poll right after looking turns on reads again");
+	}
+
+	@Test
+	void runningAnswerLivesLongerWhileNobodyLooks() {
+		long[] now = {0};
+		int[] scans = {0};
+		boolean[] looking = {true};
+		java.util.function.Predicate<MacMediaSource.App> p = MacMediaSource.scanned(() -> {
+			scans[0]++;
+			return java.util.Set.of("Spotify");
+		}, () -> now[0], () -> MacMediaSource.ttlNs(looking[0]));
+		assertTrue(p.test(MacMediaSource.SPOTIFY));
+		assertFalse(p.test(MacMediaSource.MUSIC));
+		assertEquals(1, scans[0], "one walk answers both apps");
+		now[0] = 3_000_000_000L;
+		p.test(MacMediaSource.SPOTIFY);
+		assertEquals(2, scans[0], "looking: asked again after 3 s");
+		looking[0] = false;
+		now[0] = 3_000_000_000L + 14_000_000_000L;
+		p.test(MacMediaSource.SPOTIFY);
+		assertEquals(2, scans[0], "not looking: still remembered after 14 s");
+		now[0] += 1_000_000_000L;
+		p.test(MacMediaSource.SPOTIFY);
+		assertEquals(3, scans[0], "not looking: asked again after 15 s");
 	}
 
 	@Test

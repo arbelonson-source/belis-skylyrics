@@ -11,14 +11,14 @@ package dev.beli.skylyrics.media;
 public record Track(String title, String artist, String album, long lengthMs, String artUrl, String player, String uri) {
 	/** Players can send line breaks, tabs and text-direction marks in a title; those draw as boxes or flip the title. */
 	public Track {
-		title = clean(title);
-		artist = clean(artist);
-		album = clean(album);
+		title = cap(clean(title), MAX_TEXT);
+		artist = cap(clean(artist), MAX_TEXT);
+		album = cap(clean(album), MAX_TEXT);
 	}
 
 	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("[\\s\\p{Z}]+");
 
-	/** Control characters become a space, text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
+	/** Control characters become a space (no length limit: saved timing keys are cleaned with this and must come back whole; the fields are cut in the constructor), text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
 	public static String clean(String s) {
 		if (s == null) {
 			return "";
@@ -34,6 +34,36 @@ public record Track(String title, String artist, String album, long lengthMs, St
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
 		}
 		return SPACES.matcher(b).replaceAll(" ").strip();
+	}
+
+	/** A title, artist or album longer than this is cut: a player can send anything, and it is drawn and compared all the time. */
+	public static final int MAX_TEXT = 500;
+
+	/**
+	 * Cuts text to at most {@code max} chars, at a space when there is one in the last half, and never inside a surrogate
+	 * pair or between a character and its combining marks, joiners or variation selectors (a half emoji draws as a box).
+	 */
+	public static String cap(String s, int max) {
+		if (s.length() <= max) {
+			return s;
+		}
+		int cut = max;
+		int space = s.lastIndexOf(' ', max);
+		if (space >= max / 2) {
+			cut = space;
+		}
+		while (cut > 0 && (Character.isLowSurrogate(s.charAt(cut)) || joins(s, cut))) {
+			cut--;
+		}
+		return s.substring(0, cut).stripTrailing();
+	}
+
+	private static boolean joins(String s, int cut) {
+		int next = s.codePointAt(cut);
+		int type = Character.getType(next);
+		return next == 0x200D || (next >= 0xFE00 && next <= 0xFE0F) || next >= 0x1F3FB && next <= 0x1F3FF
+				|| type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK || type == Character.COMBINING_SPACING_MARK
+				|| s.charAt(cut - 1) == 0x200D;
 	}
 
 	/**

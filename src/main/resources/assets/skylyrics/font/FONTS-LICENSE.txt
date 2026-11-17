@@ -4,11 +4,12 @@ poppins_semibold.ttf        Poppins SemiBold, Copyright 2020 The Poppins Project
 poppins_bold.ttf            Poppins Bold, Copyright 2020 The Poppins Project Authors (https://github.com/itfoundry/Poppins)
 noto_sans_hebrew_medium.ttf Noto Sans Hebrew Medium, Copyright 2024 The Noto Project Authors (https://github.com/notofonts/hebrew)
 noto_sans_arabic_medium.ttf Noto Sans Arabic Medium, Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic)
+noto_sans_medium_extra.ttf Noto Sans Medium, only the Cyrillic, Greek and Vietnamese letters (hinting and layout tables dropped), Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)
 nunito_extrabold.ttf        Nunito ExtraBold (the wght 800 instance of the Nunito variable font), Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito)
 kaushan_script.ttf          Kaushan Script, Copyright (c) 2011 Pablo Impallari (www.impallari.com), Copyright (c) 2011 Igino Marini (www.ikern.com),
                             with Reserved Font Name Kaushan Script.
 
-All five are licensed under the SIL Open Font License, Version 1.1:
+All six are licensed under the SIL Open Font License, Version 1.1:
 
 SIL OPEN FONT LICENSE
 

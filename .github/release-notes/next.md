@@ -4,6 +4,8 @@
 - **Distortion Effects.** Minecraft's **Distortion Effects** setting (in Accessibility settings) now also calms the lyrics' motion: at 0 the line pop, the World words' sway, knock and arrival bounce, and the hat's wobble and spin (without a jump when you move the slider) and the spinning record in the top bar and on the **Record card** stay still, and in between they are slower or smaller.
 - **Demo song.** While the demo song plays, the top bar shows "Demo" next to the song, so you can tell it from your own music. Switching the demo song on now starts it from the top, playing, instead of somewhere in the middle (or still paused from last time). Turning **Demo song** off while the song library is open brings your own songs back instead of keeping the made-up ones.
 - **Can't read your music player.** If SkyLyrics can't read your music player (or can't reach the internet for Spotify) for 10 seconds, it now tells you with a pop-up, once per game start, and where to look.
+- **Spanish and Brazilian Portuguese.** The settings, song library, top bar, Record card and tour are now in Spanish (Spain and Latin America) and Brazilian Portuguese (also used for Portugal), with Minecraft's own names for its menus.
+- **Smooth letters for more alphabets.** Russian, Ukrainian and other Cyrillic, Greek and Vietnamese lyrics use smooth letters like the rest of the line instead of small pixel ones.
 
 ### Fixed
 
@@ -86,6 +88,12 @@
 - **Words left behind on fast moves.** In the World layout, the words now travel with you when you move very fast (a long fall, a hard knock) and, with **Elytra mode** on, when you launch with a Riptide trident, instead of being left behind and replaced by new ones. Teleporting still leaves them where they were.
 - **Narrator in the tour and settings.** The intro tour now reads its page and the chosen look and layout, and the "<" and ">" buttons are called "Previous look" and "Next look"; the keyboard stays on the button you pressed. In the settings, Left, Right and Space no longer change the setting under the mouse before the mouse has moved: the keyboard first lands on the first setting and says it. Ctrl+Tab also says the setting it lands on, a search result that its tab is hiding says "not in use now", times are read as a number of seconds, and **Timing** says which way is late and early.
 - **Song library and keyboard.** Enter and Esc are now spoken: the "Starting" and "Playing" messages, the name of a playlist when it opens or closes, "Loading", "Nothing found" and "No liked songs yet", how many results a search found, and that a song is a button or a playlist opens with Enter. The grid, shelf and carousel buttons, the recent searches and the **Open Music tab** button can now be reached with the keyboard (press Up from the top row of songs, then Left and Right; Down goes back).
+- **Rain at night.** On 1.21.11 and newer, rain at night no longer makes the lyrics take daytime colours and a dark edge; clear weather looks as before at every time of day.
+- **Old night sky when joining a world.** Joining a world right after leaving one at night no longer flashes the old night sky for half a second.
+- **Lyrics files.** Files that write times with a comma (`[00:10,50]`) load; lines at the very start no longer get squashed together when a file shifts its timing, and an original line and its translation stay together; NetEase's "pure music, please enjoy" note and a plain "Instrumental" count as instrumental; real plain lyrics are used when the timed copy has only time stamps.
+- **A broken lyrics file can't freeze the game.** One enormous line or a huge number of lines is cut down, and very long song names are shortened (saved timings still match).
+- **Menu background on 1.21.4 and 1.21.5.** The settings and the song library, opened from the title screen, show the menu background instead of black.
+- **Hand-edited settings.** A number written as NaN or Infinity resets that setting to its default instead of its smallest value, and an empty settings file counts as a fresh start.
 
 ### Faster
 
@@ -96,6 +104,7 @@
 - **Lighter settings window.** The settings window lays out each row once per frame instead of several times, and remembers the right-to-left text it has already put in order. Nothing looks different.
 - **Smaller saved album covers.** Album covers are saved as small 128-pixel pictures, so they load faster and take less disk space, and they are made in memory instead of through a temporary file.
 - **No hitch when a setting changes.** Settings are saved in the background, so pressing a timing key or closing the settings no longer makes the game pause for a moment while the file is written (most noticeable on Windows when an antivirus or OneDrive holds the file). A change made right before you quit is still saved.
+- **Mac: lighter in the background.** On a Mac, while the lyrics are switched off and no SkyLyrics screen is open, the mod checks Spotify or Music about every 15 seconds instead of every second; it checks at once when you switch the lyrics back on.
 
 ### Changed
 
@@ -117,3 +126,5 @@
 - **Clearer lyrics messages.** A lyrics site that answers with an odd error shows "no lyrics" instead of blaming your internet. On a Mac, the "Nothing playing" bar in the settings no longer suggests browsers, and it stays quiet while the music player can't be read.
 - **Clearer setting texts.** The **Hide lyrics** card is now **Hide**, because its rows also hide the top bar, the **Record card** and the sky effects. The texts of **Karaoke fill** (it lights up the top bar's words too), **Top bar**, **Accent colour**, **Draw on top**, **Song name only on change**, **Hide in multiplayer**, **Show underground too** and **This song** now say what the setting really does. **Show underground too** only shows when **See through blocks** is off, since otherwise it changes nothing. **Karaoke fill** also shows in World while the top bar shows lyrics. **Depth** only shows in Arc, the one layout that draws it, and **Shadow** is hidden in Arc while **Depth** is on, since Depth replaces it there. The settings window's footer says just "Esc to close" when **Open settings** has no key, and the **Show or hide lyrics** key now says "Lyrics on" or "Lyrics off" above the hotbar. In a small window, the choices in a row of buttons (like the **Record card**'s corner) keep a gap between names instead of touching.
 - **Help pages.** The Troubleshooting page and FAQ now say what to expect with Replay Mod and Flashback recordings (the lyrics follow the music playing when you render, not when you recorded) and with Distant Horizons (which night skies can show in front of far-away terrain).
+- **Game log.** The mod's lines in the game log no longer show song names or your home folder name, and a problem that repeats (offline, a failed save) is written once, so the log is safe to attach to a bug report.
+- **Hebrew.** A few smoother lines (Draw on top, Karaoke fill, the Mac browser note).

@@ -65,7 +65,7 @@ The mod finds the song your music player is playing, looks up synced lyrics, and
 - **Music controls**: play, pause and skip from the settings screen or with keys you choose
 - **Pinning and more**: **View lock** keeps the lyrics where you looked, **Show underground too** keeps them visible in caves, an optional **Record card** shows the song with the lines around the one being sung, and a **Recently heard** list in the song library works without Spotify.
 - **Settings with the keyboard** and the Narrator: Tab or the arrow keys, Enter or Space, Page Up and Page Down, Ctrl+Tab, Ctrl+F.
-- **English and Hebrew** settings screen, following your Minecraft language
+- **English, Spanish, Brazilian Portuguese and Hebrew** settings screen, following your Minecraft language
 - **Demo song** with made-up lyrics, for trying the settings without music
 - Works with Sodium, Iris and shader packs
 - Client side only: works in single player and on any server
@@ -120,7 +120,7 @@ More help: [FAQ](https://github.com/arbelonson-source/belis-skylyrics/blob/main/
 
 - Made by Beli.
 - Lyrics from LRCLIB and NetEase Cloud Music. The lyrics belong to their writers and are not part of this mod.
-- Fonts: Poppins, Nunito, Kaushan Script, Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License.
+- Fonts: Poppins, Nunito, Kaushan Script, Noto Sans (Cyrillic, Greek and Vietnamese letters), Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License.
 
 ## License
 

@@ -59,7 +59,9 @@ public final class NeteaseClient implements LyricsSource {
 	/** Timed lyrics have at least one "[mm:ss" stamp. */
 	private static final Pattern TIMED = Pattern.compile("(?m)^\\[\\d{1,3}:\\d{1,2}");
 	/** NetEase's placeholder text for instrumentals: "pure music, please enjoy". */
-	private static final Pattern PLACEHOLDER = Pattern.compile("纯音乐(?:\\s*[,，、:：-]?\\s*(?:请欣赏|请您欣赏))?[\\s。.!！]*");
+	private static final Pattern PLACEHOLDER = Pattern.compile("纯音乐(?:\\s*[,，、:：-]?\\s*(?:请欣赏|请您欣赏))?[\\s。.!！]*"
+			// The long form: "此歌曲为没有填词的纯音乐，请您欣赏"; short on both sides so a real lyric that mentions it stays
+			+ "|.{0,15}纯音乐.{0,10}请[您你]?欣赏[\\s。.!！]*");
 
 	/** The most a reply may weigh, and take to arrive. */
 	static final int MAX_REPLY = 2 * 1024 * 1024;

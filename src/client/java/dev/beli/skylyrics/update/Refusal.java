@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.update;
 
+import dev.beli.skylyrics.util.LogText;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -96,7 +97,7 @@ record Refusal(String asset, String sha256, Map<String, String> running, String 
 			Files.writeString(tmp, o.toString(), StandardCharsets.UTF_8);
 			SafeFile.replace(tmp, file);
 		} catch (IOException | RuntimeException e) {
-			LOG.info("Could not remember the refused update: {}", e.toString());
+			LOG.info("Could not remember the refused update: {}", LogText.of(e));
 			try {
 				if (tmp != null) {
 					Files.deleteIfExists(tmp);
@@ -114,7 +115,7 @@ record Refusal(String asset, String sha256, Map<String, String> running, String 
 		try {
 			Files.deleteIfExists(file);
 		} catch (IOException | RuntimeException e) {
-			LOG.info("Could not forget the refused update: {}", e.toString());
+			LOG.info("Could not forget the refused update: {}", LogText.of(e));
 		}
 	}
 }

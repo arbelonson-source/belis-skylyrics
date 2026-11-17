@@ -8,10 +8,10 @@ import java.util.regex.Pattern;
 
 /** Parses LRC text ("[01:23.45]words") into {@link Lyrics}. */
 public final class LrcParser {
-	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:](\\d+))?\\s*]");
+	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
-	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:]\\d+)?>");
+	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:,]\\d+)?>");
 	// Also old Mac files that end lines with a bare \r
 	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n|\\u2028|\\u2029");
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
@@ -43,11 +43,24 @@ public final class LrcParser {
 	private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}&&[^\\t]]");
 	private static final Pattern LEADING = Pattern.compile("^[\\s\\p{Zs}\\u200B\\u2060\\uFEFF]+");
 
+	/**
+	 * Lyrics come from anyone who can upload to a lyrics site, so one line or one file must not be able to freeze the game.
+	 * A sung line is rarely over 100 characters and a long song has a few hundred lines; these are far above that and
+	 * only stop hostile or broken text (a line of 2 MB without a space, a file of 100000 lines).
+	 */
+	static final int MAX_LINE = 500;
+	static final int MAX_LINES = 5000;
+
 	private LrcParser() {
 	}
 
 	private static boolean isNote(int cp) {
 		return cp == '\u2669' || cp == '\u266A' || cp == '\u266B' || cp == '\u266C' || cp == 0x1F3B5 || cp == 0x1F3B6;
+	}
+
+	/** A whole line that is only notes, blanks or a marker like "(Instrumental)" or "[Chorus]": it has no sung words. */
+	static boolean isMarkerOnly(String text) {
+		return NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches();
 	}
 
 	/** "♪ instrumental ♪": the marker word with notes on at least one side and nothing else (plain code: no backtracking on hostile text). */
@@ -105,11 +118,18 @@ public final class LrcParser {
 			}
 			String text = tidy(TIME.matcher(WORD_TIME.matcher(raw.substring(end)).replaceAll("")).replaceAll(" "));
 			text = LEADING_TAG.matcher(text).replaceFirst("");
-			if (NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
+			if (isMarkerOnly(text)) {
 				text = "";
 			}
+			text = dev.beli.skylyrics.media.Track.cap(text, MAX_LINE);
 			for (long t : times) {
+				if (lines.size() >= MAX_LINES) {
+					break;
+				}
 				lines.add(new LyricLine(t, text));
+			}
+			if (lines.size() >= MAX_LINES) {
+				break;
 			}
 		}
 		if (lines.isEmpty()) {
@@ -119,9 +139,27 @@ public final class LrcParser {
 		long shift = -offset;
 		List<LyricLine> shifted = new ArrayList<>(lines.size());
 		for (LyricLine line : lines) {
-			shifted.add(new LyricLine(Math.max(0, line.timeMs() + shift), line.text()));
+			shifted.add(new LyricLine(line.timeMs() + shift, line.text()));
 		}
 		shifted.sort(Comparator.comparingLong(LyricLine::timeMs));
+		// Lines pushed before the start of the song can't have a negative time (the rest of the mod reads time 0 as the start),
+		// but all sitting on 0 would merge them into one line: each distinct time takes the next of 0, 1, 2 ms and keeps its
+		// order, while lines that shared a time keep sharing one (an original and its translation still join). The first
+		// line that was not pushed back has priority: clamped times stay below its time, so groups that don't fit share the last free ms
+		int firstKept = 0;
+		while (firstKept < shifted.size() && shifted.get(firstKept).timeMs() < 0) {
+			firstKept++;
+		}
+		long cap = firstKept < shifted.size() ? Math.max(0, shifted.get(firstKept).timeMs() - 1) : Long.MAX_VALUE;
+		long clamped = -1;
+		long previous = Long.MIN_VALUE;
+		for (int i = 0; i < firstKept; i++) {
+			if (shifted.get(i).timeMs() != previous) {
+				previous = shifted.get(i).timeMs();
+				clamped++;
+			}
+			shifted.set(i, new LyricLine(Math.min(clamped, cap), shifted.get(i).text()));
+		}
 		// Stamps with nothing but notes or blanks (some sites do this for songs without words) is an instrumental
 		if (shifted.stream().allMatch(LyricLine::isBreak)) {
 			return Lyrics.INSTRUMENTAL;
@@ -136,7 +174,10 @@ public final class LrcParser {
 		}
 		List<String> rows = new ArrayList<>();
 		for (String raw : lines(text)) {
-			String row = tidy(raw);
+			if (rows.size() >= MAX_LINES) {
+				break;
+			}
+			String row = dev.beli.skylyrics.media.Track.cap(tidy(raw), MAX_LINE);
 			if (!SECTION.matcher(row).matches()) {
 				rows.add(NOTES.matcher(row).matches() ? "" : row);
 			}
@@ -185,15 +226,16 @@ public final class LrcParser {
 	 * {@link #MAX_JOINED} different lines on one stamp is a file whose stamps mean nothing (every line at 00:00, say):
 	 * those are spread out up to the next stamp instead of becoming one huge line.
 	 */
-	private static List<LyricLine> joinSameStamp(List<LyricLine> lines) {
+	static List<LyricLine> joinSameStamp(List<LyricLine> lines) {
 		List<LyricLine> out = new ArrayList<>(lines.size());
 		for (int i = 0; i < lines.size(); ) {
 			long t = lines.get(i).timeMs();
 			int j = i;
 			List<String> texts = new ArrayList<>();
+			java.util.Set<String> seen = new java.util.HashSet<>();
 			for (; j < lines.size() && lines.get(j).timeMs() == t; j++) {
 				LyricLine line = lines.get(j);
-				if (!line.isBreak() && !texts.contains(line.text())) {
+				if (!line.isBreak() && seen.add(line.text())) {
 					texts.add(line.text());
 				}
 			}
@@ -205,7 +247,7 @@ public final class LrcParser {
 				long next = j < lines.size() ? lines.get(j).timeMs() : t + texts.size() * SPREAD_MS;
 				long step = Math.max(1, (next - t) / texts.size());
 				for (int k = 0; k < texts.size(); k++) {
-					out.add(new LyricLine(t + k * step, texts.get(k)));
+					out.add(new LyricLine(Math.min(t + k * step, Math.max(t, next - 1)), texts.get(k)));
 				}
 			}
 			i = j;

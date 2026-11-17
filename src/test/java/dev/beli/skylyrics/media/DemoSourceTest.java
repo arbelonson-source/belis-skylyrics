@@ -89,5 +89,7 @@ class DemoSourceTest {
 		assertTrue(MediaTracker.switchedToDemo(demo, player, demo), "demo switched on");
 		assertFalse(MediaTracker.switchedToDemo(demo, demo, demo), "the demo keeps playing");
 		assertFalse(MediaTracker.switchedToDemo(player, demo, demo), "demo switched off");
+		assertFalse(MediaTracker.switchedToDemo(player, null, demo), "the player's own first read");
+		assertFalse(MediaTracker.switchedToDemo(player, player, demo), "the player keeps playing");
 	}
 }

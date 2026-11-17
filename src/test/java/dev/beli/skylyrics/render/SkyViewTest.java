@@ -98,11 +98,39 @@ class SkyViewTest {
 	}
 
 	@Test
+	void aWideColumnCountsByItsNearEdgeNotItsMiddle() {
+		float reach = SkyView.halfYawRange(0, (float) Math.toDegrees(Math.atan(TAN_H)) + SkyView.MARGIN, (float) Math.toDegrees(Math.atan(TAN_V)) + SkyView.MARGIN);
+		SkyView v = looking(0, 0);
+		// 30 degrees wide, its middle well past the reach but its near edge inside it
+		assertTrue(v.yawVisible(reach - 3, reach + 27), "middle at " + (reach + 12));
+		assertFalse(v.yawVisible(reach + 3, reach + 33));
+		assertTrue(SkyView.yawRangeVisible(60, 90, 0, 63));
+		assertFalse(SkyView.yawRangeVisible(70, 100, 0, 63));
+	}
+
+	@Test
+	void aRoundPatchReachesTheCornerOfTheWidenedScreenAndNoFurther() {
+		// The corner of the margin-widened screen is farther from the look direction than its sides
+		double halfH = Math.toDegrees(Math.atan(TAN_H)) + SkyView.MARGIN, halfV = Math.toDegrees(Math.atan(TAN_V)) + SkyView.MARGIN;
+		double cone = Math.toDegrees(Math.atan(Math.hypot(Math.tan(Math.toRadians(halfH)), Math.tan(Math.toRadians(halfV)))));
+		assertTrue(cone > halfH + 1, "the corner is farther than the side: " + cone + " vs " + halfH);
+		SkyView v = looking(0, 0);
+		double inside = Math.toRadians(cone - 0.5), outside = Math.toRadians(cone + 0.5);
+		assertTrue(v.capVisible((float) Math.sin(inside), 0, (float) Math.cos(inside), 0));
+		assertFalse(v.capVisible((float) Math.sin(outside), 0, (float) Math.cos(outside), 0));
+	}
+
+	@Test
 	void yawReachGrowsAsYouLookUp() {
 		assertEquals(180, SkyView.halfYawRange(85, 30, 30));
 		assertEquals(180, SkyView.halfYawRange(-60, 30, 30));
 		assertEquals(30, SkyView.halfYawRange(0, 30, 30), 1e-3f);
 		assertTrue(SkyView.halfYawRange(40, 30, 30) > SkyView.halfYawRange(20, 30, 30));
 		assertTrue(SkyView.halfYawRange(40, 30, 30) < 180);
+		// The farthest yaw is at the top corner of the screen: forward + tanH right + tanV up, for a camera tilted up 40 degrees
+		double p = Math.toRadians(40), th = Math.tan(Math.toRadians(30)), tv = Math.tan(Math.toRadians(30));
+		double ahead = Math.cos(p) - tv * Math.sin(p);
+		assertEquals(Math.toDegrees(Math.atan2(th, ahead)), SkyView.halfYawRange(40, 30, 30), 1e-3f);
+		assertEquals(SkyView.halfYawRange(40, 30, 30), SkyView.halfYawRange(-40, 30, 30), 1e-3f, "down is the same as up");
 	}
 }
