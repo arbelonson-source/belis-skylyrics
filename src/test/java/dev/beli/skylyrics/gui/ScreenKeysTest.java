@@ -140,10 +140,12 @@ class ScreenKeysTest {
 
 	@Test
 	void theRealCtrlBitIsCtrlAndNotCmdOrShift() {
-		assertTrue(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL));
-		assertTrue(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT));
-		assertFalse(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_SUPER));
-		assertFalse(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT | org.lwjgl.glfw.GLFW.GLFW_MOD_ALT));
+		// GLFW's modifier bits, written out because 26.3 has no GLFW: Shift 1, Ctrl 2, Alt 4, Super (Cmd) 8
+		int shift = 1, ctrl = 2, alt = 4, superKey = 8;
+		assertTrue(ScreenKeys.hasCtrlBit(ctrl));
+		assertTrue(ScreenKeys.hasCtrlBit(ctrl | shift));
+		assertFalse(ScreenKeys.hasCtrlBit(superKey));
+		assertFalse(ScreenKeys.hasCtrlBit(shift | alt));
 		assertFalse(ScreenKeys.hasCtrlBit(0));
 	}
 }
