@@ -51,6 +51,14 @@ import dev.beli.skylyrics.media.DemoSource;
  * <p>
  * {@code debug on|off} opens or closes the F3 debug screen, as the F3 key does.
  * <p>
+ * World changes: {@code pause} opens the pause menu, as Escape does in a world. {@code quit} leaves the world to the title
+ * screen, as the pause menu's "Save and Quit to Title" does (the single-player world is saved before the command returns).
+ * {@code join <world folder name>} (e.g. {@code join SkyTest}) joins that single-player world from the title screen, as
+ * quick play does. {@code inventory} opens the player's inventory screen (the survival one; the creative inventory shows no
+ * paper doll, so run {@code cmd gamemode survival @p} first). Each only logs "Test hook: ... (not in a world)" or similar
+ * when used in the wrong state: {@code pause}, {@code quit} and {@code inventory} need a world (and for the first and
+ * last, no screen open), {@code join} needs the title screen or any state without a world.
+ * <p>
  * {@code burst <name> <count> <everyMs>} grabs the game frame {@code count} times (1 to 60), {@code everyMs} apart (0 = every
  * rendered frame), one grab per rendered frame, and saves them as {@code screenshots/<name>_00.png}, {@code _01}, ...
  * The frames are kept in memory and only written (on another thread) after the last grab, so encoding does not slow
@@ -412,6 +420,52 @@ public final class DevTestHook {
 	}
 
 	//?}
+	/** Shows a screen on every version (the screen moved to the Gui class in 26.2). */
+	private static void showScreen(Minecraft client, Screen screen) {
+		//? if >=26.2 {
+		/*client.gui.setScreen(screen);
+		*///?} else {
+		client.setScreen(screen);
+		//?}
+	}
+
+	/**
+	 * "Save and Quit to Title" as the pause screen's button does it. 1.21.10 and newer call
+	 * {@code Minecraft.disconnectFromWorld(Component)}, 1.21.8 the static {@code PauseScreen.disconnectFromWorld(Minecraft, Component)},
+	 * and 1.21.5 and older the pause screen's private onDisconnect, whose steps are repeated here for the single-player case.
+	 */
+	private static void leaveWorld(Minecraft client) {
+		//? if >=1.21.10 {
+		client.disconnectFromWorld(net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+		//?} else if >=1.21.8 {
+		/*net.minecraft.client.gui.screens.PauseScreen.disconnectFromWorld(client, net.minecraft.client.multiplayer.ClientLevel.DEFAULT_QUIT_MESSAGE);
+		*///?} else {
+		/*client.level.disconnect();
+		if (client.isLocalServer()) {
+			client.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(net.minecraft.network.chat.Component.translatable("menu.savingLevel")));
+		} else {
+			client.disconnect();
+		}
+		client.setScreen(new net.minecraft.client.gui.screens.TitleScreen());
+		*///?}
+	}
+
+	/** "join <folder>": opens a single-player world as quick play does: the same check that it exists, then WorldOpenFlows.openWorld. */
+	private static void joinWorld(Minecraft client, String folder) {
+		if (folder.isEmpty()) {
+			SkyLyricsClient.LOG.warn("Test hook: join needs a world folder name");
+		} else if (client.level != null || client.getSingleplayerServer() != null) {
+			SkyLyricsClient.LOG.info("Test hook: join {} ignored (already in a world)", folder);
+		} else if (!client.getLevelSource().levelExists(folder)) {
+			SkyLyricsClient.LOG.warn("Test hook: join {} ignored (no such world folder)", folder);
+		} else {
+			client.createWorldOpenFlows().openWorld(folder, () -> {
+				SkyLyricsClient.LOG.warn("Test hook: join {} was cancelled or failed", folder);
+				showScreen(client, new net.minecraft.client.gui.screens.TitleScreen());
+			});
+		}
+	}
+
 	private void run(Minecraft client, String line) {
 		String[] parts = line.split("\\s+", 2);
 		String arg = parts.length > 1 ? parts[1] : "";
@@ -562,6 +616,30 @@ public final class DevTestHook {
 							*///?}
 						});
 						SkyLyricsClient.LOG.info("Test hook: typed {} characters into {}", arg.codePointCount(0, arg.length()), screen.getClass().getSimpleName());
+					}
+				}
+				case "pause" -> {
+					if (client.level == null || client.player == null) {
+						SkyLyricsClient.LOG.info("Test hook: pause ignored (not in a world)");
+					} else if (currentScreen(client) != null) {
+						SkyLyricsClient.LOG.info("Test hook: pause ignored (a screen is already open)");
+					} else {
+						showScreen(client, new net.minecraft.client.gui.screens.PauseScreen(true));
+					}
+				}
+				case "quit" -> {
+					if (client.level == null) {
+						SkyLyricsClient.LOG.info("Test hook: quit ignored (not in a world)");
+					} else {
+						leaveWorld(client);
+					}
+				}
+				case "join" -> joinWorld(client, arg);
+				case "inventory" -> {
+					if (client.level == null || client.player == null) {
+						SkyLyricsClient.LOG.info("Test hook: inventory ignored (not in a world)");
+					} else {
+						showScreen(client, new net.minecraft.client.gui.screens.inventory.InventoryScreen(client.player));
 					}
 				}
 				case "burst" -> startBurst(arg, false);
