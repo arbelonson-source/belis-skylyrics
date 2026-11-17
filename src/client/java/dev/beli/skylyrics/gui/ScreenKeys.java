@@ -25,4 +25,19 @@ final class ScreenKeys {
 	static int focusDir(boolean cycleFocus, boolean shift, boolean up) {
 		return cycleFocus ? (shift ? -1 : 1) : (up ? -1 : 1);
 	}
+
+	/** The library's search text after pasting {@code clip}: odd spaces become one, and what typing would refuse is dropped. */
+	static String libraryPasted(String query, String clip) {
+		return SettingsSearch.pasted(query, clip);
+	}
+
+	/** Ctrl+C (0) or Ctrl+X (1) on the search box; -1 for any other key. */
+	static int copyOrCut(int key, boolean ctrl) {
+		return !ctrl ? -1 : key == 67 ? 0 : key == 88 ? 1 : -1;
+	}
+
+	/** A typed character is ignored while the key that opened the library is still held: its repeats are not a search. */
+	static boolean acceptsTypedChar(boolean heldFromOpen) {
+		return !heldFromOpen;
+	}
 }
