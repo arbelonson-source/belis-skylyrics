@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.DoublePredicate;
+import java.util.function.Supplier;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
@@ -30,6 +31,8 @@ import org.jspecify.annotations.Nullable;
 import dev.beli.skylyrics.config.SkyLyricsConfig.WorldArrival;
 import dev.beli.skylyrics.config.SkyLyricsConfig.WorldLeave;
 import dev.beli.skylyrics.render.LyricsRenderer.Display;
+import dev.beli.skylyrics.SkyLyricsClient;
+import dev.beli.skylyrics.dev.DevTestHook;
 
 /**
  * The "words in the world" layout: every word or two of a line pops up as it's sung, on its own card floating a
@@ -93,6 +96,8 @@ final class WorldWords {
 	static final int MAX_CARDS = 7;
 	/** A card cut short to make room fades out over this many seconds. */
 	private static final float CUT = 0.3f;
+	/** How long a word goes on being cut by its own line starting over: quick, since the new words are written over it. */
+	private static final float CUT_OWN = 0.1f;
 	/** After a jump in the song, at most this many of the skipped pieces are spawned (the latest ones). */
 	static final int CATCH_UP = 2;
 	/** Once its words are over, a card fades out over this many seconds by default (the setting). */
@@ -233,6 +238,8 @@ final class WorldWords {
 		int goneRgb = -1;
 		/** When it was cut short to make room for newer cards, or -1. */
 		long cutAt = -1;
+		/** How long the cut takes to fade it out, in seconds. */
+		float cutFor = CUT;
 		/** A new song's title: it keeps its own time, and stays while the lyrics change over. */
 		boolean title;
 		/** When it started dropping away because you died, or -1. */
@@ -294,6 +301,8 @@ final class WorldWords {
 	private @Nullable Sentence sentence;
 	/** The line written before it, which the next line of a verse goes under. */
 	private @Nullable Sentence last;
+	/** The sentences this lyric line has already started over from (it filled the sky, or you turned away), whose words may still show. */
+	private final List<Sentence> earlier = new ArrayList<>();
 	private int maxCards = MAX_CARDS;
 	/** The glow's own colour, or -1 to glow in the words' colour. */
 	private int glowRgb = -1;
@@ -341,6 +350,24 @@ final class WorldWords {
 		}
 	}
 
+	/** Whether this is the dev game (the test hook is on); false in plain tests and in normal play. Read once. */
+	private static final boolean HOOK = hookOn();
+
+	private static boolean hookOn() {
+		try {
+			return DevTestHook.enabled();
+		} catch (RuntimeException | LinkageError e) {
+			return false;
+		}
+	}
+
+	/** Says why a flowing line starts over, in the dev game only (never in normal play). */
+	private static void startsOver(Supplier<String> why) {
+		if (HOOK) {
+			SkyLyricsClient.LOG.info("Test hook: world line starts over ({})", why.get());
+		}
+	}
+
 	void clear() {
 		cards.clear();
 		swung = false;
@@ -354,13 +381,16 @@ final class WorldWords {
 	void rewind(long now) {
 		letGo(now);
 		spawned = 0;
+		startsOver(() -> "other: rewind (the song jumped back)");
 		sentence = null;
 		last = null;
+		earlier.clear();
 		recent[0] = recent[1] = -1;
 	}
 
 	/** Starts over for new lyrics, keeping a song title that's up. */
 	void newLyrics() {
+		startsOver(() -> "other: newLyrics (new lyrics, a style or font change, a world change)");
 		cards.removeIf(c -> !c.title);
 		line = Integer.MIN_VALUE;
 		spawned = 0;
@@ -368,6 +398,7 @@ final class WorldWords {
 		lineText = null;
 		sentence = null;
 		last = null;
+		earlier.clear();
 		recent[0] = recent[1] = -1;
 	}
 
@@ -650,7 +681,12 @@ final class WorldWords {
 
 	/** How visible a card cut short {@code seconds} ago still is. */
 	static float cutAlpha(float seconds) {
-		return 1 - Mth.clamp(seconds / CUT, 0, 1);
+		return cutAlpha(seconds, CUT);
+	}
+
+	/** The same for a cut that takes {@code length} seconds. */
+	static float cutAlpha(float seconds, float length) {
+		return 1 - Mth.clamp(seconds / length, 0, 1);
 	}
 
 	/**
@@ -836,8 +872,10 @@ final class WorldWords {
 		this.maxCards = Math.max(1, maxCards);
 		this.fade = Math.max(0.1f, fade);
 		if (flow != this.flow) {
+			startsOver(() -> "other: the Flow setting changed");
 			sentence = null;
 			last = null;
+			earlier.clear();
 		}
 		this.flow = flow;
 	}
@@ -961,8 +999,10 @@ final class WorldWords {
 			measureLine(font, style);
 			measuredAt = epoch;
 			spawned = 0;
+			startsOver(() -> "other: a new lyric line");
 			last = sentence;
 			sentence = null;
+			earlier.clear();
 			if (hold) {
 				letGo(now);
 			}
@@ -1000,7 +1040,7 @@ final class WorldWords {
 		}
 		for (Iterator<Card> it = cards.iterator(); it.hasNext(); ) {
 			Card c = it.next();
-			if (c.goneAt >= 0 && now - c.goneAt > fade * 1e9f || c.cutAt >= 0 && now - c.cutAt > CUT * 1e9f) {
+			if (c.goneAt >= 0 && now - c.goneAt > fade * 1e9f || c.cutAt >= 0 && now - c.cutAt > c.cutFor * 1e9f) {
 				it.remove();
 			}
 		}
@@ -1378,7 +1418,10 @@ final class WorldWords {
 		// Older words this one still lands on (a crowded sky, or the last line still fading) go at once, rather than
 		// show through it for the whole fade
 		float[] mine = footprint(pos.subtract(eye), 0, halfW * shrink, halfH * shrink);
-		cutUnder(under, shown, mine, sentence, before, now);
+		if (before != null && sentence != before && !earlier.contains(before)) {
+			earlier.add(before);
+		}
+		cutUnder(under, shown, mine, sentence, earlier, now);
 		// The Tilt setting scales every angle, so at 0 a card faces you square on
 		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
@@ -1411,20 +1454,24 @@ final class WorldWords {
 
 	/**
 	 * Cuts the older words a new card at {@code mine} lands on. A word already fading goes on any touch, a lit one only
-	 * when mostly covered. The line being written is left alone ({@code current}); but when it has just started over
-	 * ({@code before} was the line a moment ago, and a full one runs on at the top again), its own earlier words
-	 * under the new one go on any touch too, so the rest of the line is written onto cleared sky, like a page turned.
+	 * when mostly covered. The line being written is left alone ({@code current}); but the words of the sentences this
+	 * lyric line has already started over from ({@code earlier}: it filled the sky, or you turned away) go on any
+	 * touch, and quickly, for the rest of the line: they are written over, so the rest of the line lands on cleared sky.
 	 */
-	private static void cutUnder(List<Card> under, List<float[]> shown, float[] mine, @Nullable Sentence current, @Nullable Sentence before, long now) {
+	private static void cutUnder(List<Card> under, List<float[]> shown, float[] mine, @Nullable Sentence current, List<Sentence> earlier, long now) {
 		for (int k = 0; k < shown.size(); k++) {
 			float[] o = shown.get(k);
 			Card c = under.get(k);
 			if (c.title || c.of != null && c.of == current) {
 				continue;
 			}
-			float most = c.goneAt < 0 && !(c.of != null && c.of == before) ? OVERLAP : 1;
+			boolean own = c.of != null && earlier.contains(c.of);
+			float most = c.goneAt < 0 && !own ? OVERLAP : 1;
 			if (Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * most && Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * most) {
 				c.cutAt = now;
+				if (own) {
+					c.cutFor = CUT_OWN;
+				}
 			}
 		}
 	}
@@ -1483,6 +1530,7 @@ final class WorldWords {
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm) {
 		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
 		if (sentence != null && (sentence.lost(centre[0], centre[1] - LIFT, aside) || sentence.full())) {
+			startsOver(() -> sentence.full() ? "full: top " + sentence.top + " rows " + sentence.rows : "lost: view " + centre[0] + "/" + centre[1] + " line " + sentence.left + "+" + sentence.width + " home " + sentence.home);
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
 			sentence = null;
 			last = null;
@@ -2231,7 +2279,7 @@ final class WorldWords {
 			float wane = c.goneAt < 0 || melting ? 1 : goneAlpha(gone, fade);
 			float melt = melting ? Mth.clamp(gone / fade, 0, 1) : -1;
 			float a = alpha * Mth.clamp(age / fadeIn, 0, 1) * wane
-					* (c.cutAt < 0 ? 1 : cutAlpha((now - c.cutAt) / 1e9f));
+					* (c.cutAt < 0 ? 1 : cutAlpha((now - c.cutAt) / 1e9f, c.cutFor));
 			float fell = c.fellAt < 0 ? 0 : (now - c.fellAt) / 1e9f;
 			if (c.fellAt >= 0) {
 				a *= goneAlpha(fell, FALL_TIME);

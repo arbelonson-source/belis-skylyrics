@@ -1045,12 +1045,12 @@ class WorldWordsTest {
 	}
 
 	/**
-	 * A flowing line that fills the sky and starts over at the top clears its own first words that the new one lands on,
-	 * on any touch, while the line still being written is left alone. Cards are put in by reflection (placing one for
-	 * real needs a camera and a font).
+	 * A flowing line that starts over (it filled the sky, or you turned away) clears its own earlier words that any
+	 * later piece lands on, on any touch and quickly, while the line still being written and other lines' words are
+	 * treated as before. Cards are put in by reflection (placing one for real needs a camera and a font).
 	 */
 	@Test
-	void aLineStartingOverClearsItsOwnFirstWordsUnderIt() throws Exception {
+	void aLineStartingOverClearsItsOwnEarlierWordsUnderEveryLaterPiece() throws Exception {
 		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
 		var make = cardClass.getDeclaredConstructors()[0];
 		make.setAccessible(true);
@@ -1058,27 +1058,32 @@ class WorldWordsTest {
 		of.setAccessible(true);
 		var cutAt = cardClass.getDeclaredField("cutAt");
 		cutAt.setAccessible(true);
+		var cutFor = cardClass.getDeclaredField("cutFor");
+		cutFor.setAccessible(true);
 		var cut = WorldWords.class.getDeclaredMethod("cutUnder", List.class, List.class, float[].class,
-				WorldWords.Sentence.class, WorldWords.Sentence.class, long.class);
+				WorldWords.Sentence.class, List.class, long.class);
 		cut.setAccessible(true);
-		WorldWords.Sentence old = new WorldWords.Sentence(0, 0, 10, 0), fresh = new WorldWords.Sentence(0, 0, 10, 0);
+		WorldWords.Sentence old = new WorldWords.Sentence(0, 0, 10, 0), fresh = new WorldWords.Sentence(0, 0, 10, 0),
+				other = new WorldWords.Sentence(0, 0, 10, 0);
 		List<Object> under = new ArrayList<>();
-		for (int i = 0; i < 3; i++) {
-			Object card = make.newInstance(LyricsRenderer.Display.of("WORD" + i), new float[] {1}, Vec3.ZERO, 0f, 0f, 0f, 1f, 0L);
-			of.set(card, old);
+		WorldWords.Sentence[] owners = {old, old, fresh, other};
+		for (WorldWords.Sentence owner : owners) {
+			Object card = make.newInstance(LyricsRenderer.Display.of("WORD"), new float[] {1}, Vec3.ZERO, 0f, 0f, 0f, 1f, 0L);
+			of.set(card, owner);
 			under.add(card);
 		}
-		// Each old word is 4 degrees wide and 2 high; the new one sits across the edge of the first (a touch, not mostly covered)
-		List<float[]> shown = List.of(new float[] {0, 0, 2, 1}, new float[] {20, 0, 2, 1}, new float[] {0, 20, 2, 1});
-		float[] mine = {3.5f, 0, 2, 1};
-		// Still writing the same line: nothing is cut
-		cut.invoke(null, under, shown, mine, old, old, 7L);
+		// Each word is 4 degrees wide and 2 high; a new piece sits across the edge of a word: a touch, not mostly covered
+		List<float[]> shown = List.of(new float[] {0, 0, 2, 1}, new float[] {0, 20, 2, 1}, new float[] {0, 0, 2, 1}, new float[] {0, 0, 2, 1});
+		// Still the first sentence of the line: nothing is cut
+		cut.invoke(null, under, shown, new float[] {3.5f, 0, 2, 1}, old, List.of(), 7L);
 		assertEquals(-1L, cutAt.getLong(under.get(0)), "the line being written keeps its words");
-		// The line started over: the word it lands on goes, the others stay
-		cut.invoke(null, under, shown, mine, fresh, old, 7L);
-		assertEquals(7L, cutAt.getLong(under.get(0)), "the first word under the restart goes at once");
-		assertEquals(-1L, cutAt.getLong(under.get(1)));
-		assertEquals(-1L, cutAt.getLong(under.get(2)));
+		// The line has started over, and this is a LATER piece of it (the earlier-sentences list, not just the last one)
+		cut.invoke(null, under, shown, new float[] {3.5f, 0, 2, 1}, fresh, List.of(old), 7L);
+		assertEquals(7L, cutAt.getLong(under.get(0)), "an earlier word under a later piece goes on a touch");
+		assertEquals(0.1f, cutFor.getFloat(under.get(0)), 1e-6, "and quickly, since it is written over");
+		assertEquals(-1L, cutAt.getLong(under.get(1)), "a word the piece does not touch stays");
+		assertEquals(-1L, cutAt.getLong(under.get(2)), "the line being written keeps its words");
+		assertEquals(-1L, cutAt.getLong(under.get(3)), "another line's lit word is cut only when mostly covered");
 	}
 
 	@Test
