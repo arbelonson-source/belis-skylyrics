@@ -369,4 +369,20 @@ class RecordCardTest {
 		assertEquals(5f, b[1]);
 		assertEquals(5f + TopBarLayout.PILL_H * 1.5f, b[3], 1e-3f);
 	}
+
+	@Test
+	void f3HidesTopCardsAndTallBottomLeftCards() {
+		assertTrue(RecordCard.f3Covers(CardCorner.TOP_LEFT, 4, true));
+		assertTrue(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 200, true));
+		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 400, true));
+		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_RIGHT, 200, true));
+		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 200, false));
+	}
+
+	@Test
+	void aSongLengthOverADayIsUnknown() {
+		assertEquals(-1f, TopBarLayout.progress(1000, 1L << 62));
+		assertEquals(-1f, TopBarLayout.progress(1000, TopBarLayout.MAX_LENGTH_MS + 1));
+		assertEquals(0.5f, TopBarLayout.progress(500, 1000));
+	}
 }

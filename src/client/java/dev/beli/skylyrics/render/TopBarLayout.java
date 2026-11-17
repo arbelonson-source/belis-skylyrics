@@ -418,9 +418,12 @@ final class TopBarLayout {
 		return (spin + speed * turnsPerSecond * (float) (2 * Math.PI) * dt * motion) % (float) (2 * Math.PI);
 	}
 
-	/** How much of the song has played, 0 to 1, or -1 when the player doesn't say how long it is. */
+	/** A song longer than this is a bogus length (a player's garbage value), treated as unknown. */
+	static final long MAX_LENGTH_MS = 24L * 60 * 60 * 1000;
+
+	/** How much of the song has played, 0 to 1, or -1 when the player doesn't say how long it is (or says over 24 hours). */
 	static float progress(long positionMs, long lengthMs) {
-		if (lengthMs <= 0) {
+		if (lengthMs <= 0 || lengthMs > MAX_LENGTH_MS) {
 			return -1;
 		}
 		return Math.clamp(positionMs / (float) lengthMs, 0f, 1f);
