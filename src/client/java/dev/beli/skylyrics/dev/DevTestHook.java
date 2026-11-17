@@ -80,6 +80,12 @@ import dev.beli.skylyrics.media.DemoSource;
  * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
  * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
  * highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
+ * <p>
+ * {@code seek <seconds>} moves the demo song to that second (decimal, e.g. {@code seek 12.5}); a leading sign is relative to
+ * now ({@code seek -3} three seconds back, {@code seek +3} forward). It goes through the tracker like the Now playing bar's
+ * click, so the lyrics notice the jump as they would a player's seek; the position shows from the next poll. Only the demo
+ * song can be seeked: otherwise it logs "Test hook: seek needs the demo song". {@code where} logs the position and the line
+ * the lyrics show there, e.g. "Test hook: at 23.40 s, line 5 'Six seven eight'" (line -1 before the first line).
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -346,6 +352,30 @@ public final class DevTestHook {
 
 	private static void swapLyrics(dev.beli.skylyrics.lyrics.Lyrics lyrics) {
 		SkyLyricsClient.get().lyrics().swapLyricsForTest(lyrics);
+	}
+
+	/** "seek 12.5" / "seek -3": moves the demo song through the tracker, as the Now playing bar's click does. */
+	private static void seek(String arg) {
+		dev.beli.skylyrics.media.MediaTracker tracker = SkyLyricsClient.get().tracker();
+		if (!DemoSource.PLAYER.equals(tracker.track().player())) {
+			SkyLyricsClient.LOG.warn("Test hook: seek needs the demo song");
+			return;
+		}
+		long target = SeekArg.targetMs(arg.strip(), tracker.positionMs(), DemoSource.TRACK.lengthMs());
+		tracker.seek(target);
+		SkyLyricsClient.LOG.info("Test hook: seeking to {} s", String.format(java.util.Locale.ROOT, "%.2f", target / 1000.0));
+	}
+
+	/** "where": logs the song position and the line the lyrics show there (the renderer's own time: offset and lead included). */
+	private static void where() {
+		SkyLyricsClient mod = SkyLyricsClient.get();
+		dev.beli.skylyrics.media.Track track = mod.tracker().track();
+		long position = mod.tracker().positionMs();
+		dev.beli.skylyrics.lyrics.Lyrics lyrics = mod.lyrics().lyrics();
+		int index = lyrics.indexAt(position + SkyLyricsConfig.get().offsetFor(track) + dev.beli.skylyrics.render.LyricsRenderer.LEAD_MS);
+		dev.beli.skylyrics.lyrics.LyricLine line = lyrics.get(index);
+		SkyLyricsClient.LOG.info("Test hook: at {} s, line {} '{}'", String.format(java.util.Locale.ROOT, "%.2f", position / 1000.0), index,
+				line == null ? "" : line.text());
 	}
 
 	/** "set field value": changes one config field for this run (not saved). */
@@ -658,6 +688,8 @@ public final class DevTestHook {
 				}
 				case "burst" -> startBurst(arg, false);
 				case "burstat" -> startBurst(arg, true);
+				case "seek" -> seek(arg);
+				case "where" -> where();
 				case "meteor" -> {
 					String[] a = arg.isBlank() ? new String[0] : arg.split("\\s+");
 					float yaw = a.length > 0 ? Float.parseFloat(a[0]) : client.player != null ? client.player.getYRot() : 0;

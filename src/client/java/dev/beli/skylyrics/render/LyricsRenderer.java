@@ -66,7 +66,7 @@ public final class LyricsRenderer {
 	/** A sliding line comes in from, and leaves to, this share of the line width off to the side. */
 	static final float SLIDE_PART = 0.35f;
 	/** Lines show a little before their timestamp so the animation has finished when the singing starts. */
-	static final long LEAD_MS = 150;
+	public static final long LEAD_MS = 150;
 	/** Copies of a word drawn around it for the glow, in the inner and the outer ring. */
 	private static final int GLOW_INNER = 6, GLOW_OUTER = 4;
 	/** Copies in the one ring that light effects draw. */
