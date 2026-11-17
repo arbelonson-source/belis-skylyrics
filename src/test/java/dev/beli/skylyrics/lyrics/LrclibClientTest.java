@@ -98,14 +98,23 @@ class LrclibClientTest {
 	}
 
 	@Test
-	void getBusyAnswerIsReportedWithoutSearching() {
+	void issue1GetAnswers503ButSearchWorksFindsLyrics() throws Exception {
 		getCode = 503;
 		searchBody = HIT;
+		LrclibClient.Result r = client.find(TRACK);
+		assertEquals("[00:01.00]A made-up line", r.synced());
+		assertEquals(List.of("/api/get", "/api/search"), asked);
+	}
+
+	@Test
+	void getBusyThenSearchBusyReportsTheSearchAnswerWithoutABurst() {
+		getCode = 503;
+		searchCode = 503;
 		retryAfter = "9";
 		LrclibClient.StatusException e = assertThrows(LrclibClient.StatusException.class, () -> client.find(TRACK));
 		assertEquals(503, e.status());
 		assertEquals(9000, e.retryAfterMs());
-		assertEquals(1, asked.size());
+		assertEquals(2, asked.size());
 	}
 
 	@Test
