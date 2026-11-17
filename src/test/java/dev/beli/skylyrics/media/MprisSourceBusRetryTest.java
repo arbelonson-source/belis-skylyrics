@@ -54,6 +54,18 @@ class MprisSourceBusRetryTest {
 	}
 
 	@Test
+	void closeEndsTheBackOffSoAReconnectTriesAtOnce() throws Exception {
+		MprisSource s = source();
+		assertThrows(IOException.class, s::connection);
+		assertThrows(IOException.class, s::connection); // still waiting
+		assertEquals(1, builds.get());
+		s.close();
+		busUp = true;
+		s.connection();
+		assertEquals(2, builds.get());
+	}
+
+	@Test
 	void theSameReasonIsGivenWhileWaiting() throws Exception {
 		MprisSource s = source();
 		IOException first = assertThrows(IOException.class, s::connection);

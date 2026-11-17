@@ -651,6 +651,10 @@ public final class MprisSource implements MediaSource {
 	@Override
 	public void close() {
 		closed = true;
+		// A deliberate reconnect must not wait out the back-off of an earlier failure
+		connectFailures = 0;
+		retryAt = 0;
+		lastConnectFailure = null;
 		// The maps belong to the poll: clear them here only if no poll is running (or it ends within a moment),
 		// otherwise the poll clears them itself as it finishes
 		boolean got = false;
