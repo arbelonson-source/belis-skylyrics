@@ -1423,7 +1423,8 @@ final class WorldWords {
 		float halfW, halfH, shrink;
 		Vec3 pos;
 		seenHalf = halfView(ScreenLayer.tanHalfV(), sliderFov());
-		seenLow = lowestSeen(camera.xRot(), seenHalf);
+		// The line is laid out round centre, so the bottom of what it may use is judged from there, as rowFits does
+		seenLow = lowestSeen(centre[1], seenHalf);
 		for (boolean again = false;; again = true) {
 			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
 			Vec3 dir = direction(spot[0], spot[1]);

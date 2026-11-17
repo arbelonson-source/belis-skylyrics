@@ -1507,6 +1507,16 @@ class WorldWordsTest {
 		}
 	}
 
+	/** Words fixed at a pitch the camera is not looking at: the line is judged from where it is laid out, not from the camera. */
+	@Test
+	void aLineFixedAwayFromTheCameraFillsUpByItsOwnPitch() {
+		// Camera at the horizon (pitch 0), words fixed 40 degrees down: the line may go down to about 50 there, not stop at the camera's 33
+		WorldWords words = longLine(pos -> false, true, 0f, 40f, 12345);
+		assertFalse(words.earlierSentences().isEmpty(), "the line started over");
+		float old = words.earlierSentences().get(0).top;
+		assertTrue(old > 45, "the old line went on down to " + old);
+	}
+
 	/** A hillside below: a flowing line that reaches it starts over at the top, and every word of the old one is cut. */
 	@Test
 	void aBuriedPieceOfALineUnderWayStartsTheLineOverAndCutsItsOldWords() throws Exception {
