@@ -69,7 +69,7 @@ import dev.beli.skylyrics.media.DemoSource;
  * scrolls the open screen's centre by that much (negative scrolls the other way). {@code search <text>} types into the
  * settings screen's search box. {@code screen <class name>} opens another mod's screen by class name (e.g. Mod Menu's list).
  * {@code title} opens the title screen, which {@code screen} can't in the production client. {@code set <field> <value>} changes
- * one config field for this run only (not saved). {@code fastlines <ms> <a | b | c>} is {@code lines} with one line every
+ * one config field without saving it (the settings screen saves everything when it closes). {@code fastlines <ms> <a | b | c>} is {@code lines} with one line every
  * {@code ms} milliseconds. {@code attack on|off} holds the Attack key down or lets go.
  * <p>
  * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
