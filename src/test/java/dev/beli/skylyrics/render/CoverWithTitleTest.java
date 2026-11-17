@@ -52,7 +52,16 @@ class CoverWithTitleTest {
 
 	@Test
 	void theTitleAndTheCoverAgreeInEveryStepOfASongChange() throws Exception {
-		AlbumArt art = new AlbumArt(Executors.newSingleThreadExecutor());
+		java.util.concurrent.ExecutorService pool = Executors.newSingleThreadExecutor();
+		try {
+			coverAndTitleAgree(pool);
+		} finally {
+			pool.shutdownNow();
+		}
+	}
+
+	private void coverAndTitleAgree(java.util.concurrent.ExecutorService pool) throws Exception {
+		AlbumArt art = new AlbumArt(pool);
 		art.fetcher = url -> null;
 		art.load(OLD);
 		art.markUploaded(1); // the old cover is on the GPU
