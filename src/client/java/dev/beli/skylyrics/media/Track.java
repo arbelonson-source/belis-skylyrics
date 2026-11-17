@@ -33,7 +33,37 @@ public record Track(String title, String artist, String album, long lengthMs, St
 			}
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
 		}
-		return SPACES.matcher(b).replaceAll(" ").strip();
+		return cap(SPACES.matcher(b).replaceAll(" ").strip(), MAX_TEXT);
+	}
+
+	/** A title, artist or album longer than this is cut: a player can send anything, and it is drawn and compared all the time. */
+	public static final int MAX_TEXT = 500;
+
+	/**
+	 * Cuts text to at most {@code max} chars, at a space when there is one in the last half, and never inside a surrogate
+	 * pair or between a character and its combining marks, joiners or variation selectors (a half emoji draws as a box).
+	 */
+	public static String cap(String s, int max) {
+		if (s.length() <= max) {
+			return s;
+		}
+		int cut = max;
+		int space = s.lastIndexOf(' ', max);
+		if (space >= max / 2) {
+			cut = space;
+		}
+		while (cut > 0 && (Character.isLowSurrogate(s.charAt(cut)) || joins(s, cut))) {
+			cut--;
+		}
+		return s.substring(0, cut).stripTrailing();
+	}
+
+	private static boolean joins(String s, int cut) {
+		int next = s.codePointAt(cut);
+		int type = Character.getType(next);
+		return next == 0x200D || (next >= 0xFE00 && next <= 0xFE0F) || next >= 0x1F3FB && next <= 0x1F3FF
+				|| type == Character.NON_SPACING_MARK || type == Character.ENCLOSING_MARK || type == Character.COMBINING_SPACING_MARK
+				|| s.charAt(cut - 1) == 0x200D;
 	}
 
 	/**
