@@ -12,6 +12,9 @@ public record Track(String title, String artist, String album, long lengthMs, St
 	/** Players can send line breaks, tabs and text-direction marks in a title; those draw as boxes or flip the title. */
 	public Track {
 		title = cap(clean(title), MAX_TEXT);
+		if (!anyVisible(title)) {
+			title = "";
+		}
 		artist = cap(clean(artist), MAX_TEXT);
 		album = cap(clean(album), MAX_TEXT);
 	}
@@ -55,7 +58,23 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		while (cut > 0 && (Character.isLowSurrogate(s.charAt(cut)) || joins(s, cut))) {
 			cut--;
 		}
+		if (cut == 0) {
+			cut = Character.isLowSurrogate(s.charAt(max)) ? max - 1 : max; // marks all the way: a plain cut beats an empty title
+		}
 		return s.substring(0, cut).stripTrailing();
+	}
+
+	/** False for text made only of spaces, zero-width and other invisible format characters (joiners inside real text don't matter: something else is visible). */
+	private static boolean anyVisible(String s) {
+		for (int i = 0; i < s.length(); ) {
+			int cp = s.codePointAt(i);
+			i += Character.charCount(cp);
+			if (!Character.isWhitespace(cp) && !Character.isSpaceChar(cp) && Character.getType(cp) != Character.FORMAT
+					&& cp != 0x3164 && cp != 0x2800 && cp != 0x115F && cp != 0x1160 && cp != 0x17B4 && cp != 0x17B5 && cp != 0xFFA0) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static boolean joins(String s, int cut) {
