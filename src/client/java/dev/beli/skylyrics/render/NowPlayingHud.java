@@ -19,6 +19,7 @@ import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.Comparator;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -37,7 +38,16 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.network.chat.numbers.NumberFormat;
+import net.minecraft.network.chat.numbers.StyledFormat;
 import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerScoreEntry;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+//? if >=26.2
+/*import net.minecraft.world.scores.TeamColor;*/
 
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.SkyLyricsClient;
@@ -302,7 +312,9 @@ public final class NowPlayingHud {
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
 				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc),
 						actionBarShowing(mc))
-				: Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW));
+				: Math.max(Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW)),
+						TopBarLayout.demoClear(mc.isDemo(), g.guiWidth(), demoTimerWidth(mc),
+								TopBarLayout.barRight(g.guiWidth(), cfg.barSize, fit.pill(), statsW, fit.stats())));
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
@@ -344,6 +356,76 @@ public final class NowPlayingHud {
 		//?}
 	}
 
+	/** How wide the demo's timer text can be (the longer of its two texts), 0 outside the demo. */
+	static float demoTimerWidth(Minecraft mc) {
+		if (!mc.isDemo()) {
+			return 0;
+		}
+		try {
+			return Math.max(mc.font.width(Component.translatable("demo.remainingTime", "00:00")),
+					mc.font.width(Component.translatable("demo.demoExpired")));
+		} catch (RuntimeException e) {
+			return 0;
+		}
+	}
+
+	/** Whether the chat screen is open (the chat's box and the text field are then drawn over the bottom left). */
+	static boolean chatOpen(Minecraft mc) {
+		//? if >=26.2 {
+		/*return mc.gui.screen() instanceof ChatScreen;
+		*///?} else {
+		return mc.screen instanceof ChatScreen;
+		//?}
+	}
+
+	/**
+	 * The scoreboard sidebar's box (left, top, right, bottom) in GUI units as the game draws it for this player: their
+	 * team colour's slot first, else the sidebar slot. Null when no sidebar shows.
+	 */
+	static float[] sidebarBox(Minecraft mc, int guiW, int guiH) {
+		try {
+			if (mc.level == null || mc.player == null) {
+				return null;
+			}
+			Scoreboard scoreboard = mc.level.getScoreboard();
+			Objective objective = null;
+			PlayerTeam team = scoreboard.getPlayersTeam(mc.player.getScoreboardName());
+			if (team != null) {
+				//? if >=26.2 {
+				/*DisplaySlot slot = team.getColor().map(TeamColor::displaySlot).orElse(null);
+				*///?} else {
+				DisplaySlot slot = DisplaySlot.teamColorToSlot(team.getColor());
+				//?}
+				if (slot != null) {
+					objective = scoreboard.getDisplayObjective(slot);
+				}
+			}
+			if (objective == null) {
+				objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+			}
+			if (objective == null) {
+				return null;
+			}
+			NumberFormat format = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT);
+			List<PlayerScoreEntry> entries = scoreboard.listPlayerScores(objective).stream()
+					.filter(entry -> !entry.isHidden())
+					.sorted(Comparator.comparing(PlayerScoreEntry::value).reversed()
+							.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER))
+					.limit(TopBarLayout.SIDEBAR_MAX)
+					.toList();
+			int[] nameW = new int[entries.size()], scoreW = new int[entries.size()];
+			for (int i = 0; i < nameW.length; i++) {
+				PlayerScoreEntry entry = entries.get(i);
+				nameW[i] = mc.font.width(PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName()));
+				scoreW[i] = mc.font.width(entry.formatValue(format));
+			}
+			int widest = TopBarLayout.sidebarWidth(mc.font.width(objective.getDisplayName()), mc.font.width(": "), nameW, scoreW);
+			return TopBarLayout.sidebarBox(guiW, guiH, nameW.length, widest);
+		} catch (RuntimeException | LinkageError e) {
+			return null;
+		}
+	}
+
 	/** How far down a bar at the top must start to keep clear of the potion effect icons (0 when it doesn't reach them). */
 	private static float effectsClear(Minecraft mc, int guiWidth, SkyLyricsConfig cfg, TopBarLayout.Fit fit, float statsW) {
 		int[] counts = RecordCard.effectCounts(mc);
@@ -352,7 +434,8 @@ public final class NowPlayingHud {
 		}
 		// The widest the pill can be, not its moving width, so the bar doesn't hop up and down with each line
 		float right = TopBarLayout.barRight(guiWidth, cfg.barSize, fit.pill(), statsW, fit.stats());
-		return TopBarLayout.effectsClear(guiWidth, right, counts[0], counts[1], RecordCard.GOOD_ROW, RecordCard.BAD_ROW);
+		return TopBarLayout.effectsClear(guiWidth, right, counts[0], counts[1], TopBarLayout.effectRow(RecordCard.GOOD_ROW, mc.isDemo()),
+				TopBarLayout.effectRow(RecordCard.BAD_ROW, mc.isDemo()));
 	}
 
 	/**

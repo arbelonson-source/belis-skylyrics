@@ -184,6 +184,106 @@ final class TopBarLayout {
 		return clear;
 	}
 
+	/** The effect icon rows sit this much lower in the demo, under its timer text. */
+	static final float DEMO_DROP = 15;
+	/** The demo timer text (top right, from y 5) is clear of this line downwards. */
+	static final float DEMO_TIMER_BOTTOM = 16;
+	/** Kept between a card and the box it moved out of. */
+	static final float DODGE_GAP = 3;
+	/** The sidebar's most entries, and the subtitle box's narrowest width we assume (it is as wide as the longest line). */
+	static final int SIDEBAR_MAX = 15;
+	static final float SUBTITLE_MIN_W = 60;
+
+	/** Where the demo's timer text starts, from its width: the game puts it 10 units from the right edge. */
+	static float demoTimerLeft(float guiWidth, float timerW) {
+		return guiWidth - timerW - 10;
+	}
+
+	/**
+	 * How far down something at the top must start so it stays clear of the demo's timer text: {@link #DEMO_TIMER_BOTTOM}
+	 * when this is the demo and the thing's right edge reaches the text, else 0.
+	 */
+	static float demoClear(boolean demo, float guiWidth, float timerW, float rightEdge) {
+		return demo && rightEdge > demoTimerLeft(guiWidth, timerW) ? DEMO_TIMER_BOTTOM : 0;
+	}
+
+	/** How far the effect rows' ends move down: {@link #DEMO_DROP} in the demo. */
+	static int effectRow(int row, boolean demo) {
+		return demo ? row + (int) DEMO_DROP : row;
+	}
+
+	/** The widest line of the scoreboard sidebar, as the game works it out: the title, and each name with its score after a ": ". */
+	static int sidebarWidth(int titleW, int colonW, int[] nameW, int[] scoreW) {
+		int w = titleW;
+		for (int i = 0; i < nameW.length; i++) {
+			w = Math.max(w, nameW[i] + (scoreW[i] > 0 ? colonW + scoreW[i] : 0));
+		}
+		return w;
+	}
+
+	/**
+	 * The scoreboard sidebar's box (left, top, right, bottom) in GUI units, as the game draws it: {@code entries} lines
+	 * (at most {@link #SIDEBAR_MAX}) of 9 under a title line, centred a third of the entries' height under the screen's
+	 * middle, its widest line {@code widest} wide, 5 from the right edge on the left and 1 short of it on the right.
+	 */
+	static float[] sidebarBox(int guiWidth, int guiHeight, int entries, int widest) {
+		int m = Math.min(SIDEBAR_MAX, Math.max(0, entries));
+		int bottom = guiHeight / 2 + m * 9 / 3;
+		return new float[] {guiWidth - widest - 5, bottom - m * 9 - 10, guiWidth - 1, bottom};
+	}
+
+	/**
+	 * The subtitle boxes' reach (left, top, right, bottom) for {@code lines} showing: they sit at the right edge, the
+	 * first 10 tall with its middle 35 above the bottom and each next 10 higher. Their width isn't known, so a
+	 * {@link #SUBTITLE_MIN_W} wide box is taken, which is as narrow as one gets.
+	 */
+	static float[] subtitleBox(int guiWidth, int guiHeight, int lines) {
+		int n = Math.max(1, lines);
+		return new float[] {guiWidth - SUBTITLE_MIN_W, guiHeight - 40 - 10 * (n - 1), guiWidth, guiHeight - 30};
+	}
+
+	/** Whether a card with its top left at ({@code x}, {@code y}) and this size overlaps a box (left, top, right, bottom). */
+	static boolean overlaps(float[] box, float x, float y, float w, float h) {
+		return box != null && x < box[2] && x + w > box[0] && y < box[3] && y + h > box[1];
+	}
+
+	/**
+	 * Where a card's top should be so it clears the boxes: unchanged when it overlaps none, else moved above or below
+	 * the one it overlaps (the nearer way that fits between {@code minTop} and {@code maxBottom}). NaN when it can't
+	 * fit, which the caller shows as the card faded out.
+	 */
+	static float dodgeY(float x, float y, float w, float h, float minTop, float maxBottom, float[]... boxes) {
+		float cur = y;
+		for (int pass = 0; pass <= boxes.length; pass++) {
+			boolean moved = false;
+			for (float[] box : boxes) {
+				if (!overlaps(box, x, cur, w, h)) {
+					continue;
+				}
+				float up = box[1] - DODGE_GAP - h, down = box[3] + DODGE_GAP;
+				boolean upOk = up >= minTop, downOk = down + h <= maxBottom;
+				if (!upOk && !downOk) {
+					return Float.NaN;
+				}
+				cur = upOk && (!downOk || cur - up <= down - cur) ? up : down;
+				moved = true;
+			}
+			if (!moved) {
+				return cur;
+			}
+		}
+		return Float.NaN;
+	}
+
+	/**
+	 * Whether the open chat screen covers a card: the chat's box runs from the left edge, {@code chatW} wide (and a
+	 * little more for its backdrop), up from 40 above the bottom for {@code chatH}, both already times the chat's scale.
+	 */
+	static boolean chatCovers(int guiHeight, float chatW, float chatH, float x, float y, float w, float h) {
+		float[] box = {0, guiHeight - 40 - chatH, chatW + 12, guiHeight - 40};
+		return overlaps(box, x, y, w, h);
+	}
+
 	/** How wide each effect icon's slot is. */
 	static final float EFFECT_W = 25;
 
