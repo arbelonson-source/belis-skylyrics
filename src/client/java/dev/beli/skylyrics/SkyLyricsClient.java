@@ -96,6 +96,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private CoverCache covers;
 	private LyricsRenderer renderer;
 	private boolean attackHeld;
+	// Held keys repeat their click; these act once per press (the timing keys keep repeating, stepping while held)
+	private final KeyPresses toggleLyricsPress = new KeyPresses();
+	private final KeyPresses playPausePress = new KeyPresses();
+	private final KeyPresses nextTrackPress = new KeyPresses();
+	private final KeyPresses previousTrackPress = new KeyPresses();
 	private SkyEffects sky;
 	private NowPlayingHud hud;
 	private RecordCard card;
@@ -456,7 +461,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			//?}
 			}
 		}
-		while (toggleLyrics.consumeClick()) {
+		if (toggleLyricsPress.fires(drain(toggleLyrics), toggleLyrics.isDown())) {
 			SkyLyricsConfig cfg = SkyLyricsConfig.get();
 			cfg.enabled = !cfg.enabled;
 			cfg.save();
@@ -470,13 +475,13 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		while (showNowPlaying.consumeClick()) {
 			hud.toggleForced();
 		}
-		while (playPause.consumeClick()) {
+		if (playPausePress.fires(drain(playPause), playPause.isDown())) {
 			tracker.playPause();
 		}
-		while (nextTrack.consumeClick()) {
+		if (nextTrackPress.fires(drain(nextTrack), nextTrack.isDown())) {
 			tracker.next();
 		}
-		while (previousTrack.consumeClick()) {
+		if (previousTrackPress.fires(drain(previousTrack), previousTrack.isDown())) {
 			tracker.previous();
 		}
 		while (lyricsLate.consumeClick()) {
@@ -615,4 +620,13 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 	}
 	*///?}
+
+	private static int drain(KeyMapping key) {
+		int clicks = 0;
+		while (key.consumeClick()) {
+			clicks++;
+		}
+		return clicks;
+	}
+
 }
