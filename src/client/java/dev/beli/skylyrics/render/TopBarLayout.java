@@ -233,13 +233,36 @@ final class TopBarLayout {
 	}
 
 	/**
-	 * The subtitle boxes' reach (left, top, right, bottom) for {@code lines} showing: they sit at the right edge, the
-	 * first 10 tall with its middle 35 above the bottom and each next 10 higher. Their width isn't known, so a
-	 * {@link #SUBTITLE_MIN_W} wide box is taken, which is as narrow as one gets.
+	 * The subtitle boxes' reach (left, top, right, bottom) as the game draws them: {@code count} boxes that are all as wide
+	 * as the widest text plus {@code margin} (the "&lt; &gt;" marks and their spaces), halved down to whole units, centred 2
+	 * short of the right edge; the first is 10 tall with its middle 35 above the bottom and each next 10 higher. Null when
+	 * none show.
 	 */
-	static float[] subtitleBox(int guiWidth, int guiHeight, int lines) {
-		int n = Math.max(1, lines);
-		return new float[] {guiWidth - SUBTITLE_MIN_W, guiHeight - 40 - 10 * (n - 1), guiWidth, guiHeight - 30};
+	static float[] subtitleBox(int guiWidth, int guiHeight, int count, int widest, int margin) {
+		if (count <= 0) {
+			return null;
+		}
+		int half = (widest + margin) / 2;
+		return new float[] {guiWidth - 2 * half - 3, guiHeight - 40 - 10 * (count - 1), guiWidth - 1, guiHeight - 30};
+	}
+
+	/** When the live subtitles can't be read: one box of the narrowest width (the "&lt; &gt;" marks and their spaces alone). */
+	static float[] subtitleBoxGuess(int guiWidth, int guiHeight) {
+		return subtitleBox(guiWidth, guiHeight, 1, 0, (int) SUBTITLE_MIN_W);
+	}
+
+	/** The open chat's text field runs from 14 above the bottom edge, across nearly the whole width. */
+	static final float CHAT_INPUT_TOP = 14;
+
+	/** A bottom card's top, lifted to clear the open chat's text field when {@code chatOpen}. */
+	static float aboveChatInput(boolean chatOpen, float y, float h, int guiHeight) {
+		return chatOpen ? Math.min(y, guiHeight - CHAT_INPUT_TOP - 2 - h) : y;
+	}
+
+	/** Whether the open chat's box covers a card: not when the chat is set to Hidden, as the game then draws no box. */
+	static boolean chatBoxCovers(boolean chatOpen, boolean chatHidden, int guiHeight, float chatW, float chatH, float x, float y,
+			float w, float h) {
+		return chatOpen && !chatHidden && chatCovers(guiHeight, chatW, chatH, x, y, w, h);
 	}
 
 	/** Whether a card with its top left at ({@code x}, {@code y}) and this size overlaps a box (left, top, right, bottom). */

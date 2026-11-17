@@ -5,6 +5,7 @@ import net.minecraft.client.gui.Gui;
 //?} else {
 /*import net.minecraft.client.gui.Hud;
 *///?}
+import net.minecraft.client.gui.components.SubtitleOverlay;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
@@ -24,4 +25,8 @@ public interface GuiOverlayAccessor {
 
 	@Accessor("overlayMessageString")
 	Component skylyrics$getOverlayMessageString();
+
+	/** The subtitles (same field name on every version), so the Record card can keep clear of the boxes showing. */
+	@Accessor("subtitleOverlay")
+	SubtitleOverlay skylyrics$getSubtitleOverlay();
 }

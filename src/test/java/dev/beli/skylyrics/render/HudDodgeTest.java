@@ -3,6 +3,8 @@ package dev.beli.skylyrics.render;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
@@ -66,16 +68,57 @@ class HudDodgeTest {
 	}
 
 	@Test
-	void aBottomRightCardLiftsAboveTheSubtitles() {
+	void aBottomRightCardLiftsAboveTheSubtitlesShowing() {
 		int w = 640, h = 360;
 		float[] at = RecordCard.corner(CardCorner.BOTTOM_RIGHT, w, h);
 		assertEquals(308, at[1], 0f);
-		float[] subs = TopBarLayout.subtitleBox(w, h, 1);
-		assertArrayEquals(new float[] {580, 320, 640, 330}, subs);
-		float y = TopBarLayout.dodgeY(at[0], at[1], W, H, 6, h, null, subs);
-		assertEquals(320 - 3 - H, y, 1e-3f);
-		// A second line reaches 10 higher
-		assertEquals(310, TopBarLayout.subtitleBox(w, h, 2)[1], 0f);
+		// One subtitle, text 80 wide, margin 18: half 49, box 98 wide + 1 each side, centred 2 short of the right edge
+		float[] one = TopBarLayout.subtitleBox(w, h, 1, 80, 18);
+		assertArrayEquals(new float[] {539, 320, 639, 330}, one);
+		assertEquals(320 - 3 - H, TopBarLayout.dodgeY(at[0], at[1], W, H, 6, h, null, one), 1e-3f);
+		// Three at once reach 20 higher: guiH - 35 - 2 * 10 - 5
+		float[] three = TopBarLayout.subtitleBox(w, h, 3, 80, 18);
+		assertEquals(h - 35 - 2 * 10 - 5, three[1], 0f);
+		float y = TopBarLayout.dodgeY(at[0], at[1], W, H, 6, h, null, three);
+		assertTrue(y + H <= three[1], "the card's bottom is above the top of the third box");
+		assertFalse(TopBarLayout.overlaps(three, at[0], y, W, H));
+	}
+
+	@Test
+	void withNoSubtitleShowingTheCardStaysDown() {
+		int w = 640, h = 360;
+		assertNull(TopBarLayout.subtitleBox(w, h, 0, 80, 18));
+		float[] at = RecordCard.corner(CardCorner.BOTTOM_RIGHT, w, h);
+		assertEquals(at[1], TopBarLayout.dodgeY(at[0], at[1], W, H, 6, h, (float[]) null, TopBarLayout.subtitleBox(w, h, 0, 80, 18)), 0f);
+		// Only when they can't be read is one narrow box assumed
+		assertNotNull(TopBarLayout.subtitleBoxGuess(w, h));
+	}
+
+	@Test
+	void aNarrowSubtitleBoxLeavesACardFurtherLeftAlone() {
+		// 20 wide text: the box is 2 * 19 + 2 = 40 wide, so a card ending at 300 on a 640 screen is clear
+		float[] box = TopBarLayout.subtitleBox(640, 360, 3, 20, 18);
+		assertFalse(TopBarLayout.overlaps(box, 300 - W, 300, W, H));
+		assertTrue(TopBarLayout.overlaps(TopBarLayout.subtitleBox(640, 360, 3, 400, 18), 300 - W + 200, 300, W, H));
+	}
+
+	@Test
+	void anOpenChatLiftsBottomCardsAboveItsTextField() {
+		int h = 540;
+		float[] at = RecordCard.corner(CardCorner.BOTTOM_RIGHT, 960, h);
+		assertEquals(h - 14 - 2 - H, TopBarLayout.aboveChatInput(true, at[1], H, h), 0f);
+		assertEquals(at[1], TopBarLayout.aboveChatInput(false, at[1], H, h), 0f);
+		// A card already clear of it stays
+		assertEquals(50, TopBarLayout.aboveChatInput(true, 50, H, h), 0f);
+	}
+
+	@Test
+	void chatSetToHiddenDoesNotFadeACard() {
+		int h = 270;
+		float[] at = RecordCard.corner(CardCorner.BOTTOM_LEFT, 480, h);
+		assertTrue(TopBarLayout.chatBoxCovers(true, false, h, 320, 180, at[0], at[1], W, H));
+		assertFalse(TopBarLayout.chatBoxCovers(true, true, h, 320, 180, at[0], at[1], W, H));
+		assertFalse(TopBarLayout.chatBoxCovers(false, false, h, 320, 180, at[0], at[1], W, H));
 	}
 
 	@Test

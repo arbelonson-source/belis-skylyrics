@@ -11,6 +11,7 @@ import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
+import net.minecraft.world.entity.player.ChatVisiblity;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.HumanoidArm;
@@ -548,12 +549,15 @@ public final class RecordCard {
 	 */
 	private static float[] place(Minecraft mc, CardCorner corner, int guiW, int guiH, float h) {
 		float[] at = corner(mc, corner, guiW, guiH, effectsBottom(mc), h);
+		boolean chatOpen = NowPlayingHud.chatOpen(mc);
 		if (corner == CardCorner.BOTTOM_LEFT) {
-			if (NowPlayingHud.chatOpen(mc)) {
+			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
+			if (chatOpen) {
 				double scale = mc.options.chatScale().get();
 				float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
 				float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
-				if (TopBarLayout.chatCovers(guiH, chatW, chatH, at[0], at[1], W, h)) {
+				boolean hidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
+				if (TopBarLayout.chatBoxCovers(true, hidden, guiH, chatW, chatH, at[0], at[1], W, h)) {
 					return null;
 				}
 			}
@@ -562,9 +566,12 @@ public final class RecordCard {
 		if (corner == CardCorner.TOP_LEFT) {
 			return at;
 		}
+		if (corner == CardCorner.BOTTOM_RIGHT) {
+			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
+		}
 		float[] sidebar = NowPlayingHud.sidebarBox(mc, guiW, guiH);
 		float[] subtitles = corner == CardCorner.BOTTOM_RIGHT && mc.options.showSubtitles().get()
-				? TopBarLayout.subtitleBox(guiW, guiH, 1) : null;
+				? NowPlayingHud.subtitleBox(mc, guiW, guiH) : null;
 		if (sidebar == null && subtitles == null) {
 			return at;
 		}

@@ -38,6 +38,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.client.gui.components.SubtitleOverlay;
 import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.network.chat.numbers.NumberFormat;
 import net.minecraft.network.chat.numbers.StyledFormat;
@@ -62,6 +63,8 @@ import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.mixin.BossHealthOverlayAccessor;
 import dev.beli.skylyrics.mixin.GuiOverlayAccessor;
+import dev.beli.skylyrics.mixin.SubtitleOverlayAccessor;
+import dev.beli.skylyrics.mixin.SubtitleTextAccessor;
 import dev.beli.skylyrics.util.Guard;
 
 /**
@@ -376,6 +379,34 @@ public final class NowPlayingHud {
 		*///?} else {
 		return mc.screen instanceof ChatScreen;
 		//?}
+	}
+
+	/**
+	 * The box the game's subtitles cover (left, top, right, bottom), from the entries it showed last frame (it drops expired
+	 * ones as it draws): null when none show. If they can't be read, one narrow box is assumed.
+	 */
+	static float[] subtitleBox(Minecraft mc, int guiW, int guiH) {
+		try {
+			//? if >=26.2 {
+			/*SubtitleOverlay overlay = ((GuiOverlayAccessor) mc.gui.hud).skylyrics$getSubtitleOverlay();
+			*///?} else {
+			SubtitleOverlay overlay = ((GuiOverlayAccessor) mc.gui).skylyrics$getSubtitleOverlay();
+			//?}
+			List<?> shown = ((SubtitleOverlayAccessor) overlay).skylyrics$getAudibleSubtitles();
+			int count = shown.size();
+			if (count == 0) {
+				return null;
+			}
+			int widest = 0;
+			for (int i = 0; i < count; i++) {
+				Component text = ((SubtitleTextAccessor) shown.get(i)).skylyrics$getText();
+				widest = Math.max(widest, mc.font.width(text));
+			}
+			int margin = mc.font.width("<") + mc.font.width(" ") + mc.font.width(">") + mc.font.width(" ");
+			return TopBarLayout.subtitleBox(guiW, guiH, count, widest, margin);
+		} catch (RuntimeException | LinkageError e) {
+			return TopBarLayout.subtitleBoxGuess(guiW, guiH);
+		}
 	}
 
 	/**
