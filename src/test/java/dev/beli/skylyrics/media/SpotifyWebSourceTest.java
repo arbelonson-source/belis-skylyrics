@@ -339,6 +339,8 @@ class SpotifyWebSourceTest {
 		final List<String> refreshed = new ArrayList<>();
 		/** When set, the token endpoint answers 400 with this (non-JSON) body. */
 		String tokenBadBody;
+		/** Runs inside every Web API call, before the answer is handed back. */
+		volatile Runnable duringApi;
 
 		FakeHttp(int apiStatus) {
 			this.apiStatus = apiStatus;
@@ -374,7 +376,10 @@ class SpotifyWebSourceTest {
 					status = 400;
 					body = "{\"error\":\"invalid_grant\",\"error_description\":\"Refresh token revoked\"}";
 				}
-			} else if (!apiAnswers.isEmpty()) {
+			} else if (duringApi != null) {
+				duringApi.run();
+			}
+			if (!token && !apiAnswers.isEmpty()) {
 				String a = apiAnswers.poll();
 				status = a.equals("204") ? 204 : 200;
 				body = a.equals("204") ? "" : a;
@@ -503,6 +508,43 @@ class SpotifyWebSourceTest {
 		}
 		assertFalse(source.pollDue(System.nanoTime() + 3 * SEC / 2, true));
 		assertTrue(source.pollDue(System.nanoTime() + 5 * SEC, true));
+	}
+
+	@Test
+	void anAnswerForTheOldAccountIsDroppedWhenThePlayerSignsOutMeanwhile(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		SpotifyWebSource source = signedIn(dir, http);
+		http.apiAnswers.add(PLAYING);
+		java.util.concurrent.CountDownLatch inFlight = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		http.duringApi = () -> {
+			inFlight.countDown();
+			try {
+				assertTrue(release.await(30, java.util.concurrent.TimeUnit.SECONDS));
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		};
+		Snapshot[] got = new Snapshot[1];
+		Throwable[] failed = new Throwable[1];
+		Thread media = new Thread(() -> {
+			try {
+				got[0] = source.poll();
+			} catch (Throwable t) {
+				failed[0] = t;
+			}
+		});
+		media.start();
+		assertTrue(inFlight.await(30, java.util.concurrent.TimeUnit.SECONDS));
+		source.signOut();
+		release.countDown();
+		media.join(30_000);
+		assertFalse(media.isAlive());
+		assertNull(failed[0]);
+		assertTrue(got[0].track().isNone(), "the old account's song is not handed on");
+		// Between polls the tracker is handed the stored reading: it must be empty too
+		source.settle(System.nanoTime());
+		assertTrue(source.poll().track().isNone());
 	}
 
 	@Test

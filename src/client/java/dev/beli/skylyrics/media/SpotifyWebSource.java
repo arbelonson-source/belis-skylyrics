@@ -134,7 +134,8 @@ public final class SpotifyWebSource implements MediaSource {
 	private long accessUntilNs;
 	private volatile @Nullable ServerSocket loginServer;
 	private volatile String problem = "";
-	private Snapshot last = Snapshot.NOTHING;
+	/** Written under this lock (a sign-out must not be overwritten by an answer for the old account); read freely. */
+	private volatile Snapshot last = Snapshot.NOTHING;
 	/** When Spotify was last asked, how many asks in a row failed, and how long to wait after the last failure. */
 	private long askedNs = System.nanoTime();
 	private int failures;
@@ -769,6 +770,7 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	private Snapshot ask() throws IOException, InterruptedException {
+		long generation = signInGeneration();
 		String token = access();
 		long sent = System.nanoTime();
 		Snapshot before = last;
@@ -783,8 +785,15 @@ public final class SpotifyWebSource implements MediaSource {
 		// The position was read somewhere during the round trip; the middle is the best guess
 		long readAt = sent + (System.nanoTime() - sent) / 2;
 		switch (response.statusCode()) {
-			case 200 -> last = staleGuard.apply(last, parse(response.body(), readAt));
-			case 204 -> last = Snapshot.NOTHING;
+			case 200, 204 -> {
+				synchronized (this) {
+					if (!keepRefresh(generation, signInGeneration)) {
+						// Signed out (or in again) while the answer was on its way: it belongs to the old account
+						return Snapshot.NOTHING;
+					}
+					last = response.statusCode() == 200 ? staleGuard.apply(last, parse(response.body(), readAt)) : Snapshot.NOTHING;
+				}
+			}
 			case 429 -> {
 				holdOff(response);
 				return last;
