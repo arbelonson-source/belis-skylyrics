@@ -21,7 +21,7 @@ Go through these in order:
      3. If your internet is fine, one of the sites may be down or busy, and the other doesn't have this song. The mod keeps trying while the song plays, and doesn't remember the song as "no lyrics", so the lyrics usually appear by themselves once a site is back. Try again in a few minutes, or play another song.
      4. A school, work or antivirus network can block one of the sites. Try another network, or allow `lrclib.net` and `music.163.com`.
      5. On hotel or café Wi-Fi you often have to log in first, and until you do, the lyrics site gets an empty page or a redirect instead of lyrics. The mod counts that as a failed try, not as "no lyrics", so the song isn't remembered as having none. Log in to the Wi-Fi, then press **Retry** or play the song again, and the lyrics come back.
-   - **Instrumental, no words**: the song has no lyrics. A song whose lyrics are only music notes shows as instrumental too.
+   - **Instrumental, no words**: the song has no lyrics. A song whose lyrics are only music notes shows as instrumental too. So does a song where NetEase Cloud Music only has its "pure music, please enjoy" note.
    - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** (Music tab) is on (it is at first). Then the lines are spread evenly over the song.
    - **A line shows as "line / translation"**: some lyrics files give a line and its translation (or romanization) the same time, so the mod shows both together. That is how the file is made.
 
@@ -249,4 +249,4 @@ To get your old values back, close Minecraft, fix the `.bad` file (or copy the v
 
 ## Still stuck?
 
-Open an issue at [github.com/arbelonson-source/belis-skylyrics/issues](https://github.com/arbelonson-source/belis-skylyrics/issues). Say whether you're on Windows, macOS or Linux, which music player you use, what the **Music** tab shows for Status and Lyrics, and whether you use shaders.
+Open an issue at [github.com/arbelonson-source/belis-skylyrics/issues](https://github.com/arbelonson-source/belis-skylyrics/issues). The game log (`logs/latest.log` in your Minecraft folder) is fine to attach: it doesn't show song names or your home folder. Say whether you're on Windows, macOS or Linux, which music player you use, what the **Music** tab shows for Status and Lyrics, and whether you use shaders.

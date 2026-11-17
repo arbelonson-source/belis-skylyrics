@@ -57,7 +57,7 @@ It's free and open source, and it always will be.
 - **Music controls**: play, pause, skip and see the song's progress from the settings screen or with keys you choose.
 - **Pinning and more**: **View lock** keeps the lyrics where you looked, **Show underground too** keeps them visible in caves, an optional **Record card** shows the song with the lines around the one being sung, and a **Recently heard** list in the song library works without Spotify.
 - **Settings with the keyboard** and the Narrator: Tab or the arrow keys, Enter or Space, Page Up and Page Down, Ctrl+Tab, Ctrl+F.
-- **English and Hebrew** settings screen, following your Minecraft language.
+- **English, Spanish, Brazilian Portuguese and Hebrew** settings screen, following your Minecraft language.
 - **Demo song** with made-up lyrics, for trying the settings without music.
 - Works with Sodium, Iris and shader packs. Client side only, so it works in single player and on any server.
 
@@ -110,7 +110,7 @@ More answers: [FAQ](https://github.com/arbelonson-source/belis-skylyrics/blob/ma
 
 - Made by Beli.
 - Lyrics from [LRCLIB](https://lrclib.net) and [NetEase Cloud Music](https://music.163.com). The lyrics belong to their writers and are not part of this mod.
-- Fonts: Poppins, Nunito, Kaushan Script, Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License.
+- Fonts: Poppins, Nunito, Kaushan Script, Noto Sans (Cyrillic, Greek and Vietnamese letters), Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License.
 
 ### License
 
