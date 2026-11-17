@@ -1437,8 +1437,10 @@ class WorldWordsTest {
 	@Test
 	void aLineThatBeganBuriedNeverStartsOver() {
 		WorldWords words = longLine(pos -> true, false);
-		assertTrue(words.earlierSentences().isEmpty() || words.earlierSentences().get(0).full(), "no buried restart");
-		assertFalse(words.earlierSentences().stream().anyMatch(e -> !e.full()), "only a full line may have started over");
+		// Looking at the horizon with the default FOV: a line is full once its rows reach the bottom of the screen
+		float low = WorldWords.lowestSeen(0, WorldWords.halfView(0, 70));
+		assertTrue(words.earlierSentences().isEmpty() || words.earlierSentences().get(0).full(low), "no buried restart");
+		assertFalse(words.earlierSentences().stream().anyMatch(e -> !e.full(low)), "only a full line may have started over");
 	}
 
 	/** One 34 word flowing line written a piece at a time, up to the moment it first starts over (or the end of it). */
