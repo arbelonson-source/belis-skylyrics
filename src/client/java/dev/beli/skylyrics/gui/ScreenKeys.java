@@ -17,24 +17,15 @@ final class ScreenKeys {
 		//?}
 	}
 
-	/** Whether the modifier bits of a key event include Ctrl or Alt (GLFW bits, or SDL's left and right bits on 26.3). */
-	static boolean ctrlOrAlt(int modifiers) {
-		//? if >=26.3 {
-		/*return (modifiers & (0xC0 | 0x300)) != 0;
-		*///?} else {
-		return (modifiers & 6) != 0;
-		//?}
-	}
-
 	/**
 	 * Whether the library's own key closes it. A letter typed on the library starts a search, so a bound letter key
-	 * (like N) closes only with Ctrl or Alt held; Esc is the plain way out. Not while typing or when the key is still held from opening.
+	 * (like N) closes only with Ctrl (Cmd on a Mac) held and Alt not: Ctrl+Alt is AltGr and Option is Alt, which type letters; Esc is the plain way out. Not while typing or when the key is still held from opening.
 	 */
-	static boolean libraryKeyCloses(boolean typing, boolean canSearch, int key, boolean ctrlOrAlt, boolean heldFromOpen) {
+	static boolean libraryKeyCloses(boolean typing, boolean canSearch, int key, boolean ctrl, boolean alt, boolean heldFromOpen) {
 		if (typing || heldFromOpen) {
 			return false;
 		}
-		return ctrlOrAlt || !canSearch || !typesCharacter(key);
+		return ctrl && !alt || !canSearch || !typesCharacter(key);
 	}
 
 	/** Which way the keyboard focus moves: Shift reverses only Tab, the arrows go by their own direction. */
@@ -68,13 +59,14 @@ final class ScreenKeys {
 	}
 
 	/** Ctrl+C (0) or Ctrl+X (1) on the search box; -1 for any other key. {@code letter} is as for {@link #LETTER_C}. */
-	static int copyOrCut(int letter, boolean ctrl) {
-		return !ctrl ? -1 : letter == LETTER_C ? 0 : letter == LETTER_X ? 1 : -1;
+	static int copyOrCut(int letter, boolean ctrl, boolean shift, boolean alt) {
+		// Like vanilla: Ctrl+Alt is AltGr (and Option on a Mac is Alt), which types letters
+		return !ctrl || shift || alt ? -1 : letter == LETTER_C ? 0 : letter == LETTER_X ? 1 : -1;
 	}
 
 	/** Whether the key is Ctrl+F, the settings search. {@code letter} is as for {@link #LETTER_C}. */
-	static boolean isCtrlF(int letter, boolean ctrl) {
-		return ctrl && letter == LETTER_F;
+	static boolean isCtrlF(int letter, boolean ctrl, boolean shift, boolean alt) {
+		return ctrl && !shift && !alt && letter == LETTER_F;
 	}
 
 	/** A typed character is ignored while the key that opened the library is still held: its repeats are not a search. */
