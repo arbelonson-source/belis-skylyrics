@@ -1044,6 +1044,43 @@ class WorldWordsTest {
 		}
 	}
 
+	/**
+	 * A flowing line that fills the sky and starts over at the top clears its own first words that the new one lands on,
+	 * on any touch, while the line still being written is left alone. Cards are put in by reflection (placing one for
+	 * real needs a camera and a font).
+	 */
+	@Test
+	void aLineStartingOverClearsItsOwnFirstWordsUnderIt() throws Exception {
+		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
+		var make = cardClass.getDeclaredConstructors()[0];
+		make.setAccessible(true);
+		var of = cardClass.getDeclaredField("of");
+		of.setAccessible(true);
+		var cutAt = cardClass.getDeclaredField("cutAt");
+		cutAt.setAccessible(true);
+		var cut = WorldWords.class.getDeclaredMethod("cutUnder", List.class, List.class, float[].class,
+				WorldWords.Sentence.class, WorldWords.Sentence.class, long.class);
+		cut.setAccessible(true);
+		WorldWords.Sentence old = new WorldWords.Sentence(0, 0, 10, 0), fresh = new WorldWords.Sentence(0, 0, 10, 0);
+		List<Object> under = new ArrayList<>();
+		for (int i = 0; i < 3; i++) {
+			Object card = make.newInstance(LyricsRenderer.Display.of("WORD" + i), new float[] {1}, Vec3.ZERO, 0f, 0f, 0f, 1f, 0L);
+			of.set(card, old);
+			under.add(card);
+		}
+		// Each old word is 4 degrees wide and 2 high; the new one sits across the edge of the first (a touch, not mostly covered)
+		List<float[]> shown = List.of(new float[] {0, 0, 2, 1}, new float[] {20, 0, 2, 1}, new float[] {0, 20, 2, 1});
+		float[] mine = {3.5f, 0, 2, 1};
+		// Still writing the same line: nothing is cut
+		cut.invoke(null, under, shown, mine, old, old, 7L);
+		assertEquals(-1L, cutAt.getLong(under.get(0)), "the line being written keeps its words");
+		// The line started over: the word it lands on goes, the others stay
+		cut.invoke(null, under, shown, mine, fresh, old, 7L);
+		assertEquals(7L, cutAt.getLong(under.get(0)), "the first word under the restart goes at once");
+		assertEquals(-1L, cutAt.getLong(under.get(1)));
+		assertEquals(-1L, cutAt.getLong(under.get(2)));
+	}
+
 	@Test
 	void aTitleIsNotAnnouncedWhileTheLyricsLoad() {
 		assertFalse(LyricsRenderer.titleCanShow(false, 0.9f), "the old song's words still fading out, new lyrics not in");

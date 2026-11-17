@@ -1311,16 +1311,20 @@ final class WorldWords {
 		for (Card c : cards) {
 			Vec3 to = c.pos.subtract(eye);
 			// The words of the line being written are spaced by the line itself
-			if (to.length() > 1e-3 && (c.of == null || c.of != sentence) && c.cutAt < 0) {
+			if (to.length() > 1e-3 && c.cutAt < 0) {
 				float[] print = footprint(to, riseAfter((now - c.born) / 1e9f + LOOK_AHEAD, rise) * c.lift + leftUp(c, now, LOOK_AHEAD), c.at[c.at.length - 1] * c.size * wordScale / 2,
 						5 * c.size * wordScale);
 				under.add(c);
 				shown.add(print);
-				if (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f) {
-					taken.add(print);
-				}
-				if (c.goneAt < 0) {
-					lit.add(print);
+				// The words of the line being written are spaced by the line itself; they are kept here only so a
+				// restart of that line (see cutUnder) can clear them
+				if (c.of == null || c.of != sentence) {
+					if (c.goneAt < 0 || goneAlpha((now - c.goneAt) / 1e9f, fade) > 0.3f) {
+						taken.add(print);
+					}
+					if (c.goneAt < 0) {
+						lit.add(print);
+					}
 				}
 			}
 		}
@@ -1338,6 +1342,7 @@ final class WorldWords {
 			firm.add(middle);
 		}
 		placing = lineChunks.indexOf(chunk);
+		Sentence before = sentence;
 		float[] spot = flow ? follow(centre, at, size, avoid, firm) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
@@ -1365,16 +1370,7 @@ final class WorldWords {
 		// Older words this one still lands on (a crowded sky, or the last line still fading) go at once, rather than
 		// show through it for the whole fade
 		float[] mine = footprint(pos.subtract(eye), 0, halfW * shrink, halfH * shrink);
-		for (int k = 0; k < shown.size(); k++) {
-			float[] o = shown.get(k);
-			Card c = under.get(k);
-			// A word already fading goes on any touch; a lit one only when mostly covered
-			float most = c.goneAt < 0 ? OVERLAP : 1;
-			if (!c.title && Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * most
-					&& Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * most) {
-				c.cutAt = now;
-			}
-		}
+		cutUnder(under, shown, mine, sentence, before, now);
 		// The Tilt setting scales every angle, so at 0 a card faces you square on
 		float turn = tilt * (flow && sentence != null ? sentence.turn + (next() * 2 - 1) * SENTENCE_WOBBLE
 				: Mth.lerp(next(), TURN_MIN, TURN_MAX) * (next() < 0.5f ? -1 : 1));
@@ -1401,6 +1397,26 @@ final class WorldWords {
 				} else {
 					c.cutAt = now;
 				}
+			}
+		}
+	}
+
+	/**
+	 * Cuts the older words a new card at {@code mine} lands on. A word already fading goes on any touch, a lit one only
+	 * when mostly covered. The line being written is left alone ({@code current}); but when it has just started over
+	 * ({@code before} was the line a moment ago, and a full one runs on at the top again), its own earlier words
+	 * under the new one go on any touch too, so the rest of the line is written onto cleared sky, like a page turned.
+	 */
+	private static void cutUnder(List<Card> under, List<float[]> shown, float[] mine, @Nullable Sentence current, @Nullable Sentence before, long now) {
+		for (int k = 0; k < shown.size(); k++) {
+			float[] o = shown.get(k);
+			Card c = under.get(k);
+			if (c.title || c.of != null && c.of == current) {
+				continue;
+			}
+			float most = c.goneAt < 0 && !(c.of != null && c.of == before) ? OVERLAP : 1;
+			if (Math.abs(Mth.wrapDegrees(mine[0] - o[0])) < (mine[2] + o[2]) * most && Math.abs(mine[1] - o[1]) < (mine[3] + o[3]) * most) {
+				c.cutAt = now;
 			}
 		}
 	}
