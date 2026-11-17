@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -106,12 +107,51 @@ public final class MprisSource implements MediaSource {
 		this.flatpak = flatpak;
 	}
 
-	private synchronized DBusConnection connection() throws Exception {
-		if (connection == null || !connection.isConnected()) {
+	/** Opens the session bus connection; replaced in tests. */
+	interface Connector {
+		DBusConnection connect() throws Exception;
+	}
+
+	private static final long RETRY_FIRST_NS = 5_000_000_000L;
+	private static final long RETRY_MAX_NS = 30_000_000_000L;
+
+	private Connector connector = () -> sessionBus().build();
+	private LongSupplier nanos = System::nanoTime;
+	private Predicate<DBusConnection> connected = DBusConnection::isConnected;
+	private int connectFailures;
+	private long retryAt;
+	private @Nullable IOException lastConnectFailure;
+
+	/** For tests: the way the bus is opened, whether a connection still lives, and the clock. */
+	MprisSource(Supplier<String> preferredPlayer, Connector connector, Predicate<DBusConnection> connected, LongSupplier nanos) {
+		this(preferredPlayer);
+		this.connector = connector;
+		this.connected = connected;
+		this.nanos = nanos;
+	}
+
+	/** How long to wait before trying the bus again after this many failed tries in a row: 5 s, 10 s, 20 s, then 30 s. */
+	static long retryDelayNs(int failuresInARow) {
+		int doublings = Math.max(0, Math.min(failuresInARow, 31) - 1);
+		return Math.min(RETRY_MAX_NS, RETRY_FIRST_NS << Math.min(doublings, 10));
+	}
+
+	synchronized DBusConnection connection() throws Exception {
+		if (connection == null || !connected.test(connection)) {
+			// No bus (a container, a launcher that strips the environment): don't build a connection every poll
+			IOException wait = lastConnectFailure;
+			if (wait != null && nanos.getAsLong() - retryAt < 0) {
+				throw wait;
+			}
 			try {
-				connection = sessionBus().build();
+				connection = connector.connect();
+				connectFailures = 0;
+				lastConnectFailure = null;
 			} catch (Exception e) {
-				throw new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				connectFailures++;
+				retryAt = nanos.getAsLong() + retryDelayNs(connectFailures);
+				lastConnectFailure = new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				throw lastConnectFailure;
 			}
 		}
 		return connection;
