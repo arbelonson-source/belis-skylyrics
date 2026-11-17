@@ -101,6 +101,7 @@
 - **Album cover on a song change.** The last song's album cover no longer shows for a moment next to the new song's title.
 - **Floating distance read-out.** With Floating placement, the **Distance** number now changes on every step of the slider; far out it used to stay the same while the lyrics still moved.
 - **Player from another computer.** When your settings file comes from another computer, the **Player** button shows the player it names instead of "Auto" (SkyLyrics still follows that player when it is open).
+- **Song library.** A song no longer shows twice in Liked songs or Recently heard when the list changes while you scroll, and Recently heard search finds "Beyoncé" when you type "beyonce". When Spotify is busy for a long time, the library says so at once instead of loading for half a minute, and if **Play** can't reach Spotify it says why (signed out or offline). An empty or garbled answer from Spotify (a Wi-Fi login page, say) shows "Spotify didn't answer" instead of an end to the list.
 
 ### Faster
 
