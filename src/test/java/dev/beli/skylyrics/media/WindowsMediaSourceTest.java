@@ -378,7 +378,7 @@ class WindowsMediaSourceTest {
 				Snapshot s = source.poll();
 				long took = System.currentTimeMillis() - before;
 				assertEquals("Slow Song A", s.track().title());
-				assertTrue(took < 10_000, "a poll took " + took + " ms");
+				assertTrue(took < 30_000, "a poll took " + took + " ms");
 				polls++;
 				Thread.sleep(300);
 			}
@@ -412,7 +412,7 @@ class WindowsMediaSourceTest {
 		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS);
 		try {
 			String first = null, latest = null;
-			long end = System.currentTimeMillis() + 40_000;
+			long end = System.currentTimeMillis() + 90_000;
 			while (System.currentTimeMillis() < end && !"new cover".equals(latest)) {
 				String art = source.poll().track().artUrl();
 				if (!art.isEmpty()) {

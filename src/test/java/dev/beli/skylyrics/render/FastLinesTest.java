@@ -14,7 +14,7 @@ class FastLinesTest {
 
 	/** Plays the world words of line 0 frame by frame up to the moment the next line takes over; how many pieces spawned. */
 	private static int spawnedByFlip(long lineMs) {
-		Lyrics lyrics = LrcParser.parseSynced("[00:10.00]" + TEXT + "\n[00:" + String.format("%05.2f", 10 + lineMs / 1000f) + "]next line here\n[00:30.00]end");
+		Lyrics lyrics = LrcParser.parseSynced("[00:10.00]" + TEXT + "\n[00:" + String.format(java.util.Locale.ROOT, "%05.2f", 10 + lineMs / 1000f) + "]next line here\n[00:30.00]end");
 		List<int[]> chunks = WorldWords.chunks(TEXT);
 		int total = TEXT.codePointCount(0, TEXT.length());
 		int spawned = 0, count = 0;

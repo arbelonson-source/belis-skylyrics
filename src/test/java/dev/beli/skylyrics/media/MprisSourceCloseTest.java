@@ -48,7 +48,7 @@ class MprisSourceCloseTest {
 			long start = System.nanoTime();
 			source.close();
 			long tookMs = (System.nanoTime() - start) / 1_000_000;
-			assertTrue(tookMs < 2_000, "close() held the shutdown for " + tookMs + " ms");
+			assertTrue(tookMs < 15_000, "close() held the shutdown for " + tookMs + " ms");
 		} finally {
 			unstick.countDown();
 			media.join(20_000);

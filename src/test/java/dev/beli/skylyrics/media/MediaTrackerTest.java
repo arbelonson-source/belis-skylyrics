@@ -335,12 +335,15 @@ class MediaTrackerTest {
 		FakeSource source = new FakeSource();
 		Track t = song(215_000, "");
 		long now = System.nanoTime();
+		long readAt = System.nanoTime();
 		MediaTracker tracker = feed(source, new Snapshot(t, 50_000, true, now),
 				new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now),
-				new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now), new Snapshot(t, 3_000, true, System.nanoTime()));
+				new Snapshot(t, 0, true, now), new Snapshot(t, 0, true, now), new Snapshot(t, 3_000, true, readAt));
 		try {
 			long pos = tracker.positionMs();
-			assertTrue(pos >= 2_900 && pos <= 6_000, "position " + pos);
+			// 3 s plus however long this machine took since the last reading was made
+			long hi = 3_000 + (System.nanoTime() - readAt) / 1_000_000 + 50;
+			assertTrue(pos >= 2_900 && pos <= hi, "position " + pos + " not in 2900.." + hi);
 		} finally {
 			tracker.shutdown();
 		}
@@ -355,7 +358,8 @@ class MediaTrackerTest {
 				new Snapshot(t, 0, true, now), new Snapshot(t, 500, true, now), new Snapshot(t, 1_000, true, now));
 		try {
 			long pos = tracker.positionMs();
-			assertTrue(pos >= 900 && pos <= 6_000, "position " + pos);
+			long hi = 1_000 + (System.nanoTime() - now) / 1_000_000 + 50;
+			assertTrue(pos >= 900 && pos <= hi, "position " + pos + " not in 900.." + hi);
 		} finally {
 			tracker.shutdown();
 		}
