@@ -71,6 +71,11 @@ import dev.beli.skylyrics.media.DemoSource;
  * {@code title} opens the title screen, which {@code screen} can't in the production client. {@code set <field> <value>} changes
  * one config field without saving it (the settings screen saves everything when it closes). {@code fastlines <ms> <a | b | c>} is {@code lines} with one line every
  * {@code ms} milliseconds. {@code attack on|off} holds the Attack key down or lets go.
+ * {@code meteor [yaw] [elevation]} starts one shooting star right now (it needs the sky shown at night with the
+ * {@code shootingStars} setting on; otherwise it logs why not). Without numbers it starts where the camera looks, at the
+ * camera's elevation kept within the 42 to 70 degrees stars fall from; {@code yaw} is a player's yaw in degrees (as
+ * {@code look} takes) and {@code elevation} is degrees above the horizon, used as given (5 to 85). It logs
+ * "Test hook: meteor started". A star lasts about a second, so follow it with {@code burst}.
  * <p>
  * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
  * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
@@ -651,6 +656,13 @@ public final class DevTestHook {
 				}
 				case "burst" -> startBurst(arg, false);
 				case "burstat" -> startBurst(arg, true);
+				case "meteor" -> {
+					String[] a = arg.isBlank() ? new String[0] : arg.split("\\s+");
+					float yaw = a.length > 0 ? Float.parseFloat(a[0]) : client.player != null ? client.player.getYRot() : 0;
+					float elev = a.length > 1 ? Float.parseFloat(a[1])
+							: dev.beli.skylyrics.render.SkyEffects.meteorElevFor(client.player != null ? client.player.getXRot() : 0);
+					SkyLyricsClient.LOG.info("Test hook: {}", SkyLyricsClient.get().sky().startMeteor(yaw, elev));
+				}
 				case "barprobe" -> {
 					dev.beli.skylyrics.render.BarProbe.request();
 					SkyLyricsClient.LOG.info("Test hook: barprobe waits for the next top bar lyric frame");

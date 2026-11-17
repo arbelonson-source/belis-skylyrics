@@ -598,6 +598,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		return renderer;
 	}
 
+	/** The sky effects, for the dev test hook. */
+	public SkyEffects sky() {
+		return sky;
+	}
+
 	public NowPlayingHud hud() {
 		return hud;
 	}
