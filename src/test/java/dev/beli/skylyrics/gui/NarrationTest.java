@@ -112,7 +112,8 @@ class NarrationTest {
 				() -> 500, v -> {
 				}, SkyLyricsScreen::seconds);
 		assertEquals("Timing, slider, +0.50 seconds", timing.narration());
-		assertEquals("Timing, slider, +0.50 seconds, Late? Move right. Early? Left", timing.narrateHint().narration());
+		assertEquals("Timing, slider, +0.50 seconds", timing.narrateHint().narration());
+		assertEquals("Late? Move right. Early? Left", timing.hint());
 	}
 
 	@Test
