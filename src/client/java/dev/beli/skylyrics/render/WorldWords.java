@@ -1391,7 +1391,7 @@ final class WorldWords {
 		}
 		placing = lineChunks.indexOf(chunk);
 		Sentence before = sentence;
-		float[] spot = flow ? follow(centre, at, size, avoid, firm) : scatter(centre, at, size, avoid);
+		float[] spot = flow ? follow(centre, at, size, avoid, firm, now) : scatter(centre, at, size, avoid);
 		Vec3 dir = direction(spot[0], spot[1]);
 		// Come in front of anything solid on the way out (a tree, a hill, a wall), so the card is neither inside a block
 		// nor hidden behind one
@@ -1449,6 +1449,21 @@ final class WorldWords {
 					c.cutAt = now;
 				}
 			}
+		}
+	}
+
+	/**
+	 * A flowing line starts over: every word still up of this line (the sentence being left and the ones it already
+	 * started over from) fades out at once, quickly, so nothing of it is left to be written over. Other lines' words and
+	 * title cards are left alone.
+	 */
+	static void clearLine(List<Card> cards, @Nullable Sentence leaving, List<Sentence> earlier, long now) {
+		for (Card c : cards) {
+			if (c.title || c.of == null || c.cutAt >= 0 || c.of != leaving && !earlier.contains(c.of)) {
+				continue;
+			}
+			c.cutAt = now;
+			c.cutFor = CUT_OWN;
 		}
 	}
 
@@ -1527,11 +1542,12 @@ final class WorldWords {
 	 * stepping round only what's in {@code firm} (lit words, players, the kept-clear middle) so a fading word never
 	 * pushes one onto a row of its own.
 	 */
-	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm) {
+	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm, long now) {
 		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
 		if (sentence != null && (sentence.lost(centre[0], centre[1] - LIFT, aside) || sentence.full())) {
 			startsOver(() -> sentence.full() ? "full: top " + sentence.top + " rows " + sentence.rows : "lost: view " + centre[0] + "/" + centre[1] + " line " + sentence.left + "+" + sentence.width + " home " + sentence.home);
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
+			clearLine(cards, sentence, earlier, now);
 			sentence = null;
 			last = null;
 		}

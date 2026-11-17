@@ -1166,6 +1166,33 @@ class WorldWordsTest {
 		assertEquals(-1L, (long) get(plainTitle, "cutAt"), "nor a fading title card");
 	}
 
+	@Test
+	void aLineStartingOverFadesAllItsOwnWordsAtOnceButNotOtherLinesOrTitles() throws Exception {
+		WorldWords words = new WorldWords();
+		words.tune(30, 6, 1, 1, 1, true, true, false, 1);
+		WorldWords.Sentence older = new WorldWords.Sentence(0, 0, 10, 0), leaving = new WorldWords.Sentence(0, 0, 10, 0),
+				other = new WorldWords.Sentence(0, 0, 10, 0);
+		long t0 = 1_000_000_000L;
+		// Far apart: no overlap at all, the restart alone must clear them
+		Object a = newCard(older, false, -1L, new Vec3(0, 0, 5)), b = newCard(leaving, false, -1L, new Vec3(0, 20, 5)),
+				c = newCard(leaving, false, t0 - 1L, new Vec3(0, 40, 5)), foreign = newCard(other, false, -1L, new Vec3(0, 60, 5)),
+				title = newCard(leaving, true, -1L, new Vec3(0, 80, 5));
+		@SuppressWarnings("unchecked")
+		List<Object> cards = (List<Object>) get(words, "cards");
+		cards.addAll(List.of(a, b, c, foreign, title));
+		var clear = WorldWords.class.getDeclaredMethod("clearLine", List.class, WorldWords.Sentence.class, List.class, long.class);
+		clear.setAccessible(true);
+		clear.invoke(null, cards, leaving, List.of(older), t0);
+		for (Object own : List.of(a, b, c)) {
+			assertEquals(t0, (long) get(own, "cutAt"));
+			assertEquals(0.1f, (float) get(own, "cutFor"), 1e-6);
+		}
+		assertEquals(-1L, (long) get(foreign, "cutAt"), "another line's word is untouched");
+		assertEquals(-1L, (long) get(title, "cutAt"), "a title card is untouched");
+		words.expire(Vec3.ZERO, t0 + 150_000_000L);
+		assertEquals(List.of(foreign, title), cards, "150 ms later every word of the line is gone");
+	}
+
 	@SuppressWarnings("unchecked")
 	private static List<WorldWords.Sentence> earlierOf(WorldWords words) throws Exception {
 		return (List<WorldWords.Sentence>) get(words, "earlier");
