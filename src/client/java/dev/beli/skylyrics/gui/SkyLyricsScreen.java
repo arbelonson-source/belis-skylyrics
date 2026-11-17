@@ -1547,7 +1547,10 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseReleased(MouseButtonEvent event) {
-		if (event.button() == ClickRescue.left() && !rescue.released()) {
+		if (!ClickRescue.endsDrag(event.button(), ClickRescue.left())) {
+			return super.mouseReleased(event);
+		}
+		if (!rescue.released()) {
 			return true;
 		}
 		if (active != null) {

@@ -85,4 +85,11 @@ class ClickRescueTest {
 		rescue.poll(5, 5, false, screen);
 		assertEquals(0, screen.clicks);
 	}
+
+	@Test
+	void onlyTheLeftReleaseEndsADrag() {
+		assertTrue(ClickRescue.endsDrag(ClickRescue.left(), ClickRescue.left()));
+		assertFalse(ClickRescue.endsDrag(ClickRescue.left() + 1, ClickRescue.left()));
+		assertFalse(ClickRescue.endsDrag(ClickRescue.left() + 2, ClickRescue.left()));
+	}
 }

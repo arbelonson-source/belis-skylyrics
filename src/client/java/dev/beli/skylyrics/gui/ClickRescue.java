@@ -115,6 +115,11 @@ final class ClickRescue {
 		*///?}
 	}
 
+	/** Only releasing the left button ends a slider or scroll bar drag; the right or middle button letting go must not. */
+	static boolean endsDrag(int button, int left) {
+		return button == left;
+	}
+
 	private static MouseButtonEvent event(double x, double y) {
 		//? if >=1.21.9 {
 		return new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(left(), 0));
