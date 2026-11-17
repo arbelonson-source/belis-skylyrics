@@ -128,6 +128,19 @@ class ScreenKeysTest {
 		assertTrue(ScreenKeys.acceptsTypedChar(false));
 	}
 
+	@Test
+	void shiftAltAndTheEditShortcutAreReadFromTheEventsOwnBits() {
+		// GLFW modifier bits: Shift 1, Ctrl 2, Alt 4, Super 8
+		assertTrue(ScreenKeys.shiftIn(1));
+		assertFalse(ScreenKeys.shiftIn(2 | 4 | 8));
+		assertTrue(ScreenKeys.altIn(4));
+		assertFalse(ScreenKeys.altIn(1 | 2 | 8));
+		assertTrue(ScreenKeys.editShortcutIn(2, false));
+		assertFalse(ScreenKeys.editShortcutIn(8, false));
+		assertTrue(ScreenKeys.editShortcutIn(8, true));
+		assertFalse(ScreenKeys.editShortcutIn(2, true));
+	}
+
 	//? if <1.21.9 {
 	/*@Test
 	void theLegacyEventsControlIsTheRealCtrlBitNotCmd() {
