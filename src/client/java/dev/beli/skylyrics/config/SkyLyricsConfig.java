@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.config;
 
+import dev.beli.skylyrics.util.LogText;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -445,6 +446,8 @@ public final class SkyLyricsConfig {
 	/** Set when the settings file exists but couldn't be read: save() then leaves it alone, so the player's real settings aren't overwritten by defaults. */
 	transient boolean saveBlocked;
 	transient boolean blockedLogged;
+	/** Failed saves are logged once, until one works again. */
+	private static final dev.beli.skylyrics.util.OnceGate SAVE_LOG = new dev.beli.skylyrics.util.OnceGate();
 	transient dev.beli.skylyrics.util.SafeFile.Reader reader;
 
 	private static SkyLyricsConfig load() {
@@ -474,11 +477,11 @@ public final class SkyLyricsConfig {
 			return new SkyLyricsConfig(); // gone since the check: no file
 		} catch (java.nio.charset.CharacterCodingException e) {
 			keepCopy(file); // not valid UTF-8: damaged, same as a file that isn't JSON
-			LOG.warn("Settings file isn't valid text, kept a copy as skylyrics.json.bad and using defaults: {}", e.toString());
+			LOG.warn("Settings file isn't valid text, kept a copy as skylyrics.json.bad and using defaults: {}", LogText.of(e));
 			return new SkyLyricsConfig();
 		} catch (IOException e) {
 			// Locked just now (antivirus, OneDrive) or not allowed. The file itself may be fine: use defaults for now but never write over it.
-			LOG.warn("Couldn't read {}; your settings won't be saved this session. Check the file's permissions or whether another program has it open: {}", file, e.toString());
+			LOG.warn("Couldn't read {}; your settings won't be saved this session. Check the file's permissions or whether another program has it open: {}", LogText.of(file), LogText.of(e));
 			SkyLyricsConfig blocked = new SkyLyricsConfig();
 			blocked.saveBlocked = true;
 			blocked.reader = reader;
@@ -493,7 +496,7 @@ public final class SkyLyricsConfig {
 			parsed.config().remember(text);
 			return parsed.config();
 		} catch (RuntimeException e) {
-			LOG.warn("Couldn't read the settings file, using defaults: {}", e.toString());
+			LOG.warn("Couldn't read the settings file, using defaults: {}", LogText.of(e));
 			keepCopy(file);
 		}
 		return new SkyLyricsConfig();
@@ -504,7 +507,7 @@ public final class SkyLyricsConfig {
 		try {
 			dev.beli.skylyrics.util.SafeFile.keepBad(file);
 		} catch (IOException | RuntimeException e) {
-			LOG.warn("Couldn't keep a copy of the damaged settings file: {}", e.toString());
+			LOG.warn("Couldn't keep a copy of the damaged settings file: {}", LogText.of(e));
 		}
 	}
 
@@ -863,7 +866,7 @@ public final class SkyLyricsConfig {
 				try {
 					written = write(next.file(), next.snapshot(), next.base(), next.baseGen(), task -> mainThread.accept(task));
 				} catch (RuntimeException e) {
-					LOG.warn("Couldn't save settings: {}", e.toString());
+					saveFailed(e);
 				}
 				synchronized (queue) {
 					queue.failed = written ? null : next;
@@ -925,8 +928,15 @@ public final class SkyLyricsConfig {
 		try {
 			return write(again.file(), again.snapshot(), again.base(), again.baseGen(), Runnable::run);
 		} catch (RuntimeException e) {
-			LOG.warn("Couldn't save settings: {}", e.toString());
+			saveFailed(e);
 			return false;
+		}
+	}
+
+	/** Logs a failed save once; the next failure is news again only after a save went through. */
+	private static void saveFailed(Exception e) {
+		if (SAVE_LOG.shouldLog()) {
+			LOG.warn("Couldn't save settings (not logged again until a save works): {}", LogText.of(e));
 		}
 	}
 
@@ -969,9 +979,10 @@ public final class SkyLyricsConfig {
 					}
 					setBase(text, tree, gen);
 				});
+				SAVE_LOG.reset();
 				return true;
 			} catch (IOException e) {
-				LOG.warn("Couldn't save settings: {}", e.toString());
+				saveFailed(e);
 				return false;
 			} finally {
 				if (tmp != null) {
@@ -1072,7 +1083,7 @@ public final class SkyLyricsConfig {
 		} catch (IOException e) {
 			if (!blockedLogged) {
 				blockedLogged = true;
-				LOG.warn("Settings not saved: {} still can't be read ({})", file, e.toString());
+				LOG.warn("Settings not saved: {} still can't be read ({})", LogText.of(file), LogText.of(e));
 			}
 			return false;
 		}
@@ -1170,9 +1181,9 @@ public final class SkyLyricsConfig {
 		try {
 			Path moved = dev.beli.skylyrics.util.SafeFile.moveAside(file);
 			saveBlocked = false;
-			LOG.warn("The settings file {} can't be read (permissions), so it was moved to {} and your settings will be saved to a new one.", file, moved);
+			LOG.warn("The settings file {} can't be read (permissions), so it was moved to {} and your settings will be saved to a new one.", LogText.of(file), LogText.of(moved));
 		} catch (IOException | RuntimeException e) {
-			LOG.warn("The settings file {} can't be read and couldn't be moved aside, so settings stay unsaved this session: {}", file, e.toString());
+			LOG.warn("The settings file {} can't be read and couldn't be moved aside, so settings stay unsaved this session: {}", LogText.of(file), LogText.of(e));
 		}
 	}
 

@@ -245,6 +245,8 @@ public final class MacMediaSource implements MediaSource {
 	/** Apps macOS refused to let us control, and when to ask again. */
 	private final Map<App, Long> deniedUntil = new ConcurrentHashMap<>();
 	private String retryError = "";
+	/** The last message put in the log, so the same one isn't repeated every retry. */
+	private String loggedError = "";
 	private Answer last = Answer.EMPTY;
 	private long lastAt;
 	private volatile boolean haveLast;
@@ -498,6 +500,7 @@ public final class MacMediaSource implements MediaSource {
 			throw failed("osascript failed: " + (newline > 0 ? err.substring(0, newline) : err.isEmpty() ? "exit code " + result.exitCode() : err));
 		}
 		fails = 0;
+		loggedError = "";
 		return result.out();
 	}
 
@@ -512,7 +515,10 @@ public final class MacMediaSource implements MediaSource {
 		fails = 0;
 		retryError = message;
 		retryAt = System.nanoTime() + RETRY_NS;
-		LOG.warn("Couldn't read Spotify or Music: {}", message);
+		if (!message.equals(loggedError)) { // osascript failing keeps repeating the same line
+			loggedError = message;
+			LOG.warn("Couldn't read Spotify or Music: {}", message);
+		}
 		return new IOException(message);
 	}
 

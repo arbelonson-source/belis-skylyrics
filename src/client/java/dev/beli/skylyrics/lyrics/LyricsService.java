@@ -238,7 +238,8 @@ public final class LyricsService {
 				return;
 			}
 			if (failures > 0) {
-				LOG.info("Got lyrics for {} after {} failed tries", t.key(), failures);
+				LOG.info("Got lyrics after {} failed tries", failures);
+				LOG.debug("Those lyrics were for {}", t.key());
 			}
 			if (!apply(t, gen, result)) {
 				return;
@@ -254,14 +255,16 @@ public final class LyricsService {
 			}
 			if (!temporary(e)) {
 				// The site answered (an odd status) or something broke here: not the internet's fault, so it isn't blamed
-				LOG.warn("Couldn't get lyrics for {}: {}", t.key(), e.toString());
+				LOG.warn("Couldn't get lyrics: {}", e.toString());
+				LOG.debug("That was for {}", t.key());
 				setNotFound(gen);
 				return;
 			}
 			// Keep trying while the song plays; never saved to the cache, so it isn't "no lyrics"
 			long delay = delayFor(e, retryDelayMs.applyAsLong(failures + 1));
 			if (failures == 0) {
-				LOG.warn("Couldn't get lyrics for {}: {}. Trying again while it plays.", t.key(), e.toString());
+				LOG.info("Couldn't get lyrics yet: {}. Trying again while it plays.", e.toString());
+				LOG.debug("That was for {}", t.key());
 			} else {
 				LOG.debug("Still no lyrics for {} ({}), try {} in {} ms", t.key(), e.toString(), failures + 2, delay);
 			}

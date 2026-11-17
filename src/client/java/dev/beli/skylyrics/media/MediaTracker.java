@@ -195,7 +195,11 @@ public final class MediaTracker {
 				failingSince = System.nanoTime();
 			}
 			if (!loggedError) {
-				LOG.warn("Couldn't read the music player: {}", error);
+				if (setupPending(failure)) {
+					LOG.debug("The music player isn't set up yet: {}", error); // waiting for the player to do a step, not a problem
+				} else {
+					LOG.warn("Couldn't read the music player: {}", error);
+				}
 				loggedError = true;
 				outageWarnings++;
 			}
