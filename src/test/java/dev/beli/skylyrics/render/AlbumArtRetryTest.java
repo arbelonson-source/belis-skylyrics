@@ -158,24 +158,30 @@ class AlbumArtRetryTest {
 	}
 
 	@Test
-	void aBadCertificateIsNotRetried() {
-		assertFalse(CoverRetry.temporary(withCause(new javax.net.ssl.SSLHandshakeException("No subject alternative DNS name")
+	void aCertificateFailureIsRetriedButAPictureThatWontDecodeIsNot() {
+		// A hotel or airport sign-in page answers with the wrong certificate until the player signs in there
+		assertTrue(CoverRetry.temporary(withCause(new javax.net.ssl.SSLHandshakeException("No subject alternative DNS name")
 			, new java.security.cert.CertificateException("bad"))));
+		assertFalse(CoverRetry.temporary(withCause(new java.io.IOException("x"), new javax.imageio.IIOException("Unsupported Image Type"))));
 		assertTrue(CoverRetry.temporary(new javax.net.ssl.SSLException("Connection reset")));
 	}
 
 	@Test
-	void retriesStopAfterSix() {
+	void retriesStopAfterThirty() {
 		AlbumArt art = art();
 		art.fetcher = url -> {
 			fetches++;
 			throw new java.net.http.HttpTimeoutException("slow");
 		};
 		art.load(song("T", "https://img.example/a.jpg"));
-		for (int i = 0; i < 30 && !scheduled.get(scheduled.size() - 1).isDone(); i++) {
+		for (int i = 0; i < 60 && !scheduled.get(scheduled.size() - 1).isDone(); i++) {
 			runLast(scheduled);
 		}
-		assertEquals(List.of(5_000L, 15_000L, 30_000L, 60_000L, 60_000L, 60_000L), delays);
-		assertEquals(7, fetches, "the first try and six retries");
+		List<Long> want = new java.util.ArrayList<>(List.of(5_000L, 15_000L, 30_000L));
+		while (want.size() < CoverRetry.MAX_RETRIES) {
+			want.add(60_000L);
+		}
+		assertEquals(want, delays);
+		assertEquals(31, fetches, "the first try and thirty retries");
 	}
 }

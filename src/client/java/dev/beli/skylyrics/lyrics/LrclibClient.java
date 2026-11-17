@@ -297,7 +297,8 @@ public final class LrclibClient implements LyricsSource {
 			return null;
 		}
 		try {
-			return o.get("duration").getAsDouble();
+			double d = o.get("duration").getAsDouble();
+			return Double.isFinite(d) ? d : null; // "NaN" or "Infinity" would slip past every length check
 		} catch (NumberFormatException e) {
 			return null;
 		}

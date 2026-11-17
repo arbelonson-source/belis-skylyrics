@@ -261,6 +261,14 @@ class LrclibClientTest {
 	}
 
 	@Test
+	void aHitWhoseLengthIsNotANumberSlipsPastNoLengthCheck() throws Exception {
+		for (String weird : new String[] {"NaN", "Infinity"}) {
+			String bad = "{\"trackName\":\"A Made-Up Song\",\"artistName\":\"" + BAND + "\",\"duration\":\"" + weird + "\",\"syncedLyrics\":\"[00:01.00]bad\",\"instrumental\":false}";
+			assertFalse(findWith(TRACK, bad).found(), weird);
+		}
+	}
+
+	@Test
 	void anotherSongBySameArtistIsNotPicked() throws Exception {
 		assertFalse(findWith(TRACK, hit("Another Song", BAND, 200, "[00:01.00]wrong")).found());
 	}

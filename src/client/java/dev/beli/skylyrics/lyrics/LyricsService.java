@@ -358,7 +358,8 @@ public final class LyricsService {
 				writeCache(file, CacheEntry.of(result));
 				apply(t, gen, result);
 			} else {
-				writeCache(file, new CacheEntry(old.synced, old.plain, old.instrumental, old.savedAt, CACHE_VERSION));
+				// A weak answer was just asked about, so its week starts now (no second ask on the next play)
+				writeCache(file, new CacheEntry(old.synced, old.plain, old.instrumental, old.weak() ? System.currentTimeMillis() : old.savedAt, CACHE_VERSION, old.backup));
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
