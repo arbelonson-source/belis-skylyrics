@@ -245,12 +245,12 @@ final class SynthwaveSky {
 	 * @param level 0..1, how much of the effect shows
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel) {
 		draw(c, radius, baseYaw, level, time, pixel, SkyView.ALL);
 	}
 
 	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		c.fadeBelowHorizon(HORIZON_FADE);
 		DOME_MESH.draw(c, cos, sin, radius * DOME, level, view);
@@ -265,13 +265,13 @@ final class SynthwaveSky {
 	}
 
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
-	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel, SkyView view) {
+	private void stars(SkyCanvas c, float r, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		for (int i = 0; i < STAR_COUNT; i++) {
 			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
-			float twinkle = 0.75f + 0.25f * (float) Math.sin(time * (0.7f + 0.13f * (i % 7)) + i * 2.3f);
+			float twinkle = 0.75f + 0.25f * (float) Math.sin(SkyClock.phase(time, 0.7 + 0.13 * (i % 7), i * 2.3f));
 			int col = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
 			float s = STAR_SIZE[i] * pixel;
 			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);

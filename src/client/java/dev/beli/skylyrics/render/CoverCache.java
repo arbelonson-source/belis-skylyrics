@@ -446,6 +446,9 @@ public final class CoverCache {
 		return bytes.toByteArray();
 	}
 
+	/** Saved covers bigger than this are older raw downloads (a small one is 20-40 KB) and are saved again small. */
+	static final int SHRINK_OVER_BYTES = 200 * 1024;
+
 	/** The cover saved earlier, or null when there is none, it can't be read now, or the file is damaged (which is then removed so it downloads again). */
 	static @Nullable BufferedImage readCached(Path file) {
 		if (!Files.isRegularFile(file)) {
@@ -463,6 +466,10 @@ public final class CoverCache {
 			BufferedImage image = decodeSmall(bytes, SIZE);
 			if (image != null) {
 				file.toFile().setLastModified(System.currentTimeMillis());
+				if (bytes.length > SHRINK_OVER_BYTES && file.getParent() != null) {
+					// Saved by an older version as the raw download: keep the small form instead (a failure keeps the old file)
+					cache(file.getParent(), file, image);
+				}
 				return image;
 			}
 		} catch (java.io.IOException | RuntimeException e) {

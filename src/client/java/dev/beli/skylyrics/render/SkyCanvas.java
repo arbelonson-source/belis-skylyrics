@@ -13,6 +13,11 @@ abstract class SkyCanvas {
 	/** Sine of the depth below the horizon where shapes have faded out; 0 = no fading. */
 	private float horizonFade;
 
+	/** Starts a frame at a quad's first corner, dropping any corners an error left half given. */
+	final void reset() {
+		corner = 0;
+	}
+
 	/** Receives one corner of a quad that already faces the camera. */
 	protected abstract void put(float x, float y, float z, int argb);
 

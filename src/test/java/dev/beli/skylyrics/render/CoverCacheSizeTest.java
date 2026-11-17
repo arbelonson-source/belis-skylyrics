@@ -122,4 +122,33 @@ class CoverCacheSizeTest {
 			assertEquals(0, files.count());
 		}
 	}
+
+	@Test
+	void aBigCoverSavedByAnOlderVersionIsShrunkWhenRead(@TempDir Path dir) throws IOException {
+		Path file = dir.resolve("old.img");
+		Files.write(file, encode(noisy(1000, 1000, BufferedImage.TYPE_INT_RGB), "png"));
+		assertTrue(Files.size(file) > 200_000, "setup: " + Files.size(file));
+		BufferedImage back = CoverCache.readCached(file);
+		assertNotNull(back);
+		assertTrue(back.getWidth() >= CoverCache.SIZE, "width " + back.getWidth());
+		assertTrue(Files.size(file) < 100_000, "still " + Files.size(file) + " bytes on disk");
+		assertEquals(CoverCache.SIZE, CoverCache.readCached(file).getWidth());
+	}
+
+	@Test
+	void aFailedShrinkKeepsTheBigFileAndTheRead(@TempDir Path dir) throws IOException {
+		Path file = dir.resolve("old.img");
+		byte[] big = encode(noisy(1000, 1000, BufferedImage.TYPE_INT_RGB), "png");
+		Files.write(file, big);
+		// The folder can't be written to: make "dir" a file for the temp step by shrinking via a read-only parent
+		dir.toFile().setWritable(false);
+		try {
+			BufferedImage back = CoverCache.readCached(file);
+			assertNotNull(back);
+			assertTrue(back.getWidth() >= CoverCache.SIZE, "width " + back.getWidth());
+		} finally {
+			dir.toFile().setWritable(true);
+		}
+		assertEquals(big.length, Files.size(file));
+	}
 }

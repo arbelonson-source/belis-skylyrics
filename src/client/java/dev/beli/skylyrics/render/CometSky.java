@@ -85,12 +85,12 @@ final class CometSky {
 	private final SkyFrame frame = new SkyFrame();
 	private final int[] ionGrid = new int[ION_A.length];
 	/** The sky clock the gas tail's colours were last worked out for; NaN before the first time. */
-	private float ionTime = Float.NaN;
+	private double ionTime = Double.NaN;
 	/** How often (seconds) the streamers are worked out again. */
 	static final float ION_INTERVAL = 1 / 30f;
 
 	/** Whether the streamers, last worked out at {@code last}, need working out again at {@code now} (also when the clock jumps back). */
-	static boolean streamersDue(float last, float now) {
+	static boolean streamersDue(double last, double now) {
 		return !(Math.abs(now - last) < ION_INTERVAL);
 	}
 
@@ -112,8 +112,8 @@ final class CometSky {
 	}
 
 	/** 0..1.55: the gas tail's streamers, long along the tail and thin across it, running outward with time. */
-	static float streak(float s, float w, float time) {
-		return 0.45f + 1.1f * SkyColors.noise((s - time * DRIFT) * 2.5f, (w + 1) * 3, 31);
+	static float streak(float s, float w, double time) {
+		return 0.45f + 1.1f * SkyColors.noise((float) (s - time * DRIFT) * 2.5f, (w + 1) * 3, 31);
 	}
 
 	private static float across(int j, int columns) {
@@ -143,12 +143,12 @@ final class CometSky {
 	 * @param level 0..1, how much of the effect shows
 	 * @param time seconds of sky clock, which moves the streamers
 	 */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time) {
 		draw(c, radius, baseYaw, level, time, SkyView.ALL);
 	}
 
 	/** As above, drawing nothing when the camera {@code view} can't see the comet. */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, SkyView view) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, SkyView view) {
 		frame.aim(baseYaw + YAW, ELEV);
 		if (!view.capVisible(frame.dx, frame.dy, frame.dz, REACH)) {
 			return;
