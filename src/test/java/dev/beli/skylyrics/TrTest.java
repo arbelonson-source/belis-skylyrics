@@ -11,8 +11,11 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -55,12 +58,16 @@ class TrTest {
 		return byKey;
 	}
 
-	private static int placeholders(String s) {
-		int n = 0;
-		for (int i = s.indexOf("%s"); i >= 0; i = s.indexOf("%s", i + 2)) {
-			n++;
+	private static final Pattern FORMAT = Pattern.compile("%(?:\\d+\\$)?[sd%]");
+
+	private static List<String> placeholders(String s) {
+		List<String> found = new ArrayList<>();
+		Matcher m = FORMAT.matcher(s);
+		while (m.find()) {
+			found.add(m.group());
 		}
-		return n;
+		Collections.sort(found);
+		return found;
 	}
 
 	@Test
@@ -90,11 +97,46 @@ class TrTest {
 	}
 
 	@Test
-	void hebrewHasSameKeysAndPlaceholders() throws IOException {
+	void everyLanguageHasSameKeysAndPlaceholders() throws IOException {
 		Map<String, String> en = lang("en_us.json");
-		Map<String, String> he = lang("he_il.json");
-		assertEquals(en.keySet(), he.keySet());
-		en.forEach((k, v) -> assertEquals(placeholders(v), placeholders(he.get(k)), k));
+		List<String> files = new ArrayList<>();
+		try (Stream<Path> list = Files.list(LANG)) {
+			list.map(f -> f.getFileName().toString()).filter(f -> f.endsWith(".json") && !f.equals("en_us.json"))
+					.sorted().forEach(files::add);
+		}
+		assertTrue(files.contains("he_il.json"), "he_il.json missing");
+		assertTrue(files.contains("es_es.json"), "es_es.json missing");
+		for (String file : files) {
+			Map<String, String> tr = lang(file);
+			for (String k : en.keySet()) {
+				assertTrue(tr.containsKey(k), file + ": missing key " + k);
+			}
+			for (String k : tr.keySet()) {
+				assertTrue(en.containsKey(k), file + ": extra key " + k);
+			}
+			en.forEach((k, v) -> {
+				String t = tr.get(k);
+				assertFalse(t.isBlank(), file + ": empty value for " + k);
+				assertEquals(placeholders(v), placeholders(t), file + ": placeholders differ for " + k);
+			});
+		}
+	}
+
+	@Test
+	void regionalCopiesMatchTheirBaseLanguage() throws IOException {
+		// Minecraft falls back to en_us (not es_es) for es_mx etc., so the copies must be byte-identical.
+		List<String> files = new ArrayList<>();
+		try (Stream<Path> list = Files.list(LANG)) {
+			list.map(f -> f.getFileName().toString()).filter(f -> f.endsWith(".json")).sorted().forEach(files::add);
+		}
+		for (String file : files) {
+			String base = file.substring(0, 2);
+			if (file.length() == "es_es.json".length() && !file.equals(base + "_" + base + ".json")
+					&& files.contains(base + "_" + base + ".json")) {
+				assertEquals(Files.readString(LANG.resolve(base + "_" + base + ".json")),
+						Files.readString(LANG.resolve(file)), file + " differs from " + base + "_" + base + ".json");
+			}
+		}
 	}
 
 	@Test
