@@ -9,7 +9,7 @@
 
 ### Fixed
 
-- **Very long lines in World.** With **Flowing line** on, a line so long it fills the sky and carries on at the top no longer writes over its own earlier words: they fade out at once as it starts over.
+- **Very long lines in World.** With **Flowing line** on, a long line that runs down into a hillside or fills the sky no longer writes over its own earlier words: it starts over at the top, and its old words fade out at once. In a tunnel or right by a wall it carries on as before.
 - **Rejoining a world.** With the Arc layout, rejoining a world (or joining another one) no longer leaves the lyric line off to the side for a moment, where you were looking in the last world, and **Hide in caves** and **Show underground** ask the new world at once instead of using the last world's answer.
 - **Names in the song library.** Song, playlist, album and artist names from your Spotify library and from Recently heard are cleaned like the song playing now: hidden text-direction marks and stray tabs no longer flip or box them, and very long names are cut. A song title made only of invisible characters is treated like a song with no title. Lyrics containing a broken emoji character are saved again instead of being fetched anew on every play.
 - **Two games updating at once.** On Linux and Mac, two Minecraft copies that share one mods folder and install the same SkyLyrics update at the same moment no longer leave two SkyLyrics files there (the game would refuse to start).
