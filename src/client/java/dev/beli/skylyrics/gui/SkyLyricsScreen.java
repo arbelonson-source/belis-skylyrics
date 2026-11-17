@@ -1651,7 +1651,12 @@ public final class SkyLyricsScreen extends Screen {
 			// Letters come in through charTyped; the rest must not close the screen or change a setting
 			return true;
 		}
-		if (event.key() == InputConstants.KEY_F && event.hasControlDownWithQuirk()) {
+		//? if >=26.3 {
+		/*int letter = event.shortcutKey();
+		*///?} else {
+		int letter = event.key();
+		//?}
+		if (ScreenKeys.isCtrlF(letter, event.hasControlDownWithQuirk())) {
 			typing = true;
 			afterKeyboardAction();
 			return true;
