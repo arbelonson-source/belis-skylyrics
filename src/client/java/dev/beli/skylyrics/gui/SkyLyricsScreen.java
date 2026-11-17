@@ -1104,8 +1104,8 @@ public final class SkyLyricsScreen extends Screen {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
-		//? if <1.21.2 {
-		/*// 1.21.1 draws the background from render() itself; newer versions draw it before calling render()
+		//? if <1.21.6 {
+		/*// up to 1.21.5 the background is drawn from render() itself (which this screen replaces); 1.21.6+ draws it before calling render()
 		renderBackground(g, mouseX, mouseY, partialTick);
 		*///?}
 		rescue.poll(mouseX, mouseY, rescueTarget);
