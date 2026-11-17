@@ -308,7 +308,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"));
 		}
 		if (mac()) {
-			return new MacMediaSource(() -> SkyLyricsConfig.get().preferredPlayer);
+			return new MacMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, SkyLyricsClient::anyoneLooking);
 		}
 		return new MprisSource(() -> SkyLyricsConfig.get().preferredPlayer);
 	}
