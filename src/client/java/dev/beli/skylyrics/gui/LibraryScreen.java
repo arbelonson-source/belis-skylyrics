@@ -627,9 +627,10 @@ public final class LibraryScreen extends Screen {
 			String text = shelf.error.isEmpty() ? emptyText() : shelf.error;
 			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text, viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
 			if (!shelf.error.isEmpty()) {
-				int bx = px + pw / 2 - 40, by = viewY + viewH / 2 + 4;
-				Controls.drawButton(f, bx, by, 80, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, 80, 16), true, true);
-				Ui.outline(f.g(), bx - 2, by - 2, 84, 20, 6, Ui.TEXT);
+				int rw = Controls.buttonW(font.width(Tr.t("Try again")), 80);
+				int bx = px + pw / 2 - rw / 2, by = viewY + viewH / 2 + 4;
+				Controls.drawButton(f, bx, by, rw, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, rw, 16), true, true);
+				Ui.outline(f.g(), bx - 2, by - 2, rw + 4, 20, 6, Ui.TEXT);
 			}
 			return;
 		}
@@ -979,20 +980,28 @@ public final class LibraryScreen extends Screen {
 		};
 	}
 
+	/** The sign-in card's buttons (see {@link Controls#signInLayout}) for a card at x, y and width w. */
+	private int[] signInButtons(int x, int y, int w) {
+		int w0 = Controls.buttonW(font.width(Tr.t("Open Music tab")), 100);
+		int w1 = Controls.buttonW(font.width(Tr.t("Try made-up songs")), 100);
+		return Controls.signInLayout(x + w / 2, y + 50, w0, w1, w);
+	}
+
 	private void renderSignIn(GuiGraphics g, Frame f) {
 		String text = signInText();
 		int w = Math.min(300, pw - 40), x = px + (pw - w) / 2, y = viewY + viewH / 2 - 44;
-		Ui.rect(g, x, y, w, 80, 8, Ui.CARD);
+		int[] b = signInButtons(x, y, w);
+		Ui.rect(g, x, y, w, b[6], 8, Ui.CARD);
 		List<net.minecraft.network.chat.FormattedText> lines = font.getSplitter().splitLines(text, w - 24, net.minecraft.network.chat.Style.EMPTY);
 		boolean rtl = Ui.paragraphRtl(text);
 		for (int i = 0; i < Math.min(2, lines.size()); i++) {
 			g.drawCenteredString(font, Ui.visual(lines.get(i).getString(), rtl), x + w / 2, y + 14 + i * 11, Ui.TEXT);
 		}
-		int by = y + 50;
-		Controls.drawButton(f, x + w / 2 - 104, by, 100, 18, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), x + w / 2 - 104, by, 100, 18), true, true);
-		Controls.drawButton(f, x + w / 2 + 4, by, 100, 18, Tr.t("Try made-up songs"), Ui.inside(f.mx(), f.my(), x + w / 2 + 4, by, 100, 18), false, true);
+		Controls.drawButton(f, b[0], b[1], b[2], 18, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), b[0], b[1], b[2], 18), true, true);
+		Controls.drawButton(f, b[3], b[4], b[5], 18, Tr.t("Try made-up songs"), Ui.inside(f.mx(), f.my(), b[3], b[4], b[5], 18), false, true);
 		if (signInFocus >= 0) {
-			Ui.outline(g, x + w / 2 - 104 + signInFocus * 108 - 2, by - 2, 104, 22, 6, Ui.TEXT);
+			int k = signInFocus * 3;
+			Ui.outline(g, b[k] - 2, b[k + 1] - 2, b[k + 2] + 4, 22, 6, Ui.TEXT);
 		}
 	}
 
@@ -1125,10 +1134,11 @@ public final class LibraryScreen extends Screen {
 			return true;
 		}
 		if (library == null) {
-			int w = Math.min(300, pw - 40), x = px + (pw - w) / 2, by = viewY + viewH / 2 - 44 + 50;
-			if (Ui.inside(mx, my, x + w / 2 - 104, by, 100, 18)) {
+			int w = Math.min(300, pw - 40), x = px + (pw - w) / 2;
+			int[] b = signInButtons(x, viewY + viewH / 2 - 44, w);
+			if (Ui.inside(mx, my, b[0], b[1], b[2], 18)) {
 				pressSignIn(0);
-			} else if (Ui.inside(mx, my, x + w / 2 + 4, by, 100, 18)) {
+			} else if (Ui.inside(mx, my, b[3], b[4], b[5], 18)) {
 				pressSignIn(1);
 			}
 			return true;

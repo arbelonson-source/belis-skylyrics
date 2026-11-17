@@ -1020,13 +1020,17 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
+	private int doneW() {
+		return Controls.buttonW(font.width(Tr.t("Done")), 56);
+	}
+
 	/** x, y, width and height of a button outside the settings list. */
 	private int[] chromeRect(Chrome button) {
 		int fy = py + ph - FOOTER_H + 8;
 		return switch (button) {
 			case PREVIEW -> new int[] {previewX, py + 12, previewW, 16};
 			case RESET -> new int[] {viewX, fy, resetW, 16};
-			case DONE -> new int[] {px + pw - 12 - 56, fy, 56, 16};
+			case DONE -> new int[] {px + pw - 12 - doneW(), fy, doneW(), 16};
 		};
 	}
 
@@ -1377,7 +1381,7 @@ public final class SkyLyricsScreen extends Screen {
 			Ui.outline(g, viewX, fy, rw, 16, 4, 0xFFFF6B6B);
 		}
 
-		int dw = 56;
+		int dw = doneW();
 		int dx = px + pw - 12 - dw;
 		boolean hoverDone = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), dx, fy, dw, 16);
 		Controls.drawButton(f, dx, fy, dw, 16, Tr.t("Done"), hoverDone, true, true);
@@ -1462,7 +1466,7 @@ public final class SkyLyricsScreen extends Screen {
 			pressReset();
 			return true;
 		}
-		if (Ui.inside(mx, my, px + pw - 12 - 56, fy, 56, 16)) {
+		if (Ui.inside(mx, my, px + pw - 12 - doneW(), fy, doneW(), 16)) {
 			onClose();
 			return true;
 		}
