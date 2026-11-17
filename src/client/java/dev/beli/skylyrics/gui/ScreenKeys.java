@@ -8,8 +8,9 @@ final class ScreenKeys {
 	/** Keys that type a character on a keyboard: space, digits, punctuation and letters. */
 	static boolean typesCharacter(int key) {
 		//? if >=26.3 {
-		/*// SDL scancodes: letters 4 to 29, digits 30 to 39, then space and punctuation up to 56
-		return key >= 4 && key <= 39 || key >= 44 && key <= 56;
+		/*// SDL scancodes: letters 4 to 29, digits 30 to 39, then space and punctuation up to 56, plus the extra key of
+		// European keyboards ("<>", 100), like GLFW's 161 and 162 below
+		return key >= 4 && key <= 39 || key >= 44 && key <= 56 || key == 100;
 		*///?} else {
 		// GLFW codes 32 to 96, plus 161 and 162
 		return key >= 32 && key <= 96 || key == 161 || key == 162;
