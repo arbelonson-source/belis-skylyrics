@@ -1484,7 +1484,6 @@ class WorldWordsTest {
 	@Test
 	void aPieceThatWouldWrapBelowTheScreenStartsTheLineOverInsteadOfSittingThere() throws Exception {
 		float half = WorldWords.halfView(0, 70);
-		int rowsSum = 0;
 		List<String> bad = new ArrayList<>();
 		for (long seed = 1; seed <= 200; seed++) {
 			WorldWords words = longLine(pos -> false, true, Float.NaN, 0, seed);
@@ -1507,10 +1506,8 @@ class WorldWordsTest {
 				}
 			}
 			assertTrue(own > 0, "the old line has words, seed " + seed);
-			rowsSum += old.rows;
 			assertTrue(((WorldWords.Sentence) get(words, "sentence")).top < old.top, "the new line is back up at the top, seed " + seed);
 		}
-		System.err.println("ROWSAVG " + rowsSum / 200.0);
 		assertTrue(bad.isEmpty(), "words of an old line sit below the limit: " + bad);
 	}
 

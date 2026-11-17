@@ -1669,7 +1669,7 @@ final class WorldWords {
 		float[] mark = sentence.mark();
 		int rowsBefore = sentence.rows;
 		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
-		if (!again && sentence.rows > rowsBefore && !rowFits(at2[1] + halfH, Mth.wrapDegrees(at2[0] - centre[0]), centre[1], seenHalf)) {
+		if (!again && sentence.rows > rowsBefore && !rowFitsToItsEnd(sentence, at2[1] + halfH, centre, seenHalf)) {
 			// This piece started a row whose words would run off the bottom of the screen: the line starts over at the top
 			// instead, and this piece begins it
 			startsOver(() -> "below: top " + sentence.top + " rows " + sentence.rows);
@@ -1763,6 +1763,17 @@ final class WorldWords {
 		}
 		float cos = (float) Math.cos(Mth.clamp(Math.abs(yawOff), 0, 89) * DEG);
 		return down < 89 && Math.tan(down * DEG) / cos <= Math.tan(halfView * DEG) * (1 - HOTBAR_SHARE);
+	}
+
+	/**
+	 * Whether a row that has just started, whose first word's foot is at pitch {@code foot}, still shows at its far end. The
+	 * row's widest yaw offset from the view centre, the most it drops across its width (a downward slope, a downward bow)
+	 * and the most a word bobs down from the row are all counted, so the row is judged by where it can end up lowest, not where it starts.
+	 */
+	static boolean rowFitsToItsEnd(Sentence line, float foot, float[] centre, float halfView) {
+		float wide = Math.max(Math.abs(Mth.wrapDegrees(line.left - centre[0])), Math.abs(Mth.wrapDegrees(line.left + line.width - centre[0])));
+		float drop = line.width * Math.max(0, -(float) Math.tan(line.slope * DEG)) + Math.max(0, -line.bend) + SENTENCE_BOB;
+		return rowFits(foot + drop, wide, centre[1], halfView);
 	}
 
 	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
