@@ -77,6 +77,66 @@ class SynthwaveSkyTest {
 	}
 
 	@Test
+	void theSwirlDarkensTheSkyWhereItSitsAndTheHaloLightensItAroundTheSun() {
+		// Straight into the middle of the swirl, high up: darker than the plain gradient there
+		SkyCanvas.SkyFrame swirl = new SkyCanvas.SkyFrame().aim(0, 62);
+		int plain = SynthwaveSky.skyColor(62);
+		int inSwirl = SynthwaveSky.background(swirl.dx, swirl.dy, swirl.dz);
+		assertTrue(SkyColors.luma(inSwirl) < SkyColors.luma(plain) * 0.6f, Integer.toHexString(inSwirl) + " vs " + Integer.toHexString(plain));
+		// Two sun radii out from the sun: in the halo, a pink tint over the plain gradient at that height
+		SkyCanvas.SkyFrame sun = new SkyCanvas.SkyFrame().aim(SynthwaveSky.SUN_YAW, SynthwaveSky.SUN_ELEV);
+		float k = 2 * (float) Math.tan(Math.toRadians(SynthwaveSky.SUN_RADIUS));
+		float x = sun.dx + k * sun.ux, y = sun.dy + k * sun.uy, z = sun.dz + k * sun.uz;
+		float len = (float) Math.sqrt(x * x + y * y + z * z);
+		assertEquals(2, SynthwaveSky.sunDistance(x / len, y / len, z / len), 0.05f);
+		float elev = (float) Math.toDegrees(Math.asin(y / len));
+		int halo = SynthwaveSky.background(x / len, y / len, z / len);
+		assertTrue((halo >> 16 & 255) > (SynthwaveSky.skyColor(elev) >> 16 & 255) + 20,
+				"pink over the gradient: " + Integer.toHexString(halo) + " vs " + Integer.toHexString(SynthwaveSky.skyColor(elev)));
+	}
+
+	/** Every corner a full draw hands over, with its colour. */
+	private static java.util.List<float[]> drawCorners(java.util.List<Integer> colours) {
+		java.util.List<float[]> corners = new java.util.ArrayList<>();
+		SkyCanvas c = new SkyCanvas() {
+			@Override
+			protected void put(float x, float y, float z, int argb) {
+				corners.add(new float[] {x, y, z});
+				colours.add(argb);
+			}
+		};
+		new SynthwaveSky().draw(c, 80, 90, 1, 0, 0.001f);
+		return corners;
+	}
+
+	@Test
+	void theSkyFadesOutBelowTheHorizonAndStaysSolidAboveIt() {
+		java.util.List<Integer> colours = new java.util.ArrayList<>();
+		java.util.List<float[]> corners = drawCorners(colours);
+		int below = 0, above = 0;
+		for (int i = 0; i < corners.size(); i++) {
+			float[] p = corners.get(i);
+			float elev = (float) Math.toDegrees(Math.asin(p[1] / Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2])));
+			int alpha = colours.get(i) >>> 24;
+			if (elev <= -SynthwaveSky.HORIZON_FADE + 0.01f) {
+				below++;
+				assertEquals(0, alpha, "corner at " + elev + " degrees");
+			} else if (elev >= 0) {
+				above++;
+				assertEquals(255, alpha, "corner at " + elev + " degrees");
+			}
+		}
+		assertTrue(below > 0 && above > 0, "below " + below + " above " + above);
+	}
+
+	@Test
+	void theSunFaceIsDrawnWhenInView() {
+		java.util.List<Integer> colours = new java.util.ArrayList<>();
+		drawCorners(colours);
+		assertTrue(colours.contains(0xFFFFD677), "the top row of the sun face, #FFD677");
+	}
+
+	@Test
 	void drawsWholeQuadsOfFiniteCorners() {
 		int[] count = new int[1];
 		SkyCanvas c = new SkyCanvas() {

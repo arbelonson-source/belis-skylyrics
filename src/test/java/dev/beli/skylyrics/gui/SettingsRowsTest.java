@@ -26,6 +26,9 @@ class SettingsRowsTest {
 		assertEquals("100", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 12));
 		// capped to 80% of the render distance (8 chunks = 128 blocks -> 102)
 		assertEquals("102", SkyLyricsScreen.distanceBlocks(Placement.SKY, 160, 8));
+		// never closer than 8 blocks, even when the stored value or a tiny render distance would say less
+		assertEquals("8", SkyLyricsScreen.distanceBlocks(Placement.SKY, 2, 12));
+		assertEquals("26", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 2), "80% of 2 chunks");
 	}
 
 	@Test

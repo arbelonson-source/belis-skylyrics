@@ -13,6 +13,10 @@ class SkyPaletteTest {
 		assertEquals(2 / 3f, SkyPalette.hue(0x0000FF), 1e-6f);
 		assertEquals(5 / 6f, SkyPalette.hue(0xFF00FF), 1e-6f);
 		assertEquals(0, SkyPalette.hue(0x808080), 1e-6f);
+		// Colours where the other two channels differ (a plain primary hides which way they are taken)
+		assertEquals((2 + (180 - 60) / 195f) / 6, SkyPalette.hue(0x3CFFB4), 1e-5f);
+		assertEquals((4 + (122 - 76) / 179f) / 6, SkyPalette.hue(0x7A4CFF), 1e-5f);
+		assertEquals(128 / 255f / 6, SkyPalette.hue(0xFF8000), 1e-4f);
 	}
 
 	@Test
@@ -72,5 +76,8 @@ class SkyPaletteTest {
 		assertEquals(0, SkyPalette.follow(0x404040), 1e-6f);
 		assertEquals(1, SkyPalette.follow(0xB57BFF), 1e-6f);
 		assertTrue(SkyPalette.follow(0xF0E8FF) < 0.5f, "pale lavender barely counts");
+		// a third of full colour is already followed fully; a fifth, in proportion
+		assertEquals(1, SkyPalette.follow(0xFFAAAA), 1e-6f);
+		assertEquals(0.6f, SkyPalette.follow(0xFFCCCC), 0.01f);
 	}
 }

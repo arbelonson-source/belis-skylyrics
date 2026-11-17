@@ -76,6 +76,25 @@ class CoverCacheSizeTest {
 	}
 
 	@Test
+	void shrinkingAveragesTheBlockNotJustOnePixel(@TempDir Path dir) throws IOException {
+		// A 256 px chequerboard of black and white pixels comes down 2:1 to grey, not to the colour of every other pixel
+		BufferedImage chequer = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
+		for (int y = 0; y < 256; y++) {
+			for (int x = 0; x < 256; x++) {
+				chequer.setRGB(x, y, (x + y) % 2 == 0 ? 0xFFFFFF : 0x000000);
+			}
+		}
+		Path file = dir.resolve("c.img");
+		CoverCache.cache(dir, file, chequer);
+		BufferedImage back = CoverCache.readCached(file);
+		assertEquals(CoverCache.SIZE, back.getWidth());
+		for (int[] at : new int[][] {{0, 0}, {1, 0}, {50, 77}, {127, 127}}) {
+			int grey = back.getRGB(at[0], at[1]) & 0xFF;
+			assertTrue(Math.abs(grey - 128) <= 3, "pixel " + at[0] + "," + at[1] + " is " + grey);
+		}
+	}
+
+	@Test
 	void aSmallCoverIsNotEnlarged(@TempDir Path dir) throws IOException {
 		Path file = dir.resolve("s.img");
 		CoverCache.cache(dir, file, gradient(40, 40, BufferedImage.TYPE_INT_RGB));

@@ -92,6 +92,72 @@ class SkyCanvasTest {
 		assertEquals(-1, south.ux, 1e-6f);
 	}
 
+	/** Keeps the colour of every corner it is handed, with the height it sits at. */
+	private static final class Coloured extends SkyCanvas {
+		final List<float[]> corners = new ArrayList<>();
+		final List<Integer> colours = new ArrayList<>();
+
+		@Override
+		protected void put(float x, float y, float z, int argb) {
+			corners.add(new float[] {x, y, z});
+			colours.add(argb);
+		}
+
+		/** The alpha of the four corners of a quad drawn at this height. */
+		int alphaAt(float elevDeg) {
+			int from = colours.size();
+			for (int i = 0; i < 4; i++) {
+				sky(i * 10, elevDeg, 10, 0xFF123456);
+			}
+			assertEquals(from + 4, colours.size());
+			int alpha = colours.get(from) >>> 24;
+			for (int i = from; i < from + 4; i++) {
+				assertEquals(alpha, colours.get(i) >>> 24, "one quad, one alpha");
+				assertEquals(0x123456, colours.get(i) & 0xFFFFFF, "the colour itself is not touched");
+			}
+			return alpha;
+		}
+	}
+
+	@Test
+	void shapesFadeOutBelowTheHorizonOnlyWhenAskedTo() {
+		Coloured c = new Coloured();
+		c.fadeBelowHorizon(3);
+		assertEquals(255, c.alphaAt(5), "above the horizon nothing fades");
+		assertEquals(255, c.alphaAt(0), "on the horizon neither");
+		int half = c.alphaAt(-1.5f);
+		assertTrue(half > 100 && half < 155, "half way down the fade: " + half);
+		assertEquals(0, c.alphaAt(-3), "gone at the end of the fade");
+		assertEquals(0, c.alphaAt(-20), "and below it");
+		c.fadeBelowHorizon(0);
+		assertEquals(255, c.alphaAt(-20), "no fade asked for: the quad is left alone");
+	}
+
+	@Test
+	void pointsSitWhereTheFrameSaysTheyDo() {
+		// Facing south: right on the screen is -x, up is +y, ahead is +z
+		Coloured c = new Coloured();
+		SkyCanvas.SkyFrame south = new SkyCanvas.SkyFrame().aim(0, 0);
+		for (int i = 0; i < 4; i++) {
+			c.at(south, 0.5f, 0.25f, 4, 0);
+		}
+		float len = (float) Math.sqrt(0.5 * 0.5 + 0.25 * 0.25 + 1);
+		float[] p = c.corners.get(0);
+		assertEquals(-0.5f / len * 4, p[0], 1e-4f);
+		assertEquals(0.25f / len * 4, p[1], 1e-4f);
+		assertEquals(1f / len * 4, p[2], 1e-4f);
+		// Facing west: right on the screen is -z (north), ahead is -x
+		Coloured w = new Coloured();
+		SkyCanvas.SkyFrame west = new SkyCanvas.SkyFrame().aim(90, 0);
+		for (int i = 0; i < 4; i++) {
+			w.at(west, 0.5f, 0.25f, 4, 0);
+		}
+		float[] q = w.corners.get(0);
+		assertEquals(-1f / len * 4, q[0], 1e-4f);
+		assertEquals(0.25f / len * 4, q[1], 1e-4f);
+		assertEquals(-0.5f / len * 4, q[2], 1e-4f);
+	}
+
 	@Test
 	void pointsLandOnTheSphere() {
 		Recorder r = new Recorder();

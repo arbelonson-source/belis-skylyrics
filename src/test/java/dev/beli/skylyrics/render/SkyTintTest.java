@@ -41,6 +41,27 @@ class SkyTintTest {
 	}
 
 	@Test
+	void aNearlyBlackSkyTintsLessThanTheSameColourInDaylight() {
+		// The same hue at 12 and at 200 on its brightest channel: the dim one has hardly any trustworthy colour
+		int dim = SkyTint.tint(0xFFFFFF, 0x0C0408, SkyTint.AMOUNT);
+		int bright = SkyTint.tint(0xFFFFFF, 0xC84064, SkyTint.AMOUNT);
+		int dimLoss = 3 * 255 - ((dim >> 16 & 255) + (dim >> 8 & 255) + (dim & 255));
+		int brightLoss = 3 * 255 - ((bright >> 16 & 255) + (bright >> 8 & 255) + (bright & 255));
+		assertTrue(dimLoss < brightLoss / 2, "dim " + Integer.toHexString(dim) + " bright " + Integer.toHexString(bright));
+		// and right at the edge of black it is only just beginning
+		int edge = SkyTint.tint(0xFFFFFF, 0x090308, SkyTint.AMOUNT);
+		assertTrue(3 * 255 - ((edge >> 16 & 255) + (edge >> 8 & 255) + (edge & 255)) < dimLoss, Integer.toHexString(edge));
+	}
+
+	@Test
+	void aMutedSkyStillTintsAtAllNotInProportionToItsPaleness() {
+		// A pale blue-grey sky: only 13% saturated, but the square root keeps its tint visible
+		int tinted = SkyTint.tint(0xFFFFFF, 0xC8D2E6, SkyTint.AMOUNT);
+		int r = tinted >> 16 & 255;
+		assertTrue(r <= 251, "red " + r + " in " + Integer.toHexString(tinted));
+	}
+
+	@Test
 	void noAmountNoTint() {
 		assertEquals(0x33CC99, SkyTint.tint(0x33CC99, 0x4B175F, 0));
 	}

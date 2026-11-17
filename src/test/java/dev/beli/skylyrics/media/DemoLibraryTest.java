@@ -25,7 +25,10 @@ class DemoLibraryTest {
 			pages++;
 			assertTrue(pages < 10);
 		}
+		assertTrue(pages >= 2, "28 songs come in more than one page: " + pages);
 		assertEquals(demo.liked(0).join().total(), seen.size());
+		assertEquals(DemoLibrary.PAGE, demo.liked(0).join().items().size());
+		assertEquals(DemoLibrary.PAGE, demo.liked(0).join().next());
 		assertEquals("Neon Skyline", demo.liked(0).join().items().getFirst().title());
 	}
 
@@ -34,6 +37,10 @@ class DemoLibraryTest {
 		List<LibraryItem> found = demo.search("  NEON skyline ", 0).join().items();
 		assertFalse(found.isEmpty());
 		assertEquals("Neon Skyline", found.getFirst().title());
+		// an artist's name finds that artist's songs, and nothing else
+		List<LibraryItem> byArtist = demo.search("lumen drift", 0).join().items();
+		assertEquals(5, byArtist.size());
+		byArtist.forEach(item -> assertEquals("Lumen Drift", item.artists()));
 		assertTrue(demo.search("", 0).join().items().isEmpty());
 		assertTrue(demo.search("zzzz no such song", 0).join().items().isEmpty());
 	}
