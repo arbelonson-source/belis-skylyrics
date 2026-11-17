@@ -56,6 +56,8 @@ public final class MprisSource implements MediaSource {
 
 		void SetPosition(DBusPath trackId, long positionUs);
 
+		void Seek(long offsetUs);
+
 		void OpenUri(String uri);
 	}
 
@@ -63,6 +65,11 @@ public final class MprisSource implements MediaSource {
 	private @Nullable DBusConnection connection;
 	private @Nullable String current;
 	private @Nullable String currentTrackId;
+	/** Where the chosen player was at the last poll, for a player that can only seek relative to now. */
+	private volatile long lastPositionMs;
+	private volatile long lastPositionAtNs;
+	private volatile boolean lastPlaying;
+	private volatile double lastRate = 1.0;
 	private String currentDisplayName = "";
 
 	/** Where the players' state comes from; replaced in tests. */
@@ -487,6 +494,11 @@ public final class MprisSource implements MediaSource {
 		}
 		current = chosen.busName;
 		currentTrackId = chosen.trackId;
+		lastPositionMs = chosen.positionMs;
+		Long at = readAt.get(chosen);
+		lastPositionAtNs = at != null ? at : System.nanoTime();
+		lastPlaying = chosen.playing;
+		lastRate = chosen.rate;
 		currentDisplayName = prettyName(chosen.track.player());
 		return new Snapshot(chosen.track, chosen.positionMs, chosen.playing, readAt.get(chosen), chosen.rate);
 	}
@@ -685,8 +697,51 @@ public final class MprisSource implements MediaSource {
 	public void seek(long positionMs) {
 		Player p = player();
 		if (p != null && currentTrackId != null && !currentTrackId.isEmpty()) {
-			p.SetPosition(new DBusPath(currentTrackId), positionMs * 1000);
+			long known = lastPositionMs;
+			if (lastPlaying) {
+				known += (long) ((System.nanoTime() - lastPositionAtNs) / 1_000_000 * lastRate);
+			}
+			seek(p, currentTrackId, positionMs, known);
 		}
+	}
+
+	/** SetPosition when the track id is an object path, otherwise the relative Seek from the position we know. */
+	static void seek(Player p, String trackId, long targetMs, long knownMs) {
+		if (usableTrackId(trackId)) {
+			p.SetPosition(new DBusPath(trackId), targetMs * 1000);
+		} else {
+			p.Seek((targetMs - knownMs) * 1000);
+		}
+	}
+
+	/** True for a track id SetPosition can carry: a D-Bus object path, and not the spec's "no track" id (which players ignore). */
+	static boolean usableTrackId(String id) {
+		return validObjectPath(id) && !id.equals("/org/mpris/MediaPlayer2/TrackList/NoTrack");
+	}
+
+	/** The D-Bus object path rules: "/" alone, or "/" and segments of A-Z a-z 0-9 _ split by single "/", no trailing "/". */
+	static boolean validObjectPath(String path) {
+		if (path.equals("/")) {
+			return true;
+		}
+		if (path.length() < 2 || path.charAt(0) != '/' || path.charAt(path.length() - 1) == '/') {
+			return false;
+		}
+		boolean segmentStart = true;
+		for (int i = 1; i < path.length(); i++) {
+			char c = path.charAt(i);
+			if (c == '/') {
+				if (segmentStart) {
+					return false;
+				}
+				segmentStart = true;
+			} else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+				segmentStart = false;
+			} else {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override
