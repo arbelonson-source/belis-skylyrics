@@ -80,6 +80,14 @@ public final class SpotifyLibrary implements Library {
 		return t;
 	});
 	private final OwnId me = new OwnId();
+	/** The job running on this thread, so a wait for Spotify can end as soon as its list is thrown away. */
+	private final ThreadLocal<CompletableFuture<?>> running = new ThreadLocal<>();
+	private final Caller caller;
+
+	/** One request to Spotify; the tests put their own answers here. */
+	interface Caller {
+		HttpResponse<String> call(String method, String path, @Nullable String json) throws IOException, InterruptedException;
+	}
 
 	public SpotifyLibrary(SpotifyWebSource spotify) {
 		this(spotify, uri -> false);
@@ -90,8 +98,13 @@ public final class SpotifyLibrary implements Library {
 	 *                 (no Premium, or no app open as far as they know); false if that didn't work either
 	 */
 	public SpotifyLibrary(SpotifyWebSource spotify, Predicate<String> openHere) {
+		this(spotify, openHere, spotify::call);
+	}
+
+	SpotifyLibrary(SpotifyWebSource spotify, Predicate<String> openHere, Caller caller) {
 		this.spotify = spotify;
 		this.openHere = openHere;
+		this.caller = caller;
 	}
 
 	@Override
@@ -136,7 +149,7 @@ public final class SpotifyLibrary implements Library {
 
 	private CompletableFuture<String> send(String body, String uri) {
 		return run(controls, () -> {
-			HttpResponse<String> response = spotify.call("PUT", "/me/player/play", body);
+			HttpResponse<String> response = caller.call("PUT", "/me/player/play", body);
 			if (response.statusCode() == 404) {
 				String device;
 				try {
@@ -145,7 +158,7 @@ public final class SpotifyLibrary implements Library {
 					device = null; // no answer about devices counts as none, so the app on this computer still gets its try
 				}
 				if (device != null) {
-					response = spotify.call("PUT", "/me/player/play?device_id=" + encode(device), body);
+					response = caller.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 				}
 			}
 			return outcome(response.statusCode(), response.body(), uri, openHere);
@@ -205,24 +218,43 @@ public final class SpotifyLibrary implements Library {
 			if (result.isDone()) {
 				return;
 			}
+			running.set(result);
 			try {
 				result.complete(job.run());
 			} catch (Exception e) {
 				result.completeExceptionally(e);
+			} finally {
+				running.remove();
 			}
 		});
 		return result;
 	}
 
+	/** Waits {@code ms}, but ends at once (by CancellationException) when the job's list was thrown away meanwhile, so the next job isn't held up. */
+	private void pause(long ms) throws InterruptedException {
+		CompletableFuture<?> job = running.get();
+		if (job == null) {
+			Thread.sleep(ms);
+			return;
+		}
+		try {
+			job.get(ms, java.util.concurrent.TimeUnit.MILLISECONDS);
+		} catch (java.util.concurrent.TimeoutException e) {
+			// waited it out
+		} catch (java.util.concurrent.ExecutionException e) {
+			// not possible while the job runs, nothing to wait for either way
+		}
+	}
+
 	private String get(String path) throws IOException, InterruptedException {
-		HttpResponse<String> response = spotify.call("GET", path, null);
+		HttpResponse<String> response = caller.call("GET", path, null);
 		if (response.statusCode() == 429) {
 			long wait = waitSeconds(response.headers().firstValue("Retry-After").orElse(null));
 			if (wait > MAX_WAIT_S) {
 				throw new IOException(Tr.t("Spotify didn't answer, try again")); // a long wait would hold up everything queued behind it
 			}
-			Thread.sleep(Math.max(1, wait) * 1000);
-			response = spotify.call("GET", path, null);
+			pause(Math.max(1, wait) * 1000);
+			response = caller.call("GET", path, null);
 		}
 		if (response.statusCode() >= 300) {
 			// With the library scopes granted a 403 is Spotify refusing this app or account (development mode), and signing in again can't change that

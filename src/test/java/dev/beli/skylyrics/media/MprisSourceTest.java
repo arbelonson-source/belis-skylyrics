@@ -450,4 +450,33 @@ class MprisSourceTest {
 			source.close();
 		}
 	}
+
+	@Test
+	void trackIdsThatAreNotObjectPathsAreSpotted() {
+		assertTrue(MprisSource.validObjectPath("/"));
+		assertTrue(MprisSource.validObjectPath("/org/mpris/MediaPlayer2/Track_7"));
+		assertFalse(MprisSource.validObjectPath(""));
+		assertFalse(MprisSource.validObjectPath("spotify:track:abc"));
+		assertFalse(MprisSource.validObjectPath("track1"));
+		assertFalse(MprisSource.validObjectPath("/a/"));
+		assertFalse(MprisSource.validObjectPath("/a//b"));
+		assertFalse(MprisSource.validObjectPath("/a-b"));
+		assertFalse(MprisSource.validObjectPath("/a b"));
+		assertFalse(MprisSource.usableTrackId("/org/mpris/MediaPlayer2/TrackList/NoTrack"));
+		assertTrue(MprisSource.usableTrackId("/com/spotify/track/42"));
+	}
+
+	@Test
+	void seekUsesSetPositionForPathsAndRelativeSeekForOtherIds() {
+		java.util.List<String> calls = new java.util.ArrayList<>();
+		MprisSource.Player p = (MprisSource.Player) java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+				new Class<?>[] {MprisSource.Player.class}, (proxy, method, args) -> {
+					calls.add(method.getName() + (args == null ? "" : ":" + (args[0] instanceof org.freedesktop.dbus.DBusPath d ? d.getPath() : args[0]) + (args.length > 1 ? "," + args[1] : "")));
+					return null;
+				});
+		MprisSource.seek(p, "/com/spotify/track/42", 30_000, 10_000);
+		MprisSource.seek(p, "spotify:track:abc", 30_000, 10_000);
+		MprisSource.seek(p, "/org/mpris/MediaPlayer2/TrackList/NoTrack", 5_000, 8_000);
+		assertEquals(List.of("SetPosition:/com/spotify/track/42,30000000", "Seek:20000000", "Seek:-3000000"), calls);
+	}
 }
