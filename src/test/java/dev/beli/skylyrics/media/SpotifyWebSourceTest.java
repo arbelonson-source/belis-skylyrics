@@ -811,6 +811,27 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void saveAfterSaveWhileOneIsWritingLeavesTheLastOneOnDisk(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		java.util.concurrent.CountDownLatch atGate = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		Thread media = slowRefresh(source, http, atGate, release); // "r2" is held at the disk
+		source.beforeSave = () -> { };
+		for (String token : List.of("r3", "r4", "r5")) {
+			com.google.gson.JsonObject next = new com.google.gson.JsonObject();
+			next.addProperty("access_token", "a");
+			next.addProperty("refresh_token", token);
+			source.acceptAndSave(ID, next); // each returns at once and leaves its change for the writer
+		}
+		release.countDown();
+		media.join(30_000);
+		assertFalse(media.isAlive());
+		String saved = Files.readString(dir.resolve("login.json"));
+		assertTrue(saved.contains("\"r5\""), saved);
+	}
+
+	@Test
 	void savingARotatedTokenLeavesAnotherGamesTempFileAlone(@TempDir Path dir) throws Exception {
 		FakeHttp http = new FakeHttp(204);
 		SpotifyWebSource source = signedIn(dir, http);
