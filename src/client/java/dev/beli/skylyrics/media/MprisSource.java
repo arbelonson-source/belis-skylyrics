@@ -696,13 +696,18 @@ public final class MprisSource implements MediaSource {
 	@Override
 	public void seek(long positionMs) {
 		Player p = player();
-		if (p != null && currentTrackId != null && !currentTrackId.isEmpty()) {
+		if (p != null) {
 			long known = lastPositionMs;
 			if (lastPlaying) {
 				known += (long) ((System.nanoTime() - lastPositionAtNs) / 1_000_000 * lastRate);
 			}
-			seek(p, currentTrackId, positionMs, known);
+			seekIfTrack(p, currentTrackId, positionMs, known);
 		}
+	}
+
+	/** A player that sends no track id at all (null or empty) gets the relative Seek too. */
+	static void seekIfTrack(Player p, @Nullable String trackId, long targetMs, long knownMs) {
+		seek(p, trackId == null ? "" : trackId, targetMs, knownMs);
 	}
 
 	/** SetPosition when the track id is an object path, otherwise the relative Seek from the position we know. */
