@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.lang.reflect.Field;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +18,19 @@ class LyricsInViewTest {
 		Field seenAt = LyricsInView.class.getDeclaredField("seenAt");
 		seenAt.setAccessible(true);
 		seenAt.setLong(null, Long.MIN_VALUE);
+		LyricsInView.clock = () -> now;
+	}
+
+	/** A test clock that only moves when a test moves it, so a slow machine can't stretch the waits. */
+	private long now = 1_000_000_000L;
+
+	private void after(long ms) {
+		now += ms * 1_000_000L;
+	}
+
+	@AfterEach
+	void realClock() {
+		LyricsInView.clock = System::nanoTime;
 	}
 
 	private static void lookForward() {
@@ -80,18 +94,18 @@ class LyricsInViewTest {
 	}
 
 	@Test
-	void theyStayCountedForAMomentAfterTheyLeaveTheView() throws InterruptedException {
+	void theyStayCountedForAMomentAfterTheyLeaveTheView() {
 		lookForward();
 		LyricsInView.check(new Vector3f(0, 5, -40), 6, 2);
 		assertTrue(LyricsInView.onScreen());
-		Thread.sleep(150);
+		after(150);
 		assertTrue(LyricsInView.onScreen(), "still counted well inside the hold time");
-		Thread.sleep(400);
+		after(400);
 		assertFalse(LyricsInView.onScreen(), "gone once the hold time is up");
 	}
 
 	@Test
-	void onceSeenItTakesALittleMoreToCountAsGone() throws InterruptedException {
+	void onceSeenItTakesALittleMoreToCountAsGone() {
 		lookForward();
 		float edge = 40 * (float) Math.tan(Math.toRadians(35)) * 16 / 9f;
 		Vector3f justOff = new Vector3f(edge + 3, 0, -40);
@@ -100,9 +114,9 @@ class LyricsInViewTest {
 		assertFalse(LyricsInView.onScreen());
 		// seen, then just off the edge: the margin keeps renewing the hold
 		LyricsInView.check(new Vector3f(0, 5, -40), 6, 2);
-		Thread.sleep(200);
+		after(200);
 		LyricsInView.check(justOff, 0.5f, 1);
-		Thread.sleep(200);
+		after(200);
 		assertTrue(LyricsInView.onScreen(), "renewed 200 ms ago, held for 300");
 	}
 

@@ -1,5 +1,7 @@
 package dev.beli.skylyrics.render;
 
+import java.util.function.LongSupplier;
+
 import org.joml.Vector3f;
 
 /**
@@ -10,6 +12,8 @@ import org.joml.Vector3f;
 public final class LyricsInView {
 	private static final long HOLD_NS = 300_000_000L;
 	private static long seenAt = Long.MIN_VALUE;
+	/** The clock in nanoseconds; tests swap in their own so they don't depend on how long a sleep really takes. */
+	static LongSupplier clock = System::nanoTime;
 
 	private LyricsInView() {}
 
@@ -18,7 +22,7 @@ public final class LyricsInView {
 		// Once seen, it has to move a bit further out before it counts as gone, so the edge doesn't flicker
 		float margin = onScreen() ? 0.12f : 0;
 		if (ScreenLayer.inView(centre, halfW, halfH, margin)) {
-			seenAt = System.nanoTime();
+			seenAt = clock.getAsLong();
 		}
 	}
 
@@ -34,6 +38,6 @@ public final class LyricsInView {
 	}
 
 	public static boolean onScreen() {
-		return seenAt != Long.MIN_VALUE && System.nanoTime() - seenAt < HOLD_NS;
+		return seenAt != Long.MIN_VALUE && clock.getAsLong() - seenAt < HOLD_NS;
 	}
 }
