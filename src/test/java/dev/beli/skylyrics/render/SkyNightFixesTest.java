@@ -22,6 +22,54 @@ class SkyNightFixesTest {
 		assertFalse(memo.hit(level, camera, 100L, 1000L, 0.5f, 1, 2, 3));
 	}
 
+	/** The probe the game hands the star brightness through keeps its answer until the next client tick. */
+	private static final class Probe {
+		double world = 0.5, kept = Double.NaN;
+
+		double read() {
+			if (Double.isNaN(kept)) {
+				kept = world;
+			}
+			return kept;
+		}
+
+		void tick() {
+			kept = Double.NaN;
+		}
+	}
+
+	@Test
+	void aTimeSetThatLandsBetweenClientTicksIsNotPinnedToTheOldSky() {
+		Object level = new Object(), camera = new Object();
+		StarMemo memo = new StarMemo();
+		Probe probe = new Probe();
+		// frozen game: day (0) then night (0.5) time, same tick, same camera; frames come faster than client ticks
+		probe.world = 0;
+		probe.tick();
+		assertEquals(0f, memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 0, probe::read));
+		// /time set 18000 is handled between two client ticks: the day time moves, the probe still holds day
+		probe.world = 0.5;
+		memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, 1000, probe::read);
+		probe.tick();
+		assertEquals(0.5f, memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, 1060, probe::read),
+				"the night must show once the probe has ticked, not stay on the old answer");
+	}
+
+	@Test
+	void anAnswerFromAfterTheSettleTimeIsKept() {
+		Object level = new Object(), camera = new Object();
+		StarMemo memo = new StarMemo();
+		int[] reads = {0};
+		java.util.function.DoubleSupplier read = () -> ++reads[0];
+		memo.get(level, camera, 100L, 6000L, 1f, 1, 2, 3, 0, read);
+		memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, 1000, read);
+		long late = 1000 + StarMemo.SETTLE_MS;
+		memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, late, read);
+		int before = reads[0];
+		assertEquals(before, (int) memo.get(level, camera, 100L, 18000L, 1f, 1, 2, 3, late + 5, read));
+		assertEquals(before, reads[0], "a settled answer is reused, not read again");
+	}
+
 	@Test
 	void hidingTheSkyResetsSparklesAndMeteors() throws Exception {
 		SkyEffects sky = new SkyEffects(null, null, null, null);
