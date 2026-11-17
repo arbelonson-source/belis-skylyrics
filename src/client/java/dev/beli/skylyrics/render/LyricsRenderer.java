@@ -2158,9 +2158,14 @@ public final class LyricsRenderer {
 		backdrop = Mth.clamp(strength, 0, 1);
 	}
 
-	/** How much the sun is up: 1 from about a third of the way up the sky, 0 from just below the horizon (-1 midnight, 1 noon). */
+	/**
+	 * How much the sun is up (sunHeight -1 midnight, 1 noon): 1 from about a third of the way up the sky, 0 from just
+	 * below the horizon, eased in between. It is the old clear-weather daylight (star brightness before 1.21.11, turned
+	 * upside down), so clear skies look as they always did.
+	 */
 	static float sunUp(float sunHeight) {
-		return Mth.clamp(2 * sunHeight + 0.25f, 0, 1);
+		float s = Mth.clamp(2 * sunHeight + 0.25f, 0, 1);
+		return 1 - (1 - s) * (1 - s);
 	}
 
 	/**
