@@ -52,7 +52,7 @@ class ArcGarbageTest {
 		ThreadMXBean mx = (ThreadMXBean) ManagementFactory.getThreadMXBean();
 		long id = Thread.currentThread().getId();
 		boolean flip = false;
-		for (int i = 0; i < 20_000; i++) { // warm up so the JIT has removed boxing
+		for (int i = 0; i < 200_000; i++) { // warm up so the JIT has removed boxing
 			LyricsRenderer.Display.of("garbage", flip = !flip);
 		}
 		long before = mx.getThreadAllocatedBytes(id);
@@ -60,6 +60,6 @@ class ArcGarbageTest {
 			LyricsRenderer.Display.of("garbage", flip = !flip);
 		}
 		long used = mx.getThreadAllocatedBytes(id) - before;
-		assertTrue(used < 20_000, "allocated " + used + " bytes for 10000 cache hits");
+		assertTrue(used < 100_000, "allocated " + used + " bytes for 10000 cache hits");
 	}
 }

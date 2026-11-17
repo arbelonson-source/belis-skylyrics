@@ -59,7 +59,7 @@ class NeedsTest {
 
 	/** Runs the real install against a jar with the given depends; returns the result or the refusal. */
 	private Object tryInstall(String depends) throws Exception {
-		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win"));
 		byte[] data = jar(depends);
 		Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
 		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(data);
@@ -114,7 +114,7 @@ class NeedsTest {
 
 	@Test
 	void updateTellsThePlayerWhatToUpdate() throws Exception {
-		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win"));
 		byte[] data = jar("{\"fabric-api\":\">=999.0.0\"}");
 		Path old = Files.createFile(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"));
 		var asset = new UpdateCheck.Asset(NAME, URL, sha(data));
