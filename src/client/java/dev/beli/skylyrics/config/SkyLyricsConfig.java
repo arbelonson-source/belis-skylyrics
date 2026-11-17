@@ -487,6 +487,9 @@ public final class SkyLyricsConfig {
 			blocked.reader = reader;
 			return blocked;
 		}
+		if (text.strip().isEmpty() || text.equals("\uFEFF")) {
+			return new SkyLyricsConfig(); // nothing in it yet: not damaged, no copy
+		}
 		try {
 			Parsed parsed = parse(text);
 			if (parsed.damaged()) {
@@ -621,21 +624,21 @@ public final class SkyLyricsConfig {
 		recentSearches = cleanSearches(recentSearches);
 		preferredPlayer = preferredPlayer == null ? "" : preferredPlayer.strip().toLowerCase(Locale.ROOT);
 		spotifyClientId = spotifyClientId == null ? "" : spotifyClientId.strip();
-		glow = clamp(glow, 0, 1);
-		opacity = clamp(opacity, 0.2f, 1);
-		skyStrength = clamp(skyStrength, 0.1f, 1);
-		size = clamp(size, 0.3f, 3);
+		glow = clamp(glow, 0, 1, d.glow);
+		opacity = clamp(opacity, 0.2f, 1, d.opacity);
+		skyStrength = clamp(skyStrength, 0.1f, 1, d.skyStrength);
+		size = clamp(size, 0.3f, 3, d.size);
 		worldWords = Math.max(1, Math.min(10, worldWords));
-		worldFade = clamp(worldFade, 0.8f, 6);
-		worldDistance = clamp(worldDistance, 0.5f, 2);
-		worldTilt = clamp(worldTilt, 0, 2);
-		worldRise = clamp(worldRise, 0, 2);
-		worldCurve = clamp(worldCurve, 0, 2);
+		worldFade = clamp(worldFade, 0.8f, 6, d.worldFade);
+		worldDistance = clamp(worldDistance, 0.5f, 2, d.worldDistance);
+		worldTilt = clamp(worldTilt, 0, 2, d.worldTilt);
+		worldRise = clamp(worldRise, 0, 2, d.worldRise);
+		worldCurve = clamp(worldCurve, 0, 2, d.worldCurve);
 		cardLines = cardLines >= 3 ? 3 : 1;
-		barSize = clamp(barSize, 0.75f, 1.5f);
-		barBackground = clamp(barBackground, 0, 1);
-		height = clamp(height, -10, 80);
-		distance = clamp(distance, 8, 160);
+		barSize = clamp(barSize, 0.75f, 1.5f, d.barSize);
+		barBackground = clamp(barBackground, 0, 1, d.barBackground);
+		height = clamp(height, -10, 80, d.height);
+		distance = clamp(distance, 8, 160, d.distance);
 		syncOffsetMs = Math.max(-5000, Math.min(5000, syncOffsetMs));
 		if (songOffsets == null) {
 			songOffsets = new LinkedHashMap<>();
@@ -777,8 +780,9 @@ public final class SkyLyricsConfig {
 		}
 	}
 
-	private static float clamp(float v, float min, float max) {
-		return Float.isNaN(v) ? min : Math.max(min, Math.min(max, v));
+	/** Held between min and max; a number that isn't finite (NaN, Infinity from a hand-edited file) gives the default. */
+	private static float clamp(float v, float min, float max, float fallback) {
+		return Float.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
 	}
 
 	/**
