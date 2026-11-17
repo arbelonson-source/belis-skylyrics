@@ -195,16 +195,16 @@ final class MoonlitSky {
 	 * @param time seconds, sped up or slowed down by the sky speed; moves the clouds and twinkles the stars
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel) {
 		draw(c, radius, baseYaw, level, time, pixel, SkyView.ALL);
 	}
 
 	/** As above, leaving out the parts of the sky the camera {@code view} can't see. */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		// Repainting the band costs about half a millisecond, so it waits until the clouds have visibly moved, is done
 		// a few rows a frame instead of in one go, and is skipped while no cloud is on screen
-		int part = repaint.advance((time * CLOUD_DRIFT) % 360, clouds.anyVisible(cos, sin, view));
+		int part = repaint.advance((float) ((time * CLOUD_DRIFT) % 360), clouds.anyVisible(cos, sin, view));
 		if (part != DriftRepaint.NONE) {
 			drift = repaint.target();
 			if (part == DriftRepaint.ALL) {
@@ -223,13 +223,13 @@ final class MoonlitSky {
 	}
 
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
-	private void stars(SkyCanvas c, float r, float baseYaw, float level, float time, float pixel, SkyView view) {
+	private void stars(SkyCanvas c, float r, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
 		for (int i = 0; i < STAR_COUNT; i++) {
 			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
-			float twinkle = 0.7f + 0.3f * (float) Math.sin(time * (0.6f + 0.11f * (i % 9)) + i * 1.7f);
+			float twinkle = 0.7f + 0.3f * (float) Math.sin(SkyClock.phase(time, 0.6 + 0.11 * (i % 9), i * 1.7f));
 			int col = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
 			float s = STAR_SIZE[i] * pixel;
 			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);

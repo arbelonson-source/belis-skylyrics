@@ -84,12 +84,12 @@ final class Constellations {
 	 * @param level 0..1, how much shows
 	 * @param pixel the angle one screen pixel covers, in radians
 	 */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel) {
 		draw(c, radius, baseYaw, level, time, pixel, SkyView.ALL);
 	}
 
 	/** As above, leaving out the patterns the camera {@code view} can't see. */
-	void draw(SkyCanvas c, float radius, float baseYaw, float level, float time, float pixel, SkyView view) {
+	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel, SkyView view) {
 		int line = SkyColors.argb(LINE_RGB, LINE_ALPHA * level);
 		float half = LINE_PIXELS * pixel / 2;
 		float s = STAR_PIXELS * pixel;
@@ -111,7 +111,7 @@ final class Constellations {
 				c.at(frame, ax - nx, ay - ny, radius, line);
 			}
 			for (int i = 0; i < xs.length; i++) {
-				float twinkle = 0.85f + 0.15f * (float) Math.sin(time * 1.3f + p * 1.7f + i * 2.9f);
+				float twinkle = 0.85f + 0.15f * (float) Math.sin(SkyClock.phase(time, 1.3, p * 1.7f + i * 2.9f));
 				int star = SkyColors.argb(STAR_RGB, STAR_ALPHA * twinkle * level);
 				c.at(frame, xs[i] - s, ys[i] - s, radius, star);
 				c.at(frame, xs[i] + s, ys[i] - s, radius, star);

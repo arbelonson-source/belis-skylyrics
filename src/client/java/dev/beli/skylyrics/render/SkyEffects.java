@@ -89,10 +89,10 @@ public final class SkyEffects {
 	// Stored, not written as this::name where they are used, which would allocate a new object every frame
 	private final SubmitNodeCollector.CustomGeometryRenderer painter = this::drawPainted;
 	private final SubmitNodeCollector.CustomGeometryRenderer discDrawer = this::drawEclipseDisc;
-	private final SubmitNodeCollector.CustomGeometryRenderer frontDrawer = this::drawFront;
+	private final SubmitNodeCollector.CustomGeometryRenderer frontDrawer = this::drawFrontFresh;
 	private final Random random = new Random();
 	private float presence;
-	private float clock;
+	private double clock;
 	private long last;
 
 	private final float[] qx = new float[4], qy = new float[4], qz = new float[4];
@@ -161,6 +161,23 @@ public final class SkyEffects {
 		sparkleShow = 0;
 		meteorsAlive = 0;
 		last = 0;
+		corner = 0;
+	}
+
+	/**
+	 * The sky isn't drawn this frame, so nothing below ticks the sparkles or shooting stars. Put them back to rest, so the
+	 * sparkles start afresh at the lyrics (see {@link #sparklesStarting}) and no shooting star resumes mid-flight.
+	 */
+	void hideSky() {
+		sparkleShow = 0;
+		meteorsAlive = 0;
+		for (int i = 0; i < METEORS; i++) {
+			meteorAge[i] = meteorLife[i];
+		}
+	}
+
+	/** A frame's quads start at their first corner, whatever an earlier frame's error left half drawn. */
+	void beginFrame() {
 		corner = 0;
 	}
 
@@ -409,6 +426,7 @@ public final class SkyEffects {
 		}
 		if (presence <= 0 || !wanted || !open) {
 			skyStars = Float.NaN;
+			hideSky();
 			return;
 		}
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
@@ -417,6 +435,7 @@ public final class SkyEffects {
 		fade = starVisibility(skyStars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
 				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, syncedShown);
 		if (fade < 0.01f) {
+			hideSky();
 			return;
 		}
 		clock += dt * cfg.skySpeed.factor;
@@ -655,6 +674,7 @@ public final class SkyEffects {
 
 	/** Added light, far to near: the eclipse, galaxy or comet, the constellations, the nebula and aurora, sparkles, shooting stars. */
 	private void draw(PoseStack.Pose pose, VertexConsumer vc) {
+		beginFrame();
 		light.begin(pose, vc);
 		look();
 		if (effect == SkyEffect.ECLIPSE) {
@@ -703,6 +723,11 @@ public final class SkyEffects {
 	}
 
 	/** The sparkles and shooting stars, the nearest layers; the eclipse draws them on their own after its disc. */
+	private void drawFrontFresh(PoseStack.Pose pose, VertexConsumer vc) {
+		beginFrame();
+		drawFront(pose, vc);
+	}
+
 	private void drawFront(PoseStack.Pose pose, VertexConsumer vc) {
 		if (sparkles) {
 			sparkles(pose, vc);
@@ -731,6 +756,9 @@ public final class SkyEffects {
 		}
 
 		void begin(PoseStack.Pose pose, VertexConsumer vc) {
+			// A quad cut short by an error last frame must not shift this frame's corners
+			corner = 0;
+			reset();
 			this.pose = pose;
 			this.vc = vc;
 		}
@@ -786,21 +814,21 @@ public final class SkyEffects {
 	}
 
 	/** Where along the sky (radians, drawn as (sin, ., -cos)) a curtain's column {@code u} (0..1) stands. */
-	static float ribbonYaw(float t, int k, float u) {
-		float centre = (k * 2.1f + 0.6f) + t * 0.004f * (k % 2 == 0 ? 1 : -1);
+	static float ribbonYaw(double t, int k, float u) {
+		float centre = (k * 2.1f + 0.6f) + SkyClock.phase(t, k % 2 == 0 ? 0.004 : -0.004, 0);
 		float span = (100 + 20 * k) * DEG;
-		return centre + (u - 0.5f) * span + 0.07f * Mth.sin(t * 0.05f + u * 5 + k);
+		return centre + (u - 0.5f) * span + 0.07f * Mth.sin(SkyClock.phase(t, 0.05, u * 5 + k));
 	}
 
 	/** The height (radians) of a curtain's foot at column {@code u}. */
-	static float ribbonBase(float t, int k, float u) {
+	static float ribbonBase(double t, int k, float u) {
 		float baseElev = (27 + 9 * k) * DEG;
-		return baseElev + 4 * DEG * Mth.sin(t * 0.07f + u * 6 + k * 2);
+		return baseElev + 4 * DEG * Mth.sin(SkyClock.phase(t, 0.07, u * 6 + k * 2));
 	}
 
 	/** The height (radians) of a curtain's top at column {@code u}, given its foot {@code base}. */
-	static float ribbonTop(float t, int k, float u, float base) {
-		return base + (22 + 6 * Mth.sin(t * 0.09f + u * 9 + k)) * DEG;
+	static float ribbonTop(double t, int k, float u, float base) {
+		return base + (22 + 6 * Mth.sin(SkyClock.phase(t, 0.09, u * 9 + k))) * DEG;
 	}
 
 	/**
@@ -814,12 +842,12 @@ public final class SkyEffects {
 	}
 
 	/** Where a nebula cloud sits, as the yaw and height (radians) of its middle, drawn the same way as the curtains. */
-	static float blobYaw(float t, int k) {
-		return k * 0.9f + 0.3f + t * 0.003f;
+	static float blobYaw(double t, int k) {
+		return k * 0.9f + 0.3f + SkyClock.phase(t, 0.003, 0);
 	}
 
-	static float blobElev(float t, int k) {
-		return (38 + 14 * Mth.sin(k * 1.7f + 1)) * DEG + 2 * DEG * Mth.sin(t * 0.04f + k);
+	static float blobElev(double t, int k) {
+		return (38 + 14 * Mth.sin(k * 1.7f + 1)) * DEG + 2 * DEG * Mth.sin(SkyClock.phase(t, 0.04, k));
 	}
 
 	/** The widest a cloud's edge wobbles out: 1 + 0.2 + 0.1 + 0.05. */
@@ -849,7 +877,7 @@ public final class SkyEffects {
 	}
 
 	private void ribbon(PoseStack.Pose pose, VertexConsumer vc, int k) {
-		float t = clock;
+		double t = clock;
 		float r = radius * ribbonFraction(k);
 		int low = auroraLow;
 		int high = auroraHigh;
@@ -860,9 +888,9 @@ public final class SkyEffects {
 			float yaw = ribbonYaw(t, k, u);
 			float base = ribbonBase(t, k, u);
 			float top = ribbonTop(t, k, u, base);
-			float ripple = 0.55f + 0.45f * Mth.sin(t * 0.5f - u * 8 + k * 1.7f);
+			float ripple = 0.55f + 0.45f * Mth.sin(SkyClock.phase(t, 0.5, -u * 8 + k * 1.7f));
 			// Fine vertical rays drifting along the curtain
-			float rays = 0.72f + 0.28f * Mth.sin(u * 70 + t * 0.35f + k) * Mth.sin(u * 23 - t * 0.2f);
+			float rays = 0.72f + 0.28f * Mth.sin(SkyClock.phase(t, 0.35, u * 70 + k)) * Mth.sin(SkyClock.phase(t, -0.2, u * 23));
 			float b = peak * ripple * rays * endFade(u);
 			// A segment the camera can't see is skipped, but the values the next one starts from still move on
 			if (i > 0 && ribbonVisible(view, prevYaw, yaw, Math.min(prevBase, base), Math.max(prevTop, top))) {
@@ -888,7 +916,7 @@ public final class SkyEffects {
 	}
 
 	private void blob(PoseStack.Pose pose, VertexConsumer vc, int k) {
-		float t = clock;
+		double t = clock;
 		// The clouds lie along a wavy band around the sky, like a galaxy; far ones are drawn first
 		float yaw = blobYaw(t, k);
 		float elev = blobElev(t, k);
@@ -901,20 +929,20 @@ public final class SkyEffects {
 		uz /= ul;
 		float vx = dy * uz, vy = dz * ux - dx * uz, vz = -dy * ux;
 		float cx = dx * dist, cy = dy * dist, cz = dz * dist;
-		float size = dist * (0.36f + 0.08f * Mth.sin(k * 1.9f)) * (1 + 0.06f * Mth.sin(t * 0.12f + k));
+		float size = dist * (0.36f + 0.08f * Mth.sin(k * 1.9f)) * (1 + 0.06f * Mth.sin(SkyClock.phase(t, 0.12, k)));
 		if (!blobVisible(view, dx, dy, dz, size, dist)) {
 			return;
 		}
 		int hue = clouds[k % 3];
-		float alpha = 0.7f * fade * cloudAlpha * (0.8f + 0.2f * Mth.sin(t * 0.15f + k * 2));
+		float alpha = 0.7f * fade * cloudAlpha * (0.8f + 0.2f * Mth.sin(SkyClock.phase(t, 0.15, k * 2)));
 		int centreC = argb(mix(hue, 0xFFFFFF, 0.15f), alpha);
 		int midC = argb(mix(hue, DEEP_BLUE, 0.3f), alpha * 0.45f);
 		int edgeC = argb(hue, 0);
-		float ph = t * 0.05f + k;
+		float ph = SkyClock.phase(t, 0.05, k), ph2 = SkyClock.phase(t, 0.05 * 1.3, k * 1.3);
 		float prevMx = 0, prevMy = 0, prevMz = 0, prevEx = 0, prevEy = 0, prevEz = 0;
 		for (int i = 0; i <= SLICES; i++) {
 			float a = (float) i / SLICES * Mth.TWO_PI;
-			float wob = 1 + 0.2f * Mth.sin(3 * a + ph) + 0.1f * Mth.sin(5 * a - ph * 1.3f + k) + 0.05f * Mth.sin(9 * a + k);
+			float wob = 1 + 0.2f * Mth.sin(3 * a + ph) + 0.1f * Mth.sin(5 * a - ph2 + k) + 0.05f * Mth.sin(9 * a + k);
 			float ca = Mth.cos(a), sa = Mth.sin(a);
 			float lx = ca * ux + sa * vx, ly = sa * vy, lz = ca * uz + sa * vz;
 			float mx = cx + lx * size * 0.5f * wob, my = cy + ly * size * 0.5f * wob, mz = cz + lz * size * 0.5f * wob;
@@ -952,7 +980,7 @@ public final class SkyEffects {
 	}
 
 	private void dots(PoseStack.Pose pose, VertexConsumer vc) {
-		float t = clock;
+		double t = clock;
 		int white = starColor;
 		for (int i = 0; i < DOTS; i++) {
 			float yaw = dotYaw(i);
@@ -960,7 +988,7 @@ public final class SkyEffects {
 			if (!dotVisible(view, yaw, elev)) {
 				continue;
 			}
-			float tw = 0.5f + 0.5f * Mth.sin(t * (0.6f + (i % 5) * 0.15f) + i * 3.1f);
+			float tw = 0.5f + 0.5f * Mth.sin(SkyClock.phase(t, 0.6 + (i % 5) * 0.15, i * 3.1f));
 			int c = argb(white, 0.55f * fade * tw);
 			float s = 0.5f * radius / 100f;
 			float h = radius * Mth.cos(elev);
@@ -975,7 +1003,7 @@ public final class SkyEffects {
 
 	/** Soft four-pointed sparkles scattered round the lyrics, each glinting now and then. */
 	private void sparkles(PoseStack.Pose pose, VertexConsumer vc) {
-		float t = clock;
+		double t = clock;
 		float r = radius * 0.92f;
 		//? if >=26.2 {
 		/*// The added-light pipeline writes depth here, so a nearer cloud would hide a sparkle: put them in front of all
@@ -984,7 +1012,7 @@ public final class SkyEffects {
 		float centreYaw = (anchorYaw + 180) * DEG, centreElev = -anchorPitch * DEG;
 		int clear = argb(starColor, 0);
 		for (int i = 0; i < SPARKLES; i++) {
-			float tw = glint(Mth.sin(t * (0.8f + (i % 7) * 0.13f) + i * 2.7f));
+			float tw = glint(Mth.sin(SkyClock.phase(t, 0.8 + (i % 7) * 0.13, i * 2.7f)));
 			float alpha = fade * smooth(sparkleShow) * tw;
 			if (alpha < 0.01f) {
 				continue;
@@ -1112,32 +1140,25 @@ public final class SkyEffects {
 	static float starBrightness(ClientLevel level, Camera camera, float partial) {
 		var at = camera.position();
 		long tick = level.getGameTime();
-		if (starsLevel == level && starsCamera == camera && starsTick == tick && starsPartial == partial
-				&& starsX == at.x && starsY == at.y && starsZ == at.z) {
-			return starsValue;
+		// The day time is in the key too: /tick freeze holds the game tick while /time set moves the sun
+		//? if >=26.1 {
+		/*long dayTime = level.getOverworldClockTime();
+		*///?} else {
+		long dayTime = level.getDayTime();
+		//?}
+		if (STARS.hit(level, camera, tick, dayTime, partial, at.x, at.y, at.z)) {
+			return STARS.value();
 		}
 		float value = readStarBrightness(level, camera, partial);
-		starsLevel = level;
-		starsCamera = camera;
-		starsTick = tick;
-		starsPartial = partial;
-		starsX = at.x;
-		starsY = at.y;
-		starsZ = at.z;
-		starsValue = value;
+		STARS.store(level, camera, tick, dayTime, partial, at.x, at.y, at.z, value);
 		return value;
 	}
 
-	private static ClientLevel starsLevel;
-	private static Camera starsCamera;
-	private static long starsTick;
-	private static float starsPartial, starsValue;
-	private static double starsX, starsY, starsZ;
+	private static final StarMemo STARS = new StarMemo();
 
 	/** Lets go of the kept level and camera, so leaving a world doesn't keep it alive. */
 	static void forgetStars() {
-		starsLevel = null;
-		starsCamera = null;
+		STARS.forget();
 	}
 
 	/**
