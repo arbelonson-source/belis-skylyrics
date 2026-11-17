@@ -67,6 +67,10 @@ public final class SpotifyWebSource implements MediaSource {
 	private static final String ACCOUNTS = "https://accounts.spotify.com";
 	private static final String API = "https://api.spotify.com/v1";
 	private static final int LOGIN_TIMEOUT_MS = 5 * 60_000;
+	/** How long the sign-in waits for the browser; a seam for tests. */
+	int loginTimeoutMs = LOGIN_TIMEOUT_MS;
+	/** The most time one connection gets in all, however slowly it trickles bytes. */
+	static final long REQUEST_DEADLINE_NS = 10_000_000_000L;
 	/** How long a connection may stay silent before it is dropped. */
 	static final int SOCKET_TIMEOUT_MS = 5000;
 	private static final int MAX_CONNECTIONS = 8;
@@ -78,8 +82,12 @@ public final class SpotifyWebSource implements MediaSource {
 
 	/** Spotify said no to the refresh token: it was revoked or belongs to another app. */
 	private static final class Refused extends IOException {
-		Refused(String message) {
+		/** The app itself is refused (deleted or reset on the dashboard), so no other login can help. */
+		final boolean appRejected;
+
+		Refused(String message, boolean appRejected) {
 			super(message);
+			this.appRejected = appRejected;
 		}
 	}
 
@@ -132,7 +140,7 @@ public final class SpotifyWebSource implements MediaSource {
 	/** Only one token refresh at a time; the network call runs under this, never under the main lock. */
 	private final Object refreshLock = new Object();
 	private long accessUntilNs;
-	private volatile @Nullable ServerSocket loginServer;
+	volatile @Nullable ServerSocket loginServer;
 	private volatile String problem = "";
 	/** Written under this lock (a sign-out must not be overwritten by an answer for the old account); read freely. */
 	private volatile Snapshot last = Snapshot.NOTHING;
@@ -289,7 +297,7 @@ public final class SpotifyWebSource implements MediaSource {
 	 * hold up the real redirect or end the sign-in.
 	 */
 	void awaitBrowser(ServerSocket server, String id, String verifier, String state, int socketTimeoutMs) {
-		long deadline = System.currentTimeMillis() + LOGIN_TIMEOUT_MS;
+		long deadline = System.currentTimeMillis() + loginTimeoutMs;
 		AtomicBoolean claimed = new AtomicBoolean();
 		AtomicInteger open = new AtomicInteger();
 		AtomicReference<Thread> winner = new AtomicReference<>();
@@ -320,7 +328,10 @@ public final class SpotifyWebSource implements MediaSource {
 					thread.start();
 				}
 			} catch (SocketTimeoutException e) {
-				problem = Tr.t("Sign-in timed out");
+				// A sign-in already being exchanged reports its own result
+				if (!claimed.get()) {
+					setProblem(server, Tr.t("Sign-in timed out"));
+				}
 			} catch (IOException e) {
 				// Closed by cancelLogin or after the answer came
 			}
@@ -344,7 +355,14 @@ public final class SpotifyWebSource implements MediaSource {
 	private void handle(Socket socket, ServerSocket server, String id, String verifier, String state, int socketTimeoutMs,
 			AtomicBoolean claimed, AtomicReference<Thread> winner) throws IOException {
 		socket.setSoTimeout(socketTimeoutMs);
-		Map<String, String> query = callbackQuery(requestLine(socket.getInputStream()));
+		Map<String, String> query = callbackQuery(requestLine(
+				bounded(socket.getInputStream(), System.nanoTime() + REQUEST_DEADLINE_NS, System::nanoTime, ms -> {
+					try {
+						socket.setSoTimeout(ms);
+					} catch (java.net.SocketException e) {
+						throw new java.io.UncheckedIOException(e);
+					}
+				}, socketTimeoutMs)));
 		// Browsers also ask for /favicon.ico and such; only the real answer counts, and only once
 		if (query == null || !state.equals(query.get("state")) || !claimed.compareAndSet(false, true)) {
 			respond(socket.getOutputStream(), "404 Not Found", Tr.t("Nothing here."));
@@ -354,8 +372,9 @@ public final class SpotifyWebSource implements MediaSource {
 		try {
 			String code = query.get("code");
 			if (code == null) {
-				problem = Tr.t("Sign-in was cancelled");
-				respond(socket.getOutputStream(), "200 OK", problem);
+				String cancelled = Tr.t("Sign-in was cancelled");
+				setProblem(server, cancelled);
+				respond(socket.getOutputStream(), "200 OK", cancelled);
 				return;
 			}
 			String message;
@@ -369,12 +388,19 @@ public final class SpotifyWebSource implements MediaSource {
 					message = Tr.t("Sign-in was cancelled");
 				}
 			} catch (IOException | InterruptedException | RuntimeException e) {
-				problem = Tr.t("Sign-in failed: %s", failureText(e));
-				message = problem;
+				message = Tr.t("Sign-in failed: %s", failureText(e));
+				setProblem(server, message);
 			}
 			respond(socket.getOutputStream(), "200 OK", message);
 		} finally {
 			closeQuietly(server);
+		}
+	}
+
+	/** Records why a sign-in failed, but only for the sign-in that is still the current one; an old attempt stays quiet. */
+	private synchronized void setProblem(ServerSocket server, String text) {
+		if (loginServer == server) {
+			problem = text;
 		}
 	}
 
@@ -419,6 +445,29 @@ public final class SpotifyWebSource implements MediaSource {
 			total += header.length();
 		}
 		return first;
+	}
+
+	/**
+	 * The stream cut off at {@code deadlineNs} in all: a client trickling a byte at a time can't outlast it, since each
+	 * read only waits for what is left of the time (at most {@code perReadMs}).
+	 */
+	static InputStream bounded(InputStream in, long deadlineNs, java.util.function.LongSupplier nowNs,
+			java.util.function.IntConsumer setTimeoutMs, int perReadMs) {
+		return new InputStream() {
+			@Override
+			public int read() throws IOException {
+				long leftMs = (deadlineNs - nowNs.getAsLong()) / 1_000_000L;
+				if (leftMs <= 0) {
+					throw new SocketTimeoutException("The request took too long");
+				}
+				try {
+					setTimeoutMs.accept((int) Math.min(perReadMs, leftMs));
+				} catch (java.io.UncheckedIOException e) {
+					throw e.getCause();
+				}
+				return in.read();
+			}
+		};
 	}
 
 	/** One line without its line end; empty at the end of the stream. */
@@ -504,8 +553,15 @@ public final class SpotifyWebSource implements MediaSource {
 				.build();
 		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
 		JsonObject json = object(response.body());
-		if (json != null && response.statusCode() == 400 && "invalid_grant".equals(string(json, "error"))) {
-			throw new Refused(string(json, "error_description"));
+		if (response.statusCode() == 429) {
+			holdOff(response); // the poller waits out what Spotify asked, like for the Web API
+		}
+		String error = json == null || response.statusCode() != 400 ? null : string(json, "error");
+		if ("invalid_grant".equals(error)) {
+			throw new Refused(string(json, "error_description"), false);
+		}
+		if ("invalid_client".equals(error) || "unauthorized_client".equals(error)) {
+			throw new Refused(string(json, "error_description"), true);
 		}
 		if (response.statusCode() != 200 || json == null || string(json, "access_token") == null) {
 			String why = json == null ? null : string(json, "error_description");
@@ -560,20 +616,27 @@ public final class SpotifyWebSource implements MediaSource {
 			// The network call happens with the main lock free, so signing out or quitting never waits for it
 			JsonObject result = null;
 			boolean refused = false;
+			boolean appRejected = false;
 			String @Nullable [] adopted = null;
 			try {
 				result = token(form("grant_type", "refresh_token", "refresh_token", refresh, "client_id", id));
 			} catch (Refused e) {
-				// A second game copy sharing this folder may have renewed the token and saved the new one: try that
-				// once before calling it a sign-out (which would also delete the file the other copy just wrote)
-				adopted = waitForOtherLogin(id, refresh);
-				if (adopted == null) {
+				if (e.appRejected) {
 					refused = true;
+					appRejected = true;
 				} else {
-					try {
-						result = token(form("grant_type", "refresh_token", "refresh_token", adopted[0], "client_id", id));
-					} catch (Refused e2) {
+					// A second game copy sharing this folder may have renewed the token and saved the new one: try that
+					// once before calling it a sign-out (which would also delete the file the other copy just wrote)
+					adopted = waitForOtherLogin(id, refresh);
+					if (adopted == null) {
 						refused = true;
+					} else {
+						try {
+							result = token(form("grant_type", "refresh_token", "refresh_token", adopted[0], "client_id", id));
+						} catch (Refused e2) {
+							refused = true;
+							appRejected = e2.appRejected;
+						}
 					}
 				}
 			}
@@ -583,7 +646,8 @@ public final class SpotifyWebSource implements MediaSource {
 				}
 				if (refused) {
 					signOut();
-					problem = Tr.t("Spotify signed you out, sign in again");
+					problem = appRejected ? Tr.t("Spotify no longer accepts your Client ID, check it and sign in again")
+							: Tr.t("Spotify signed you out, sign in again");
 					throw new IOException(problem);
 				}
 				if (adopted != null) {
