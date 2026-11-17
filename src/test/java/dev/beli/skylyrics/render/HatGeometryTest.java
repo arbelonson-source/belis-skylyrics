@@ -2,6 +2,7 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -119,9 +120,35 @@ class HatGeometryTest {
 		return String.join("\n", out);
 	}
 
+	/*
+	 * The fingerprint was captured on 1.21.11 from the old varargs code. Older versions' Mth (lerp, constants) round a few
+	 * floats differently, so horns and the flower crown hash differently there: compare only where it was captured.
+	 */
+	//? if >=1.21.11 {
+	private static final boolean CAPTURED_HERE = true;
+	//?} else {
+	/*private static final boolean CAPTURED_HERE = false;
+	*///?}
+
 	@Test
 	void everyHatEmitsTheSameVertices() throws Exception {
+		assumeTrue(CAPTURED_HERE, "fingerprint captured on 1.21.11");
 		assertEquals(EXPECTED, fingerprint());
+	}
+
+	/** On every version: a quad is its four corners forwards then backwards, the first two in from, the last two in to. */
+	@Test
+	void aQuadIsDrawnBothWaysRound() {
+		PoseStack.Pose pose = new PoseStack().last();
+		Hasher got = new Hasher();
+		HatLayer.face(pose, got, 7, 0xFF112233, 0xFF445566, 0f, 1f, 2f, 3f, 4f, 5f, 6f, 7f, 8f, 9f, 10f, 11f);
+		Hasher want = new Hasher();
+		int[] order = {0, 1, 2, 3, 3, 2, 1, 0};
+		for (int k : order) {
+			want.addVertex(k * 3f, k * 3f + 1, k * 3f + 2).setColor(k < 2 ? 0xFF112233 : 0xFF445566).setUv(0.5f, 0.5f).setLight(7);
+		}
+		assertEquals(8, got.vertices);
+		assertEquals(want.hash, got.hash);
 	}
 
 	@Test
