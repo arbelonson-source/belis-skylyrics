@@ -33,6 +33,20 @@ final class ScreenKeys {
 		return cycleFocus ? (shift ? -1 : 1) : (up ? -1 : 1);
 	}
 
+	/** Modifier bits as GLFW (and so the key events) give them: Shift 1, Ctrl 2, Alt 4, Super 8. */
+	static boolean shiftIn(int modifiers) {
+		return (modifiers & 1) != 0;
+	}
+
+	static boolean altIn(int modifiers) {
+		return (modifiers & 4) != 0;
+	}
+
+	/** The edit-shortcut key as Minecraft 1.21.9+ reads it from the event: Super (Cmd) on a Mac, Ctrl elsewhere. */
+	static boolean editShortcutIn(int modifiers, boolean onMac) {
+		return (modifiers & (onMac ? 8 : 2)) != 0;
+	}
+
 	/** The library's search text after pasting {@code clip}: odd spaces become one, and what typing would refuse is dropped. */
 	static String libraryPasted(String query, String clip) {
 		return SettingsSearch.pasted(query, clip);

@@ -2,6 +2,7 @@ package dev.beli.skylyrics.gui;
 
 //? if <1.21.9 {
 /*import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.util.StringUtil;
 
@@ -52,17 +53,17 @@ public final class LegacyInput {
 			return (modifiers & org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL) != 0;
 		}
 
-		// What Minecraft's own text boxes use: Cmd on a Mac, which Screen.hasControlDown() already gives
+		// What Minecraft's own text boxes use, read from the event's bits as 1.21.9+ does: Cmd on a Mac, Ctrl elsewhere
 		public boolean hasControlDownWithQuirk() {
-			return Screen.hasControlDown();
+			return ScreenKeys.editShortcutIn(modifiers, Minecraft.ON_OSX);
 		}
 
 		public boolean hasShiftDown() {
-			return Screen.hasShiftDown();
+			return ScreenKeys.shiftIn(modifiers);
 		}
 
 		public boolean hasAltDown() {
-			return Screen.hasAltDown();
+			return ScreenKeys.altIn(modifiers);
 		}
 	}
 
