@@ -144,6 +144,8 @@ public final class SkyEffects {
 	private final float[] meteorLength = new float[METEORS];
 	private final float[] meteorAge = new float[METEORS], meteorLife = new float[METEORS];
 	private int meteorsAlive;
+	/** Whether the last frame drew the sky effects (false while the sky is hidden); the dev test hook starts shooting stars only then. */
+	private boolean skyUp;
 
 	/** You joined a world: forget the old anchor so the effects start where you look now (Lazy follow). */
 	public void onJoinWorld() {
@@ -160,6 +162,7 @@ public final class SkyEffects {
 		skyStars = Float.NaN;
 		sparkleShow = 0;
 		meteorsAlive = 0;
+		skyUp = false;
 		last = 0;
 		corner = 0;
 	}
@@ -169,6 +172,7 @@ public final class SkyEffects {
 	 * sparkles start afresh at the lyrics (see {@link #sparklesStarting}) and no shooting star resumes mid-flight.
 	 */
 	void hideSky() {
+		skyUp = false;
 		sparkleShow = 0;
 		meteorsAlive = 0;
 		for (int i = 0; i < METEORS; i++) {
@@ -475,6 +479,7 @@ public final class SkyEffects {
 		if (sparkles) {
 			sparkleSpread = Mth.clamp(cfg.size, 0.6f, 1.6f) * (cfg.placement == Placement.SKY ? 1 : 0.8f);
 		}
+		skyUp = true;
 		updateMeteors(cfg, dt);
 		if (effect == SkyEffect.OFF && !starPatterns && !sparkles && meteorsAlive == 0) {
 			return;
@@ -639,6 +644,51 @@ public final class SkyEffects {
 		}
 	}
 
+	/**
+	 * Dev test hook: starts one shooting star right now, {@code yawDeg} as a player's yaw and {@code elevDeg} degrees above the
+	 * horizon. Returns what happened, for the log. Only a sky that is drawn this frame with shooting stars on can show one.
+	 */
+	public String startMeteor(float yawDeg, float elevDeg) {
+		if (!skyUp) {
+			return "no meteor (the sky is not shown: off, daytime, indoors or no music)";
+		}
+		if (!SkyLyricsConfig.get().shootingStars) {
+			return "no meteor (shootingStars is off)";
+		}
+		launch(meteorSlot(meteorAge, meteorLife), meteorAimYaw(yawDeg), meteorAimElev(elevDeg));
+		meteorsAlive++;
+		return "meteor started";
+	}
+
+	/** The slot a hook-started shooting star takes: a finished one, else the one furthest along (the oldest). */
+	static int meteorSlot(float[] age, float[] life) {
+		int oldest = 0;
+		for (int i = 0; i < age.length; i++) {
+			if (age[i] >= life[i]) {
+				return i;
+			}
+			if (age[i] > age[oldest]) {
+				oldest = i;
+			}
+		}
+		return oldest;
+	}
+
+	/** A player's yaw in degrees as a shooting star's yaw on the sky sphere, in radians (the sphere's yaw 0 looks north, a player's looks south). */
+	static float meteorAimYaw(float playerYawDeg) {
+		return Mth.wrapDegrees(playerYawDeg + 180) * DEG;
+	}
+
+	/** An elevation in degrees as a shooting star's elevation in radians, kept in 5 to 85 degrees so it stays on the sky. */
+	static float meteorAimElev(float elevDeg) {
+		return Mth.clamp(elevDeg, 5, 85) * DEG;
+	}
+
+	/** The elevation in degrees for a camera pitch (negative looks up): where it looks, within the 42 to 70 degrees stars fall from. */
+	public static float meteorElevFor(float cameraPitchDeg) {
+		return Mth.clamp(-cameraPitchDeg, 42, 70);
+	}
+
 	/** Whether the playing song has synced lyrics to show (not unsynced, none, or an instrumental track). */
 	private boolean syncedLyricsShown() {
 		Lyrics shown = service.snapshot().forSong(tracker.track()).lyrics();
@@ -663,8 +713,15 @@ public final class SkyEffects {
 	}
 
 	private void launch(int i) {
-		meteorYaw[i] = random.nextFloat() * Mth.TWO_PI;
-		meteorElev[i] = (42 + random.nextFloat() * 28) * DEG;
+		float yaw = random.nextFloat() * Mth.TWO_PI;
+		float elev = (42 + random.nextFloat() * 28) * DEG;
+		launch(i, yaw, elev);
+	}
+
+	/** Starts shooting star {@code i} at the given spot on the sky sphere; the rest of its flight is drawn at random. */
+	private void launch(int i, float yaw, float elev) {
+		meteorYaw[i] = yaw;
+		meteorElev[i] = elev;
 		// Falling at a slant, to the left or the right
 		float slant = (0.12f + random.nextFloat() * 0.3f) * Mth.PI;
 		meteorAngle[i] = random.nextBoolean() ? -slant : slant - Mth.PI;

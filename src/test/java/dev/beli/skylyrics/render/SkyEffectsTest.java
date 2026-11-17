@@ -156,6 +156,27 @@ class SkyEffectsTest {
 	}
 
 	@Test
+	void hookMeteorLooksWhereTheCameraLooks() {
+		// A player looking south (yaw 0) looks at the sphere's yaw 180 degrees; west (90) at 270 = -90
+		assertEquals((float) Math.PI, Math.abs(SkyEffects.meteorAimYaw(0)), 1e-5f);
+		assertEquals((float) (-Math.PI / 2), SkyEffects.meteorAimYaw(90), 1e-5f);
+		// Looking up 50 degrees (pitch -50) puts it 50 up; flat or steep looks are kept within 42..70
+		assertEquals(50, SkyEffects.meteorElevFor(-50), 1e-5f);
+		assertEquals(42, SkyEffects.meteorElevFor(0), 1e-5f);
+		assertEquals(70, SkyEffects.meteorElevFor(-89), 1e-5f);
+		assertEquals(42, SkyEffects.meteorElevFor(30), 1e-5f);
+		// A given elevation is used as given, only kept on the sky
+		assertEquals(20 * (float) Math.PI / 180, SkyEffects.meteorAimElev(20), 1e-5f);
+		assertEquals(85 * (float) Math.PI / 180, SkyEffects.meteorAimElev(120), 1e-5f);
+	}
+
+	@Test
+	void hookMeteorTakesAFreeSlotElseTheOldest() {
+		assertEquals(1, SkyEffects.meteorSlot(new float[] {0.2f, 1, 0.1f}, new float[] {1, 1, 1}));
+		assertEquals(2, SkyEffects.meteorSlot(new float[] {0.2f, 0.5f, 0.9f}, new float[] {1, 1, 1}));
+	}
+
+	@Test
 	void shootingStarFadesInAndOut() {
 		assertEquals(0, SkyEffects.meteorEnvelope(0, 1), 1e-6f);
 		assertEquals(1, SkyEffects.meteorEnvelope(0.5f, 1), 1e-6f);

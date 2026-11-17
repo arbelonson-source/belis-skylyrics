@@ -65,9 +65,27 @@ import dev.beli.skylyrics.media.DemoSource;
  * the frames being caught. {@code burstat <name> <count> <everyMs>} first waits until the lyrics move to the next line
  * (so the first frame is the crosshair flash's peak, the start of a slide), and gives up after 10 s. One burst at a time.
  * <p>
+ * {@code click <x> <y>} left-clicks and releases at that spot of the open screen, in scaled GUI pixels. {@code scroll <amount>}
+ * scrolls the open screen's centre by that much (negative scrolls the other way). {@code search <text>} types into the
+ * settings screen's search box. {@code screen <class name>} opens another mod's screen by class name (e.g. Mod Menu's list).
+ * {@code title} opens the title screen, which {@code screen} can't in the production client. {@code set <field> <value>} changes
+ * one config field without saving it (the settings screen saves everything when it closes). {@code fastlines <ms> <a | b | c>} is {@code lines} with one line every
+ * {@code ms} milliseconds. {@code attack on|off} holds the Attack key down or lets go.
+ * {@code meteor [yaw] [elevation]} starts one shooting star right now (it needs the sky shown at night with the
+ * {@code shootingStars} setting on; otherwise it logs why not). Without numbers it starts where the camera looks, at the
+ * camera's elevation kept within the 42 to 70 degrees stars fall from; {@code yaw} is a player's yaw in degrees (as
+ * {@code look} takes) and {@code elevation} is degrees above the horizon, used as given (5 to 85). It logs
+ * "Test hook: meteor started". A star lasts about a second, so follow it with {@code burst}.
+ * <p>
  * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
  * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
  * highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
+ * <p>
+ * {@code seek <seconds>} moves the demo song to that second (decimal, e.g. {@code seek 12.5}); a leading sign is relative to
+ * now ({@code seek -3} three seconds back, {@code seek +3} forward). It goes through the tracker like the Now playing bar's
+ * click, so the lyrics notice the jump as they would a player's seek; the position shows from the next poll. Only the demo
+ * song can be seeked: otherwise it logs "Test hook: seek needs the demo song". {@code where} logs the position and the line
+ * the lyrics show there, e.g. "Test hook: at 23.40 s, line 5 'Six seven eight'" (line -1 before the first line).
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -336,25 +354,51 @@ public final class DevTestHook {
 		SkyLyricsClient.get().lyrics().swapLyricsForTest(lyrics);
 	}
 
+	/** "seek 12.5" / "seek -3": moves the demo song through the tracker, as the Now playing bar's click does. */
+	private static void seek(String arg) {
+		dev.beli.skylyrics.media.MediaTracker tracker = SkyLyricsClient.get().tracker();
+		if (!DemoSource.PLAYER.equals(tracker.track().player())) {
+			SkyLyricsClient.LOG.warn("Test hook: seek needs the demo song");
+			return;
+		}
+		long target = SeekArg.targetMs(arg.strip(), tracker.positionMs(), DemoSource.TRACK.lengthMs());
+		tracker.seek(target);
+		SkyLyricsClient.LOG.info("Test hook: seeking to {} s", String.format(java.util.Locale.ROOT, "%.2f", target / 1000.0));
+	}
+
+	/** "where": logs the song position and the line the lyrics show there (the renderer's own time: offset and lead included). */
+	private static void where() {
+		SkyLyricsClient mod = SkyLyricsClient.get();
+		dev.beli.skylyrics.media.Track track = mod.tracker().track();
+		long position = mod.tracker().positionMs();
+		dev.beli.skylyrics.lyrics.Lyrics lyrics = mod.lyrics().lyrics();
+		int index = lyrics.indexAt(position + SkyLyricsConfig.get().offsetFor(track) + dev.beli.skylyrics.render.LyricsRenderer.LEAD_MS);
+		dev.beli.skylyrics.lyrics.LyricLine line = lyrics.get(index);
+		SkyLyricsClient.LOG.info("Test hook: at {} s, line {} '{}'", String.format(java.util.Locale.ROOT, "%.2f", position / 1000.0), index,
+				line == null ? "" : line.text());
+	}
+
 	/** "set field value": changes one config field for this run (not saved). */
 	private static void set(String arg) {
 		String[] kv = arg.split("\\s+", 2);
+		// "set field" with nothing after it gives an empty value (a text field becomes empty) instead of an index error
+		String text = kv.length > 1 ? kv[1] : "";
 		try {
 			java.lang.reflect.Field field = SkyLyricsConfig.class.getField(kv[0]);
 			Class<?> type = field.getType();
 			Object value;
 			if (type == boolean.class) {
-				value = Boolean.parseBoolean(kv[1]);
+				value = Boolean.parseBoolean(text);
 			} else if (type == int.class) {
-				value = Integer.parseInt(kv[1]);
+				value = Integer.parseInt(text);
 			} else if (type == float.class) {
-				value = Float.parseFloat(kv[1]);
+				value = Float.parseFloat(text);
 			} else if (type.isEnum()) {
 				value = java.util.Arrays.stream(type.getEnumConstants())
-						.filter(c -> ((Enum<?>) c).name().equals(kv[1]))
+						.filter(c -> ((Enum<?>) c).name().equals(text))
 						.findFirst().orElseThrow();
 			} else {
-				value = SetValue.string(kv[1]);
+				value = SetValue.string(text);
 			}
 			field.set(SkyLyricsConfig.get(), value);
 		} catch (ReflectiveOperationException e) {
@@ -644,6 +688,15 @@ public final class DevTestHook {
 				}
 				case "burst" -> startBurst(arg, false);
 				case "burstat" -> startBurst(arg, true);
+				case "seek" -> seek(arg);
+				case "where" -> where();
+				case "meteor" -> {
+					String[] a = arg.isBlank() ? new String[0] : arg.split("\\s+");
+					float yaw = a.length > 0 ? Float.parseFloat(a[0]) : client.player != null ? client.player.getYRot() : 0;
+					float elev = a.length > 1 ? Float.parseFloat(a[1])
+							: dev.beli.skylyrics.render.SkyEffects.meteorElevFor(client.player != null ? client.player.getXRot() : 0);
+					SkyLyricsClient.LOG.info("Test hook: {}", SkyLyricsClient.get().sky().startMeteor(yaw, elev));
+				}
 				case "barprobe" -> {
 					dev.beli.skylyrics.render.BarProbe.request();
 					SkyLyricsClient.LOG.info("Test hook: barprobe waits for the next top bar lyric frame");

@@ -67,4 +67,9 @@ final class LibraryKeys {
 			case CAROUSEL -> true;
 		};
 	}
+
+	/** Where the keyboard goes when an opened playlist closes: back on the playlist it was opened from, or nowhere. */
+	static int afterClose(int openedFrom, int count) {
+		return openedFrom < 0 || count <= 0 ? -1 : Math.min(openedFrom, count - 1);
+	}
 }

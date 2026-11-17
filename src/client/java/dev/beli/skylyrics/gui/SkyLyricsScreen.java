@@ -982,7 +982,7 @@ public final class SkyLyricsScreen extends Screen {
 			focus = ring.stops().get(to);
 			focusAt = to;
 			focusVisible = true;
-			announcement = null;
+			announcement = focus instanceof Row landed ? hintAnnouncement(landed) : null;
 			if (focus instanceof Row row && row != masterToggle) {
 				tabFocus[tab] = row;
 				int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
@@ -1023,7 +1023,7 @@ public final class SkyLyricsScreen extends Screen {
 		mouseMovedYet = false;
 		mouseFromX = Double.NaN;
 		announcement = Narration.tab(tabName(to), Tr.t("tab"), Tr.t("%s of %s", to + 1, TAB_COUNT),
-				focus instanceof Row row ? rowNarration(row) : "");
+				focus instanceof Row row ? Narration.hinted(rowNarration(row), row.hint()) : "");
 		afterKeyboardAction();
 	}
 
@@ -1042,6 +1042,7 @@ public final class SkyLyricsScreen extends Screen {
 			resetArmedUntil = 0;
 			dirty = true;
 			mod.tracker().refresh();
+			announcement = Tr.t("Settings reset");
 		} else {
 			resetArmedUntil = System.nanoTime() + RESET_CONFIRM_NS;
 		}
@@ -1081,6 +1082,11 @@ public final class SkyLyricsScreen extends Screen {
 			return Narration.join(name, Tr.t("button"));
 		}
 		return "";
+	}
+
+	/** What is said once when the keyboard lands on a row that has a hint; nothing for the others (their words speak as usual). */
+	private @Nullable String hintAnnouncement(Row row) {
+		return row.hint().isEmpty() ? null : Narration.hinted(rowNarration(row), row.hint());
 	}
 
 	/** A row's words; in the search results a row that its tab is hiding right now says so. */
@@ -1675,7 +1681,7 @@ public final class SkyLyricsScreen extends Screen {
 			}
 			return true;
 		}
-		if (event.hasControlDown() && (event.isCycleFocus() || event.key() == InputConstants.KEY_PAGEUP
+		if ((event.hasControlDown() || event.hasControlDownWithQuirk()) && (event.isCycleFocus() || event.key() == InputConstants.KEY_PAGEUP
 				|| event.key() == InputConstants.KEY_PAGEDOWN)) {
 			// Ctrl+Tab, Ctrl+Shift+Tab and Ctrl+Page Up/Down change tab, like tabs in a browser
 			boolean back = event.isCycleFocus() ? event.hasShiftDown() : event.key() == InputConstants.KEY_PAGEUP;
@@ -1718,6 +1724,9 @@ public final class SkyLyricsScreen extends Screen {
 				dirty = true;
 				if (row == focus) {
 					focusVisible = true;
+				} else {
+					// The key acted on the row under the mouse; it takes no focus (the mouse keeps choosing), but its change is said
+					announcement = Narration.hinted(rowNarration(row), row.hint());
 				}
 				afterKeyboardAction();
 				return true;

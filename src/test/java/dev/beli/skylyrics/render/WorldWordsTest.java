@@ -1044,6 +1044,48 @@ class WorldWordsTest {
 		}
 	}
 
+	/**
+	 * A flowing line that starts over (it filled the sky, or you turned away) clears its own earlier words that any
+	 * later piece lands on, on any touch and quickly, while the line still being written and other lines' words are
+	 * treated as before. Cards are put in by reflection (placing one for real needs a camera and a font).
+	 */
+	@Test
+	void aLineStartingOverClearsItsOwnEarlierWordsUnderEveryLaterPiece() throws Exception {
+		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
+		var make = cardClass.getDeclaredConstructors()[0];
+		make.setAccessible(true);
+		var of = cardClass.getDeclaredField("of");
+		of.setAccessible(true);
+		var cutAt = cardClass.getDeclaredField("cutAt");
+		cutAt.setAccessible(true);
+		var cutFor = cardClass.getDeclaredField("cutFor");
+		cutFor.setAccessible(true);
+		var cut = WorldWords.class.getDeclaredMethod("cutUnder", List.class, List.class, float[].class,
+				WorldWords.Sentence.class, List.class, long.class);
+		cut.setAccessible(true);
+		WorldWords.Sentence old = new WorldWords.Sentence(0, 0, 10, 0), fresh = new WorldWords.Sentence(0, 0, 10, 0),
+				other = new WorldWords.Sentence(0, 0, 10, 0);
+		List<Object> under = new ArrayList<>();
+		WorldWords.Sentence[] owners = {old, old, fresh, other};
+		for (WorldWords.Sentence owner : owners) {
+			Object card = make.newInstance(LyricsRenderer.Display.of("WORD"), new float[] {1}, Vec3.ZERO, 0f, 0f, 0f, 1f, 0L);
+			of.set(card, owner);
+			under.add(card);
+		}
+		// Each word is 4 degrees wide and 2 high; a new piece sits across the edge of a word: a touch, not mostly covered
+		List<float[]> shown = List.of(new float[] {0, 0, 2, 1}, new float[] {0, 20, 2, 1}, new float[] {0, 0, 2, 1}, new float[] {0, 0, 2, 1});
+		// Still the first sentence of the line: nothing is cut
+		cut.invoke(null, under, shown, new float[] {3.5f, 0, 2, 1}, old, List.of(), 7L);
+		assertEquals(-1L, cutAt.getLong(under.get(0)), "the line being written keeps its words");
+		// The line has started over, and this is a LATER piece of it (the earlier-sentences list, not just the last one)
+		cut.invoke(null, under, shown, new float[] {3.5f, 0, 2, 1}, fresh, List.of(old), 7L);
+		assertEquals(7L, cutAt.getLong(under.get(0)), "an earlier word under a later piece goes on a touch");
+		assertEquals(0.1f, cutFor.getFloat(under.get(0)), 1e-6, "and quickly, since it is written over");
+		assertEquals(-1L, cutAt.getLong(under.get(1)), "a word the piece does not touch stays");
+		assertEquals(-1L, cutAt.getLong(under.get(2)), "the line being written keeps its words");
+		assertEquals(-1L, cutAt.getLong(under.get(3)), "another line's lit word is cut only when mostly covered");
+	}
+
 	@Test
 	void aTitleIsNotAnnouncedWhileTheLyricsLoad() {
 		assertFalse(LyricsRenderer.titleCanShow(false, 0.9f), "the old song's words still fading out, new lyrics not in");
@@ -1180,5 +1222,52 @@ class WorldWordsTest {
 	@Test
 	void sideStepStraightUpHasNoSideToStepTo() {
 		assertEquals(Vec3.ZERO, WorldWords.sideStep(new Vec3(0, 5, 0), 5));
+	}
+
+	/** Two Hebrew words in an English line read against it, so measureLine measures them (other words are measured as they spawn). */
+	private static final String SUNG_LINE = "hello \u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd bye";
+
+	/** Runs updates of one line through measureLine and spawn with a counting measure in place of the font. */
+	private static int[] measuredLine(boolean flow, boolean reloadBetween) {
+		java.util.concurrent.atomic.AtomicInteger whole = new java.util.concurrent.atomic.AtomicInteger();
+		java.util.concurrent.atomic.AtomicInteger all = new java.util.concurrent.atomic.AtomicInteger();
+		WorldWords.measureHook = t -> {
+			if (t.length() == SUNG_LINE.length()) {
+				whole.incrementAndGet(); // only the whole line is this long
+			} else if (t.codePoints().anyMatch(c -> c >= 0x05d0 && c <= 0x05ea)) {
+				all.incrementAndGet(); // a piece of the reversed stretch
+			}
+			return t.length() * 4.0;
+		};
+		try {
+			WorldWords words = new WorldWords();
+			words.tune(30, 6, 1, 1, 1, flow, true, false, 1);
+			words.players(false, false); // no Minecraft instance to look for other players in
+			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
+			words.update(0, SUNG_LINE, 0, false, Float.NaN, Float.NaN, camera, null, null, net.minecraft.network.chat.Style.EMPTY, 1_000_000_000L);
+			int afterFirst = all.get();
+			if (reloadBetween) {
+				LyricsFont.fontsReloaded();
+			}
+			words.update(0, SUNG_LINE, 1000, false, Float.NaN, Float.NaN, camera, null, null, net.minecraft.network.chat.Style.EMPTY, 2_000_000_000L);
+			return new int[] {whole.get(), afterFirst, all.get()};
+		} finally {
+			WorldWords.measureHook = null;
+		}
+	}
+
+	@Test
+	void theWholeLineIsMeasuredOnlyWhenTheLineFlows() {
+		assertEquals(0, measuredLine(false, false)[0], "a line that doesn't flow never needs its whole width");
+		assertEquals(1, measuredLine(true, false)[0], "a flowing line measures its whole width once, not per word");
+	}
+
+	@Test
+	void afterAFontReloadTheWordsStillToComeAreMeasuredAgain() {
+		int[] steady = measuredLine(false, false);
+		assertTrue(steady[1] > 0, "the reversed stretch is measured with the line");
+		assertEquals(steady[1], steady[2], "no reload: the second update measures nothing again");
+		int[] reloaded = measuredLine(false, true);
+		assertTrue(reloaded[2] > reloaded[1], "a reload during the line measures the words again");
 	}
 }

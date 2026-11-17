@@ -387,4 +387,47 @@ class CoverCacheTest {
 			cache.close();
 		}
 	}
+
+	/** A cut-off BMP fails in the decoder with a plain EOFException, not an IIOException (PNG, JPEG and GIF throw the latter). */
+	private static byte[] cutBmp() throws IOException {
+		byte[] whole = encode(bigPicture(100, 100), "bmp");
+		return java.util.Arrays.copyOf(whole, whole.length / 2);
+	}
+
+	@Test
+	void aCutOffBmpFailsDecodingWithAPlainIoException() throws Exception {
+		byte[] cut = cutBmp();
+		assertTrue(CoverCache.dimensionsOk(cut));
+		IOException e = assertThrows(IOException.class, () -> CoverCache.decodeSmall(cut, 128));
+		assertFalse(e instanceof javax.imageio.IIOException, e.toString());
+	}
+
+	@Test
+	void aDownloadThatFailsDecodingWithAPlainIoExceptionStillCountsAgainstTheCover(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		byte[] cut = cutBmp();
+		com.sun.net.httpserver.HttpServer server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(java.net.InetAddress.getLoopbackAddress(), 0), 0);
+		server.createContext("/", ex -> {
+			ex.sendResponseHeaders(200, cut.length);
+			try (java.io.OutputStream out = ex.getResponseBody()) {
+				out.write(cut);
+			}
+		});
+		server.start();
+		CoverCache cache = new CoverCache(dir);
+		try {
+			String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/cover.bmp";
+			cache.get(url, System.nanoTime());
+			Object cover = ((java.util.Map<?, ?>) field(cache, "covers").get(cache)).get(url);
+			java.lang.reflect.Field failures = field(cover, "failures");
+			long end = System.nanoTime() + 20_000_000_000L;
+			while (failures.getInt(cover) < 1 && System.nanoTime() < end) {
+				Thread.sleep(5);
+			}
+			// wrapped as an IIOException in read(), so it is the cover's fault; as a bare EOFException it would pass for network trouble and never count
+			assertEquals(1, failures.getInt(cover));
+		} finally {
+			cache.close();
+			server.stop(0);
+		}
+	}
 }

@@ -83,6 +83,13 @@ public final class LibraryScreen extends Screen {
 	private int selected = -1;
 	/** Which not-signed-in button the keyboard is on: -1 none, 0 Open Music tab, 1 Try made-up songs. */
 	private int signInFocus = -1;
+	/** The playlist's place in its list while it is open, so closing it puts the keyboard back there; -1 if none. */
+	private int openedFrom = -1;
+	private @Nullable LibraryPlaylist openedList;
+	/** The last input was a key, not a click. */
+	private boolean keyboardLast;
+	/** A recent search was just picked, so the Narrator says how many results it found; any later key or click ends that. */
+	private boolean sayResults;
 	/** The section just changed, so the Narrator names it once; any later key or click ends that. */
 	private boolean sayNewSection;
 	/** Which header stop the keyboard is on (see {@link #stops}), or -1 when it is on the songs or the search box. */
@@ -299,11 +306,59 @@ public final class LibraryScreen extends Screen {
 
 	/** Room for the "sign in to Spotify" strip above the recently heard songs. */
 	private int bannerH() {
-		return heardMode() ? 19 : 0;
+		return heardMode() ? bannerStripH() + 3 : 0;
+	}
+
+	/** Height of the sign-in strip: 16 for one line of text, 26 when the text has to wrap onto two. */
+	private int bannerStripH() {
+		return banner().height();
+	}
+
+	private int bannerRoom() {
+		return banner().room();
 	}
 
 	private int bannerButtonW() {
-		return font.width(Tr.t("Open Music tab")) + 14;
+		return banner().buttonW();
+	}
+
+	/** What the strip's size and text depend on: a language switch or resource reload swaps the Language, which also changes the widths. */
+	private record BannerKey(Object account, int screenW, Object font, Object language) {}
+
+	/** The strip as measured: its height, button width, text room and the one or two lines to draw. */
+	private record Banner(BannerKey key, int height, int buttonW, int room, net.minecraft.util.FormattedCharSequence[] lines) {}
+
+	private @Nullable Banner banner;
+
+	/** The strip's layout, measured again only when its key changes: drawing, clicks and the focus outline all read this one. */
+	private Banner banner() {
+		BannerKey key = new BannerKey(mod.spotify().account(), width, font, net.minecraft.locale.Language.getInstance());
+		Banner b = banner;
+		if (b != null && b.key().equals(key)) {
+			return b;
+		}
+		int bw = font.width(Tr.t("Open Music tab")) + 14;
+		int room = Math.min(460, width - 16) - 20 - bw - 24;
+		String text = signInText();
+		int sh = LibraryViews.bannerStripH(font.width(text), room);
+		net.minecraft.util.FormattedCharSequence[] lines;
+		if (sh == LibraryViews.BANNER_ONE) {
+			lines = new net.minecraft.util.FormattedCharSequence[] {Ui.visual(Ui.clip(font, text, room))};
+		} else {
+			List<net.minecraft.network.chat.FormattedText> split = font.getSplitter().splitLines(text, room, net.minecraft.network.chat.Style.EMPTY);
+			boolean rtl = Ui.paragraphRtl(text);
+			lines = new net.minecraft.util.FormattedCharSequence[Math.min(2, split.size())];
+			for (int i = 0; i < lines.length; i++) {
+				String line = split.get(i).getString();
+				// a third line cannot fit: the second keeps its end clipped rather than losing the words silently
+				if (i == 1 && split.size() > 2) {
+					line = Ui.clip(font, line + " " + split.get(2).getString(), room);
+				}
+				lines[i] = Ui.visual(line, rtl);
+			}
+		}
+		banner = b = new Banner(key, sh, bw, room, lines);
+		return b;
 	}
 
 	private Section[] sections() {
@@ -489,14 +544,21 @@ public final class LibraryScreen extends Screen {
 
 	/** A slim strip telling the user their own Spotify songs are one sign-in away. */
 	private void renderBanner(GuiGraphics g, Frame f) {
-		int y = py + HEADER_H + 3, bw = bannerButtonW();
-		Ui.rect(g, px + 10, y, pw - 20, 16, 5, Ui.CARD);
-		g.drawString(font, Ui.visual(Ui.clip(font, signInText(), pw - 20 - bw - 24)), px + 16, y + 4, Ui.MUTED, false);
-		int bx = px + pw - 10 - bw - 2;
-		Controls.drawButton(f, bx, y + 1, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, y + 1, bw, 14), true, true);
-		if (onStop(STOP_BANNER, 0)) {
-			Ui.outline(g, bx - 2, y - 1, bw + 4, 18, 7, Ui.TEXT);
+		Banner strip = banner();
+		int y = py + HEADER_H + 3, bw = strip.buttonW(), sh = strip.height();
+		Ui.rect(g, px + 10, y, pw - 20, sh, 5, Ui.CARD);
+		for (int i = 0; i < strip.lines().length; i++) {
+			g.drawString(font, strip.lines()[i], px + 16, y + (sh == LibraryViews.BANNER_ONE ? 4 : 3 + i * 10), Ui.MUTED, false);
 		}
+		int bx = px + pw - 10 - bw - 2, by = bannerButtonY(y, sh);
+		Controls.drawButton(f, bx, by, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, by, bw, 14), true, true);
+		if (onStop(STOP_BANNER, 0)) {
+			Ui.outline(g, bx - 2, by - 2, bw + 4, 18, 7, Ui.TEXT);
+		}
+	}
+
+	private static int bannerButtonY(int stripY, int stripH) {
+		return stripY + (stripH - 14) / 2;
 	}
 
 	private static final int STOP_BANNER = 0, STOP_VIEW = 1, STOP_CHIP = 2;
@@ -543,6 +605,7 @@ public final class LibraryScreen extends Screen {
 				edit(recentSearches().get(at[1]));
 				typedAt = 0;
 				stop = -1;
+				sayResults = true;
 			}
 		}
 	}
@@ -564,7 +627,8 @@ public final class LibraryScreen extends Screen {
 	/** What the Narrator says for a header stop. */
 	private String stopNarration(int[] at) {
 		return switch (at[0]) {
-			case STOP_BANNER -> Narration.button(Tr.t("Open Music tab"), Tr.t("button"));
+			// the strip's own words first, so a screen reader says why the button is there
+			case STOP_BANNER -> Narration.join(signInText(), Narration.button(Tr.t("Open Music tab"), Tr.t("button")));
 			case STOP_VIEW -> {
 				SkyLyricsConfig.LibraryView v = SkyLyricsConfig.LibraryView.values()[at[1]];
 				String name = switch (v) {
@@ -1099,6 +1163,8 @@ public final class LibraryScreen extends Screen {
 			opened = songs;
 			openedAtNs = System.nanoTime();
 			openedName = list.name();
+			openedFrom = index;
+			openedList = list;
 			selected = -1;
 			sayNewSection = true;
 			return;
@@ -1124,6 +1190,26 @@ public final class LibraryScreen extends Screen {
 		playing = library.play(item, after);
 	}
 
+	/** After a playlist closes: scroll back to where it was, and put the keyboard on it only if the keyboard was used last. */
+	private void restorePlace() {
+		Shelf back = shelf();
+		int from = openedFrom;
+		if (back != null && openedList != null && !(from >= 0 && from < back.items.size() && back.items.get(from) == openedList)) {
+			// The list changed while the playlist was open: find it again
+			int found = back.items.indexOf(openedList);
+			from = found >= 0 ? found : from;
+		}
+		openedList = null;
+		int at = LibraryKeys.afterClose(from, back == null ? 0 : back.items.size());
+		openedFrom = -1;
+		selected = -1;
+		if (back != null && at >= 0) {
+			selected = at;
+			reveal(back);
+			selected = keyboardLast || view() == SkyLyricsConfig.LibraryView.CAROUSEL ? at : -1;
+		}
+	}
+
 	private void closeOpened() {
 		if (opened != null) {
 			opened.cancel();
@@ -1140,6 +1226,7 @@ public final class LibraryScreen extends Screen {
 		closeOpened();
 		section = s;
 		selected = -1;
+		openedFrom = -1;
 		stop = -1;
 		sayNewSection = true;
 		if (s == Section.SEARCH) {
@@ -1151,7 +1238,9 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		keyboardLast = false;
 		sayNewSection = false;
+		sayResults = false;
 		stop = -1;
 		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
 			return true;
@@ -1175,7 +1264,7 @@ public final class LibraryScreen extends Screen {
 			}
 			return true;
 		}
-		if (heardMode() && Ui.inside(mx, my, px + pw - 12 - bannerButtonW(), py + HEADER_H + 4, bannerButtonW(), 14)) {
+		if (heardMode() && Ui.inside(mx, my, px + pw - 12 - bannerButtonW(), bannerButtonY(py + HEADER_H + 3, bannerStripH()), bannerButtonW(), 14)) {
 			openMusicTab();
 			return true;
 		}
@@ -1196,7 +1285,7 @@ public final class LibraryScreen extends Screen {
 		if (opened != null) {
 			if (Ui.inside(mx, my, px + 10, y, font.width("‹ " + Tr.t("Playlists")) + 14, 14)) {
 				closeOpened();
-				selected = -1;
+				restorePlace();
 				sayNewSection = true;
 			}
 		} else {
@@ -1360,7 +1449,9 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyPressed(KeyEvent event) {
+		keyboardLast = true;
 		sayNewSection = false;
+		sayResults = false;
 		boolean used = handleKey(event);
 		if (used && !closed) {
 			afterKeyboardAction();
@@ -1376,7 +1467,7 @@ public final class LibraryScreen extends Screen {
 				sayNewSection = true;
 			} else if (opened != null) {
 				closeOpened();
-				selected = -1;
+				restorePlace();
 				sayNewSection = true;
 			} else {
 				onClose();
@@ -1386,7 +1477,7 @@ public final class LibraryScreen extends Screen {
 		KeyMapping key = mod.libraryKey();
 		if (key != null && key.matches(event)) {
 			// A letter here starts a search, and a key held since it opened us only repeats
-			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), ScreenKeys.ctrlOrAlt(event.modifiers()), closeKeyHeld)) {
+			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), ScreenKeys.ctrlOrAlt(event.modifiers()) || event.hasControlDownWithQuirk(), closeKeyHeld)) {
 				onClose();
 				return true;
 			}
@@ -1538,6 +1629,7 @@ public final class LibraryScreen extends Screen {
 	//?}
 	public boolean charTyped(CharacterEvent event) {
 		sayNewSection = false;
+		sayResults = false;
 		boolean used = handleChar(event);
 		if (used) {
 			afterKeyboardAction();
@@ -1580,7 +1672,7 @@ public final class LibraryScreen extends Screen {
 		boolean searchView = opened == null && section == Section.SEARCH;
 		boolean busy = shelf.pending != null || searchView && searchDirty && !query.isBlank();
 		String loading = searchView ? Tr.t("Searching") : Tr.t("Loading");
-		if (typing && searchView) {
+		if (Narration.countsResults(typing, sayResults) && searchView) {
 			if (!shelf.error.isEmpty()) {
 				return shelf.error;
 			}
@@ -1596,7 +1688,7 @@ public final class LibraryScreen extends Screen {
 	/** What the Narrator says for what has the keyboard now: a header button, the search box, or the chosen card. */
 	private String focusNarration() {
 		if (library == null) {
-			return signInFocus < 0 ? "" : Narration.button(signInFocus == 0 ? Tr.t("Open Music tab") : Tr.t("Try made-up songs"), Tr.t("button"));
+			return Narration.signIn(signInText(), Tr.t("Open Music tab"), Tr.t("Try made-up songs"), signInFocus, Tr.t("button"));
 		}
 		List<int[]> all = stops();
 		if (stop >= 0 && stop < all.size()) {
@@ -1610,15 +1702,21 @@ public final class LibraryScreen extends Screen {
 		if (shelf == null) {
 			return "";
 		}
-		String name = Narration.section(sayNewSection, opened != null, openedName, sectionName(section));
+		Section[] places = sections();
+		int placeAt = java.util.Arrays.asList(places).indexOf(section);
+		String where = places.length > 1 && placeAt >= 0 ? Tr.t("%s of %s", placeAt + 1, places.length) : "";
+		String name = Narration.section(sayNewSection, opened != null, openedName, Narration.join(sectionName(section), where));
 		if (shelf.items.isEmpty() && !shelf.error.isEmpty()) {
 			return Narration.join(Narration.card(name, shelf.error, "", "", ""), Tr.t("Try again"), Tr.t("button"));
 		}
 		if (selected >= 0 && selected < shelf.items.size()) {
 			Object entry = shelf.items.get(selected);
 			String[] text = labels(entry);
+			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, mod.tracker().track());
 			String action = entry instanceof LibraryPlaylist list && list.openable() ? Tr.t("Press Enter to open") : Tr.t("button");
-			return Narration.tile(Narration.card(name, shelf.error, text[0], text[1], Tr.t("%s of %s", selected + 1, shelf.items.size())), action);
+			String tile = Narration.tile(Narration.card(name, shelf.error, text[0], Narration.underPlaying(text[1], current, Tr.t("Now playing")),
+					Tr.t("%s of %s", selected + 1, shelf.items.size())), action);
+			return sayResults ? Narration.join(statusWords(shelf), tile) : tile;
 		}
 		return Narration.join(Narration.card(name, shelf.error, "", "", ""), statusWords(shelf));
 	}
@@ -1631,6 +1729,11 @@ public final class LibraryScreen extends Screen {
 	@Override
 	protected void updateNarrationState(NarrationElementOutput output) {
 		output.add(NarratedElementType.TITLE, getNarrationMessage());
+		if (library != null) {
+			// Vanilla's own hint talks about Tab and arrows moving over widgets, which this screen doesn't have
+			output.add(NarratedElementType.USAGE, Component.literal(Tr.t(
+					"Tab changes the section, arrow keys move, Enter plays or opens, Up from the top row reaches the view buttons and recent searches, Esc goes back, and typing searches")));
+		}
 		String now = focusNarration();
 		if (!now.isEmpty()) {
 			output.nest().add(NarratedElementType.TITLE, Component.literal(now));

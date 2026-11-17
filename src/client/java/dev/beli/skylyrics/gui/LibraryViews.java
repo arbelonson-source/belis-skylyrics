@@ -40,6 +40,16 @@ final class LibraryViews {
 
 	// Shelf: covers fill each column top to bottom, then the next column to the right
 
+	static final int BANNER_ONE = 16, BANNER_TWO = 26;
+
+	/** Below this much room a wrapped line would be a few letters: the strip stays one clipped line. */
+	static final int BANNER_MIN_ROOM = 30;
+
+	/** The sign-in strip: one 16 px line when the text fits the room (or the room is too small to wrap into), else a 26 px strip for two lines. */
+	static int bannerStripH(int textW, int room) {
+		return textW <= room || room < BANNER_MIN_ROOM ? BANNER_ONE : BANNER_TWO;
+	}
+
 	/** How many rows of covers fit in the height; at least one. */
 	static int shelfRows(int viewH, int rowH) {
 		return Math.max(1, viewH / Math.max(1, rowH));
