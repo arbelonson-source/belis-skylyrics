@@ -85,6 +85,10 @@ public final class WindowsMediaSource implements MediaSource {
 	private final BooleanSupplier looking;
 	/** Pacing clock; tests swap it. */
 	private final LongSupplier clock;
+	/** The computer's wall clock in ms; tests swap it to move the clock. Only used to take a report's age. */
+	LongSupplier wallMillis = System::currentTimeMillis;
+	/** A clock that only runs forward, in ns; positions are counted on it, so a clock change cannot move them. */
+	LongSupplier monoNanos = System::nanoTime;
 	private final Requester requester;
 	private boolean wasLooking = true;
 	/** Counts close() calls, so a poll in flight (which holds the lock close() must not wait for) can tell. */
@@ -174,7 +178,7 @@ public final class WindowsMediaSource implements MediaSource {
 
 	private Snapshot ask() throws Exception {
 		Map<String, Seen> next = new HashMap<>();
-		List<Session> sessions = sessions(requester.ask("poll"), System.currentTimeMillis(), seen, next);
+		List<Session> sessions = sessions(requester.ask("poll"), wallMillis.getAsLong(), monoNanos.getAsLong() / 1_000_000, seen, next);
 		seen = next;
 		Session chosen = PlayerPicker.choose(sessions, Session::key, s -> s.track().player(), Session::playing,
 				preferredPlayer.get(), followKey(sessions, current));
@@ -216,7 +220,7 @@ public final class WindowsMediaSource implements MediaSource {
 	 * What a poll said about one player: its state and reported position, when we asked, and the time its
 	 * position counts from (see {@link #countFrom}).
 	 */
-	record Seen(String title, long lengthMs, boolean playing, long reportedMs, long polledMs, long countFromMs) {
+	record Seen(String title, long lengthMs, boolean playing, long reportedMs, long polledMs, long countFromMs, long updatedRawMs) {
 
 		/** Whether this is still the same song, so its count can go on. */
 		boolean sameSong(String title, long lengthMs) {
@@ -259,6 +263,16 @@ public final class WindowsMediaSource implements MediaSource {
 	 * @param after  filled with what this poll says, for the next
 	 */
 	static List<Session> sessions(JsonObject reply, long nowMs, Map<String, Seen> before, Map<String, Seen> after) {
+		return sessions(reply, nowMs, nowMs, before, after);
+	}
+
+	/**
+	 * As above, with the wall clock and a forward-only clock (both ms) told apart. Windows stamps a report in wall
+	 * time, so its age is taken once, when it is first seen; from then on the position runs on {@code monoMs}, which
+	 * a changed computer clock or a wake from sleep cannot move.
+	 */
+	static List<Session> sessions(JsonObject reply, long wallMs, long monoMs, Map<String, Seen> before, Map<String, Seen> after) {
+		long nowMs = monoMs;
 		List<Session> out = new ArrayList<>();
 		JsonElement list = reply.get("sessions");
 		if (list == null || !list.isJsonArray()) {
@@ -283,8 +297,19 @@ public final class WindowsMediaSource implements MediaSource {
 			String key = id + "#" + (int) number(o, "index");
 			Seen prev = before.get(key);
 			// Another song on the same player starts its own count
-			long from = countFrom(playing, reported, updated, nowMs, prev != null && prev.sameSong(title, length) ? prev : null);
-			after.put(key, new Seen(title, length, playing, reported, nowMs, from));
+			Seen same = prev != null && prev.sameSong(title, length) ? prev : null;
+			long from;
+			if (same != null && playing && same.playing() && same.reportedMs() == reported && same.updatedRawMs() == updated) {
+				from = same.countFromMs(); // the same report as last time: keep counting, whatever the wall clock did
+			} else {
+				// A first sight of this report: its age on the wall clock, once, then on the steady clock
+				long age = updated > 0 ? Math.max(0, wallMs - updated) : 0;
+				if (length > 0) {
+					age = Math.min(age, length);
+				}
+				from = countFrom(playing, reported, updated > 0 ? monoMs - age : 0, nowMs, same);
+			}
+			after.put(key, new Seen(title, length, playing, reported, nowMs, from, updated));
 			long position = position(reported, from, playing, length, nowMs, rate);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
 			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing, rate));
