@@ -254,7 +254,8 @@ class SkyEffectsTest {
 		float centreYaw = 180 * deg, centreElev = 0;
 		assertTrue(SkyEffects.sparklesVisible(looking(0, 0), centreYaw, centreElev, 1), "looking at them");
 		assertFalse(SkyEffects.sparklesVisible(looking(180, 0), centreYaw, centreElev, 1), "looking the other way");
-		assertFalse(SkyEffects.sparklesVisible(looking(0, -80), centreYaw, centreElev, 0.6f), "looking at the ground");
+		// Sparkles at the horizon are within reach of any pitch; high ones (60 degrees up) are not, looking at the ground
+		assertFalse(SkyEffects.sparklesVisible(looking(0, -80), centreYaw, 60 * deg, 0.6f), "high sparkles, looking at the ground");
 		// Never drops a sparkle that could be on screen, wherever you look
 		for (float spread : new float[] {0.6f, 1, 1.6f}) {
 			for (float elevDeg : new float[] {-40, 0, 25, 60}) {
