@@ -1397,6 +1397,7 @@ class WorldWordsTest {
 		};
 		try {
 			WorldWords words = new WorldWords();
+			words.seed(12345);
 			words.tune(30, 6, 1, 1, 1, flow, true, false, 1);
 			words.players(false, false); // no Minecraft instance to look for other players in
 			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
@@ -1483,6 +1484,7 @@ class WorldWordsTest {
 	@Test
 	void aPieceThatWouldWrapBelowTheScreenStartsTheLineOverInsteadOfSittingThere() throws Exception {
 		float half = WorldWords.halfView(0, 70);
+		List<String> bad = new ArrayList<>();
 		for (long seed = 1; seed <= 200; seed++) {
 			WorldWords words = longLine(pos -> false, true, Float.NaN, 0, seed);
 			assertFalse(words.earlierSentences().isEmpty(), "the line started over, seed " + seed);
@@ -1497,14 +1499,16 @@ class WorldWordsTest {
 				own++;
 				Vec3 pos = (Vec3) get(card, "pos");
 				float yaw = (float) Math.toDegrees(Math.atan2(-pos.x, pos.z)), pitch = (float) Math.toDegrees(-Math.asin(pos.y / pos.length()));
-				// The check judges the word that starts a row, at its own yaw: no word of the old line may sit lower than the
-				// straight-ahead limit, which is the most any row start can have
-				boolean shown = WorldWords.rowFits(pitch, 0, 0, half);
-				assertTrue(shown, "a word of the old line sits below the limit at " + yaw + "/" + pitch + ", seed " + seed);
+				// Every word of the old line, at its own yaw, stays above the hotbar limit, not only the one that starts a row
+				boolean shown = WorldWords.rowFits(pitch, yaw, 0, half);
+				if (!shown) {
+					bad.add("seed " + seed + " at " + yaw + "/" + pitch + " y " + Math.tan(Math.toRadians(pitch)) / Math.cos(Math.toRadians(yaw)) / Math.tan(Math.toRadians(half)));
+				}
 			}
 			assertTrue(own > 0, "the old line has words, seed " + seed);
 			assertTrue(((WorldWords.Sentence) get(words, "sentence")).top < old.top, "the new line is back up at the top, seed " + seed);
 		}
+		assertTrue(bad.isEmpty(), "words of an old line sit below the limit: " + bad);
 	}
 
 	/** Words fixed at a pitch the camera is not looking at: the line is judged from where it is laid out, not from the camera. */
