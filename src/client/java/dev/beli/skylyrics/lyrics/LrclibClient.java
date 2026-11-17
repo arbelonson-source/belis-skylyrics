@@ -333,7 +333,7 @@ public final class LrclibClient implements LyricsSource {
 	}
 
 	/** A Retry-After header (seconds, or an HTTP date) as milliseconds from now, or -1 when missing, past or odd. */
-	static long retryAfterMs(@Nullable String header) {
+	public static long retryAfterMs(@Nullable String header) {
 		return retryAfterMs(header, java.time.Instant.now());
 	}
 

@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.media;
 
+import dev.beli.skylyrics.gui.SettingsSearch;
 import dev.beli.skylyrics.util.LogText;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -443,12 +444,12 @@ public final class HeardLibrary implements Library {
 
 	// ---- Library ----
 
-	/** The songs whose title, artist or album contain every word of {@code query}, ignoring case. Empty query = all. */
+	/** The songs whose title, artist or album contain every word of {@code query}, ignoring case, accents and niqqud. Empty query = all. */
 	static List<LibraryItem> filter(List<Entry> all, String query) {
-		String[] words = query.strip().toLowerCase(Locale.ROOT).split("\\s+");
+		String[] words = SettingsSearch.fold(query).strip().split("\\s+");
 		List<LibraryItem> found = new ArrayList<>();
 		for (Entry e : all) {
-			String hay = (e.title + " " + e.artist + " " + e.album).toLowerCase(Locale.ROOT);
+			String hay = SettingsSearch.fold(e.title + " " + e.artist + " " + e.album);
 			boolean matches = true;
 			for (String w : words) {
 				if (!hay.contains(w)) {

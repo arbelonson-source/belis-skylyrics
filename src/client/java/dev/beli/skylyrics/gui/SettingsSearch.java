@@ -3,7 +3,7 @@ package dev.beli.skylyrics.gui;
 import java.util.Locale;
 
 /** Matching for the search box on the settings screen. */
-final class SettingsSearch {
+public final class SettingsSearch {
 	private SettingsSearch() {
 	}
 
@@ -50,7 +50,7 @@ final class SettingsSearch {
 	}
 
 	/** The text as it is compared: cleaned, lower case, without accents or niqqud, Hebrew final letters as plain ones. */
-	static String fold(String s) {
+	public static String fold(String s) {
 		String d = MARKS.matcher(java.text.Normalizer.normalize(clean(s), java.text.Normalizer.Form.NFD)).replaceAll("");
 		d = d.toLowerCase(Locale.ROOT);
 		StringBuilder out = new StringBuilder(d.length());

@@ -107,4 +107,13 @@ class HeardLibraryPagingTest {
 		assertEquals("New album", item.album());
 		assertEquals(200_000, item.lengthMs());
 	}
+
+	@Test
+	void theSearchIgnoresAccentsAndCase() {
+		HeardLibrary lib = library();
+		lib.record(new Track("Halo", "Beyonc\u00e9", "I Am", 1000, "", "mpv"));
+		lib.record(new Track("Other", "Band", "Album", 1000, "", "mpv"));
+		assertEquals(List.of("Halo"), titles(lib.search("BEYONCE", 0).join()));
+		assertEquals(List.of("Halo"), titles(lib.search("beyonc\u00e9", 0).join()));
+	}
 }
