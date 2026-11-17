@@ -148,6 +148,20 @@ public final class SkyEffects {
 	/** You joined a world: forget the old anchor so the effects start where you look now (Lazy follow). */
 	public void onJoinWorld() {
 		resetAnchor();
+		resetShow();
+	}
+
+	/**
+	 * Forgets what the last world's sky was showing. Nothing is drawn while the level is null, so the reset in
+	 * {@link #draw} never ran between worlds and a night sky drew over the next day sky as it faded out.
+	 */
+	void resetShow() {
+		presence = 0;
+		skyStars = Float.NaN;
+		sparkleShow = 0;
+		meteorsAlive = 0;
+		last = 0;
+		corner = 0;
 	}
 
 	void resetAnchor() {
