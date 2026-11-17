@@ -137,6 +137,7 @@
 - **Lighter Aurora and Nebula.** The default Aurora sky, the Nebula clouds and stars, and the constellations skip the parts behind you or off the side of the screen. They look the same and cost less each frame.
 - **Stars.** While the day goes by, the stars' brightness is worked out once a frame instead of twice.
 - **Song library cards.** A card without a cover works out its big letter once instead of every frame, and a title that starts with a letter piled with accents shows just the letter.
+- **Names too long for their space.** Names cut short with "…" in the song library and the settings are cut once instead of every frame.
 - **Lighter top bar and Record card.** The bar keeps its line laid out instead of measuring it again every frame, and the card keeps its times and cut titles. Nothing looks different.
 - **Lighter sky effects.** The Moonlight clouds, the Comet streamers and the eclipse corona do less work each frame.
 - **Lighter settings window.** The settings window lays out each row once per frame instead of several times, and remembers the right-to-left text it has already put in order. Nothing looks different.
