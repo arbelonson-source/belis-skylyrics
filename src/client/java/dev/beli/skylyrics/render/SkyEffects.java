@@ -1003,6 +1003,27 @@ public final class SkyEffects {
 		}
 	}
 
+	private static float sparkleRing(int i, float spread) {
+		return (0.45f + 0.55f * Mth.sqrt((i + 0.5f) / SPARKLES)) * spread;
+	}
+
+	static float sparkleElev(int i, float centreElev, float spread) {
+		return centreElev + Mth.sin(i * 2.399963f) * sparkleRing(i, spread) * 20 * DEG;
+	}
+
+	static float sparkleYaw(int i, float centreYaw, float elev, float spread) {
+		return centreYaw + Mth.cos(i * 2.399963f) * sparkleRing(i, spread) * 62 * DEG / Math.max(0.4f, Mth.cos(elev));
+	}
+
+	/**
+	 * Whether any sparkle can be on screen. They all lie within {@code spread} times 20 degrees up or down and 62 degrees
+	 * (at most, wider yaw steps near the poles cover no more sky) round the middle; a few degrees more hold the arms.
+	 */
+	static boolean sparklesVisible(SkyView view, float centreYaw, float centreElev, float spread) {
+		float c = Mth.cos(centreElev);
+		return view.capVisible(c * Mth.sin(centreYaw), Mth.sin(centreElev), -c * Mth.cos(centreYaw), spread * (20 + 62) * DEG + 0.06f);
+	}
+
 	/** Soft four-pointed sparkles scattered round the lyrics, each glinting now and then. */
 	private void sparkles(PoseStack.Pose pose, VertexConsumer vc) {
 		double t = clock;
@@ -1013,6 +1034,9 @@ public final class SkyEffects {
 		*///?}
 		float centreYaw = (anchorYaw + 180) * DEG, centreElev = -anchorPitch * DEG;
 		int clear = argb(starColor, 0);
+		if (!sparklesVisible(view, centreYaw, centreElev, sparkleSpread)) {
+			return;
+		}
 		for (int i = 0; i < SPARKLES; i++) {
 			float tw = glint(Mth.sin(SkyClock.phase(t, 0.8 + (i % 7) * 0.13, i * 2.7f)));
 			float alpha = fade * smooth(sparkleShow) * tw;
@@ -1020,10 +1044,8 @@ public final class SkyEffects {
 				continue;
 			}
 			// A golden-angle spiral in a wide oval, kept clear of the middle where the words are
-			float a = i * 2.399963f;
-			float ring = (0.45f + 0.55f * Mth.sqrt((i + 0.5f) / SPARKLES)) * sparkleSpread;
-			float elev = centreElev + Mth.sin(a) * ring * 20 * DEG;
-			float yaw = centreYaw + Mth.cos(a) * ring * 62 * DEG / Math.max(0.4f, Mth.cos(elev));
+			float elev = sparkleElev(i, centreElev, sparkleSpread);
+			float yaw = sparkleYaw(i, centreYaw, elev, sparkleSpread);
 			basis(yaw, elev, r);
 			float s = r * 0.011f * (0.55f + 0.45f * tw) * (0.75f + 0.25f * Mth.sin(i * 7.3f));
 			float arm = s * 2.4f, thin = s * 0.22f;

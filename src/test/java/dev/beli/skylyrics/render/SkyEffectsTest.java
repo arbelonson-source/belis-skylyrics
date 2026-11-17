@@ -240,4 +240,42 @@ class SkyEffectsTest {
 		assertFalse(SkyEffects.presenceTarget(true, true, true));
 		assertFalse(SkyEffects.presenceTarget(false, false, true));
 	}
+
+	private static SkyView looking(float yawDeg, float pitchDeg) {
+		double y = Math.toRadians(yawDeg), p = Math.toRadians(pitchDeg);
+		float tanV = (float) Math.tan(Math.toRadians(35));
+		return new SkyView().set((float) (-Math.sin(y) * Math.cos(p)), (float) Math.sin(p), (float) (Math.cos(y) * Math.cos(p)), tanV * 16 / 9, tanV);
+	}
+
+	@Test
+	void sparklesAreSkippedLookingAwayAndKeptWhereAnyCanShow() {
+		float deg = (float) Math.PI / 180;
+		// The sparkles sit round the lyrics: the anchor yaw 0 (south) puts them at yaw 180 + 0 in the sky's own turn
+		float centreYaw = 180 * deg, centreElev = 0;
+		assertTrue(SkyEffects.sparklesVisible(looking(0, 0), centreYaw, centreElev, 1), "looking at them");
+		assertFalse(SkyEffects.sparklesVisible(looking(180, 0), centreYaw, centreElev, 1), "looking the other way");
+		assertFalse(SkyEffects.sparklesVisible(looking(0, -80), centreYaw, centreElev, 0.6f), "looking at the ground");
+		// Never drops a sparkle that could be on screen, wherever you look
+		for (float spread : new float[] {0.6f, 1, 1.6f}) {
+			for (float elevDeg : new float[] {-40, 0, 25, 60}) {
+				float elev0 = elevDeg * deg;
+				for (int yaw = -180; yaw < 180; yaw += 15) {
+					for (int pitch = -80; pitch <= 80; pitch += 20) {
+						SkyView view = looking(yaw, pitch);
+						boolean any = false;
+						for (int i = 0; i < 26; i++) {
+							float e = SkyEffects.sparkleElev(i, elev0, spread);
+							float y = SkyEffects.sparkleYaw(i, centreYaw, e, spread);
+							float c = (float) Math.cos(e);
+							any |= view.capVisible(c * (float) Math.sin(y), (float) Math.sin(e), -c * (float) Math.cos(y), 0.03f);
+						}
+						if (any) {
+							assertTrue(SkyEffects.sparklesVisible(view, centreYaw, elev0, spread),
+									"spread " + spread + " elev " + elevDeg + " look " + yaw + "/" + pitch);
+						}
+					}
+				}
+			}
+		}
+	}
 }

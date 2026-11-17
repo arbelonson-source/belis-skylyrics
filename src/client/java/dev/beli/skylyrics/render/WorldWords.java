@@ -325,6 +325,9 @@ final class WorldWords {
 	private int[] lineRuns = new int[0];
 	/** Per piece of the line: half its width in text units times its nominal size, to tell how wide a reversed stretch is. */
 	private float[] lineHalf = new float[0];
+	/** Each piece's letters and measured widths, kept from {@link #nominalHalf} for {@link #spawn}; null where not measured. */
+	private Display[] lineDisplay = new Display[0];
+	private float[][] lineAt = new float[0][];
 	/** The piece being placed (an index into {@link #lineChunks}). */
 	private int placing = -1;
 	private long rng = System.nanoTime();
@@ -423,6 +426,9 @@ final class WorldWords {
 		int[] c = chunks.get(k);
 		Display d = Display.of(new String(text.codePoints().toArray(), c[0], c[1] - c[0]), lineRtl);
 		float[] at = widths(d, font, style);
+		// spawn needs the same widths for this piece: keep them
+		lineDisplay[k] = d;
+		lineAt[k] = at;
 		int letters = 0;
 		for (int cp : d.cps()) {
 			if (Character.isLetterOrDigit(cp)) {
@@ -933,11 +939,12 @@ final class WorldWords {
 			lineText = text == null || !capitals ? text : capitals(text);
 			lineChunks = lineText == null ? List.of() : chunks(lineText);
 			bigPiece = lineText == null ? -1 : bigPiece(lineText, lineChunks, next());
-			float[] whole = lineText == null ? null : widths(Display.of(lineText), font, style);
-			lineWidth = whole == null || whole.length == 0 ? 0 : whole[whole.length - 1];
+			lineWidth = Float.NaN;
 			lineRtl = lineText != null && rightToLeft(lineText);
 			lineRuns = lineText == null ? new int[0] : runs(pieces(lineText, lineChunks), lineRtl);
 			lineHalf = new float[lineChunks.size()];
+			lineDisplay = new Display[lineChunks.size()];
+			lineAt = new float[lineChunks.size()][];
 			for (int k = 0; k < lineHalf.length; k++) {
 				if (lineRuns[k] != RUN_NONE) {
 					lineHalf[k] = nominalHalf(lineText, lineChunks, k, font, style);
@@ -1207,6 +1214,21 @@ final class WorldWords {
 		return prefixWidths(d.cps(), text -> LyricsFont.width(font, style, text));
 	}
 
+	/** The last entry of {@link #prefixWidths}, from one measure of the whole text on a short line. */
+	static float wholeWidth(int[] cps, java.util.function.ToDoubleFunction<String> measure) {
+		if (cps.length == 0) {
+			return 0;
+		}
+		if (cps.length <= WHOLE_PREFIXES) {
+			return (float) measure.applyAsDouble(new String(cps, 0, cps.length));
+		}
+		float at = 0;
+		for (int v = 0; v < cps.length; v++) {
+			at = at + (float) measure.applyAsDouble(new String(cps, v, 1));
+		}
+		return at;
+	}
+
 	/** The widths behind {@link #widths}, with the measuring of a piece of text passed in. */
 	static float[] prefixWidths(int[] cps, java.util.function.ToDoubleFunction<String> measure) {
 		float[] at = new float[cps.length + 1];
@@ -1242,8 +1264,19 @@ final class WorldWords {
 	private void spawn(int[] chunk, float[] centre, Camera camera, @Nullable ClientLevel level, Font font, Style style,
 			long now) {
 		String piece = new String(lineText.codePoints().toArray(), chunk[0], chunk[1] - chunk[0]);
-		Display d = Display.of(piece, lineRtl);
-		float[] at = widths(d, font, style);
+		int slot = lineChunks.indexOf(chunk);
+		Display d;
+		float[] at;
+		if (slot >= 0 && slot < lineAt.length && lineAt[slot] != null) {
+			d = lineDisplay[slot];
+			at = lineAt[slot];
+		} else {
+			d = Display.of(piece, lineRtl);
+			at = widths(d, font, style);
+		}
+		if (flow && Float.isNaN(lineWidth)) {
+			lineWidth = lineText == null ? 0 : wholeWidth(Display.of(lineText).cps(), text -> LyricsFont.width(font, style, text));
+		}
 		int letters = 0;
 		for (int cp : d.cps()) {
 			if (Character.isLetterOrDigit(cp)) {
