@@ -9,6 +9,11 @@
 
 ### Fixed
 
+- **Rejoining a world.** With the Arc layout, rejoining a world (or joining another one) no longer leaves the lyric line off to the side for a moment, where you were looking in the last world, and **Hide in caves** and **Show underground** ask the new world at once instead of using the last world's answer.
+- **Names in the song library.** Song, playlist, album and artist names from your Spotify library and from Recently heard are cleaned like the song playing now: hidden text-direction marks and stray tabs no longer flip or box them, and very long names are cut. A song title made only of invisible characters is treated like a song with no title. Lyrics containing a broken emoji character are saved again instead of being fetched anew on every play.
+- **Two games updating at once.** On Linux and Mac, two Minecraft copies that share one mods folder and install the same SkyLyrics update at the same moment no longer leave two SkyLyrics files there (the game would refuse to start).
+- **Very long folder paths on Windows.** If the mods folder's path is very long (about 225 characters or more), an update is no longer downloaded again at every start without being installed: SkyLyrics tells you an update is available so you can install it by hand.
+- **Music on Linux.** When the desktop's message-bus address can't be used (an old address left after logging in again, or a kind the mod can't open), SkyLyrics also tries your user's usual bus before saying it can't reach your music players.
 - **Song library messages.** The short messages in the song library ("Playing …", errors) stay up as long as Minecraft's **Notification Display Time** says, like Minecraft's own pop-ups.
 - **Mac keys.** On a Mac, Cmd+Page Up and Cmd+Page Down switch the settings tabs (on Minecraft 1.21.9 and newer only Ctrl did), and Cmd with the library key closes the song library, like Ctrl.
 - **Player list and action bar.** Holding Tab on a server no longer draws the player list over the top bar or a **Record card** in a top corner: they fade out while it shows and back when you let go. A bottom bar no longer lifts when a server sends an empty action bar message to clear it.
