@@ -190,12 +190,68 @@ public final class NowPlayingHud {
 	private record SongSource(String title, String artist, String source, LyricsService.State state, Object language, boolean demo) {}
 
 	/** What a piece of text's visual order is worked out from. */
-	private record VisualKey(String text, Style style, Object language) {}
+	private static final class VisualKey {
+		String text;
+		Style style;
+		Object language;
+
+		VisualKey(String text, Style style, Object language) {
+			this.text = text;
+			this.style = style;
+			this.language = language;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof VisualKey k && text.equals(k.text) && style.equals(k.style) && java.util.Objects.equals(language, k.language);
+		}
+
+		@Override
+		public int hashCode() {
+			return text.hashCode();
+		}
+	}
+
+	/** Refilled for every lookup, so a hit builds no key; only a miss stores a copy. Render thread only. */
+	private static final VisualKey VISUAL_PROBE = new VisualKey("", Style.EMPTY, null);
 
 	/** The game's visual order of short texts (the clock, the frame rate, a title), kept while they stay the same. */
 	private static final SmallCache<VisualKey, FormattedCharSequence> VISUAL = new SmallCache<>(12);
 	/** Cut texts, by everything the cut depends on. */
-	private record ClipKey(Object font, Style style, String str, int maxW, Object language, long reloads) {}
+	private static final class ClipKey {
+		Object font;
+		Style style;
+		String str;
+		int maxW;
+		Object language;
+		long reloads;
+
+		ClipKey(Object font, Style style, String str, int maxW, Object language, long reloads) {
+			set(font, style, str, maxW, language, reloads);
+		}
+
+		void set(Object font, Style style, String str, int maxW, Object language, long reloads) {
+			this.font = font;
+			this.style = style;
+			this.str = str;
+			this.maxW = maxW;
+			this.language = language;
+			this.reloads = reloads;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof ClipKey k && java.util.Objects.equals(font, k.font) && style.equals(k.style) && str.equals(k.str) && maxW == k.maxW
+					&& java.util.Objects.equals(language, k.language) && reloads == k.reloads;
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * (31 * str.hashCode() + maxW) + Long.hashCode(reloads);
+		}
+	}
+
+	private static final ClipKey CLIP_PROBE = new ClipKey(null, Style.EMPTY, "", 0, null, 0);
 	private static final SmallCache<ClipKey, String> CLIPS = new SmallCache<>(8);
 	/** The song's name and what follows it, cut to the room there is; see {@link #titleCut}. */
 	private record TitleKey(Object font, Style style, String title, String sub, int limit, int floor, Object language, long reloads) {}
@@ -529,11 +585,15 @@ public final class NowPlayingHud {
 			*///?} else {
 			GuiOverlayAccessor overlay = (GuiOverlayAccessor) mc.gui;
 			//?}
-			Component text = overlay.skylyrics$getOverlayMessageString();
-			return actionBarShowing(overlay.skylyrics$getOverlayMessageTime(), text == null ? "" : text.getString());
+			return actionBarShowing(overlay.skylyrics$getOverlayMessageTime(), overlay.skylyrics$getOverlayMessageString());
 		} catch (RuntimeException | LinkageError e) {
 			return false;
 		}
+	}
+
+	/** The time is checked first, so no string is built for the text while no message is showing. */
+	static boolean actionBarShowing(int ticksLeft, Component text) {
+		return ticksLeft > 0 && text != null && actionBarShowing(ticksLeft, text.getString());
 	}
 
 	/** An action bar message shows while it has time left and says something: servers send an empty one to clear it. */
@@ -944,8 +1004,18 @@ public final class NowPlayingHud {
 
 	/** The game's visual order of the text (right-to-left runs reversed), without its invisible direction marks (dropped after the order), kept while the same text is asked for again. */
 	static FormattedCharSequence visual(String text, Style style) {
-		return VISUAL.get(new VisualKey(text, style, Language.getInstance()),
-				k -> LyricsFont.dropMarks(((Language) k.language()).getVisualOrder(FormattedText.of(k.text(), k.style()))));
+		Language language = Language.getInstance();
+		VisualKey probe = VISUAL_PROBE;
+		probe.text = text;
+		probe.style = style;
+		probe.language = language;
+		FormattedCharSequence known = VISUAL.find(probe);
+		if (known != null) {
+			return known;
+		}
+		FormattedCharSequence made = LyricsFont.dropMarks(language.getVisualOrder(FormattedText.of(text, style)));
+		VISUAL.put(new VisualKey(text, style, language), made);
+		return made;
 	}
 
 	private static void text(GuiGraphics g, Font font, FormattedCharSequence seq, float x, float midY, float scale, int color) {
@@ -1183,15 +1253,22 @@ public final class NowPlayingHud {
 		if (LyricsFont.cachedWidth(font, style, text) <= maxW) {
 			return text;
 		}
-		return CLIPS.get(new ClipKey(font, style, text, clipRoom(maxW), Language.getInstance(), LyricsFont.reloadCount()),
-				NowPlayingHud::cut);
+		int room = clipRoom(maxW);
+		Language language = Language.getInstance();
+		long reloads = LyricsFont.reloadCount();
+		CLIP_PROBE.set(font, style, text, room, language, reloads);
+		String known = CLIPS.find(CLIP_PROBE);
+		if (known != null) {
+			return known;
+		}
+		String made = cut(font, style, text, room);
+		CLIPS.put(new ClipKey(font, style, text, room, language, reloads), made);
+		return made;
 	}
 
-	private static String cut(ClipKey k) {
-		Font font = (Font) k.font();
-		Style style = k.style();
-		float room = k.maxW() - LyricsFont.width(font, style, "…");
-		return dev.beli.skylyrics.util.TextCut.prefix(k.str(), t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
+	private static String cut(Font font, Style style, String text, int maxW) {
+		float room = maxW - LyricsFont.width(font, style, "…");
+		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */

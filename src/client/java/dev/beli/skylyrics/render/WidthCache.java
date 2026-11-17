@@ -14,7 +14,39 @@ final class WidthCache {
 		float of(Object font, Object style, String text);
 	}
 
-	private record Key(Object font, Object style, String text, Object language, long epoch) {}
+	private static final class Key {
+		Object font;
+		Object style;
+		String text;
+		Object language;
+		long epoch;
+
+		Key(Object font, Object style, String text, Object language, long epoch) {
+			set(font, style, text, language, epoch);
+		}
+
+		void set(Object font, Object style, String text, Object language, long epoch) {
+			this.font = font;
+			this.style = style;
+			this.text = text;
+			this.language = language;
+			this.epoch = epoch;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof Key k && java.util.Objects.equals(font, k.font) && style.equals(k.style) && text.equals(k.text) && java.util.Objects.equals(language, k.language)
+					&& epoch == k.epoch;
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * text.hashCode() + Long.hashCode(epoch);
+		}
+	}
+
+	/** Refilled for every lookup so a hit builds no key; only a miss stores a copy. */
+	private final Key probe = new Key(null, null, "", null, 0);
 
 	private final int limit;
 	private final LinkedHashMap<Key, Float> map;
@@ -59,13 +91,13 @@ final class WidthCache {
 	}
 
 	float get(Object font, Object style, String text, Object language, Measure measure) {
-		Key key = new Key(font, style, text, language, epoch);
-		Float known = map.get(key);
+		probe.set(font, style, text, language, epoch);
+		Float known = map.get(probe);
 		if (known != null) {
 			return known;
 		}
 		float w = measure.of(font, style, text);
-		map.put(key, w);
+		map.put(new Key(font, style, text, language, epoch), w);
 		return w;
 	}
 }
