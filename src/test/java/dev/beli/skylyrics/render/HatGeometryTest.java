@@ -77,7 +77,7 @@ class HatGeometryTest {
 			return this;
 		}
 
-		@Override
+		// No @Override: VertexConsumer has no setLineWidth before 1.21.11
 		public VertexConsumer setLineWidth(float w) {
 			return this;
 		}
