@@ -36,11 +36,23 @@ public final class SpotifyLibrary implements Library {
 	public static final int PAGE = 50;
 	/** How long a busy Spotify can make us wait before we give up on one request. */
 	private static final long MAX_WAIT_S = 30;
+	/** Spotify refuses a search that starts past this many results. */
+	static final int SEARCH_CAP = 1000;
 
 	/** A slice of a longer list; {@code total} is how many there are altogether. */
 	public record Page<T>(List<T> items, int total, int offset, int raw) {
 		public Page(List<T> items, int total, int offset) {
 			this(items, total, offset, items.size());
+		}
+
+		/** The same slice, said to start at {@code start}: the offset we asked for, not whatever the reply claims. */
+		Page<T> at(int start) {
+			return new Page<>(items, total, start, raw);
+		}
+
+		/** The same slice of a list that is treated as ending at {@code limit} songs. */
+		Page<T> capped(int limit) {
+			return total <= limit ? this : new Page<>(items, limit, offset, raw);
 		}
 
 		public static <T> Page<T> empty() {
@@ -88,22 +100,22 @@ public final class SpotifyLibrary implements Library {
 		if (q.isEmpty()) {
 			return CompletableFuture.completedFuture(Page.empty());
 		}
-		return run(() -> parseSearch(get("/search?type=track&limit=" + SEARCH_PAGE + "&offset=" + offset + "&q=" + encode(q))));
+		return run(() -> parseSearch(get("/search?type=track&limit=" + SEARCH_PAGE + "&offset=" + offset + "&q=" + encode(q))).at(offset).capped(SEARCH_CAP));
 	}
 
 	@Override
 	public CompletableFuture<Page<LibraryItem>> liked(int offset) {
-		return run(() -> parseSaved(get("/me/tracks?limit=" + PAGE + "&offset=" + offset)));
+		return run(() -> parseSaved(get("/me/tracks?limit=" + PAGE + "&offset=" + offset)).at(offset));
 	}
 
 	@Override
 	public CompletableFuture<Page<LibraryPlaylist>> playlists(int offset) {
-		return run(() -> parsePlaylists(get("/me/playlists?limit=" + PAGE + "&offset=" + offset), myId()));
+		return run(() -> parsePlaylists(get("/me/playlists?limit=" + PAGE + "&offset=" + offset), myId()).at(offset));
 	}
 
 	@Override
 	public CompletableFuture<Page<LibraryItem>> playlist(LibraryPlaylist playlist, int offset) {
-		return run(() -> parsePlaylistItems(get("/playlists/" + encode(playlist.id()) + "/items?limit=" + PAGE + "&offset=" + offset), playlist.uri()));
+		return run(() -> parsePlaylistItems(get("/playlists/" + encode(playlist.id()) + "/items?limit=" + PAGE + "&offset=" + offset), playlist.uri()).at(offset));
 	}
 
 	/**
@@ -137,7 +149,11 @@ public final class SpotifyLibrary implements Library {
 				}
 			}
 			return outcome(response.statusCode(), uri, openHere);
-		}).exceptionally(e -> Tr.t("Spotify didn't start the song, try again"));
+		}).exceptionally(e -> {
+			Throwable cause = e instanceof java.util.concurrent.CompletionException && e.getCause() != null ? e.getCause() : e;
+			boolean specific = cause instanceof SpotifyWebSource.NotSetUp || MediaTracker.networkFailure(cause);
+			return specific ? errorText(cause) : Tr.t("Spotify didn't start the song, try again");
+		});
 	}
 
 	/** What to tell the user after Spotify answered {@code status}, trying the app on this computer if it said no. */
@@ -188,8 +204,11 @@ public final class SpotifyLibrary implements Library {
 	private String get(String path) throws IOException, InterruptedException {
 		HttpResponse<String> response = spotify.call("GET", path, null);
 		if (response.statusCode() == 429) {
-			long wait = response.headers().firstValueAsLong("Retry-After").orElse(2);
-			Thread.sleep(Math.clamp(wait, 1, MAX_WAIT_S) * 1000);
+			long wait = waitSeconds(response.headers().firstValue("Retry-After").orElse(null));
+			if (wait > MAX_WAIT_S) {
+				throw new IOException(Tr.t("Spotify didn't answer, try again")); // a long wait would hold up everything queued behind it
+			}
+			Thread.sleep(Math.max(1, wait) * 1000);
 			response = spotify.call("GET", path, null);
 		}
 		if (response.statusCode() >= 300) {
@@ -197,7 +216,41 @@ public final class SpotifyLibrary implements Library {
 					? Tr.t("Sign out and sign in again on the Music tab to use the song library")
 					: Tr.t("Spotify didn't answer, try again"));
 		}
+		if (object(response.body()) == null) {
+			// An empty reply or a login page from the Wi-Fi is no answer: say so instead of showing an end of the list
+			throw new IOException(Tr.t("Spotify didn't answer, try again"));
+		}
 		return response.body();
+	}
+
+	/** The songs of {@code page} that {@code shown} doesn't have yet, matched by id; anything but a song stays. */
+	public static <T> List<T> withoutRepeats(List<?> shown, List<T> page) {
+		java.util.Set<String> seen = new java.util.HashSet<>();
+		for (Object o : shown) {
+			if (o instanceof LibraryItem item) {
+				seen.add(item.id());
+			}
+		}
+		List<T> out = new ArrayList<>();
+		for (T o : page) {
+			if (!(o instanceof LibraryItem item) || seen.add(item.id())) {
+				out.add(o);
+			}
+		}
+		return out;
+	}
+
+	/** A Retry-After header (seconds or an HTTP date) in whole seconds; 2 when it is missing or unreadable. */
+	static long waitSeconds(@Nullable String header) {
+		if (header == null) {
+			return 2;
+		}
+		try {
+			return Math.max(0, Long.parseLong(header.strip()));
+		} catch (NumberFormatException e) {
+			long ms = dev.beli.skylyrics.lyrics.LrclibClient.retryAfterMs(header);
+			return ms < 0 ? 2 : (ms + 999) / 1000;
+		}
 	}
 
 	private String myId() throws IOException, InterruptedException {
