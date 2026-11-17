@@ -43,6 +43,8 @@ public final class IntroScreen extends Screen {
 	/** The buttons of the page by name, so the keyboard can be put back on the one it was on after the page is rebuilt. */
 	private final java.util.Map<String, Button> buttons = new java.util.HashMap<>();
 	private @Nullable String keepFocus;
+	/** {@link #init} put the keyboard back on a button, so the screen's own first-focus step is skipped once. */
+	private boolean focusRestored;
 
 	public IntroScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
@@ -82,11 +84,101 @@ public final class IntroScreen extends Screen {
 
 	/** Where the last line of text may be drawn: above the page dots and the buttons. */
 	private int textLimit() {
-		return py + ph - 46;
+		return textLimit(page, py, ph);
 	}
 
+	/** Where the demo button sits on page 3: under the text's usual place, kept above the page's own buttons. */
+	static int demoY(int py, int ph) {
+		return py + Math.min(vy(100, ph) + 28, ph - 28 - 24);
+	}
+
+	/** The lowest y the text of a page may reach: above the page dots, and on the demo page above its button too. */
+	static int textLimit(int page, int py, int ph) {
+		int limit = py + ph - 46;
+		return page == 3 ? Math.min(limit, demoY(py, ph) - 3) : limit;
+	}
+
+	/** One drawn line of a page's text. */
+	record Row(String text, int y, boolean rtl) {
+	}
+
+	/**
+	 * The lines of {@code paragraphs} wrapped to {@code maxW}, from {@code y} down, none starting so low that its
+	 * 8 pixels pass {@code limit}. When some text does not fit, the last line ends in "…".
+	 */
+	static List<Row> rows(List<String> paragraphs, int maxW, int y, int limit, java.util.function.ToIntFunction<String> width) {
+		List<Row> out = new java.util.ArrayList<>();
+		for (String p : paragraphs) {
+			boolean rtl = Ui.paragraphRtl(p);
+			for (String line : wrapBy(p, maxW, width)) {
+				if (y + 8 > limit) {
+					if (!out.isEmpty()) {
+						Row last = out.remove(out.size() - 1);
+						out.add(new Row(Ui.clipBy(last.text() + "…", maxW, width), last.y(), last.rtl()));
+					}
+					return out;
+				}
+				out.add(new Row(line, y, rtl));
+				y += 11;
+			}
+			y += 4;
+		}
+		return out;
+	}
+
+	/** The button to focus on a page that has {@code present}: the one that was focused, else its nearest (Next on the first page, Done on the last). */
+	static @Nullable String focusAfter(@Nullable String tag, java.util.Set<String> present) {
+		if (tag == null || present.contains(tag)) {
+			return tag;
+		}
+		String near = switch (tag) {
+			case "back", "skip" -> "next";
+			case "next" -> "done";
+			default -> null;
+		};
+		return near != null && present.contains(near) ? near : null;
+	}
+
+	/** Notes which button has the keyboard before the widgets are cleared (a resize or a page change clears them, and the focus with them). */
+	@Override
+	protected void rebuildWidgets() {
+		if (keepFocus == null && getFocused() != null) {
+			for (java.util.Map.Entry<String, Button> e : buttons.entrySet()) {
+				if (e.getValue() == getFocused()) {
+					keepFocus = e.getKey();
+				}
+			}
+		}
+		super.rebuildWidgets();
+	}
+
+	/** Builds the page and puts the keyboard back where it was, also after a resize or a GUI scale change. */
 	@Override
 	protected void init() {
+		focusRestored = false;
+		build();
+		String tag = focusAfter(keepFocus, buttons.keySet());
+		keepFocus = null;
+		if (tag != null) {
+			setFocused(buttons.get(tag));
+			focusRestored = true;
+		}
+	}
+
+	/**
+	 * Minecraft calls this right after {@link #init} (first open and every rebuild); with the keyboard in use it tabs
+	 * from the focused button to the next one, so after {@link #init} put the keyboard back it must not run.
+	 */
+	@Override
+	protected void setInitialFocus() {
+		if (focusRestored) {
+			focusRestored = false;
+			return;
+		}
+		super.setInitialFocus();
+	}
+
+	private void build() {
 		pw = fit(width, PANEL_W);
 		ph = fit(height, PANEL_H);
 		px = (width - pw) / 2;
@@ -118,7 +210,7 @@ public final class IntroScreen extends Screen {
 					x += w3 + 8;
 				}
 			}
-			case 3 -> add("demo", cfg.demoMode ? Tr.t("Demo song: on") : Tr.t("Demo song: off"), null, px + 70 * pw / PANEL_W, Math.min(mid + 28, bottom - 24), pw - 140 * pw / PANEL_W, () -> {
+			case 3 -> add("demo", cfg.demoMode ? Tr.t("Demo song: on") : Tr.t("Demo song: off"), null, px + 70 * pw / PANEL_W, demoY(py, ph), pw - 140 * pw / PANEL_W, () -> {
 				cfg.demoMode = !cfg.demoMode;
 				SkyLyricsClient mod = SkyLyricsClient.get();
 				if (mod != null) {
@@ -162,14 +254,9 @@ public final class IntroScreen extends Screen {
 		addRenderableWidget(button);
 	}
 
-	/** Rebuilds the page's buttons and puts the keyboard back on the one that was pressed (a rebuild would drop it to the first). */
+	/** Rebuilds the page's buttons; {@link #init} keeps the keyboard on the one that was pressed. */
 	private void rebuild() {
-		rebuildWidgets();
-		Button button = keepFocus == null ? null : buttons.get(keepFocus);
-		keepFocus = null;
-		if (button != null) {
-			setFocused(button);
-		}
+		rebuildWidgets(); // runs init(), which puts the focus back
 	}
 
 	private void go(int to) {
@@ -241,6 +328,7 @@ public final class IntroScreen extends Screen {
 			case LINES -> Tr.t("The previous, current and next line, straight and centred.");
 		};
 	}
+
 
 	/** Remembers that the tour was seen, so it never opens again. */
 	private void finish() {
@@ -331,21 +419,13 @@ public final class IntroScreen extends Screen {
 		g.drawCenteredString(font, Ui.visual(text), px + pw / 2, y, Ui.TEXT);
 	}
 
-	/** Centred paragraphs, wrapped to the panel. */
+	/** Centred paragraphs, wrapped to the panel; returns the y below the last one. */
 	private int lines(GuiGraphics g, int y, String... paragraphs) {
-		for (String p : paragraphs) {
-			List<String> wrapped = wrap(p, pw - 40);
-			boolean rtl = Ui.paragraphRtl(p);
-			for (String line : wrapped) {
-				if (y + 8 > textLimit()) {
-					return y; // no room left: stop rather than run into the buttons
-				}
-				g.drawCenteredString(font, Ui.visual(line, rtl), px + pw / 2, y, Ui.MUTED);
-				y += 11;
-			}
-			y += 4;
+		List<Row> rows = rows(List.of(paragraphs), pw - 40, y, textLimit(), font::width);
+		for (Row row : rows) {
+			g.drawCenteredString(font, Ui.visual(row.text(), row.rtl()), px + pw / 2, row.y(), Ui.MUTED);
 		}
-		return y;
+		return rows.isEmpty() ? y : rows.get(rows.size() - 1).y() + 15;
 	}
 
 	private int keyLine(GuiGraphics g, String what, @Nullable KeyMapping key, int y) {
@@ -366,12 +446,12 @@ public final class IntroScreen extends Screen {
 	}
 
 	/** Splits on spaces so each line fits {@code maxW}. */
-	private List<String> wrap(String text, int maxW) {
+	static List<String> wrapBy(String text, int maxW, java.util.function.ToIntFunction<String> width) {
 		List<String> out = new java.util.ArrayList<>();
 		StringBuilder line = new StringBuilder();
 		for (String word : text.split(" ")) {
 			String next = line.isEmpty() ? word : line + " " + word;
-			if (font.width(next) > maxW && !line.isEmpty()) {
+			if (width.applyAsInt(next) > maxW && !line.isEmpty()) {
 				out.add(line.toString());
 				line = new StringBuilder(word);
 			} else {

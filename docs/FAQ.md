@@ -64,7 +64,7 @@ If Spotify says it blocked the app, open the app's **User Management** on the da
 
 From [LRCLIB](https://lrclib.net), a free lyrics database run by volunteers. You don't need an account or any set-up. The mod sends the song's title, artist, album and length to LRCLIB to find a match. Lyrics it finds are saved on your computer, so the same song doesn't have to be looked up again.
 
-Since version 0.7.8, when LRCLIB is down or doesn't have a song, the mod asks [NetEase Cloud Music](https://music.163.com) instead, a big music service that also has timed lyrics, including for many songs that aren't in English. It sends NetEase only the song's title and artist. No account is needed for either. To avoid showing the wrong song's words, it only uses a NetEase match when the title matches exactly and the artist or the song length matches too.
+Since version 0.7.8, when LRCLIB is down, doesn't have a song or only has untimed lyrics for it, the mod asks [NetEase Cloud Music](https://music.163.com) instead, a big music service that also has timed lyrics, including for many songs that aren't in English. It sends NetEase only the song's title and artist. No account is needed for either. To avoid showing the wrong song's words, it only uses a NetEase match when the title matches exactly and the artist or the song length matches too.
 
 If neither has a song, the mod can't show lyrics for it.
 
@@ -78,7 +78,7 @@ Spotify only matters for the **song library** (press **N**; inside it, a plain *
 
 Only to look up lyrics for songs it hasn't seen before, and to download album covers that your player gives as a web link. Songs whose lyrics are already saved work offline. It also checks GitHub once when the game starts to see if a new version is out.
 
-Without internet, a song that isn't saved shows "Couldn't reach the lyrics sites. Check your internet, then press Retry." on the **Music** tab, and the lyrics come by themselves once you are back online. An album cover that couldn't download is tried again every so often during the song. With **Spotify Web**, the status says "Can't reach the internet or Spotify" and the mod keeps asking, waiting a little longer each time (30 seconds at most). LRCLIB is only set aside for a couple of minutes when it is really down or too busy, not because one song's lookup failed.
+Without internet, a song that isn't saved shows "Couldn't reach the lyrics sites. Check your internet, then press Retry." on the **Music** tab, and the lyrics come by themselves once you are back online. An album cover that couldn't download is tried again every so often for about half an hour. With **Spotify Web**, the status says "Can't reach the internet or Spotify" and the mod keeps asking, waiting a little longer each time (30 seconds at most). LRCLIB is only set aside for a couple of minutes when it is really down or too busy, not because one song's lookup failed.
 
 ## How do I update it?
 

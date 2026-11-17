@@ -554,7 +554,7 @@ public final class DevTestHook {
 					//?}
 						//? if >=1.21.9 {
 						var e = new net.minecraft.client.input.MouseButtonEvent(Double.parseDouble(xy[0]), Double.parseDouble(xy[1]),
-								new net.minecraft.client.input.MouseButtonInfo(0, 0));
+								new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
 						//? if >=26.2 {
 						/*client.gui.screen().mouseClicked(e, false);
 						client.gui.screen().mouseReleased(e);
@@ -672,7 +672,7 @@ public final class DevTestHook {
 							.findFirst().orElseThrow(() -> new IllegalArgumentException("no button " + arg));
 					//? if >=1.21.9 {
 					button.onPress(new net.minecraft.client.input.MouseButtonEvent(button.getX() + 1, button.getY() + 1,
-							new net.minecraft.client.input.MouseButtonInfo(0, 0)));
+							new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0)));
 					//?} else {
 					/*button.onPress();
 					*///?}

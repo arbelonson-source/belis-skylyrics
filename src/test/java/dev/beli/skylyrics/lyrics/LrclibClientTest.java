@@ -240,6 +240,34 @@ class LrclibClientTest {
 
 	private static final String BAND = "Made Up Band";
 
+	private static final Track UNTAGGED = new Track("Intro", "", "", 200_000, "", "browser");
+
+	@Test
+	void noArtistWithALengthPicksNothingWhenDifferentArtistsShareTheTitle() throws Exception {
+		assertFalse(findWith(UNTAGGED, hit("Intro", "Some Band", 200, "[00:01.00]one"), hit("Intro", "Other Singer", 201, "[00:01.00]two")).found());
+	}
+
+	@Test
+	void noArtistWithALengthNeedsACloseLength() throws Exception {
+		assertTrue(findWith(UNTAGGED, hit("Intro", "Some Band", 202, "[00:01.00]one")).found());
+		assertFalse(findWith(UNTAGGED, hit("Intro", "Some Band", 212, "[00:01.00]far")).found());
+	}
+
+	@Test
+	void aHitWithAnUnreadableLengthIsSkippedNotFatal() throws Exception {
+		String bad = "{\"trackName\":\"A Made-Up Song\",\"artistName\":\"" + BAND + "\",\"duration\":\"abc\",\"syncedLyrics\":\"[00:01.00]bad\",\"instrumental\":false}";
+		assertEquals("[00:01.00]good", findWith(TRACK, bad, hit("A Made-Up Song", BAND, 200, "[00:01.00]good")).synced());
+		assertFalse(findWith(TRACK, bad).found());
+	}
+
+	@Test
+	void aHitWhoseLengthIsNotANumberSlipsPastNoLengthCheck() throws Exception {
+		for (String weird : new String[] {"NaN", "Infinity"}) {
+			String bad = "{\"trackName\":\"A Made-Up Song\",\"artistName\":\"" + BAND + "\",\"duration\":\"" + weird + "\",\"syncedLyrics\":\"[00:01.00]bad\",\"instrumental\":false}";
+			assertFalse(findWith(TRACK, bad).found(), weird);
+		}
+	}
+
 	@Test
 	void anotherSongBySameArtistIsNotPicked() throws Exception {
 		assertFalse(findWith(TRACK, hit("Another Song", BAND, 200, "[00:01.00]wrong")).found());

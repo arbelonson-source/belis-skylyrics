@@ -108,4 +108,15 @@ class AlbumArtColorTest {
 		assertEquals(255, red(c));
 		assertTrue(green(c) < 160 && blue(c) < 160);
 	}
+
+	@Test
+	void colourHiddenUnderTransparencyIsIgnored() {
+		BufferedImage clear = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < 64; y++) {
+			for (int x = 0; x < 64; x++) {
+				clear.setRGB(x, y, 0x00FF0000); // red, alpha 0
+			}
+		}
+		assertEquals(AlbumArt.FALLBACK_COLOR, AlbumArt.pickColor(clear));
+	}
 }

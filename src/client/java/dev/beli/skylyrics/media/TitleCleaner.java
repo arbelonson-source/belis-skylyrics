@@ -127,15 +127,40 @@ public final class TitleCleaner {
 		return VERSION_BRACKET.matcher(t).replaceAll("").trim();
 	}
 
-	/** Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". */
+	/**
+	 * Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". Accents on Latin, Greek and
+	 * Cyrillic letters fold away ("Beyonc\u00e9" = "Beyonce"); Arabic and Hebrew vowel marks fold too; marks in other scripts change the word
+	 * (Hindi "\u0915\u093e" and "\u0915\u0940", Japanese "\u30d0" and "\u30cf") and stay.
+	 */
 	public static String key(String s) {
-		return s.toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", "");
+		String t = Normalizer.normalize(s.toLowerCase(Locale.ROOT), Normalizer.Form.NFKD);
+		StringBuilder out = new StringBuilder(t.length());
+		boolean foldable = false; // the last letter was Latin, Greek or Cyrillic
+		for (int i = 0; i < t.length(); ) {
+			int c = t.codePointAt(i);
+			i += Character.charCount(c);
+			if (Character.getType(c) == Character.NON_SPACING_MARK || Character.getType(c) == Character.COMBINING_SPACING_MARK
+					|| Character.getType(c) == Character.ENCLOSING_MARK) {
+				if (!foldable) {
+					out.appendCodePoint(c);
+				}
+			} else if (Character.isLetterOrDigit(c)) {
+				Character.UnicodeScript script = Character.UnicodeScript.of(c);
+				// Arabic and Hebrew vowel marks are optional in writing, so they fold away like accents
+				foldable = script == Character.UnicodeScript.LATIN || script == Character.UnicodeScript.GREEK
+						|| script == Character.UnicodeScript.CYRILLIC || script == Character.UnicodeScript.ARABIC
+						|| script == Character.UnicodeScript.HEBREW;
+				out.appendCodePoint(c);
+			} else {
+				foldable = false;
+			}
+		}
+		return out.toString();
 	}
 
 	/** What identifies the song: no version tags or credits, no case, accents or punctuation; "&" means "and". */
 	static String songKey(String title) {
 		String t = VERSION_BRACKET.matcher(forSearch(title)).replaceAll("").replace("&", " and ");
-		t = Normalizer.normalize(t, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "");
 		String k = key(t);
 		return k.isEmpty() ? title.strip().toLowerCase(Locale.ROOT) : k; // "!!!" must not equal "???"
 	}

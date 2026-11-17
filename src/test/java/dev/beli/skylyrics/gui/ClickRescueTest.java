@@ -61,6 +61,21 @@ class ClickRescueTest {
 	}
 
 	@Test
+	void aRealReleaseAfterAReplayedPressStillReleasesOnce() {
+		ClickRescue rescue = new ClickRescue();
+		Counter screen = new Counter();
+		rescue.poll(5, 5, false, screen);
+		for (int i = 0; i < 10; i++) {
+			rescue.poll(5, 5, true, screen);
+		}
+		assertEquals(1, screen.clicks);
+		assertFalse(rescue.pressed()); // the late real press is dropped
+		assertFalse(rescue.released()); // the screen ignores the real release...
+		rescue.poll(5, 5, false, screen);
+		assertEquals(1, screen.releases, "...and gets the replay's release instead, once");
+	}
+
+	@Test
 	void theClickThatOpenedTheScreenDoesNotCount() {
 		ClickRescue rescue = new ClickRescue();
 		Counter screen = new Counter();

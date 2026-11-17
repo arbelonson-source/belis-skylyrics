@@ -1153,12 +1153,12 @@ public final class LibraryScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		sayNewSection = false;
 		stop = -1;
-		if (event.button() == 0 && !rescue.pressed()) {
+		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
 			return true;
 		}
 		double mx = event.x();
 		double my = event.y();
-		if (event.button() != 0) {
+		if (event.button() != ClickRescue.left()) {
 			return super.mouseClicked(event, doubleClick);
 		}
 		if (Ui.inside(mx, my, px + pw - 22, py + 8, 14, 14)) {
@@ -1386,7 +1386,7 @@ public final class LibraryScreen extends Screen {
 		KeyMapping key = mod.libraryKey();
 		if (key != null && key.matches(event)) {
 			// A letter here starts a search, and a key held since it opened us only repeats
-			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), (event.modifiers() & 6) != 0, closeKeyHeld)) {
+			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), ScreenKeys.ctrlOrAlt(event.modifiers()), closeKeyHeld)) {
 				onClose();
 				return true;
 			}

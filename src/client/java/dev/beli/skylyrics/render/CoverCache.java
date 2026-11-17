@@ -267,6 +267,12 @@ public final class CoverCache {
 			// shutting down: keep the flag so work() ends
 			Thread.currentThread().interrupt();
 		} catch (java.io.IOException e) {
+			if (e instanceof javax.imageio.IIOException) {
+				// The bytes arrived but won't decode (CMYK JPEG, truncated file): that's the cover's fault, so it counts
+				fail(cover);
+				LOG.debug("Couldn't decode cover {}: {}", cover.url, e.toString());
+				return;
+			}
 			// Network trouble (offline, timeout): retried later, and not counted against the cover
 			cover.failedAt = Math.max(1, System.nanoTime());
 			LOG.debug("Couldn't load cover {}: {}", cover.url, e.toString());
@@ -388,7 +394,14 @@ public final class CoverCache {
 		if (bytes == null || !dimensionsOk(bytes)) {
 			return null;
 		}
-		BufferedImage image = decodeSmall(bytes, SIZE);
+		BufferedImage image;
+		try {
+			image = decodeSmall(bytes, SIZE);
+		} catch (javax.imageio.IIOException e) {
+			throw e;
+		} catch (java.io.IOException e) {
+			throw new javax.imageio.IIOException("Cover won't decode", e); // not network trouble: see load()
+		}
 		if (image != null) {
 			cache(dir, file, image);
 		}

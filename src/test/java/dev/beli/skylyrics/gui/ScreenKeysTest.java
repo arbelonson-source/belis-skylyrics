@@ -7,8 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class ScreenKeysTest {
-	private static final int N = 78;
-	private static final int F9 = 298;
+	private static final int N = com.mojang.blaze3d.platform.InputConstants.KEY_N;
+	private static final int F9 = com.mojang.blaze3d.platform.InputConstants.KEY_F9;
 
 	@Test
 	void aLetterKeyDoesNotCloseTheLibraryItWouldStartASearchWith() {
@@ -49,10 +49,10 @@ class ScreenKeysTest {
 
 	@Test
 	void ctrlCAndCtrlXCopyAndCutOnlyWithCtrlHeld() {
-		assertEquals(0, ScreenKeys.copyOrCut(67, true));
-		assertEquals(1, ScreenKeys.copyOrCut(88, true));
-		assertEquals(-1, ScreenKeys.copyOrCut(67, false));
-		assertEquals(-1, ScreenKeys.copyOrCut(86, true));
+		assertEquals(0, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, true));
+		assertEquals(1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_X, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, false));
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_V, true));
 	}
 
 	@Test

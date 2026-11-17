@@ -1148,12 +1148,8 @@ public final class SkyEffects {
 		*///?} else {
 		long dayTime = level.getDayTime();
 		//?}
-		if (STARS.hit(level, camera, tick, dayTime, partial, at.x, at.y, at.z)) {
-			return STARS.value();
-		}
-		float value = readStarBrightness(level, camera, partial);
-		STARS.store(level, camera, tick, dayTime, partial, at.x, at.y, at.z, value);
-		return value;
+		return STARS.get(level, camera, tick, dayTime, partial, at.x, at.y, at.z, System.nanoTime() / 1_000_000L,
+				() -> readStarBrightness(level, camera, partial));
 	}
 
 	private static final StarMemo STARS = new StarMemo();

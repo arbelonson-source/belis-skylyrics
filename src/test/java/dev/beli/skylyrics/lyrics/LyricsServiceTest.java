@@ -400,6 +400,100 @@ class LyricsServiceTest {
 		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
 	}
 
+	private static final LrclibClient.Result PLAIN = new LrclibClient.Result(null, "Only plain words", false);
+
+	/** Saves the answer the usual way, then makes the file look a month old. */
+	private Path saveAged(Track t, LrclibClient.Result saved) throws Exception {
+		service.shutdown();
+		service = new LyricsService(x -> saved, cache);
+		service.load(t);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		Path file;
+		try (var files = Files.list(cache)) {
+			file = files.filter(f -> f.toString().endsWith(".json")).findFirst().orElseThrow();
+		}
+		Files.writeString(file, Files.readString(file).replaceAll("\"savedAt\":\\d+", "\"savedAt\":1000"));
+		service.shutdown();
+		return file;
+	}
+
+	@Test
+	void agedPlainLyricsAreShownThenReplacedWhenSyncedOnesAppear() throws Exception {
+		Path file = saveAged(OLD_SONG, PLAIN);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return BETTER;
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		waitFor(() -> service.lyrics().lines().get(0).text().contains("Main version"));
+		assertEquals(1, asks.get());
+		assertTrue(readFile(file).contains("Main version"));
+	}
+
+	@Test
+	void agedPlainLyricsStayWhenTheNewAskFindsNothingBetterOrFails() throws Exception {
+		Path file = saveAged(OLD_SONG, PLAIN);
+		for (LyricsSource answer : new LyricsSource[] {
+			x -> LrclibClient.Result.NOT_FOUND,
+			x -> new LrclibClient.Result(null, "Other plain words", false),
+			x -> {
+				throw new LrclibClient.StatusException(503);
+			}}) {
+			Files.writeString(file, readFile(file).replaceAll("\"savedAt\":\\d+", "\"savedAt\":1000")); // old again
+			AtomicInteger asks = new AtomicInteger();
+			service = new LyricsService(x -> {
+				asks.incrementAndGet();
+				return answer.find(x);
+			}, cache, attempt -> 30);
+			service.load(OLD_SONG);
+			waitFor(() -> asks.get() == 1);
+			service.shutdownAndWait(5, TimeUnit.SECONDS);
+			assertTrue(readFile(file).contains("Only plain words"));
+			assertEquals(LyricsService.State.READY, service.state());
+			assertTrue(service.lyrics().lines().get(0).text().contains("Only plain words"));
+		}
+	}
+
+	@Test
+	void agedBackupLyricsAreReplacedByTheMainSitesWhenItHasThem() throws Exception {
+		Path file = saveAged(OLD_SONG, STANDIN.asFromBackup());
+		assertTrue(readFile(file).contains("\"backup\":true"));
+		service = new LyricsService(x -> BETTER, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.lyrics().lines().size() > 0 && service.lyrics().lines().get(0).text().contains("Main version"));
+		assertFalse(readFile(file).contains("\"backup\":true"));
+	}
+
+	@Test
+	void agedSyncedMainLyricsAndFreshPlainLyricsAreNotAskedAgain() throws Exception {
+		saveAged(OLD_SONG, BETTER);
+		AtomicInteger asks = new AtomicInteger();
+		service = new LyricsService(x -> {
+			asks.incrementAndGet();
+			return PLAIN;
+		}, cache);
+		service.load(OLD_SONG);
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		service.shutdownAndWait(5, TimeUnit.SECONDS);
+		assertEquals(0, asks.get());
+
+		service = new LyricsService(x -> PLAIN, cache);
+		service.load(track("Another Song", 200_000)); // saved just now, so not old
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		AtomicInteger again = new AtomicInteger();
+		service.shutdown();
+		service = new LyricsService(x -> {
+			again.incrementAndGet();
+			return BETTER;
+		}, cache);
+		service.load(track("Another Song", 200_000));
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		service.shutdownAndWait(5, TimeUnit.SECONDS);
+		assertEquals(0, again.get());
+	}
+
 	@Test
 	void currentVersionLyricsAreNotAskedAgain() throws Exception {
 		saveOldVersionFile(OLD_SONG, STANDIN, ",\"v\":3");

@@ -6,6 +6,9 @@ import java.io.IOException;
 final class CoverRetry {
 	private static final long[] DELAYS_MS = {5_000, 15_000, 30_000, 60_000};
 
+	/** How many retries one cover gets before it is given up for the song. */
+	static final int MAX_RETRIES = 30; // about half an hour at the 60 s step
+
 	private CoverRetry() {
 	}
 
@@ -28,6 +31,12 @@ final class CoverRetry {
 
 	/** A failure that says the network or the server is the problem right now, not the cover. */
 	static boolean temporary(Throwable failure) {
+		for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
+			if (t instanceof javax.imageio.IIOException) {
+				return false; // a picture that won't decode (even if cut short) never will; a certificate failure inside an
+				// SSL error may be a hotel or airport sign-in page, so that one is retried (up to the cap)
+			}
+		}
 		for (Throwable t = failure; t != null; t = t.getCause() == t ? null : t.getCause()) {
 			if (t instanceof TemporaryFailure
 					|| t instanceof java.net.ConnectException
