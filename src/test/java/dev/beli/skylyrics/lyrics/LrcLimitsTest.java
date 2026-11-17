@@ -63,11 +63,12 @@ class LrcLimitsTest {
 
 	@Test
 	void manyLinesAtOneStampJoinFast() {
+		// 150,000 different texts, each twice, all at one stamp: the repeats must be dropped without comparing every pair
 		List<LyricLine> in = new ArrayList<>();
-		for (int i = 0; i < 80_000; i++) {
-			in.add(new LyricLine(0, "line " + i));
+		for (int i = 0; i < 300_000; i++) {
+			in.add(new LyricLine(0, "line " + i / 2));
 		}
-		List<LyricLine> out = assertTimeoutPreemptively(BOUND, () -> LrcParser.joinSameStamp(in));
-		assertEquals(80_000, out.size());
+		List<LyricLine> out = assertTimeoutPreemptively(Duration.ofSeconds(3), () -> LrcParser.joinSameStamp(in));
+		assertEquals(150_000, out.size());
 	}
 }
