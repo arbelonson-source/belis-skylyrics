@@ -43,6 +43,14 @@ public final class LrcParser {
 	private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}&&[^\\t]]");
 	private static final Pattern LEADING = Pattern.compile("^[\\s\\p{Zs}\\u200B\\u2060\\uFEFF]+");
 
+	/**
+	 * Lyrics come from anyone who can upload to a lyrics site, so one line or one file must not be able to freeze the game.
+	 * A sung line is rarely over 100 characters and a long song has a few hundred lines; these are far above that and
+	 * only stop hostile or broken text (a line of 2 MB without a space, a file of 100000 lines).
+	 */
+	static final int MAX_LINE = 500;
+	static final int MAX_LINES = 5000;
+
 	private LrcParser() {
 	}
 
@@ -108,8 +116,15 @@ public final class LrcParser {
 			if (NOTES.matcher(text).matches() || notesAroundWord(text) || PART_MARKER.matcher(text).matches() || SECTION.matcher(text).matches() || MARKER.matcher(text).matches()) {
 				text = "";
 			}
+			text = dev.beli.skylyrics.media.Track.cap(text, MAX_LINE);
 			for (long t : times) {
+				if (lines.size() >= MAX_LINES) {
+					break;
+				}
 				lines.add(new LyricLine(t, text));
+			}
+			if (lines.size() >= MAX_LINES) {
+				break;
 			}
 		}
 		if (lines.isEmpty()) {
@@ -136,7 +151,10 @@ public final class LrcParser {
 		}
 		List<String> rows = new ArrayList<>();
 		for (String raw : lines(text)) {
-			String row = tidy(raw);
+			if (rows.size() >= MAX_LINES) {
+				break;
+			}
+			String row = dev.beli.skylyrics.media.Track.cap(tidy(raw), MAX_LINE);
 			if (!SECTION.matcher(row).matches()) {
 				rows.add(NOTES.matcher(row).matches() ? "" : row);
 			}
@@ -185,15 +203,16 @@ public final class LrcParser {
 	 * {@link #MAX_JOINED} different lines on one stamp is a file whose stamps mean nothing (every line at 00:00, say):
 	 * those are spread out up to the next stamp instead of becoming one huge line.
 	 */
-	private static List<LyricLine> joinSameStamp(List<LyricLine> lines) {
+	static List<LyricLine> joinSameStamp(List<LyricLine> lines) {
 		List<LyricLine> out = new ArrayList<>(lines.size());
 		for (int i = 0; i < lines.size(); ) {
 			long t = lines.get(i).timeMs();
 			int j = i;
 			List<String> texts = new ArrayList<>();
+			java.util.Set<String> seen = new java.util.HashSet<>();
 			for (; j < lines.size() && lines.get(j).timeMs() == t; j++) {
 				LyricLine line = lines.get(j);
-				if (!line.isBreak() && !texts.contains(line.text())) {
+				if (!line.isBreak() && seen.add(line.text())) {
 					texts.add(line.text());
 				}
 			}
