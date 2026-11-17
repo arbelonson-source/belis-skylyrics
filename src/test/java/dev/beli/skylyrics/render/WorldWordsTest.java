@@ -1397,6 +1397,7 @@ class WorldWordsTest {
 		};
 		try {
 			WorldWords words = new WorldWords();
+			words.seed(12345);
 			words.tune(30, 6, 1, 1, 1, flow, true, false, 1);
 			words.players(false, false); // no Minecraft instance to look for other players in
 			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
