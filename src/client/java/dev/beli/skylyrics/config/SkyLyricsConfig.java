@@ -570,7 +570,31 @@ public final class SkyLyricsConfig {
 				if (!wholeNumberFits(field.getType(), value)) {
 					throw new NumberFormatException(value.toString());
 				}
-				Object read = GSON.fromJson(value, field.getGenericType());
+				Object read;
+				if (field.getName().equals("songOffsets") && value.isJsonObject()) {
+					java.util.Map<String, Integer> offsets = new LinkedHashMap<>();
+					boolean skipped = false;
+					for (var e : value.getAsJsonObject().entrySet()) {
+						try {
+							if (!wholeNumberFits(int.class, e.getValue())) {
+								throw new NumberFormatException(e.getValue().toString());
+							}
+							Integer ms = GSON.fromJson(e.getValue(), Integer.class);
+							if (ms == null) {
+								throw new NumberFormatException("null");
+							}
+							offsets.put(e.getKey(), ms);
+						} catch (Exception ex) {
+							skipped = true; // only this song's timing is lost
+						}
+					}
+					if (skipped) {
+						bad.add(field.getName());
+					}
+					read = offsets;
+				} else {
+					read = GSON.fromJson(value, field.getGenericType());
+				}
 				if (read != null) {
 					field.setAccessible(true);
 					field.set(config, read);
@@ -967,7 +991,7 @@ public final class SkyLyricsConfig {
 				JsonObject out = mergeWithDisk(file, mine, from);
 				String text = GSON.toJson(out == null ? mine : out);
 				tmp = Files.createTempFile(file.getParent(), file.getFileName() + ".", ".tmp");
-				Files.writeString(tmp, text, StandardCharsets.UTF_8);
+				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, text);
 				dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 				tmp = null;
 				Parsed parsed = parse(text); // once, for the base and for what this game takes over
@@ -1040,6 +1064,13 @@ public final class SkyLyricsConfig {
 			theirs.add("songOffsets", rekeyed(offsets));
 		}
 		JsonObject base = baseOrNull != null ? baseOrNull : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
+		// A wrong-typed value loads as the default, so it looks unchanged and would be kept for ever: write this game's value over it.
+		// Only fields this version knows are named here, so a newer version's fields still survive.
+		for (String name : parse(disk).badFields()) {
+			if (mine.has(name)) {
+				theirs.add(name, mine.get(name));
+			}
+		}
 		for (var entry : mine.entrySet()) {
 			String name = entry.getKey();
 			var now = entry.getValue();

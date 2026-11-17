@@ -643,16 +643,35 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		try {
 			if (Files.exists(loginFile)) {
-				JsonObject json = object(Files.readString(loginFile, StandardCharsets.UTF_8));
+				if (dev.beli.skylyrics.util.SafeFile.tooBig(loginFile)) {
+					damagedLogin("it is far too big to be ours");
+					return;
+				}
+				String text = Files.readString(loginFile, StandardCharsets.UTF_8);
+				JsonObject json = object(text);
 				if (json != null) {
 					refreshToken = string(json, "refreshToken");
 					String client = string(json, "clientId");
 					tokenClient = client == null ? "" : client;
 					grantedScopes = orEmpty(string(json, "scopes"));
+				} else if (!text.isBlank()) {
+					damagedLogin("it isn't valid sign-in JSON");
 				}
 			}
+		} catch (java.nio.charset.CharacterCodingException e) {
+			damagedLogin("it isn't valid text");
 		} catch (IOException e) {
 			LOG.warn("Couldn't read the Spotify sign-in: {}", e.toString());
+		}
+	}
+
+	/** The sign-in file can't be used: say so (never its text, it holds a token), keep a copy, and start signed out. */
+	private void damagedLogin(String why) {
+		LOG.warn("The Spotify sign-in file is damaged ({}), so you are signed out (kept a copy as {}.bad).", why, loginFile.getFileName());
+		try {
+			dev.beli.skylyrics.util.SafeFile.keepBad(loginFile);
+		} catch (IOException | RuntimeException e) {
+			LOG.warn("Couldn't keep a copy of the damaged Spotify sign-in file: {}", dev.beli.skylyrics.util.LogText.of(e));
 		}
 	}
 
@@ -671,7 +690,7 @@ public final class SpotifyWebSource implements MediaSource {
 				if (Files.getFileAttributeView(tmp, java.nio.file.attribute.PosixFileAttributeView.class) == null) {
 					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 				}
-				Files.writeString(tmp, json.toString(), StandardCharsets.UTF_8);
+				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, json.toString());
 				dev.beli.skylyrics.util.SafeFile.replace(tmp, loginFile);
 				done = true;
 			} finally {

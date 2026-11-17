@@ -198,4 +198,32 @@ class SafeFileTest {
 			Files.setPosixFilePermissions(locked, PosixFilePermissions.fromString("rw-------"));
 		}
 	}
+
+	@Test
+	void writeDurablyWritesTheExactBytesOverWhatWasThere() throws IOException {
+		Path tmp = dir.resolve("d.tmp");
+		Files.writeString(tmp, "a much longer old text than the new one");
+		SafeFile.writeDurably(tmp, "h\u00e9llo \u4e16\u754c");
+		assertEquals("h\u00e9llo \u4e16\u754c", Files.readString(tmp));
+		assertEquals("h\u00e9llo \u4e16\u754c".getBytes(java.nio.charset.StandardCharsets.UTF_8).length, Files.size(tmp));
+	}
+
+	@Test
+	void writeDurablyThenReplaceLeavesOnlyTheTarget() throws IOException {
+		Path target = dir.resolve("t.json");
+		Files.writeString(target, "old");
+		Path tmp = dir.resolve("t.json.tmp");
+		Files.createFile(tmp);
+		SafeFile.writeDurably(tmp, "new");
+		SafeFile.replace(tmp, target);
+		assertEquals("new", Files.readString(target));
+		assertEquals(List.of("t.json"), Arrays.stream(dir.toFile().list()).sorted().toList());
+	}
+
+	@Test
+	void writeDurablyThatFailsThrowsAndCreatesNothing() {
+		Path missing = dir.resolve("nope.tmp");
+		assertThrows(IOException.class, () -> SafeFile.writeDurably(missing, "x"));
+		assertFalse(Files.exists(missing));
+	}
 }
