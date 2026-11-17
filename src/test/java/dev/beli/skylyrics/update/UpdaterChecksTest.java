@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -224,5 +225,89 @@ class UpdaterChecksTest {
 			throw new AssertionError("no request when off");
 		}, net, null, "0.1.0+1.21.11", "1.21.11", null, id -> null));
 		assertEquals(0, net.requests.size());
+	}
+
+	/** A jar whose fabric.mod.json is right but padded with a few MB of spaces: a tiny file that inflates. */
+	private static byte[] bloatedJar(int spaces) throws IOException {
+		java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+		try (ZipOutputStream out = new ZipOutputStream(bytes)) {
+			out.putNextEntry(new ZipEntry("fabric.mod.json"));
+			out.write("{\"id\":\"skylyrics\",\"version\":\"0.2.0+1.21.11\"}".getBytes(StandardCharsets.UTF_8));
+			out.write(" ".repeat(spaces).getBytes(StandardCharsets.UTF_8));
+			out.closeEntry();
+		}
+		return bytes.toByteArray();
+	}
+
+	@Test
+	void aModJsonThatInflatesPastTheCapIsNotValid() throws Exception {
+		Path jar = Files.write(dir.resolve("bloat.jar"), bloatedJar(3 * 1024 * 1024));
+		assertTrue(Files.size(jar) < 20_000, "the file itself is small");
+		assertFalse(Updater.valid(jar, null, "0.2.0+1.21.11"));
+		assertFalse(Updater.valid(jar, sha(Files.readAllBytes(jar)), "0.2.0+1.21.11"));
+		assertThrows(IOException.class, () -> Updater.dependsOf(jar));
+		Path fine = Files.write(dir.resolve("fine.jar"), bloatedJar(1000));
+		assertTrue(Updater.valid(fine, null, "0.2.0+1.21.11"));
+	}
+
+	@Test
+	void theChecksumIsCheckedBeforeAnythingIsParsed() throws Exception {
+		Path jar = Files.write(dir.resolve("bad.jar"), bloatedJar(10));
+		// Not a zip at all would throw if it were opened; a wrong checksum has to answer false first
+		Path junk = Files.write(dir.resolve("junk.jar"), new byte[] {1, 2, 3});
+		assertFalse(Updater.valid(junk, "0".repeat(64), null));
+		assertFalse(Updater.valid(jar, "0".repeat(64), null));
+	}
+
+	@Test
+	void aSwapThatFailsAtTheSecondStepKeepsTheOldJarAndLeavesNoSecondOne() throws Exception {
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		byte[] data = jarBytes();
+		Path old = Files.writeString(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"), "old");
+		int[] calls = {0};
+		dev.beli.skylyrics.util.SafeFile.Mover mover = (from, to, options) -> {
+			if (++calls[0] == 2) {
+				throw new IOException("disk full");
+			}
+			Files.move(from, to, options);
+		};
+		var asset = new UpdateCheck.Asset(NAME, URL, sha(data));
+		assertThrows(IOException.class, () -> Updater.install(new Net(data), old, asset, id -> null, mover));
+		assertEquals("old", Files.readString(old), "the old jar is back");
+		try (var files = Files.list(dir)) {
+			assertEquals(List.of(old.getFileName().toString()), files.map(f -> f.getFileName().toString()).toList());
+		}
+	}
+
+	@Test
+	void theOldJarIsSetAsideBeforeTheNewOneTakesItsName() throws Exception {
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		byte[] data = jarBytes();
+		Path old = Files.writeString(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"), "old");
+		List<String> seen = new java.util.ArrayList<>();
+		dev.beli.skylyrics.util.SafeFile.Mover mover = (from, to, options) -> {
+			seen.add(to.getFileName().toString());
+			Files.move(from, to, options);
+		};
+		assertTrue(Updater.install(new Net(data), old, new UpdateCheck.Asset(NAME, URL, sha(data)), id -> null, mover));
+		assertEquals(List.of(old.getFileName() + ".skylyrics-old", NAME), seen);
+		try (var files = Files.list(dir)) {
+			assertEquals(List.of(NAME), files.map(f -> f.getFileName().toString()).toList());
+		}
+	}
+
+	@Test
+	void aReleaseReplyOverOneMegabyteIsIgnored() throws Exception {
+		assertNull(Updater.readReply(new ByteArrayInputStream(new byte[1024 * 1024 + 1])));
+		assertEquals("{}", Updater.readReply(new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8))));
+		assertEquals(1024 * 1024, Updater.readReply(new ByteArrayInputStream(" ".repeat(1024 * 1024).getBytes(StandardCharsets.UTF_8))).length());
+	}
+
+	@Test
+	void aTagNameShownToThePlayerHasNoControlCharactersOrSectionSigns() {
+		var release = UpdateCheck.parse("{\"tag_name\":\"v0.2.0\\u00a7c\\n\\u001b[0mX\"}");
+		assertEquals("0.2.0cX", release.version().replace("[0m", ""));
+		assertFalse(release.version().contains("\u00a7"));
+		assertFalse(release.version().chars().anyMatch(Character::isISOControl));
 	}
 }
