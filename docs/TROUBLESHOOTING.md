@@ -106,6 +106,8 @@ flatpak override --user --talk-name=org.mpris.MediaPlayer2.* org.prismlauncher.P
 
 For another Flatpak, put its own app id at the end instead of `org.prismlauncher.PrismLauncher` (the message in the game shows it). Then close the launcher completely and open it again. If you prefer a window to a terminal, the Flatseal app can do the same: pick Prism Launcher, and under **Session Bus → Talks** add `org.mpris.MediaPlayer2.*`.
 
+**No session bus.** Some containers and launchers have no desktop message bus, so there is nothing for the mod to ask. It then waits longer between tries (up to 30 seconds) and picks the music up when a bus shows up later. If you never see lyrics there, run Minecraft from your normal desktop session.
+
 ### On macOS
 
 On a Mac the mod can see only two apps: **Spotify** and Apple's **Music** app. macOS doesn't tell other apps what's playing, so the mod asks these two directly. YouTube and other sites in a browser, VLC and other players can't be seen on a Mac.
@@ -133,6 +135,10 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 **Internet radio and ads.** When Music plays an internet radio station, the mod shows the song the station is playing now, not just the station's name. Spotify's ads are skipped: the mod doesn't look up lyrics for them.
 
 **Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
+
+## The flashes or motion stopped, or seem gone
+
+Check Minecraft's **Accessibility** settings. **Hide Lightning Flashes** on turns off the lyrics' flashes (glow pulse, crosshair flash, hat flare, sky pulse and the World words' white flash), and **Distortion Effects** at 0 keeps the line pop, the World words' sway, the hat's wobble and spin and the spinning record still. Turn the flashes back on, or raise **Distortion Effects**, to get them back.
 
 ## Lyrics vanish in caves
 
@@ -173,6 +179,10 @@ Exordium redraws the HUD less often than the game draws frames, and the lyrics a
 
 The song bar sits at the top centre of the screen, where Jade and WTHIT show what you're looking at, and a wide bar can reach a minimap in the top right corner. On the **Display** tab, set **Bar position** to **Bottom** (it sits just above the hotbar), or make it smaller with **Bar size**, or turn off **Clock**, **Ping** and **FPS** to make it narrower.
 
+## The Record card moves or fades
+
+The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and in the bottom left the card fades where the chat covers it. This is on purpose; it comes back when the other thing goes away.
+
 ## The top bar and the player list (Tab)
 
 While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays.
@@ -189,7 +199,11 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 
 **Windows.** The update is swapped in when you close the game, with a small PowerShell script. Any user name or folder name works: accents, Hebrew, Cyrillic, spaces, & and ’ included. The old jar is only deleted once the new one is in place, and it is put back if that fails, so you are never left without the mod. If the new version isn't there after you close and restart the game, download the new jar for your Minecraft version from the Releases page, put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.
 
-Other reasons for the notice: the download failed (a slow connection, say; one that stops halfway is given up after 5 minutes and the unfinished file is removed from your `mods` folder), or it wasn't accepted. The mod only uses a download from its own GitHub releases, only if it is Beli's SkyLyrics in the version it expected, and refuses one over 20 MB. If you launch with a launcher that links the `mods` or instance folder to somewhere else, updates still work.
+Other reasons for the notice: the download failed (a slow connection, say; one that stops halfway is given up after 5 minutes and the unfinished file is removed from your `mods` folder), or it wasn't accepted. The mod only uses a download from its own GitHub releases, only if it is Beli's SkyLyrics in the version it expected, and refuses one over 20 MB.
+
+**The mod file is a link.** If the SkyLyrics file in your `mods` folder is a link to a file somewhere else (Nix and GNU Stow do this), the mod still tells you about the new version, but it can't replace the file. Download the new jar from the Releases page and swap it in yourself.
+
+If you launch with a launcher that links the `mods` or instance folder to somewhere else, updates still work.
 
 ## Settings or Spotify sign-in not saved on Windows
 

@@ -92,6 +92,10 @@ Yes. Shader packs can make the sky darker and paint clouds over things, so the m
 
 The mod runs, but it follows the music on your PC right now, not the music from when you recorded. See [Troubleshooting](TROUBLESHOOTING.md#replay-mod-and-flashback-recordings) for what to do before you render a video.
 
+## Can I calm the flashes and the motion?
+
+Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Lightning Flashes** turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. The mod also never starts more than three flashes in one second.
+
 ## Does it work with Distant Horizons?
 
 It may show some night sky shapes in front of far-away terrain. See [Troubleshooting](TROUBLESHOOTING.md#distant-horizons) for which skies can do that and what to pick instead.
@@ -153,7 +157,7 @@ The settings screen and the top bar are in English, Spanish, Brazilian Portugues
 
 ## Can I try it without music?
 
-Yes. Turn on **Demo song** in the **Music** tab. It plays a short built-in song with made-up lyrics, so you can try the settings.
+Yes. Turn on **Demo song** in the **Music** tab. It plays a short built-in song with made-up lyrics, so you can try the settings. The top bar shows "Demo" next to the song while it plays, and turning **Demo song** on starts it from the top.
 
 ## Does it need to be on the server?
 
