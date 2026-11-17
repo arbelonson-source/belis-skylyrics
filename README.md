@@ -37,9 +37,10 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - A settings screen with a live preview and play/pause/next buttons. Open it with **J** or through Mod Menu. You can use it with the keyboard alone (Tab or the arrow keys to move, Left and Right to change a value, Enter or Space to press, Page Up and Page Down to scroll, Ctrl+Tab for the next tab, Ctrl+F, or Cmd+F on a Mac, to search). With the Narrator on, each row reads out its name, its value and its place in the list, and so does the song library.
 - A demo mode with a built-in song, so you can try it without any music playing.
 - Hebrew and Arabic lyrics are written from the right, with Arabic letters joined properly.
+- Smooth letters for Latin, Cyrillic (Russian, Ukrainian and more), Greek, Vietnamese, Hebrew and Arabic lyrics. Chinese, Japanese, Korean, Thai and emoji are drawn with Minecraft's own font.
 - A short welcome tour the first time you start the game helps you pick a layout, a look and your music.
 - Updates itself: a new version downloads in the background and a pop-up tells you to restart Minecraft. An update that needs a newer Minecraft or Fabric API than yours isn't installed: the pop-up tells you what to update, and your working version stays. On the **About** tab you can set **Updates** to **Tell me** for just a notice, or turn it off.
-- English and Hebrew. The settings follow your Minecraft language.
+- English, Spanish, Brazilian Portuguese and Hebrew. The settings follow your Minecraft language.
 
 ## Pictures
 
@@ -108,4 +109,4 @@ What's being worked on is tracked in [PLAN.md](PLAN.md).
 
 Lyrics are not part of this project. They're fetched from LRCLIB (or NetEase Cloud Music as a backup) while you play.
 
-The fonts are Poppins, Nunito, Kaushan Script, Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License (see [FONTS-LICENSE.txt](src/main/resources/assets/skylyrics/font/FONTS-LICENSE.txt)).
+The fonts are Poppins, Nunito, Kaushan Script, Noto Sans (Cyrillic, Greek and Vietnamese letters), Noto Sans Hebrew and Noto Sans Arabic, all under the SIL Open Font License (see [FONTS-LICENSE.txt](src/main/resources/assets/skylyrics/font/FONTS-LICENSE.txt)).
