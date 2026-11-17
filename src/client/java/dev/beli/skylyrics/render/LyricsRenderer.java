@@ -489,8 +489,10 @@ public final class LyricsRenderer {
 	}
 
 	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
-	private long takeLyrics(SkyLyricsConfig cfg) {
-		Track playing = tracker.track();
+	long takeLyrics(SkyLyricsConfig cfg) {
+		// One read of the tracker, so the song and its position belong together
+		dev.beli.skylyrics.media.Snapshot now = tracker.snapshot();
+		Track playing = now.track();
 		LyricsService.Snapshot snap = service.snapshot();
 		Track loaded = snap.track();
 		// The tracker moves to a new song a moment before the lyrics are asked for: never show the old song's lines then
@@ -499,7 +501,7 @@ public final class LyricsRenderer {
 		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
 			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
 		}
-		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LEAD_MS;
+		long time = tracker.positionMs(now) + cfg.offsetFor(playing) + LEAD_MS;
 		hasLyrics = !current.isEmpty() || current.instrumental();
 		if (hasLyrics) {
 			if (current != shown) {

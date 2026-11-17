@@ -308,8 +308,35 @@ public final class MprisSource implements MediaSource {
 	/** Polls (about a second each) the followed player may answer with nothing before another player takes over. */
 	static final int EMPTY_GRACE_POLLS = 2;
 
+	/** Held for the whole of a poll, which is the only code that touches {@link #asked} and {@link #lastGood}. */
+	private final java.util.concurrent.locks.ReentrantLock pollLock = new java.util.concurrent.locks.ReentrantLock();
+	/** Set by close(); a poll that was still running then clears the maps itself when it ends. */
+	private volatile boolean closed;
+	/** How long close() waits for a poll in progress before leaving the clearing to it. */
+	static final long CLOSE_WAIT_MS = 250;
+
 	@Override
 	public Snapshot poll() throws Exception {
+		pollLock.lock();
+		try {
+			return pollLocked();
+		} finally {
+			if (closed) {
+				clearReads();
+			}
+			pollLock.unlock();
+		}
+	}
+
+	private void clearReads() {
+		for (Future<Answered> f : asked.values()) {
+			f.cancel(true);
+		}
+		asked.clear();
+		lastGood.clear();
+	}
+
+	private Snapshot pollLocked() throws Exception {
 		List<String> names = new ArrayList<>();
 		for (String name : reader.names()) {
 			if (name.startsWith(PREFIX) && !name.equals(PREFIX + "playerctld")) {
@@ -623,11 +650,22 @@ public final class MprisSource implements MediaSource {
 
 	@Override
 	public void close() {
-		for (Future<Answered> f : asked.values()) {
-			f.cancel(true);
+		closed = true;
+		// The maps belong to the poll: clear them here only if no poll is running (or it ends within a moment),
+		// otherwise the poll clears them itself as it finishes
+		boolean got = false;
+		try {
+			got = pollLock.tryLock(CLOSE_WAIT_MS, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
-		asked.clear();
-		lastGood.clear();
+		if (got) {
+			try {
+				clearReads();
+			} finally {
+				pollLock.unlock();
+			}
+		}
 		if (connection != null) {
 			connection.disconnect();
 			connection = null;

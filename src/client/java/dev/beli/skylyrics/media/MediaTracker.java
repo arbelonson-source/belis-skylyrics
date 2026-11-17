@@ -319,6 +319,16 @@ public final class MediaTracker {
 		return positionAt(snapshot, System.nanoTime());
 	}
 
+	/** The song, position and play state as one reading: use it with {@link #positionMs(Snapshot)} when they must belong together. */
+	public Snapshot snapshot() {
+		return snapshot;
+	}
+
+	/** Song position right now of a reading taken with {@link #snapshot()}. */
+	public long positionMs(Snapshot reading) {
+		return positionAt(reading, System.nanoTime());
+	}
+
 	public Track track() {
 		return snapshot.track();
 	}
