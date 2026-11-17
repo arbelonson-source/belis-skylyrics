@@ -1147,6 +1147,24 @@ class WorldWordsTest {
 	}
 
 	@Test
+	void wholeWidthIsTheLastPrefixWidthFromOneMeasure() {
+		java.util.function.ToDoubleFunction<String> advance = t -> t.codePoints().mapToDouble(c -> 3.1 + c % 7 * 0.37).sum();
+		String rap = "yo ".repeat(120).trim();
+		for (String line : new String[] {"Hello, wide world", "\u05e9\u05dc\u05d5\u05dd \u05e2\u05d5\u05dc\u05dd", "\u00a7cred and \u00a7rplain", rap, "", "x".repeat(900)}) {
+			int[] cps = line.codePoints().toArray();
+			float[] at = WorldWords.prefixWidths(cps, advance);
+			assertEquals(at[at.length - 1], WorldWords.wholeWidth(cps, advance), 0f, line.length() + " letters");
+		}
+		int[] cps = rap.codePoints().toArray();
+		int[] calls = {0};
+		WorldWords.wholeWidth(cps, t -> {
+			calls[0]++;
+			return 1;
+		});
+		assertEquals(1, calls[0], "one measure for a whole line, not one per prefix");
+	}
+
+	@Test
 	void sideStepTurnsTheWordTheWayYawCounts() {
 		Vec3[] tos = {new Vec3(0, 0, 10), new Vec3(-5, 0, 8.66), new Vec3(8.66, 2, -5), new Vec3(-4, -3, -7), new Vec3(3, 6, 12)};
 		for (Vec3 to : tos) {
