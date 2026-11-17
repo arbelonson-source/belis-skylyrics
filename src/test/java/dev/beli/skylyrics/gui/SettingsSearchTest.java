@@ -62,6 +62,17 @@ class SettingsSearchTest {
 	}
 
 	@Test
+	void everyKindOfSpaceCountsAsOne() {
+		// em space, thin space, ideographic space, line separator and next line: all different from the plain space
+		for (String space : new String[] {"\u2003", "\u2009", "\u200a", "\u1680", "\u205f", "\u2028", "\u2029", "\u0085", "\u3000"}) {
+			assertTrue(SettingsSearch.matches("Glow colour", "glow" + space + "colour"), "query with U+" + Integer.toHexString(space.charAt(0)));
+			assertTrue(SettingsSearch.matches("Glow" + space + "colour", "glow colour"), "text with U+" + Integer.toHexString(space.charAt(0)));
+			assertEquals("a b", SettingsSearch.pasted("", "a" + space + "b"), "paste with U+" + Integer.toHexString(space.charAt(0)));
+		}
+		assertEquals("a b", SettingsSearch.pasted("", "a \u2003 \u2009b"), "a run of odd spaces is one space");
+	}
+
+	@Test
 	void accentsNiqqudAndFinalLettersAreFolded() {
 		assertTrue(SettingsSearch.matches("M\u00fasica", "musica"));
 		assertTrue(SettingsSearch.matches("Music", "m\u00fasic"));
