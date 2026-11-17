@@ -280,6 +280,41 @@ class UpdaterChecksTest {
 	}
 
 	@Test
+	void anotherGameInstallingTheSameUpdateFirstLeavesOnlyTheNewJar() throws Exception {
+		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
+		byte[] data = jarBytes();
+		Path old = Files.writeString(dir.resolve("belis-skylyrics-0.1.0+1.21.11.jar"), "old");
+		Path target = dir.resolve(NAME);
+		int[] calls = {0};
+		dev.beli.skylyrics.util.SafeFile.Mover mover = (from, to, options) -> {
+			if (++calls[0] == 2) {
+				// The other game's install lands between our two moves (its own set-aside found nothing to move)
+				Files.writeString(target, "theirs");
+			}
+			Files.move(from, to, options);
+		};
+		assertFalse(Updater.install(new Net(data), old, new UpdateCheck.Asset(NAME, URL, sha(data)), id -> null, mover));
+		assertEquals("theirs", Files.readString(target));
+		try (var files = Files.list(dir)) {
+			assertEquals(List.of(NAME), files.map(f -> f.getFileName().toString()).toList(), "no old jar next to the new one");
+		}
+	}
+
+	@Test
+	void theSwapRefusesPathsPowerShellCannotOpen() {
+		Path root = dir.toAbsolutePath();
+		String oldName = "belis-skylyrics-0.1.0+1.21.11.jar";
+		// a folder name that brings the staged name (target + .19 digits + .new) to exactly the limit, and one character over
+		int room = Updater.MAX_SWAP_PATH - 1 - (root.toString().length() + 1 + NAME.length() + 24 + 1);
+		Path fits = root.resolve("d".repeat(room));
+		Path over = root.resolve("d".repeat(room + 1));
+		assertTrue(Updater.swapPathsSafe(fits.resolve(oldName), fits.resolve(NAME)));
+		assertFalse(Updater.swapPathsSafe(over.resolve(oldName), over.resolve(NAME)));
+		assertFalse(Updater.swapPathsSafe(root.resolve("x".repeat(300)).resolve(oldName), root.resolve("x".repeat(300)).resolve(NAME)));
+		assertTrue(Updater.swapPathsSafe(root.resolve(oldName), root.resolve(NAME)));
+	}
+
+	@Test
 	void theOldJarIsSetAsideBeforeTheNewOneTakesItsName() throws Exception {
 		Assumptions.assumeFalse(System.getProperty("os.name", "").toLowerCase().contains("win"));
 		byte[] data = jarBytes();

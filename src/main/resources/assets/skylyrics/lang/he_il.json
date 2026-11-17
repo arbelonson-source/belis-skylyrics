@@ -533,7 +533,7 @@
   "skylyrics.ui.s_or_s": "%s או %s",
   "skylyrics.ui.a_version_it_can_t_tell": "גרסה לא מזוהה",
   "skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers": "נגנו שיר באפליקציית \"מוזיקה\" או בספוטיפיי (ב-Mac אי אפשר לזהות מה מתנגן בדפדפנים) והמילים יופיעו. אם macOS שואל אם המשגר שלכם רשאי לשלוט בהן, לחצו על אישור.",
-  "skylyrics.ui.optional_signing_in_to_spotify_needs_premium_and": "אופציונלי: התחברות לספוטיפיי (דורשת פרימיום ואפליקציית מפתחים חינמית) יכולה לעזור בתזמון.",
+  "skylyrics.ui.optional_spotify_web_needs_premium_and_a_free_de": "אופציונלי: Spotify Web (דורש פרימיום ואפליקציית מפתח חינמית) עוקב אחר ספוטיפיי בכל מקום.",
   "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics לא מצליח לקרוא את נגן המוזיקה שלכם",
   "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics לא מצליח להתחבר לאינטרנט או לספוטיפיי",
   "skylyrics.ui.open_the_settings_s_music_to_see_why": "פתחו את ההגדרות (%s) ובחרו \"מוזיקה\" כדי לראות למה",

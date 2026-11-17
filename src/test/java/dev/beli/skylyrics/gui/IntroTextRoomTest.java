@@ -21,7 +21,7 @@ class IntroTextRoomTest {
 	private static final String[] KEYS = {
 		"skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers", // the Mac text, the longest
 		"skylyrics.ui.play_a_song_in_spotify_or_your_music_player_and",
-		"skylyrics.ui.optional_signing_in_to_spotify_needs_premium_and",
+		"skylyrics.ui.optional_spotify_web_needs_premium_and_a_free_de",
 		"skylyrics.ui.no_music_right_now_try_the_demo_song"};
 
 	/** A little wider than the game's font really is (about 5.5 a character), so a pass here is a pass there. */

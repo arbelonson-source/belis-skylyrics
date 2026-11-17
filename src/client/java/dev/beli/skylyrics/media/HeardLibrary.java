@@ -435,7 +435,7 @@ public final class HeardLibrary implements Library {
 
 	private static String text(JsonObject o, String name) {
 		JsonElement e = o.get(name);
-		return e != null && e.isJsonPrimitive() ? clip(e.getAsString()) : "";
+		return e != null && e.isJsonPrimitive() ? clip(Track.clean(e.getAsString())) : "";
 	}
 
 	private static long number(JsonObject o, String name) {

@@ -19,6 +19,12 @@ public final class Visibility {
 	private Visibility() {
 	}
 
+	/** Forget the cached cave answer (joining or leaving a world), so the next frame asks the new world. */
+	static void forget() {
+		checkedAt = System.nanoTime() - CHECK_NS;
+		underground = false;
+	}
+
 	public static boolean hidden(Minecraft mc, SkyLyricsConfig cfg) {
 		ClientLevel level = mc.level;
 		if (level == null) {

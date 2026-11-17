@@ -1086,6 +1086,134 @@ class WorldWordsTest {
 		assertEquals(-1L, cutAt.getLong(under.get(3)), "another line's lit word is cut only when mostly covered");
 	}
 
+	private static Object newCard(WorldWords.Sentence of, boolean title, long goneAt, Vec3 pos) throws Exception {
+		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
+		var make = cardClass.getDeclaredConstructor(LyricsRenderer.Display.class, float[].class, Vec3.class, float.class,
+				float.class, float.class, float.class, long.class);
+		make.setAccessible(true);
+		Object card = make.newInstance(LyricsRenderer.Display.of("WORD"), new float[] {1}, pos, 0f, 0f, 0f, 1f, 0L);
+		set(card, "of", of);
+		set(card, "title", title);
+		set(card, "goneAt", goneAt);
+		return card;
+	}
+
+	private static void set(Object card, String name, Object value) throws Exception {
+		var f = card.getClass().getDeclaredField(name);
+		f.setAccessible(true);
+		f.set(card, value);
+	}
+
+	private static Object get(Object target, String name) throws Exception {
+		var f = target.getClass().getDeclaredField(name);
+		f.setAccessible(true);
+		return f.get(target);
+	}
+
+	private static void cutUnder(List<Object> under, WorldWords.Sentence current, List<WorldWords.Sentence> earlier, long now) throws Exception {
+		var cut = WorldWords.class.getDeclaredMethod("cutUnder", List.class, List.class, float[].class,
+				WorldWords.Sentence.class, List.class, long.class);
+		cut.setAccessible(true);
+		// Every card is 4 degrees wide at 0 and the new piece at 3.5 only touches its edge: not mostly covered
+		List<float[]> shown = new ArrayList<>();
+		for (int k = 0; k < under.size(); k++) {
+			shown.add(new float[] {0, 0, 2, 1});
+		}
+		cut.invoke(null, under, shown, new float[] {3.5f, 0, 2, 1}, current, earlier, now);
+	}
+
+	@Test
+	void anOwnWordUnderAnewWordGoesInAboutCutOwnWhileAnotherLinesKeepsTheNormalFade() throws Exception {
+		WorldWords words = new WorldWords();
+		words.tune(30, 6, 1, 1, 1, true, true, false, 1);
+		WorldWords.Sentence old = new WorldWords.Sentence(0, 0, 10, 0), fresh = new WorldWords.Sentence(0, 0, 10, 0),
+				other = new WorldWords.Sentence(0, 0, 10, 0);
+		long t0 = 1_000_000_000L;
+		Vec3 where = new Vec3(0, 0, 5);
+		Object own = newCard(old, false, -1L, where), foreign = newCard(other, false, t0, where);
+		@SuppressWarnings("unchecked")
+		List<Object> cards = (List<Object>) get(words, "cards");
+		cards.add(own);
+		cards.add(foreign);
+		cutUnder(new ArrayList<>(cards), fresh, List.of(old), t0);
+		assertEquals(t0, (long) get(own, "cutAt"));
+		assertEquals(t0, (long) get(foreign, "cutAt"), "a fading word of another line goes on any touch");
+		words.expire(Vec3.ZERO, t0 + 50_000_000L);
+		assertEquals(2, cards.size(), "50 ms in: both still there");
+		words.expire(Vec3.ZERO, t0 + 150_000_000L);
+		assertEquals(List.of(foreign), cards, "150 ms in: the own word is gone, the other line's word is still fading");
+		words.expire(Vec3.ZERO, t0 + 250_000_000L);
+		assertEquals(1, cards.size(), "250 ms in: still on its normal 0.3 s fade");
+		words.expire(Vec3.ZERO, t0 + 350_000_000L);
+		assertTrue(cards.isEmpty(), "350 ms in: gone");
+	}
+
+	@Test
+	void anOwnWordThatIsAlreadyFadingIsAlsoCutQuicklyButNotATitleCard() throws Exception {
+		WorldWords.Sentence old = new WorldWords.Sentence(0, 0, 10, 0), fresh = new WorldWords.Sentence(0, 0, 10, 0),
+				other = new WorldWords.Sentence(0, 0, 10, 0);
+		Vec3 where = new Vec3(0, 0, 5);
+		Object fadingOwn = newCard(old, false, 5L, where), fadingOther = newCard(other, false, 5L, where),
+				litOther = newCard(other, false, -1L, where), title = newCard(old, true, -1L, where),
+				plainTitle = newCard(null, true, 5L, where);
+		cutUnder(new ArrayList<>(List.of(fadingOwn, fadingOther, litOther, title, plainTitle)), fresh, List.of(old), 9L);
+		assertEquals(9L, (long) get(fadingOwn, "cutAt"));
+		assertEquals(0.1f, (float) get(fadingOwn, "cutFor"), 1e-6);
+		assertEquals(9L, (long) get(fadingOther, "cutAt"), "a fading word of another line: cut on a touch");
+		assertEquals(0.3f, (float) get(fadingOther, "cutFor"), 1e-6, "at the normal speed");
+		assertEquals(-1L, (long) get(litOther, "cutAt"), "a lit word of another line: only when mostly covered");
+		assertEquals(-1L, (long) get(title, "cutAt"), "a title card is never cut, even of an earlier sentence");
+		assertEquals(-1L, (long) get(plainTitle, "cutAt"), "nor a fading title card");
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<WorldWords.Sentence> earlierOf(WorldWords words) throws Exception {
+		return (List<WorldWords.Sentence>) get(words, "earlier");
+	}
+
+	private static WorldWords withEarlier() throws Exception {
+		WorldWords words = new WorldWords();
+		words.tune(30, 6, 1, 1, 1, true, true, false, 1);
+		earlierOf(words).add(new WorldWords.Sentence(0, 0, 10, 0));
+		return words;
+	}
+
+	/** The sentences a line has started over from are forgotten with the line, or the next line's own words would be cut at once too. */
+	@Test
+	void theEarlierSentencesAreForgottenOnRewindNewLyricsAndAFlowToggle() throws Exception {
+		WorldWords words = withEarlier();
+		words.tune(30, 6, 1, 1, 1, true, true, false, 1);
+		assertEquals(1, earlierOf(words).size(), "tuning with the same flow keeps them");
+		words.rewind(1L);
+		assertTrue(earlierOf(words).isEmpty(), "rewind");
+		words = withEarlier();
+		words.newLyrics();
+		assertTrue(earlierOf(words).isEmpty(), "new lyrics");
+		words = withEarlier();
+		words.tune(30, 6, 1, 1, 1, false, true, false, 1);
+		assertTrue(earlierOf(words).isEmpty(), "a Flow toggle");
+	}
+
+	@Test
+	void theEarlierSentencesAreForgottenWhenANewLineStarts() throws Exception {
+		WorldWords.measureHook = t -> t.length() * 4.0;
+		try {
+			WorldWords words = withEarlier();
+			words.players(false, false);
+			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
+			net.minecraft.network.chat.Style style = net.minecraft.network.chat.Style.EMPTY;
+			words.update(0, "hello world", 0, false, Float.NaN, Float.NaN, camera, null, null, style, 1_000_000_000L);
+			assertTrue(earlierOf(words).isEmpty(), "line 0 is new to a fresh WorldWords: cleared");
+			earlierOf(words).add(new WorldWords.Sentence(0, 0, 10, 0));
+			words.update(0, "hello world", 0, false, Float.NaN, Float.NaN, camera, null, null, style, 2_000_000_000L);
+			assertEquals(1, earlierOf(words).size(), "the same line going on keeps them");
+			words.update(1, "second line", 0, false, Float.NaN, Float.NaN, camera, null, null, style, 3_000_000_000L);
+			assertTrue(earlierOf(words).isEmpty(), "the next line starts clean");
+		} finally {
+			WorldWords.measureHook = null;
+		}
+	}
+
 	@Test
 	void aTitleIsNotAnnouncedWhileTheLyricsLoad() {
 		assertFalse(LyricsRenderer.titleCanShow(false, 0.9f), "the old song's words still fading out, new lyrics not in");

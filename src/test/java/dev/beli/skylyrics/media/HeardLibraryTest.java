@@ -528,4 +528,13 @@ class HeardLibraryTest {
 		assertEquals(1, calls[0], "the save goes through the temp mover exactly once");
 		assertEquals(1, HeardLibrary.read(file()).size());
 	}
+
+	@Test
+	void entriesLoadedFromTheFileAreCleaned() throws IOException {
+		Files.writeString(file(), HeardLibrary.toJson(List.of(
+				new HeardLibrary.Entry("\u00a7kOld\u202E\tTitle", "\u00a7cBand", "Album", 1000, "", "uri:one", "edge"))));
+		LibraryItem item = library().liked(0).join().items().get(0);
+		assertEquals("Old Title", item.title());
+		assertEquals("Band", item.artists());
+	}
 }

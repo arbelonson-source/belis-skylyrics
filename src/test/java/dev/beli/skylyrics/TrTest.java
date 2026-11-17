@@ -146,8 +146,11 @@ class TrTest {
 
 	@Test
 	void europeanPortugueseIsNotTheBrazilianCopy() throws IOException {
-		assertNotEquals(Files.readString(LANG.resolve("pt_br.json")), Files.readString(LANG.resolve("pt_pt.json")),
-				"pt_pt.json must stay its own European Portuguese translation, not a copy of pt_br.json");
+		Map<String, String> br = lang("pt_br.json"), pt = lang("pt_pt.json");
+		long differing = br.keySet().stream().filter(k -> !br.get(k).equals(pt.get(k))).count();
+		assertTrue(differing >= 100, "pt_pt.json must stay its own European Portuguese translation; only " + differing + " texts differ from pt_br.json");
+		assertEquals("Ecr\u00e3", pt.get("skylyrics.ui.display"), "the Display tab is 'Ecra' in Portugal");
+		assertNotEquals(br.get("skylyrics.ui.display"), pt.get("skylyrics.ui.display"));
 	}
 
 	@Test

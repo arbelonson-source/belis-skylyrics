@@ -168,12 +168,44 @@ class SkyEffectsTest {
 		// A given elevation is used as given, only kept on the sky
 		assertEquals(20 * (float) Math.PI / 180, SkyEffects.meteorAimElev(20), 1e-5f);
 		assertEquals(85 * (float) Math.PI / 180, SkyEffects.meteorAimElev(120), 1e-5f);
+		assertEquals(5 * (float) Math.PI / 180, SkyEffects.meteorAimElev(-10), 1e-5f, "below the horizon is lifted to 5 degrees");
+		assertEquals(5 * (float) Math.PI / 180, SkyEffects.meteorAimElev(5), 1e-5f);
+	}
+
+	/** Where a star launched at the hook's aim is drawn (SkyEffects.basis, as meteors() calls it at age 0), compared with where the camera looks. */
+	@Test
+	void hookMeteorStartsInFrontOfTheCamera() throws Exception {
+		SkyEffects sky = new SkyEffects(null, null, null, null);
+		var launch = SkyEffects.class.getDeclaredMethod("launch", int.class, float.class, float.class);
+		var basis = SkyEffects.class.getDeclaredMethod("basis", float.class, float.class, float.class);
+		var yawField = SkyEffects.class.getDeclaredField("meteorYaw");
+		var elevField = SkyEffects.class.getDeclaredField("meteorElev");
+		var bx = SkyEffects.class.getDeclaredField("bx");
+		var by = SkyEffects.class.getDeclaredField("by");
+		var bz = SkyEffects.class.getDeclaredField("bz");
+		launch.setAccessible(true);
+		basis.setAccessible(true);
+		for (var f : new java.lang.reflect.Field[] {yawField, elevField, bx, by, bz}) {
+			f.setAccessible(true);
+		}
+		for (float playerYaw : new float[] {0, 90, 180, -90, 45}) {
+			for (float up : new float[] {20, 60}) {
+				launch.invoke(sky, 0, SkyEffects.meteorAimYaw(playerYaw), SkyEffects.meteorAimElev(up));
+				basis.invoke(sky, ((float[]) yawField.get(sky))[0], ((float[]) elevField.get(sky))[0], 1f);
+				net.minecraft.world.phys.Vec3 start = new net.minecraft.world.phys.Vec3(bx.getFloat(sky), by.getFloat(sky), bz.getFloat(sky));
+				// Minecraft's own look direction (pitch is negative looking up)
+				net.minecraft.world.phys.Vec3 look = net.minecraft.world.phys.Vec3.directionFromRotation(-up, playerYaw);
+				assertTrue(start.dot(look) > 0.999, "yaw " + playerYaw + " up " + up + ": star at " + start + " but the camera looks " + look);
+			}
+		}
 	}
 
 	@Test
 	void hookMeteorTakesAFreeSlotElseTheOldest() {
 		assertEquals(1, SkyEffects.meteorSlot(new float[] {0.2f, 1, 0.1f}, new float[] {1, 1, 1}));
 		assertEquals(2, SkyEffects.meteorSlot(new float[] {0.2f, 0.5f, 0.9f}, new float[] {1, 1, 1}));
+		assertEquals(0, SkyEffects.meteorSlot(new float[] {0.5f, 0.8f, 0.1f}, new float[] {0.4f, 1, 1}), "a finished one at the first slot, though another is further along");
+		assertEquals(0, SkyEffects.meteorSlot(new float[] {0.9f, 0.1f, 0.5f}, new float[] {1, 1, 1}), "the oldest at the first slot");
 	}
 
 	@Test

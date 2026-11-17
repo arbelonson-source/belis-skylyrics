@@ -115,7 +115,7 @@ public final class MprisSource implements MediaSource {
 	private static final long RETRY_FIRST_NS = 5_000_000_000L;
 	private static final long RETRY_MAX_NS = 30_000_000_000L;
 
-	private Connector connector = () -> sessionBus().build();
+	private Connector connector = MprisSource::connectSession;
 	private LongSupplier nanos = System::nanoTime;
 	private Predicate<DBusConnection> connected = DBusConnection::isConnected;
 	// volatile: close() resets these from the shutdown thread
@@ -160,16 +160,28 @@ public final class MprisSource implements MediaSource {
 	}
 
 	/**
-	 * The session bus address to connect to when the environment doesn't give one (launchers that clear it, pure
-	 * Wayland): the user's runtime-dir socket, if it exists. Null means leave it to the library.
+	 * The session bus address to connect to, or null to leave it to the library (the environment's address as it is,
+	 * or nothing usable). The transport only opens {@code unix:path=} addresses and doesn't split a ';' list, so the
+	 * first such entry of the environment's list is used; when there is none (abstract, tmpdir, empty, unset) it is
+	 * the user's runtime-dir socket, if it exists.
 	 *
 	 * @param uid the user id, "" when unknown
 	 */
 	static @Nullable String sessionBusAddress(Map<String, String> env, Predicate<String> exists, String uid) {
 		String given = env.get("DBUS_SESSION_BUS_ADDRESS");
 		if (given != null && !given.isBlank()) {
-			return null;
+			for (String entry : given.split(";")) {
+				String e = entry.strip();
+				if (e.startsWith("unix:path=")) {
+					return e.equals(given.strip()) ? null : e;
+				}
+			}
 		}
+		return runtimeBusAddress(env, exists, uid);
+	}
+
+	/** The user's runtime-dir session bus socket as an address, or null when there is none. */
+	static @Nullable String runtimeBusAddress(Map<String, String> env, Predicate<String> exists, String uid) {
 		String runtime = env.get("XDG_RUNTIME_DIR");
 		if (runtime != null && !runtime.isBlank()) {
 			String socket = runtime.strip().replaceAll("/+$", "") + "/bus";
@@ -197,6 +209,38 @@ public final class MprisSource implements MediaSource {
 	private static DBusConnectionBuilder sessionBus() {
 		String address = sessionBusAddress(System.getenv(), p -> Files.exists(Path.of(p)), currentUid());
 		return (address == null ? DBusConnectionBuilder.forSessionBus() : DBusConnectionBuilder.forAddress(address)).withShared(false);
+	}
+
+	/** The socket path of a {@code unix:path=} address (without {@code ,guid=} and the like), "" for anything else. */
+	static String socketPath(@Nullable String address) {
+		if (address == null || !address.strip().startsWith("unix:path=")) {
+			return "";
+		}
+		String rest = address.strip().substring("unix:path=".length());
+		int comma = rest.indexOf(',');
+		return comma < 0 ? rest : rest.substring(0, comma);
+	}
+
+	/** Connects to the session bus; when that fails (a stale address after a re-login) the runtime-dir socket is tried once. */
+	private static DBusConnection connectSession() throws Exception {
+		try {
+			return sessionBus().build();
+		} catch (Exception first) {
+			Map<String, String> env = System.getenv();
+			Predicate<String> exists = p -> Files.exists(Path.of(p));
+			String tried = sessionBusAddress(env, exists, currentUid());
+			String effective = tried != null ? tried : env.get("DBUS_SESSION_BUS_ADDRESS");
+			String runtime = runtimeBusAddress(env, exists, currentUid());
+			if (runtime == null || socketPath(runtime).equals(socketPath(effective))) {
+				throw first;
+			}
+			try {
+				return DBusConnectionBuilder.forAddress(runtime).withShared(false).build();
+			} catch (Exception second) {
+				first.addSuppressed(second);
+				throw first;
+			}
+		}
 	}
 
 	private static @Nullable String flatpakInfoText;
@@ -564,7 +608,7 @@ public final class MprisSource implements MediaSource {
 	 * when no such player is running. Browsers usually list none.
 	 */
 	public static @Nullable List<String> supportedSchemes(String player) {
-		try (DBusConnection conn = sessionBus().build()) {
+		try (DBusConnection conn = connectSession()) {
 			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
 			List<String> names = busNames(bus, player);
 			if (names.isEmpty()) {
@@ -593,7 +637,7 @@ public final class MprisSource implements MediaSource {
 
 	/** Asks the running player {@code player} to play {@code uri}. False if it isn't running or refuses. */
 	public static boolean openUri(String player, String uri) {
-		try (DBusConnection conn = sessionBus().build()) {
+		try (DBusConnection conn = connectSession()) {
 			DBus bus = conn.getRemoteObject("org.freedesktop.DBus", "/org/freedesktop/DBus", DBus.class);
 			for (String name : busNames(bus, player)) {
 				conn.getRemoteObject(name, PATH, Player.class).OpenUri(uri);

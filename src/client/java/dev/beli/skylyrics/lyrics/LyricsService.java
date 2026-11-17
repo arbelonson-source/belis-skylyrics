@@ -493,6 +493,22 @@ public final class LyricsService {
 
 	private static final java.util.concurrent.atomic.AtomicInteger SAVES = new java.util.concurrent.atomic.AtomicInteger();
 
+	/** A lone surrogate (a bad "\ud83d" in a site's JSON) can't be written as UTF-8 and would fail the whole cache write; it becomes U+FFFD, pairs stay. */
+	static String withoutLoneSurrogates(String s) {
+		StringBuilder b = null;
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			boolean lone = Character.isHighSurrogate(c) ? i + 1 >= s.length() || !Character.isLowSurrogate(s.charAt(i + 1)) : Character.isLowSurrogate(c) && (i == 0 || !Character.isHighSurrogate(s.charAt(i - 1)));
+			if (lone && b == null) {
+				b = new StringBuilder(s);
+			}
+			if (lone) {
+				b.setCharAt(i, '\uFFFD');
+			}
+		}
+		return b == null ? s : b.toString();
+	}
+
 	/** Saves, and every tenth of {@code keep} saves trims the folder, so a long session can't run far past the cap. */
 	static void writeCache(Path file, CacheEntry entry, int keep) {
 		if (Thread.currentThread().isInterrupted()) {
@@ -501,7 +517,7 @@ public final class LyricsService {
 		Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
 		try {
 			Files.createDirectories(file.getParent());
-			Files.writeString(tmp, GSON.toJson(entry), StandardCharsets.UTF_8);
+			Files.writeString(tmp, withoutLoneSurrogates(GSON.toJson(entry)), StandardCharsets.UTF_8);
 			dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
 		} catch (IOException e) {
 			LOG.debug("Couldn't write lyrics cache: {}", e.toString());

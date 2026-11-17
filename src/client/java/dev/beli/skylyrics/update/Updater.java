@@ -296,7 +296,7 @@ public final class Updater {
 		}
 		if (windows() && !swapPathsSafe(oldJar, target)) {
 			// The swap could not handle this folder, so don't download a jar that would only be thrown away
-			LOG.info("Update not downloaded: the mods folder path has a character the swap cannot carry");
+			LOG.info("Update not downloaded: the mods folder path has a character the swap cannot carry, or is too long");
 			return false;
 		}
 		// The download keeps a name Fabric ignores until it is checked, and one of its own: a second game sharing this folder may be updating too
@@ -331,7 +331,14 @@ public final class Updater {
 			try {
 				mover.move(part, target); // never over a jar another game just installed
 			} catch (java.nio.file.FileAlreadyExistsException e) {
-				putBack(mover, aside, oldJar, setAside);
+				// The new version is already in place: putting the old jar back would leave two jars with the mod's id
+				if (setAside) {
+					try {
+						Files.deleteIfExists(aside);
+					} catch (IOException ex) {
+						LOG.info("Could not delete the old jar set aside: {}", LogText.of(ex));
+					}
+				}
 				LOG.info("Another game already installed {}", target.getFileName());
 				return false;
 			} catch (IOException | RuntimeException e) {
@@ -660,14 +667,25 @@ public final class Updater {
 		return deleted;
 	}
 
-	/** Whether the swap can handle these places (see {@link #pathSafe}); checked before anything is downloaded. */
+	/** Windows PowerShell 5.1 cannot open a path of 260 characters or more (long paths are off by default), so refuse well before. */
+	static final int MAX_SWAP_PATH = 250;
+
+	/** The staged name is the target's with .{@code <up to 19 digits>}.new added (see {@link #waitingFor}). */
+	private static final int STAGED_EXTRA = 1 + 19 + 4;
+
+	/**
+	 * Whether the swap can handle these places (see {@link #pathSafe}, and none of the paths it touches too long: the old jar,
+	 * the target, the staged jar as named at its longest, and the old jar's set-aside name); checked before anything is
+	 * downloaded. Refused, the player is told to update by hand, and nothing is downloaded again.
+	 */
 	static boolean swapPathsSafe(Path oldJar, Path target) {
 		for (Path p : List.of(oldJar, waitingName(target), target)) {
 			if (!pathSafe(p.toString())) {
 				return false;
 			}
 		}
-		return true;
+		return oldJar.toAbsolutePath().toString().length() + ".skylyrics-old".length() < MAX_SWAP_PATH
+				&& target.toAbsolutePath().toString().length() + STAGED_EXTRA < MAX_SWAP_PATH;
 	}
 
 	/** Moves the downloaded jar to its waiting name, trying again when Windows (an antivirus scanning the fresh file) briefly holds it. */

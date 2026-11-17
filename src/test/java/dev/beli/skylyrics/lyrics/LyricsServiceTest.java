@@ -886,4 +886,14 @@ class LyricsServiceTest {
 		assertFalse(java.nio.file.Files.exists(target));
 		assertFalse(java.nio.file.Files.exists(cache.resolve("def.json.tmp")));
 	}
+
+	@Test
+	void loneSurrogateInLyricsStillWritesTheCache() throws Exception {
+		java.nio.file.Path target = cache.resolve("sur.json");
+		String emoji = "\uD83D\uDE00";
+		LyricsService.writeCache(target, new LyricsService.CacheEntry("[00:01.00]a\uD83D b " + emoji + " c\uDE00", null, false, 1L, 1));
+		assertTrue(java.nio.file.Files.exists(target));
+		String text = java.nio.file.Files.readString(target);
+		assertTrue(text.contains("a\uFFFD b " + emoji + " c\uFFFD"), text);
+	}
 }

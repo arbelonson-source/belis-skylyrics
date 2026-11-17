@@ -379,7 +379,7 @@ public final class SpotifyLibrary implements Library {
 		for (JsonObject artist : objects(array(song, "artists"))) {
 			String name = string(artist, "name");
 			if (name != null) {
-				names.add(Track.stripCodes(name));
+				names.add(plain(name));
 			}
 		}
 		JsonObject album = child(song, "album");
@@ -391,7 +391,7 @@ public final class SpotifyLibrary implements Library {
 
 	/** A name for the list on screen: never null, and without the section-sign codes Minecraft would read as styling. */
 	static String plain(@Nullable String name) {
-		return Track.stripCodes(orEmpty(name));
+		return Track.cap(Track.clean(orEmpty(name)), Track.MAX_TEXT);
 	}
 
 	private static List<JsonObject> objects(@Nullable JsonArray array) {

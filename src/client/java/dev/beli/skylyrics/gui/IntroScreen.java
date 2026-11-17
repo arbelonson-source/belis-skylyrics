@@ -288,7 +288,7 @@ public final class IntroScreen extends Screen {
 			case 3 -> new IntroPage(Tr.t("Where the songs come from"), List.of(mac
 					? Tr.t("Play a song in the Music or Spotify app (browsers can't be read on a Mac) and its lyrics show up. If macOS asks if your launcher may control them, click OK.")
 					: Tr.t("Play a song in Spotify or your music player and its lyrics show up by themselves."),
-					Tr.t("Optional: signing in to Spotify (needs Premium and a free developer app) can help with timing."),
+					Tr.t("Optional: Spotify Web (needs Premium and a free developer app) follows Spotify on any device."),
 					Tr.t("No music right now? Try the demo song.")), List.of(), "");
 			default -> new IntroPage(Tr.t("You're all set"), List.of(
 					Tr.t("In a world, press these keys. You can change them in Minecraft's Controls settings.")),

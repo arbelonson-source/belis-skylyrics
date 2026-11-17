@@ -152,6 +152,27 @@ class MprisSourceTest {
 	}
 
 	@Test
+	void sessionBusAddressPicksTheFirstUnixPathOfAList() {
+		java.util.Set<String> there = java.util.Set.of("/run/user/1000/bus");
+		Map<String, String> rt = Map.of("XDG_RUNTIME_DIR", "/run/user/1000");
+		// a plain unix:path (with a guid) stays as the library gets it
+		assertEquals(null, MprisSource.sessionBusAddress(Map.of("DBUS_SESSION_BUS_ADDRESS", "unix:path=/x/bus,guid=ab", "XDG_RUNTIME_DIR", "/run/user/1000"), there::contains, "1000"));
+		// abstract first, then a path: the path
+		assertEquals("unix:path=/x/bus,guid=ab", MprisSource.sessionBusAddress(Map.of("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-1,guid=cd;unix:path=/x/bus,guid=ab"), there::contains, "1000"));
+		// abstract only: the runtime socket when it exists, else nothing
+		Map<String, String> abs = Map.of("DBUS_SESSION_BUS_ADDRESS", "unix:abstract=/tmp/dbus-1,guid=cd", "XDG_RUNTIME_DIR", "/run/user/1000");
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.sessionBusAddress(abs, there::contains, "1000"));
+		assertEquals(null, MprisSource.sessionBusAddress(abs, p -> false, "1000"));
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.sessionBusAddress(Map.of("DBUS_SESSION_BUS_ADDRESS", "unix:tmpdir=/tmp", "XDG_RUNTIME_DIR", "/run/user/1000"), there::contains, ""));
+		// unset: the runtime socket, as before
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.sessionBusAddress(rt, there::contains, "1000"));
+		assertEquals("/run/user/1000/bus", MprisSource.socketPath(" unix:path=/run/user/1000/bus,guid=ab"));
+		assertEquals("", MprisSource.socketPath("unix:abstract=/tmp/x"));
+		assertEquals("", MprisSource.socketPath(null));
+		assertEquals("unix:path=/run/user/1000/bus", MprisSource.runtimeBusAddress(abs, there::contains, "1000"));
+	}
+
+	@Test
 	void sessionBusAddressFallsBackToTheRuntimeDirSocket() {
 		Set<String> there = Set.of("/run/user/1000/bus");
 		// the environment's own address is left to the library
