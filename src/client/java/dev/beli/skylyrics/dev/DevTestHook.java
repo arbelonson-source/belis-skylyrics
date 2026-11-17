@@ -351,22 +351,24 @@ public final class DevTestHook {
 	/** "set field value": changes one config field for this run (not saved). */
 	private static void set(String arg) {
 		String[] kv = arg.split("\\s+", 2);
+		// "set field" with nothing after it gives an empty value (a text field becomes empty) instead of an index error
+		String text = kv.length > 1 ? kv[1] : "";
 		try {
 			java.lang.reflect.Field field = SkyLyricsConfig.class.getField(kv[0]);
 			Class<?> type = field.getType();
 			Object value;
 			if (type == boolean.class) {
-				value = Boolean.parseBoolean(kv[1]);
+				value = Boolean.parseBoolean(text);
 			} else if (type == int.class) {
-				value = Integer.parseInt(kv[1]);
+				value = Integer.parseInt(text);
 			} else if (type == float.class) {
-				value = Float.parseFloat(kv[1]);
+				value = Float.parseFloat(text);
 			} else if (type.isEnum()) {
 				value = java.util.Arrays.stream(type.getEnumConstants())
-						.filter(c -> ((Enum<?>) c).name().equals(kv[1]))
+						.filter(c -> ((Enum<?>) c).name().equals(text))
 						.findFirst().orElseThrow();
 			} else {
-				value = SetValue.string(kv[1]);
+				value = SetValue.string(text);
 			}
 			field.set(SkyLyricsConfig.get(), value);
 		} catch (ReflectiveOperationException e) {
