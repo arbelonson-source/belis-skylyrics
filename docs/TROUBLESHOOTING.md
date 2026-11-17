@@ -22,15 +22,15 @@ Go through these in order:
      4. A school, work or antivirus network can block one of the sites. Try another network, or allow `lrclib.net` and `music.163.com`.
      5. On hotel or café Wi-Fi you often have to log in first, and until you do, the lyrics site gets an empty page or a redirect instead of lyrics. The mod counts that as a failed try, not as "no lyrics", so the song isn't remembered as having none. Log in to the Wi-Fi, then press **Retry** or play the song again, and the lyrics come back.
    - **Instrumental, no words**: the song has no lyrics. A song whose lyrics are only music notes shows as instrumental too. So does a song where NetEase Cloud Music only has its "pure music, please enjoy" note.
-   - **Found, without timing**: the lyrics exist but without times for each line. They only show if **Untimed lyrics** (Music tab) is on (it is at first). Then the lines are spread evenly over the song.
+   - **Found, without timing**: the lyrics exist but without times for each line. When LRCLIB only has untimed lyrics, the mod also asks NetEase Cloud Music for timed ones, and it asks again after a week. They only show if **Untimed lyrics** (Music tab) is on (it is at first). Then the lines are spread evenly over the song.
    - **A line shows as "line / translation"**: some lyrics files give a line and its translation (or romanization) the same time, so the mod shows both together. That is how the file is made.
 
 ## The lyrics are for the wrong song
 
 - **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want. The choices are different on Linux, Windows and macOS (see the [FAQ](FAQ.md#can-i-choose-which-player-it-follows)).
 - **A browser tab is playing something else.** A muted video in another tab still counts as playing. Pause it or close it.
-- **The song has no artist.** Browser audio often comes without an artist and without a length. Then the mod only accepts a lyrics match whose title is the same, and when different artists have a song with that title, it shows no lyrics rather than guess and show another song's words. If you play the song in a player that shows the artist (like Spotify), the lyrics are found.
-- **The song name is messy.** Video titles like "Artist - Song (Official Video)" or "Artist - Song | Official Video" are cleaned up before looking for lyrics, and a title like "Song - Skrillex Remix" is no longer taken for "Artist - Song". A title with a version tag in brackets, like "Song (2011 Remaster)", is looked up again without the tag when nothing is found. Some titles are still too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. If the words are only early or late, use the **This song** slider on the Music tab.
+- **The song has no artist.** Browser audio often comes without an artist and without a length. Then the mod only accepts a lyrics match whose title is the same and, when the song's length is known, whose length is within about 3 seconds. When different artists have a song with that title, it shows no lyrics rather than guess and show another song's words, so a common title like "Intro" may show none. If you play the song in a player that shows the artist (like Spotify), the lyrics are found.
+- **The song name is messy.** Video titles like "Artist - Song (Official Video)" or "Artist - Song | Official Video" are cleaned up before looking for lyrics, and a title like "Song - Skrillex Remix" is no longer taken for "Artist - Song". A title with a version tag in brackets, like "Song (2011 Remaster)", is looked up again without the tag when nothing is found. Some titles are still too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. Lyrics that are only unsynced, or that came from the backup site, are looked up again after a week, and replaced if something better exists. If the words are only early or late, use the **This song** slider on the Music tab.
 
 ## Lyrics come early or late
 
@@ -136,6 +136,10 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 **Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
 
+## The album cover is missing
+
+The top bar and **Record card** show the cover your player gives. If it is a web link that can't be downloaded (no internet, a busy server, or a hotel Wi-Fi sign-in page), the mod tries again every so often for about half an hour, then stops for that song. A cover the game can't read (an odd colour format or a cut-off file) is given up on straight away. Play the song again to try once more.
+
 ## The flashes or motion stopped, or seem gone
 
 Check Minecraft's **Accessibility** settings. **Hide Lightning Flashes** on turns off the lyrics' flashes (glow pulse, crosshair flash, hat flare, sky pulse and the World words' white flash), and **Distortion Effects** at 0 keeps the line pop, the World words' sway, the hat's wobble and spin and the spinning record still. The World words then only fade when they leave, fall, slide in or make room for each other. Turn the flashes back on, or raise **Distortion Effects**, to get them back.
@@ -181,7 +185,7 @@ The song bar sits at the top centre of the screen, where Jade and WTHIT show wha
 
 ## The Record card moves or fades
 
-The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and in the bottom left the card fades where the chat covers it. This is on purpose; it comes back when the other thing goes away.
+The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and in the bottom left the card fades where the chat covers it. A card in the bottom left also hides while the debug screen (F3) is open when it is tall enough to reach F3's text (on a small window or a big GUI scale). This is on purpose; it comes back when the other thing goes away.
 
 ## The top bar and the player list (Tab)
 
@@ -192,6 +196,8 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 - **"Paste your Client ID first"** (under **Account** in the **Spotify account** card on the **Music** tab): **Sign in** needs your Spotify app's Client ID. Press **Paste** next to **Client ID**. Steps are in the [FAQ](FAQ.md#can-it-follow-spotify-on-my-phone-or-another-computer).
 - **"Spotify sign-in needs port ... but another program is using it"**: close the other program or Minecraft game that holds that port (often a second game with SkyLyrics), then press **Sign in** again. The red line goes away when you press **Sign in** or **Sign out**.
 - **"Can't reach the internet or Spotify"**: your internet (or Spotify) isn't answering. Check that a web page opens, then try again.
+- **"Spotify no longer accepts your Client ID, check it and sign in again"**: your Spotify app was deleted or reset, so you are signed out. Check the Client ID in your app on the Spotify dashboard (or make a new app), paste it, and press **Sign in**.
+- **"Too many requests"**: when Spotify says this, the mod waits as long as Spotify asks before trying again. Nothing for you to do.
 
 ## The mod says a new version is out, but won't install it
 
@@ -255,7 +261,9 @@ Deleting the `skylyrics` cache folder is safe, but it holds more than lyrics. Th
 
 If the settings file has a value the mod can't read (a typo, or a value from another version), only that setting goes back to its default and the rest are kept. The mod keeps a copy of the file as `skylyrics.json.bad` next to it in the `config` folder, so nothing is lost. If the whole file is unreadable, the mod starts with the defaults and keeps the copy the same way.
 
-The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others.
+The **Recently heard** list does the same: a damaged `heard.json` is kept as `heard.json.bad` in `.cache/skylyrics`, and one bad song in it no longer drops the others. A `heard.json` or `spotify-login.json` over 1 MB is too big to be ours: it is set aside the same way (as `.bad`), the game log says so, and the list starts empty or you are signed out of Spotify Web.
+
+A wrongly typed value is fixed the next time the mod saves, so it doesn't make a new `.bad` copy every time you start the game.
 
 If Windows, an antivirus or OneDrive holds the settings file when the game starts, the mod tries again. If it still can't read it, it leaves the file alone and doesn't save defaults over your settings, so closing and reopening the game once the lock is gone gets your settings back. A half-written `.tmp` file next to the settings, the Spotify sign-in, the Recently heard list or the update memory, or one left by the Windows music reader's helper, when the game was killed, is cleaned up on a later start, once it is a day old.
 
