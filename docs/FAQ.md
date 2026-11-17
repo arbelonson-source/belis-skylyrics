@@ -88,6 +88,14 @@ From 0.7.0 on, it updates itself. When a new version is out, it downloads in the
 
 Yes. Shader packs can make the sky darker and paint clouds over things, so the mod can draw the lyrics on top of the finished picture to keep them bright. This is the **Draw on top** setting under **Look**. On **Auto** it does this whenever a shader pack is on, when it rains, when **See through blocks** is on, or when you are in a cave or under a roof (see "Why don't I see lyrics in caves?"). If the lyrics still look dim, set it to **Always**.
 
+## Does it work with Replay Mod or Flashback?
+
+The mod runs, but it follows the music on your PC right now, not the music from when you recorded. See [Troubleshooting](TROUBLESHOOTING.md#replay-mod-and-flashback-recordings) for what to do before you render a video.
+
+## Does it work with Distant Horizons?
+
+It may show some night sky shapes in front of far-away terrain. See [Troubleshooting](TROUBLESHOOTING.md#distant-horizons) for which skies can do that and what to pick instead.
+
 ## Why don't I see lyrics in caves?
 
 With the **Arc** and **Lines** layouts, the lyrics stay visible underground at first, because **See through blocks** (Look tab) is on. With it off, **Show underground too** on the **Display** tab keeps them visible, and it works while **Draw on top** (Look tab) is on **Auto**. If you can't see them in a cave, check these:

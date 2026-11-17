@@ -148,6 +148,23 @@ On **Auto** (the starting setting), the mod already draws on top when a shader p
 
 In bright daytime without shaders, keep **Shadow** on (Look tab, on at first). It gives the words a dark edge that makes them easier to read against a pale sky. In the Arc layout, **Shadow** only shows when **Depth** is off, because Depth already gives the letters a solid edge.
 
+## Replay Mod and Flashback recordings
+
+The mod draws the lyrics and the night sky live, from whatever is playing on your PC at the moment you watch or render the replay. It does not remember the song that played while you recorded, and it doesn't know a replay is running. The sky animation runs on real time, so a slowed down or sped up replay doesn't slow the lyrics or the sky.
+
+If the video shows the wrong lyrics, or lyrics you didn't want:
+
+- Turn the lyrics off before you render: press your "Show or hide lyrics" key (it has no key at first; set one under **Options → Controls → Key Binds → Beli's SkyLyrics**), or use the **Lyrics** switch in the settings.
+- Or pause your music before you render.
+- To have lyrics in the video, start the same song from the beginning right when the render starts.
+
+## Distant Horizons
+
+If you use Distant Horizons and see a painted night sky shape in front of far-away mountains or other distant terrain, that may be this mod. The painted sky is drawn at one set distance from you (at most 110 blocks, or just short of the fog for the sky-wide shapes), so terrain farther away than that can end up behind it. It could happen with **Synthwave** (its sun and sky reach the horizon), **Moonlight** (its low clouds drift round the horizon), **Eclipse** (the sun sits low) and **Comet** (the head sits low). You can try:
+
+- On the **Look** tab, set **Night sky** to **Aurora**, **Nebula**, **Aurora + nebula** or **Galaxy**. Their shapes sit higher up in the sky.
+- Or set **Night sky** to **Off**.
+
 ## Lyrics trail behind when I turn (Exordium)
 
 Exordium redraws the HUD less often than the game draws frames, and the lyrics are drawn as part of the HUD, so they can lag behind your camera. Turn off Exordium's HUD buffering (in Exordium's own settings) and they follow smoothly again. The game log says the same when Exordium is installed.
