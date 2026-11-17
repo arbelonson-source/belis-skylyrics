@@ -76,7 +76,9 @@ class CoverWithTitleTest {
 			} catch (Throwable e) {
 				failure.set(e);
 			} finally {
-				changed.countDown();
+				if (track.title().equals("New Song")) {
+					changed.countDown();
+				}
 			}
 		});
 		try {
@@ -88,13 +90,8 @@ class CoverWithTitleTest {
 			source.playing = NEW;
 			tracker.refresh();
 			tracker.refresh();
-			// the first change (OLD appearing) also ran the listener; wait for the NEW one
-			until = System.nanoTime() + 20_000_000_000L;
-			while (!tracker.track().title().equals("New Song") && System.nanoTime() < until) {
-				Thread.sleep(5);
-			}
+			// the first change (OLD appearing) also ran the listener; the latch only opens once the NEW one has finished
 			assertTrue(changed.await(20, TimeUnit.SECONDS));
-			Thread.sleep(300);
 		} finally {
 			tracker.shutdown();
 		}
