@@ -140,9 +140,19 @@ public final class SkyLyricsScreen extends Screen {
 		List<String> all = Stream.concat(Stream.of(auto), names.stream()).collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
 		// A key from a shared settings file that this system doesn't list is still applied when a player matches, so show it
 		if (!preferred.isBlank() && playerIndex(keys, preferred) >= keys.length) {
-			all.add(preferred);
+			all.add(shortKey(preferred));
 		}
 		return all;
+	}
+
+	private static final int PLAYER_LABEL_MAX = 24;
+
+	/** A long hand-edited key would make the button as wide as the row, so show at most 24 characters (code points) and an ellipsis. */
+	static String shortKey(String key) {
+		if (key.codePointCount(0, key.length()) <= PLAYER_LABEL_MAX) {
+			return key;
+		}
+		return key.substring(0, key.offsetByCodePoints(0, PLAYER_LABEL_MAX - 1)) + "\u2026";
 	}
 
 	/** Which choice is on: the one whose key is saved, else Auto. */
