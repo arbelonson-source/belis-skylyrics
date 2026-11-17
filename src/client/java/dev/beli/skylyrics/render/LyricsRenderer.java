@@ -2140,11 +2140,11 @@ public final class LyricsRenderer {
 		float sun = 0;
 		if (level != null && SkyEffects.overworldSky(level)) {
 			float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-			float stars = SkyEffects.starBrightness(level, camera, partial);
+			float height = SkyEffects.sunHeight(level, camera, partial);
 			if (camera.getFluidInCamera() == FogType.NONE) {
-				target = daylight(stars, level.getRainLevel(partial));
+				target = daylight(height, level.getRainLevel(partial));
 			}
-			sun = 1 - Mth.clamp(stars / SkyEffects.NIGHT_STARS, 0, 1);
+			sun = sunUp(height);
 		}
 		sunlight = approach(sunlight, sun, dt * 2f);
 		daylight = approach(daylight, Math.max(target, BACKDROP * backdrop), dt * 2f);
@@ -2158,12 +2158,17 @@ public final class LyricsRenderer {
 		backdrop = Mth.clamp(strength, 0, 1);
 	}
 
+	/** How much the sun is up: 1 from about a third of the way up the sky, 0 from just below the horizon (-1 midnight, 1 noon). */
+	static float sunUp(float sunHeight) {
+		return Mth.clamp(2 * sunHeight + 0.25f, 0, 1);
+	}
+
 	/**
-	 * 1 under a clear day sky, 0 at night; rain greys the sky so it counts half. A light glow vanishes against a
-	 * bright sky, so by day the lyrics get a dark halo instead.
+	 * 1 under a clear day sky, 0 at night; rain greys the day sky so it counts half. Follows the sun, not the stars
+	 * (those are dimmed by rain). A light glow vanishes against a bright sky, so by day the lyrics get a dark halo instead.
 	 */
-	static float daylight(float starBrightness, float rainLevel) {
-		return (1 - Mth.clamp(starBrightness / SkyEffects.NIGHT_STARS, 0, 1)) * (1 - 0.5f * Mth.clamp(rainLevel, 0, 1));
+	static float daylight(float sunHeight, float rainLevel) {
+		return sunUp(sunHeight) * (1 - 0.5f * Mth.clamp(rainLevel, 0, 1));
 	}
 
 	private void updateColor(SkyLyricsConfig cfg, float dt, long now, int line) {

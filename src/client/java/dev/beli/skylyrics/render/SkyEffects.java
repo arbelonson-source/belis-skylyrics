@@ -1126,6 +1126,18 @@ public final class SkyEffects {
 		starsCamera = null;
 	}
 
+	/**
+	 * How high the sun stands: 1 at noon, 0 at sunrise and sunset, -1 at midnight. Follows the time of day only, never
+	 * the weather (the star brightness does, on 1.21.11 and newer, so rain at night would read as day).
+	 */
+	static float sunHeight(ClientLevel level, Camera camera, float partial) {
+		//? if >=1.21.11 {
+		return (float) Math.cos(Math.toRadians(camera.attributeProbe().getValue(EnvironmentAttributes.SUN_ANGLE, partial)));
+		//?} else {
+		/*return (float) Math.cos(level.getTimeOfDay(partial) * (2 * Math.PI));
+		*///?}
+	}
+
 	private static float readStarBrightness(ClientLevel level, Camera camera, float partial) {
 		//? if >=1.21.11 {
 		return camera.attributeProbe().getValue(EnvironmentAttributes.STAR_BRIGHTNESS, partial);
