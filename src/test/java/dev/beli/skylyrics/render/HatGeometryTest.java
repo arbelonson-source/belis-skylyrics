@@ -77,7 +77,11 @@ class HatGeometryTest {
 			return this;
 		}
 
-		// No @Override: VertexConsumer has no setLineWidth before 1.21.11
+		// No @Override on these two: only some versions' VertexConsumer has them (setUv3 is new in 26.3)
+		public VertexConsumer setUv3(float u, float v) {
+			return this;
+		}
+
 		public VertexConsumer setLineWidth(float w) {
 			return this;
 		}
