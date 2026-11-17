@@ -29,7 +29,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - When a new song starts, its name and artist can float up in the sky (World layout).
 - A hat for your character, seen in third person (F5): halo, neon headphones, conical hat, crown, cat ears, pumpkin head, top hat, devil horns, neon shades, antennae, a flower crown, a propeller cap or music notes circling your head, with parts that glow in your lyrics colour. Only you can see it.
 - Crosshair styles: Minecraft's normal one, or a dot, cross, circle, corners, music note, heart or diamond in your lyrics colour. They can flash brighter as each new lyric line starts.
-- **Spotify Web** follows your Spotify account, even when the song plays on your phone or another computer. It needs a one-time Spotify set-up on the **Music** tab; see the [FAQ](docs/FAQ.md).
+- **Spotify Web** follows your Spotify account, even when the song plays on your phone or another computer. It needs Spotify Premium and a free Spotify developer app, set up once on the **Music** tab; see the [FAQ](docs/FAQ.md).
 - A **song library** (press **N**) with your Spotify liked songs and playlists. Show it as a grid, a shelf or a carousel. Search, then click a song to play it. Sign in to Spotify on the **Music** tab first. Without Spotify, it shows a **Recently heard** list of the songs you have played lately instead, kept on this computer only (clicking one to play it again works on Linux). You can empty it with **Forget recently heard** on the **Music** tab.
 - Lyrics that have no timing are spread evenly over the song (**Untimed lyrics** on the **Music** tab, on at first). When a lyrics file gives a line and its translation at the same time, they show together as "line / translation".
 - Lyrics come early or late? Fix the timing once and it's remembered for that song.
@@ -38,7 +38,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - A demo mode with a built-in song, so you can try it without any music playing.
 - Hebrew and Arabic lyrics are written from the right, with Arabic letters joined properly.
 - Smooth letters for Latin, Cyrillic (Russian, Ukrainian and more), Greek, Vietnamese, Hebrew and Arabic lyrics. Chinese, Japanese, Korean, Thai and emoji are drawn with Minecraft's own font.
-- A short welcome tour the first time you start the game helps you pick a layout, a look and your music.
+- A short welcome tour the first time you start the game lets you pick a look and a layout, and tells you how your music is found.
 - Updates itself: a new version downloads in the background and a pop-up tells you to restart Minecraft. An update that needs a newer Minecraft or Fabric API than yours isn't installed: the pop-up tells you what to update, and your working version stays. On the **About** tab you can set **Updates** to **Tell me** for just a notice, or turn it off.
 - English, Spanish, Brazilian Portuguese and Hebrew. The settings follow your Minecraft language.
 

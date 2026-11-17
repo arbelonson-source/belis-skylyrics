@@ -19,6 +19,7 @@ import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.util.Comparator;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -37,7 +38,17 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.client.gui.components.SubtitleOverlay;
+import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.network.chat.numbers.NumberFormat;
+import net.minecraft.network.chat.numbers.StyledFormat;
 import net.minecraft.world.scores.DisplaySlot;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerScoreEntry;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+//? if >=26.2
+/*import net.minecraft.world.scores.TeamColor;*/
 
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.SkyLyricsClient;
@@ -52,6 +63,8 @@ import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.mixin.BossHealthOverlayAccessor;
 import dev.beli.skylyrics.mixin.GuiOverlayAccessor;
+import dev.beli.skylyrics.mixin.SubtitleOverlayAccessor;
+import dev.beli.skylyrics.mixin.SubtitleTextAccessor;
 import dev.beli.skylyrics.util.Guard;
 
 /**
@@ -177,12 +190,68 @@ public final class NowPlayingHud {
 	private record SongSource(String title, String artist, String source, LyricsService.State state, Object language, boolean demo) {}
 
 	/** What a piece of text's visual order is worked out from. */
-	private record VisualKey(String text, Style style, Object language) {}
+	private static final class VisualKey {
+		String text;
+		Style style;
+		Object language;
+
+		VisualKey(String text, Style style, Object language) {
+			this.text = text;
+			this.style = style;
+			this.language = language;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof VisualKey k && text.equals(k.text) && style.equals(k.style) && java.util.Objects.equals(language, k.language);
+		}
+
+		@Override
+		public int hashCode() {
+			return text.hashCode();
+		}
+	}
+
+	/** Refilled for every lookup, so a hit builds no key; only a miss stores a copy. Render thread only. */
+	private static final VisualKey VISUAL_PROBE = new VisualKey("", Style.EMPTY, null);
 
 	/** The game's visual order of short texts (the clock, the frame rate, a title), kept while they stay the same. */
 	private static final SmallCache<VisualKey, FormattedCharSequence> VISUAL = new SmallCache<>(12);
 	/** Cut texts, by everything the cut depends on. */
-	private record ClipKey(Object font, Style style, String str, int maxW, Object language, long reloads) {}
+	private static final class ClipKey {
+		Object font;
+		Style style;
+		String str;
+		int maxW;
+		Object language;
+		long reloads;
+
+		ClipKey(Object font, Style style, String str, int maxW, Object language, long reloads) {
+			set(font, style, str, maxW, language, reloads);
+		}
+
+		void set(Object font, Style style, String str, int maxW, Object language, long reloads) {
+			this.font = font;
+			this.style = style;
+			this.str = str;
+			this.maxW = maxW;
+			this.language = language;
+			this.reloads = reloads;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			return o instanceof ClipKey k && java.util.Objects.equals(font, k.font) && style.equals(k.style) && str.equals(k.str) && maxW == k.maxW
+					&& java.util.Objects.equals(language, k.language) && reloads == k.reloads;
+		}
+
+		@Override
+		public int hashCode() {
+			return 31 * (31 * str.hashCode() + maxW) + Long.hashCode(reloads);
+		}
+	}
+
+	private static final ClipKey CLIP_PROBE = new ClipKey(null, Style.EMPTY, "", 0, null, 0);
 	private static final SmallCache<ClipKey, String> CLIPS = new SmallCache<>(8);
 	/** The song's name and what follows it, cut to the room there is; see {@link #titleCut}. */
 	private record TitleKey(Object font, Style style, String title, String sub, int limit, int floor, Object language, long reloads) {}
@@ -302,7 +371,9 @@ public final class NowPlayingHud {
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
 				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc),
 						actionBarShowing(mc))
-				: Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW));
+				: Math.max(Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW)),
+						TopBarLayout.demoClear(mc.isDemo(), g.guiWidth(), demoTimerWidth(mc),
+								TopBarLayout.barRight(g.guiWidth(), cfg.barSize, fit.pill(), statsW, fit.stats())));
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
@@ -344,6 +415,104 @@ public final class NowPlayingHud {
 		//?}
 	}
 
+	/** How wide the demo's timer text can be (the longer of its two texts), 0 outside the demo. */
+	static float demoTimerWidth(Minecraft mc) {
+		if (!mc.isDemo()) {
+			return 0;
+		}
+		try {
+			return Math.max(mc.font.width(Component.translatable("demo.remainingTime", "00:00")),
+					mc.font.width(Component.translatable("demo.demoExpired")));
+		} catch (RuntimeException e) {
+			return 0;
+		}
+	}
+
+	/** Whether the chat screen is open (the chat's box and the text field are then drawn over the bottom left). */
+	static boolean chatOpen(Minecraft mc) {
+		//? if >=26.2 {
+		/*return mc.gui.screen() instanceof ChatScreen;
+		*///?} else {
+		return mc.screen instanceof ChatScreen;
+		//?}
+	}
+
+	/**
+	 * The box the game's subtitles cover (left, top, right, bottom), from the entries it showed last frame (it drops expired
+	 * ones as it draws): null when none show. If they can't be read, one narrow box is assumed.
+	 */
+	static float[] subtitleBox(Minecraft mc, int guiW, int guiH) {
+		try {
+			//? if >=26.2 {
+			/*SubtitleOverlay overlay = ((GuiOverlayAccessor) mc.gui.hud).skylyrics$getSubtitleOverlay();
+			*///?} else {
+			SubtitleOverlay overlay = ((GuiOverlayAccessor) mc.gui).skylyrics$getSubtitleOverlay();
+			//?}
+			List<?> shown = ((SubtitleOverlayAccessor) overlay).skylyrics$getAudibleSubtitles();
+			int count = shown.size();
+			if (count == 0) {
+				return null;
+			}
+			int widest = 0;
+			for (int i = 0; i < count; i++) {
+				Component text = ((SubtitleTextAccessor) shown.get(i)).skylyrics$getText();
+				widest = Math.max(widest, mc.font.width(text));
+			}
+			int margin = mc.font.width("<") + mc.font.width(" ") + mc.font.width(">") + mc.font.width(" ");
+			return TopBarLayout.subtitleBox(guiW, guiH, count, widest, margin);
+		} catch (RuntimeException | LinkageError e) {
+			return TopBarLayout.subtitleBoxGuess(guiW, guiH);
+		}
+	}
+
+	/**
+	 * The scoreboard sidebar's box (left, top, right, bottom) in GUI units as the game draws it for this player: their
+	 * team colour's slot first, else the sidebar slot. Null when no sidebar shows.
+	 */
+	static float[] sidebarBox(Minecraft mc, int guiW, int guiH) {
+		try {
+			if (mc.level == null || mc.player == null) {
+				return null;
+			}
+			Scoreboard scoreboard = mc.level.getScoreboard();
+			Objective objective = null;
+			PlayerTeam team = scoreboard.getPlayersTeam(mc.player.getScoreboardName());
+			if (team != null) {
+				//? if >=26.2 {
+				/*DisplaySlot slot = team.getColor().map(TeamColor::displaySlot).orElse(null);
+				*///?} else {
+				DisplaySlot slot = DisplaySlot.teamColorToSlot(team.getColor());
+				//?}
+				if (slot != null) {
+					objective = scoreboard.getDisplayObjective(slot);
+				}
+			}
+			if (objective == null) {
+				objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+			}
+			if (objective == null) {
+				return null;
+			}
+			NumberFormat format = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT);
+			List<PlayerScoreEntry> entries = scoreboard.listPlayerScores(objective).stream()
+					.filter(entry -> !entry.isHidden())
+					.sorted(Comparator.comparing(PlayerScoreEntry::value).reversed()
+							.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER))
+					.limit(TopBarLayout.SIDEBAR_MAX)
+					.toList();
+			int[] nameW = new int[entries.size()], scoreW = new int[entries.size()];
+			for (int i = 0; i < nameW.length; i++) {
+				PlayerScoreEntry entry = entries.get(i);
+				nameW[i] = mc.font.width(PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName()));
+				scoreW[i] = mc.font.width(entry.formatValue(format));
+			}
+			int widest = TopBarLayout.sidebarWidth(mc.font.width(objective.getDisplayName()), mc.font.width(": "), nameW, scoreW);
+			return TopBarLayout.sidebarBox(guiW, guiH, nameW.length, widest);
+		} catch (RuntimeException | LinkageError e) {
+			return null;
+		}
+	}
+
 	/** How far down a bar at the top must start to keep clear of the potion effect icons (0 when it doesn't reach them). */
 	private static float effectsClear(Minecraft mc, int guiWidth, SkyLyricsConfig cfg, TopBarLayout.Fit fit, float statsW) {
 		int[] counts = RecordCard.effectCounts(mc);
@@ -352,7 +521,8 @@ public final class NowPlayingHud {
 		}
 		// The widest the pill can be, not its moving width, so the bar doesn't hop up and down with each line
 		float right = TopBarLayout.barRight(guiWidth, cfg.barSize, fit.pill(), statsW, fit.stats());
-		return TopBarLayout.effectsClear(guiWidth, right, counts[0], counts[1], RecordCard.GOOD_ROW, RecordCard.BAD_ROW);
+		return TopBarLayout.effectsClear(guiWidth, right, counts[0], counts[1], TopBarLayout.effectRow(RecordCard.GOOD_ROW, mc.isDemo()),
+				TopBarLayout.effectRow(RecordCard.BAD_ROW, mc.isDemo()));
 	}
 
 	/**
@@ -415,11 +585,15 @@ public final class NowPlayingHud {
 			*///?} else {
 			GuiOverlayAccessor overlay = (GuiOverlayAccessor) mc.gui;
 			//?}
-			Component text = overlay.skylyrics$getOverlayMessageString();
-			return actionBarShowing(overlay.skylyrics$getOverlayMessageTime(), text == null ? "" : text.getString());
+			return actionBarShowing(overlay.skylyrics$getOverlayMessageTime(), overlay.skylyrics$getOverlayMessageString());
 		} catch (RuntimeException | LinkageError e) {
 			return false;
 		}
+	}
+
+	/** The time is checked first, so no string is built for the text while no message is showing. */
+	static boolean actionBarShowing(int ticksLeft, Component text) {
+		return ticksLeft > 0 && text != null && actionBarShowing(ticksLeft, text.getString());
 	}
 
 	/** An action bar message shows while it has time left and says something: servers send an empty one to clear it. */
@@ -830,8 +1004,18 @@ public final class NowPlayingHud {
 
 	/** The game's visual order of the text (right-to-left runs reversed), without its invisible direction marks (dropped after the order), kept while the same text is asked for again. */
 	static FormattedCharSequence visual(String text, Style style) {
-		return VISUAL.get(new VisualKey(text, style, Language.getInstance()),
-				k -> LyricsFont.dropMarks(((Language) k.language()).getVisualOrder(FormattedText.of(k.text(), k.style()))));
+		Language language = Language.getInstance();
+		VisualKey probe = VISUAL_PROBE;
+		probe.text = text;
+		probe.style = style;
+		probe.language = language;
+		FormattedCharSequence known = VISUAL.find(probe);
+		if (known != null) {
+			return known;
+		}
+		FormattedCharSequence made = LyricsFont.dropMarks(language.getVisualOrder(FormattedText.of(text, style)));
+		VISUAL.put(new VisualKey(text, style, language), made);
+		return made;
 	}
 
 	private static void text(GuiGraphics g, Font font, FormattedCharSequence seq, float x, float midY, float scale, int color) {
@@ -1069,15 +1253,22 @@ public final class NowPlayingHud {
 		if (LyricsFont.cachedWidth(font, style, text) <= maxW) {
 			return text;
 		}
-		return CLIPS.get(new ClipKey(font, style, text, clipRoom(maxW), Language.getInstance(), LyricsFont.reloadCount()),
-				NowPlayingHud::cut);
+		int room = clipRoom(maxW);
+		Language language = Language.getInstance();
+		long reloads = LyricsFont.reloadCount();
+		CLIP_PROBE.set(font, style, text, room, language, reloads);
+		String known = CLIPS.find(CLIP_PROBE);
+		if (known != null) {
+			return known;
+		}
+		String made = cut(font, style, text, room);
+		CLIPS.put(new ClipKey(font, style, text, room, language, reloads), made);
+		return made;
 	}
 
-	private static String cut(ClipKey k) {
-		Font font = (Font) k.font();
-		Style style = k.style();
-		float room = k.maxW() - LyricsFont.width(font, style, "…");
-		return dev.beli.skylyrics.util.TextCut.prefix(k.str(), t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
+	private static String cut(Font font, Style style, String text, int maxW) {
+		float room = maxW - LyricsFont.width(font, style, "…");
+		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */

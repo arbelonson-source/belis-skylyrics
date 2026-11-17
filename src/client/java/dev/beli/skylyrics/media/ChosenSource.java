@@ -17,13 +17,18 @@ public final class ChosenSource implements MediaSource {
 		this.preferredPlayer = preferredPlayer;
 	}
 
+	/** The source the last poll asked, so its failure is read from the same one even if the setting changed meanwhile. */
+	private volatile @org.jspecify.annotations.Nullable MediaSource polled;
+
 	private MediaSource current() {
 		return SpotifyWebSource.KEY.equals(preferredPlayer.get()) ? web : local;
 	}
 
 	@Override
 	public Snapshot poll() throws Exception {
-		return current().poll();
+		MediaSource source = current(); // the setting is read once for this poll
+		polled = source;
+		return source.poll();
 	}
 
 	@Override
@@ -49,7 +54,8 @@ public final class ChosenSource implements MediaSource {
 	/** The chosen source's own failing streak, so its quiet retries count as the same outage (see {@link MediaTracker}). */
 	@Override
 	public @org.jspecify.annotations.Nullable Throwable failing() {
-		return current().failing();
+		MediaSource source = polled;
+		return (source != null ? source : current()).failing();
 	}
 
 	@Override

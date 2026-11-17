@@ -948,6 +948,28 @@ final class Controls {
 		}
 	}
 
+	/** Side room around a button label, the same as the library's banner button. */
+	static final int BUTTON_PAD = 14;
+
+	/** Width of a button for a label {@code labelW} wide: the label plus its padding, never below {@code minW}. */
+	static int buttonW(int labelW, int minW) {
+		return Math.max(minW, labelW + BUTTON_PAD);
+	}
+
+	/**
+	 * Where the two buttons of the library's sign-in card go: {x0, y0, w0, x1, y1, w1, cardHeight}, relative to the
+	 * card's centre x ({@code cx}) and the row where the buttons start ({@code by}). Side by side with an 8 px gap when
+	 * both fit inside {@code cardW} (8 px edge room each side), otherwise one above the other, centred, and the card
+	 * grows to hold them.
+	 */
+	static int[] signInLayout(int cx, int by, int w0, int w1, int cardW) {
+		if (w0 + w1 + 8 <= cardW - 16) {
+			int x0 = cx - (w0 + w1 + 8) / 2;
+			return new int[] {x0, by, w0, x0 + w0 + 8, by, w1, 80};
+		}
+		return new int[] {cx - w0 / 2, by, w0, cx - w1 / 2, by + 22, w1, 80 + 22};
+	}
+
 	static void drawButton(Frame f, int x, int y, int w, int h, String text, boolean hover, boolean primary, boolean enabled) {
 		int bg;
 		int fg;
@@ -962,6 +984,6 @@ final class Controls {
 			fg = hover ? 0xFFFFFFFF : Ui.TEXT;
 		}
 		Ui.rect(f.g(), x, y, w, h, 4, bg);
-		f.g().drawCenteredString(f.font(), Ui.visual(text), x + w / 2, y + (h - 8) / 2, fg);
+		f.g().drawCenteredString(f.font(), Ui.visual(Ui.clip(f.font(), text, w - 4)), x + w / 2, y + (h - 8) / 2, fg);
 	}
 }

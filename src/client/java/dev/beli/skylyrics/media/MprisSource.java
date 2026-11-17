@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
 import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -106,12 +107,51 @@ public final class MprisSource implements MediaSource {
 		this.flatpak = flatpak;
 	}
 
-	private synchronized DBusConnection connection() throws Exception {
-		if (connection == null || !connection.isConnected()) {
+	/** Opens the session bus connection; replaced in tests. */
+	interface Connector {
+		DBusConnection connect() throws Exception;
+	}
+
+	private static final long RETRY_FIRST_NS = 5_000_000_000L;
+	private static final long RETRY_MAX_NS = 30_000_000_000L;
+
+	private Connector connector = () -> sessionBus().build();
+	private LongSupplier nanos = System::nanoTime;
+	private Predicate<DBusConnection> connected = DBusConnection::isConnected;
+	private int connectFailures;
+	private long retryAt;
+	private @Nullable IOException lastConnectFailure;
+
+	/** For tests: the way the bus is opened, whether a connection still lives, and the clock. */
+	MprisSource(Supplier<String> preferredPlayer, Connector connector, Predicate<DBusConnection> connected, LongSupplier nanos) {
+		this(preferredPlayer);
+		this.connector = connector;
+		this.connected = connected;
+		this.nanos = nanos;
+	}
+
+	/** How long to wait before trying the bus again after this many failed tries in a row: 5 s, 10 s, 20 s, then 30 s. */
+	static long retryDelayNs(int failuresInARow) {
+		int doublings = Math.max(0, Math.min(failuresInARow, 31) - 1);
+		return Math.min(RETRY_MAX_NS, RETRY_FIRST_NS << Math.min(doublings, 10));
+	}
+
+	synchronized DBusConnection connection() throws Exception {
+		if (connection == null || !connected.test(connection)) {
+			// No bus (a container, a launcher that strips the environment): don't build a connection every poll
+			IOException wait = lastConnectFailure;
+			if (wait != null && nanos.getAsLong() - retryAt < 0) {
+				throw wait;
+			}
 			try {
-				connection = sessionBus().build();
+				connection = connector.connect();
+				connectFailures = 0;
+				lastConnectFailure = null;
 			} catch (Exception e) {
-				throw new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				connectFailures++;
+				retryAt = nanos.getAsLong() + retryDelayNs(connectFailures);
+				lastConnectFailure = new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				throw lastConnectFailure;
 			}
 		}
 		return connection;
@@ -268,8 +308,35 @@ public final class MprisSource implements MediaSource {
 	/** Polls (about a second each) the followed player may answer with nothing before another player takes over. */
 	static final int EMPTY_GRACE_POLLS = 2;
 
+	/** Held for the whole of a poll, which is the only code that touches {@link #asked} and {@link #lastGood}. */
+	private final java.util.concurrent.locks.ReentrantLock pollLock = new java.util.concurrent.locks.ReentrantLock();
+	/** Set by close(); a poll that was still running then clears the maps itself when it ends. */
+	private volatile boolean closed;
+	/** How long close() waits for a poll in progress before leaving the clearing to it. */
+	static final long CLOSE_WAIT_MS = 250;
+
 	@Override
 	public Snapshot poll() throws Exception {
+		pollLock.lock();
+		try {
+			return pollLocked();
+		} finally {
+			if (closed) {
+				clearReads();
+			}
+			pollLock.unlock();
+		}
+	}
+
+	private void clearReads() {
+		for (Future<Answered> f : asked.values()) {
+			f.cancel(true);
+		}
+		asked.clear();
+		lastGood.clear();
+	}
+
+	private Snapshot pollLocked() throws Exception {
 		List<String> names = new ArrayList<>();
 		for (String name : reader.names()) {
 			if (name.startsWith(PREFIX) && !name.equals(PREFIX + "playerctld")) {
@@ -583,11 +650,22 @@ public final class MprisSource implements MediaSource {
 
 	@Override
 	public void close() {
-		for (Future<Answered> f : asked.values()) {
-			f.cancel(true);
+		closed = true;
+		// The maps belong to the poll: clear them here only if no poll is running (or it ends within a moment),
+		// otherwise the poll clears them itself as it finishes
+		boolean got = false;
+		try {
+			got = pollLock.tryLock(CLOSE_WAIT_MS, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
-		asked.clear();
-		lastGood.clear();
+		if (got) {
+			try {
+				clearReads();
+			} finally {
+				pollLock.unlock();
+			}
+		}
 		if (connection != null) {
 			connection.disconnect();
 			connection = null;

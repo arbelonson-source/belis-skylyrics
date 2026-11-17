@@ -12,6 +12,8 @@
 		"GuiOverlayAccessor",
 		"LevelRendererMixin",
 		"MinecraftFrameMixin",
+		"SubtitleOverlayAccessor",
+		"SubtitleTextAccessor",
 		"TrueTypeGlyphMixin"
 	],
 	"injectors": {

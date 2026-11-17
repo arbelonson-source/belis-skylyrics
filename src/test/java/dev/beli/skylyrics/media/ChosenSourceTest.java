@@ -18,7 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 class ChosenSourceTest {
 	private static final Snapshot LOCAL_SNAPSHOT = new Snapshot(new Track("Local", "A", "B", 1000, "", "mpv"), 5, true, 1);
 
-	private static final class Local implements MediaSource {
+	private static class Local implements MediaSource {
 		final List<String> calls = new ArrayList<>();
 		boolean closed;
 		boolean failOnClose;
@@ -137,6 +137,26 @@ class ChosenSourceTest {
 		local.failure = new java.io.IOException("still failing");
 		setting.set(SpotifyWebSource.KEY);
 		assertNull(source.failing(), "Spotify Web has its own streak, not the local player's");
+	}
+
+	@Test
+	void aFailureBelongsToTheSourceThatWasPolledEvenIfTheSettingChangesMeanwhile() {
+		AtomicReference<String> setting = new AtomicReference<>("");
+		Local local = new Local() {
+			@Override
+			public Snapshot poll() {
+				setting.set(SpotifyWebSource.KEY); // the player switches while this poll runs
+				failure = new java.io.IOException("can't read the player");
+				return LOCAL_SNAPSHOT;
+			}
+		};
+		ChosenSource source = new ChosenSource(local, web(), setting::get);
+		try {
+			source.poll();
+		} catch (Exception e) {
+			throw new AssertionError(e);
+		}
+		assertSame(local.failure, source.failing(), "the failure of the poll that just ran is the local player's");
 	}
 
 	@Test

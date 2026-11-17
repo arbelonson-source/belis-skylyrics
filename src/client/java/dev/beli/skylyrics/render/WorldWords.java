@@ -1830,6 +1830,12 @@ final class WorldWords {
 		return (float) -Math.toDegrees(Math.asin(Mth.clamp(v.y / v.length(), -1, 1)));
 	}
 
+	/** The most a piece of a flowing line may tip either way (degrees), given half its width in letter pixels. */
+	static float tipFor(float halfWidth) {
+		float most = LEAN * SENTENCE_LEAN;
+		return halfWidth <= TIP_DROP ? most : Math.min(most, (float) Math.toDegrees(Math.asin(TIP_DROP / halfWidth)));
+	}
+
 	/**
 	 * The patch of sky a card takes up, as yaw, pitch and half width/height in degrees, for a card at {@code to} from
 	 * the eye that has floated up by {@code risen}. Every card floats up at the same pace until it stops, so next to
@@ -1837,12 +1843,6 @@ final class WorldWords {
 	 * would be placed where the older one is right now and the two would cross.
 	 * The width is in yaw, which a card high up in the sky spans more of than one on the horizon.
 	 */
-	/** The most a piece of a flowing line may tip either way (degrees), given half its width in letter pixels. */
-	static float tipFor(float halfWidth) {
-		float most = LEAN * SENTENCE_LEAN;
-		return halfWidth <= TIP_DROP ? most : Math.min(most, (float) Math.toDegrees(Math.asin(TIP_DROP / halfWidth)));
-	}
-
 	static float[] footprint(Vec3 to, float risen, float halfWidth, float halfHeight) {
 		Vec3 now = to.add(0, risen, 0);
 		float from = pitchOf(to), at = pitchOf(now);
@@ -1850,6 +1850,10 @@ final class WorldWords {
 		double flat = Math.sqrt(to.x * to.x + to.z * to.z);
 		return new float[] {yawOf(to), (from + at) / 2, halfAngle(halfWidth, flat), halfAngle(halfHeight, far) + Math.abs(from - at) / 2};
 	}
+
+	/** Scratch lists for {@link #separate}: filled and read inside one call, never kept (render thread only). */
+	private final List<float[]> nudgeSeen = new ArrayList<>();
+	private final List<Card> nudgeOrder = new ArrayList<>();
 
 	/**
 	 * Finds words that sit on top of each other as seen from here and sends the newer one to the nearest clear side,
@@ -1861,10 +1865,11 @@ final class WorldWords {
 		// Players come first and never move, so a word in front of someone glides off them, even as they walk about
 		ClientLevel level = Minecraft.getInstance().level;
 		List<float[]> people = avoidPlayers ? players(level, eye) : List.of();
-		List<Card> live = new ArrayList<>(cards.size());
-		List<float[]> seen = new ArrayList<>(cards.size());
+		List<float[]> seen = nudgeSeen;
+		seen.clear();
 		// Words still being sung go first, so a fading word glides out of a new one's way instead of shoving it up the sky
-		List<Card> order = new ArrayList<>(cards.size());
+		List<Card> order = nudgeOrder;
+		order.clear();
 		for (Card c : cards) {
 			if (c.goneAt < 0) {
 				order.add(c);
@@ -1918,7 +1923,6 @@ final class WorldWords {
 					mine[1] += move[1];
 				}
 			}
-			live.add(c);
 			seen.add(mine);
 		}
 		float ease = 1 - (float) Math.exp(-SLIDE_SPEED * dt);
@@ -2065,6 +2069,7 @@ final class WorldWords {
 	void render(PoseStack pose, SubmitNodeCollector out, Camera camera, Font.DisplayMode mode, Style style, int rgb, float alpha,
 			float glow, float day, float scale, boolean light, long now) {
 		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
+		Style shadowStyle = style.withColor(SHADOW_RGB);
 		Vec3 eye = camera.position();
 		if (nudge || avoidPlayers) {
 			separate(eye, now);
@@ -2158,22 +2163,23 @@ final class WorldWords {
 			if (!soft) {
 				// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 				float shade = a * shadowOpacity(day) * wane;
-				draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+				draw(pose, out, c, shown, melt, typed, shadowStyle, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 				float edge = a * edgeOpacity(day) * wane;
 				for (int k = 0, n4 = outlineCopies(light, edge); k < n4; k++) {
-					draw(pose, out, c, shown, melt, typed, style, SHADOW_RGB, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
+					draw(pose, out, c, shown, melt, typed, shadowStyle, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
 							y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE), SHADOW_Z, mode);
 				}
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
 			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, replaced, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(glowRgb < 0 ? neon(colour) : glowRgb, 0x000000, HALO_DAY * day);
+			Style haloStyle = copies > 0 && ring * 255 >= 4 ? style.withColor(halo) : null;
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
-				draw(pose, out, c, shown, melt, typed, style, halo, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
+				draw(pose, out, c, shown, melt, typed, haloStyle, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
 						GLOW_Z, mode);
 			}
-			draw(pose, out, c, shown, melt, typed, style, colour, a, x0, y0, FACE_Z, mode);
+			draw(pose, out, c, shown, melt, typed, style.withColor(colour), a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
 	}
@@ -2280,7 +2286,7 @@ final class WorldWords {
 	 * Draws the first {@code shown} letters of card {@code c}; {@code melt} is how far it has dissolved and {@code typed} how long
 	 * ago it began typing in (below 0: neither).
 	 */
-	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, float typed, Style style, int rgb, float alpha,
+	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, float typed, Style coloured, float alpha,
 			float x0, float y0, float z, Font.DisplayMode mode) {
 		int alphaByte = Math.round(alpha * 255);
 		if (alphaByte < 4) { // text this faint would be drawn fully opaque
@@ -2288,7 +2294,6 @@ final class WorldWords {
 		}
 		Display d = c.display;
 		int n = d.cps().length;
-		Style coloured = style.withColor(rgb);
 		pose.pushPose();
 		pose.translate(0, 0, z);
 		for (int from = 0; from < n; ) {

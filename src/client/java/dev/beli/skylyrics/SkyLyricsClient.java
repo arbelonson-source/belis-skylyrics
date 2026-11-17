@@ -126,6 +126,17 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		return Identifier.fromNamespaceAndPath(MOD_ID, path);
 	}
 
+	/** What a new song sets going, one step at a time: one failing step must not cost the song its lyrics or cover. */
+	public static void trackChanged(Track track, Runnable cover, Runnable heard, Runnable lyrics, Runnable flash) {
+		java.util.function.BiConsumer<String, RuntimeException> failed =
+				(step, e) -> LOG.warn("Track change step '{}' failed, going on with the rest: {}", step, e.toString());
+		// The tracker already shows the new title: the cover goes first, so the last song's is not drawn beside it while the rest runs
+		Steps.run("cover", cover, failed);
+		Steps.run("heard", heard, failed);
+		Steps.run("lyrics", lyrics, failed);
+		Steps.run("flash", flash, failed);
+	}
+
 	@Override
 	public void onInitializeClient() {
 		instance = this;
@@ -150,14 +161,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		card = new RecordCard(tracker, art, hud);
 
 		// The tracker has already stored this song and will not call again for it, so one failing step must not cost the song its lyrics or cover
-		tracker.onTrackChange(track -> {
-			java.util.function.BiConsumer<String, RuntimeException> failed =
-					(step, e) -> LOG.warn("Track change step '{}' failed, going on with the rest: {}", step, e.toString());
-			Steps.run("heard", () -> heard.record(track), failed);
-			Steps.run("lyrics", () -> lyrics.load(track), failed);
-			Steps.run("cover", () -> art.load(track), failed);
-			Steps.run("flash", hud::flash, failed);
-		});
+		tracker.onTrackChange(track -> trackChanged(track, () -> art.load(track), () -> heard.record(track), () -> lyrics.load(track), hud::flash));
 		tracker.onCoverChange(track -> {
 			java.util.function.BiConsumer<String, RuntimeException> failed =
 					(step, e) -> LOG.warn("Cover change step '{}' failed: {}", step, e.toString());
@@ -305,7 +309,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private static MediaSource musicSource(Path cache) {
 		if (windows()) {
-			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"));
+			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"), SkyLyricsClient::anyoneLooking);
 		}
 		if (mac()) {
 			return new MacMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, SkyLyricsClient::anyoneLooking);

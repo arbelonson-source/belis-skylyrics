@@ -7,12 +7,14 @@ import net.minecraft.client.AttackIndicatorStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.player.ChatVisiblity;
 
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
@@ -35,6 +37,8 @@ public final class RecordCard {
 	static final float SIDE_H = 9;
 	/** The dimmed lines are drawn this much smaller than the current one. */
 	private static final float SIDE_SCALE = 0.8f;
+	/** The title's bold style per letter kind, made once instead of every frame. */
+	private static final Style TITLE_SMOOTH = Style.EMPTY.withFont(LyricsFont.BOLD), TITLE_PIXEL = Style.EMPTY.withBold(true);
 	/** Space between the card and the edge of the screen. */
 	static final float MARGIN = 6;
 	/** Half the hotbar's width, which also covers the hearts and food above it. */
@@ -107,16 +111,25 @@ public final class RecordCard {
 				&& !(topCorner(cfg.cardCorner) && NowPlayingHud.f3Open(mc))
 				// The player list (held Tab) is drawn after the card, over it and see-through
 				&& !(topCorner(cfg.cardCorner) && NowPlayingHud.tabListUp(mc));
+		int lines = lines(cfg.cardLines, g.guiHeight());
+		float h = height(cfg.cardLyrics, lines);
+		float[] at = null;
+		if (want) {
+			at = place(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), h);
+			// No room clear of the scoreboard sidebar or the chat: fade out like for the player list
+			want = at != null;
+		}
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			cardY = Float.NaN;
 			return;
 		}
 		art.upload();
-
-		int lines = lines(cfg.cardLines, g.guiHeight());
-		float h = height(cfg.cardLyrics, lines);
-		float[] at = corner(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc), h);
+		if (at == null) {
+			// Fading out: stay where the card last was
+			at = corner(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), effectsBottom(mc), h);
+			at[1] = Float.isNaN(cardY) ? at[1] : cardY;
+		}
 		cardY = ease(cardY, at[1], dt);
 		float x = at[0], y = cardY;
 		float s = (float) mc.getWindow().getGuiScale();
@@ -141,7 +154,7 @@ public final class RecordCard {
 		Font font = mc.font;
 		LyricsFont.checkFonts(font);
 		Style style = LyricsFont.base(cfg);
-		Style bold = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
+		Style bold = cfg.smoothFont ? TITLE_SMOOTH : TITLE_PIXEL;
 		float scale = cfg.smoothFont ? TEXT_SCALE : 1;
 		float tx = x + PAD + DISC + 6, room = (x + W - PAD - 2 - tx) / scale;
 		String title = track.title().isEmpty() ? unknownSong.get() : track.title();
@@ -372,7 +385,7 @@ public final class RecordCard {
 		int bottom = 0;
 		for (MobEffectInstance effect : mc.player.getActiveEffects()) {
 			if (effect.showIcon()) {
-				bottom = Math.max(bottom, effect.getEffect().value().isBeneficial() ? GOOD_ROW : BAD_ROW);
+				bottom = Math.max(bottom, TopBarLayout.effectRow(effect.getEffect().value().isBeneficial() ? GOOD_ROW : BAD_ROW, mc.isDemo()));
 			}
 		}
 		return bottom;
@@ -531,13 +544,57 @@ public final class RecordCard {
 		return Math.max(0, Math.min(y, guiH - h));
 	}
 
+	/**
+	 * The card's place with everything on the right and left that the game draws over it taken into account: the scoreboard
+	 * sidebar and (bottom right) the subtitles move a right card out of their way, and the open chat screen covers a bottom
+	 * left one. Null when there is no room clear of them, which fades the card.
+	 */
+	private static float[] place(Minecraft mc, CardCorner corner, int guiW, int guiH, float h) {
+		float[] at = corner(mc, corner, guiW, guiH, effectsBottom(mc), h);
+		boolean chatOpen = NowPlayingHud.chatOpen(mc);
+		if (corner == CardCorner.BOTTOM_LEFT) {
+			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
+			if (chatOpen) {
+				double scale = mc.options.chatScale().get();
+				float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
+				float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
+				boolean hidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
+				if (TopBarLayout.chatBoxCovers(true, hidden, guiH, chatW, chatH, at[0], at[1], W, h)) {
+					return null;
+				}
+			}
+			return at;
+		}
+		if (corner == CardCorner.TOP_LEFT) {
+			return at;
+		}
+		if (corner == CardCorner.BOTTOM_RIGHT) {
+			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
+		}
+		float[] sidebar = NowPlayingHud.sidebarBox(mc, guiW, guiH);
+		float[] subtitles = corner == CardCorner.BOTTOM_RIGHT && mc.options.showSubtitles().get()
+				? NowPlayingHud.subtitleBox(mc, guiW, guiH) : null;
+		if (sidebar == null && subtitles == null) {
+			return at;
+		}
+		// Going up, it stops at where a card in the top right corner would start
+		float minTop = corner == CardCorner.TOP_RIGHT ? at[1] : corner(mc, CardCorner.TOP_RIGHT, guiW, guiH, effectsBottom(mc), h)[1];
+		float y = TopBarLayout.dodgeY(at[0], at[1], W, h, minTop, guiH, sidebar, subtitles);
+		if (Float.isNaN(y)) {
+			return null;
+		}
+		return new float[] {at[0], y};
+	}
+
 	/** The card with the hotbar's neighbours taken from the player's settings. */
 	private static float[] corner(Minecraft mc, CardCorner corner, int guiW, int guiH, int effects, float h) {
 		boolean rightHanded = mc.options.mainHand().get() == HumanoidArm.RIGHT;
 		boolean indicator = mc.options.attackIndicator().get() == AttackIndicatorStatus.HOTBAR;
 		int bars = NowPlayingHud.bossBarCount(mc);
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
-		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, bossClear(corner, guiW, guiH, bars),
+		float demo = TopBarLayout.demoClear(mc.isDemo(), guiW, NowPlayingHud.demoTimerWidth(mc),
+				corner == CardCorner.TOP_LEFT ? MARGIN + W : guiW - MARGIN);
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0),
 				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc), NowPlayingHud.topBox());
 	}
 

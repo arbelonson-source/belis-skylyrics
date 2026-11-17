@@ -489,8 +489,10 @@ public final class LyricsRenderer {
 	}
 
 	/** Takes up the lyrics to show, sets {@link #hasLyrics}, and returns the song time to show them at. */
-	private long takeLyrics(SkyLyricsConfig cfg) {
-		Track playing = tracker.track();
+	long takeLyrics(SkyLyricsConfig cfg) {
+		// One read of the tracker, so the song and its position belong together
+		dev.beli.skylyrics.media.Snapshot now = tracker.snapshot();
+		Track playing = now.track();
 		LyricsService.Snapshot snap = service.snapshot();
 		Track loaded = snap.track();
 		// The tracker moves to a new song a moment before the lyrics are asked for: never show the old song's lines then
@@ -499,7 +501,7 @@ public final class LyricsRenderer {
 		if (!cfg.showPlainLyrics && !current.synced() && !current.instrumental()) {
 			current = Lyrics.NONE; // unsynced lyrics can't follow the song, some people prefer nothing
 		}
-		long time = tracker.positionMs() + cfg.offsetFor(tracker.track()) + LEAD_MS;
+		long time = tracker.positionMs(now) + cfg.offsetFor(playing) + LEAD_MS;
 		hasLyrics = !current.isEmpty() || current.instrumental();
 		if (hasLyrics) {
 			if (current != shown) {
@@ -1194,6 +1196,36 @@ public final class LyricsRenderer {
 		}
 	}
 
+	/**
+	 * Styles of one base in a few colours, each built once. The depth copies share one colour for the whole frame and the
+	 * face colour repeats from word to word, so most words find theirs here. Render thread only; one per frame.
+	 */
+	static final class ColorStyles {
+		private static final int SIZE = 16;
+		private Style base;
+		private final int[] rgbs = new int[SIZE];
+		private final Style[] styles = new Style[SIZE];
+		private int count, next;
+
+		Style of(Style base, int rgb) {
+			if (base != this.base) {
+				this.base = base;
+				count = 0;
+				next = 0;
+			}
+			for (int i = 0; i < count; i++) {
+				if (rgbs[i] == rgb) {
+					return styles[i];
+				}
+			}
+			Style made = base.withColor(rgb);
+			int at = count < SIZE ? count++ : next++ % SIZE;
+			rgbs[at] = rgb;
+			styles[at] = made;
+			return made;
+		}
+	}
+
 	private final class Draw {
 		final Canvas canvas;
 		final Font font;
@@ -1201,6 +1233,8 @@ public final class LyricsRenderer {
 		final int color;
 		final float wrapWidth;
 		final Style base;
+		/** The few colours a frame's words are drawn in, as Styles built once instead of per word and copy. */
+		private final ColorStyles colors = new ColorStyles();
 		Draw(Canvas canvas, Font font, SkyLyricsConfig cfg, int color, float wrapWidth) {
 			this.canvas = canvas;
 			this.font = font;
@@ -1440,7 +1474,7 @@ public final class LyricsRenderer {
 		}
 
 		private FormattedCharSequence colored(Display d, int rgb) {
-			Style style = base.withColor(rgb);
+			Style style = colors.of(base, rgb);
 			return sink -> {
 				for (int v = 0; v < d.cps.length; v++) {
 					if (!sink.accept(v, style, d.cps[v])) {
@@ -1725,7 +1759,12 @@ public final class LyricsRenderer {
 		};
 
 		static Display of(String row) {
-			return CACHE.computeIfAbsent(row, r -> compute(r, null));
+			Display hit = CACHE.get(row);
+			if (hit == null) { // not computeIfAbsent: its lambda would be allocated on every hit too
+				hit = compute(row, null);
+				CACHE.put(row, hit);
+			}
+			return hit;
 		}
 
 		/**
@@ -1734,7 +1773,13 @@ public final class LyricsRenderer {
 		 * goes for a left-to-right line: the comma of "hello שלום," belongs on the right of שלום.
 		 */
 		static Display of(String row, boolean rtl) {
-			return (rtl ? CACHE_RTL : CACHE_LTR).computeIfAbsent(row, r -> compute(row, rtl));
+			Map<String, Display> cache = rtl ? CACHE_RTL : CACHE_LTR;
+			Display hit = cache.get(row);
+			if (hit == null) { // not computeIfAbsent: its lambda captures rtl, so it would be allocated on every hit
+				hit = compute(row, rtl);
+				cache.put(row, hit);
+			}
+			return hit;
 		}
 
 		/** Rows drawn right to left on purpose, kept apart from the default-direction {@link #CACHE}; same size and LRU. */

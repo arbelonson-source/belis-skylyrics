@@ -45,20 +45,28 @@ public final class LyricsFont {
 		*///?}
 	}
 
+	private static Style of(FontDescription font) {
+		return Style.EMPTY.withFont(font);
+	}
+
+	private static final Style S_SMOOTH = of(SMOOTH), S_BOLD = of(BOLD), S_SCRIPT = of(SCRIPT), S_ROUND = of(ROUND);
+	private static final Style S_WORLD = of(WORLD), S_WORLD_BOLD = of(WORLD_BOLD), S_WORLD_SCRIPT = of(WORLD_SCRIPT),
+			S_WORLD_ROUND = of(WORLD_ROUND);
+
 	/** The style every lyric character starts from, before colour is added. */
 	public static Style base(SkyLyricsConfig cfg) {
-		return cfg.smoothFont ? Style.EMPTY.withFont(SMOOTH) : Style.EMPTY;
+		return cfg.smoothFont ? S_SMOOTH : Style.EMPTY;
 	}
 
 	/** Like {@link #base}, but the sky lyrics may use the bold, round or handwritten font; the top bar stays smooth. */
 	public static Style sky(SkyLyricsConfig cfg) {
 		if (cfg.smoothFont && cfg.scriptFont) {
-			return Style.EMPTY.withFont(SCRIPT);
+			return S_SCRIPT;
 		}
 		if (cfg.smoothFont && cfg.roundFont) {
-			return Style.EMPTY.withFont(ROUND);
+			return S_ROUND;
 		}
-		return cfg.smoothFont && cfg.boldFont ? Style.EMPTY.withFont(BOLD) : base(cfg);
+		return cfg.smoothFont && cfg.boldFont ? S_BOLD : base(cfg);
 	}
 
 	/** Like {@link #sky}, for the World layout's floating words: the same choice of font, from the finer images. */
@@ -66,7 +74,7 @@ public final class LyricsFont {
 		if (!cfg.smoothFont) {
 			return Style.EMPTY;
 		}
-		return Style.EMPTY.withFont(cfg.scriptFont ? WORLD_SCRIPT : cfg.roundFont ? WORLD_ROUND : cfg.boldFont ? WORLD_BOLD : WORLD);
+		return cfg.scriptFont ? S_WORLD_SCRIPT : cfg.roundFont ? S_WORLD_ROUND : cfg.boldFont ? S_WORLD_BOLD : S_WORLD;
 	}
 
 	/** Exact width in text units (the plain {@code Font.width(String)} always measures Minecraft's font). */
@@ -86,11 +94,26 @@ public final class LyricsFont {
 
 	/** The text without its direction marks (the same instance when it has none). */
 	public static String stripMarks(String text) {
-		if (text.codePoints().noneMatch(LyricsFont::isMark)) {
+		int n = text.length();
+		int i = 0;
+		while (i < n) {
+			int cp = text.codePointAt(i);
+			if (isMark(cp)) {
+				break;
+			}
+			i += Character.charCount(cp);
+		}
+		if (i == n) {
 			return text;
 		}
-		StringBuilder out = new StringBuilder(text.length());
-		text.codePoints().filter(cp -> !isMark(cp)).forEach(out::appendCodePoint);
+		StringBuilder out = new StringBuilder(n).append(text, 0, i);
+		while (i < n) {
+			int cp = text.codePointAt(i);
+			if (!isMark(cp)) {
+				out.appendCodePoint(cp);
+			}
+			i += Character.charCount(cp);
+		}
 		return out.toString();
 	}
 
@@ -129,8 +152,13 @@ public final class LyricsFont {
 	}
 
 	private static final String CANARY = "Mw0♪漢א ع";
-	private static final Style[] CANARY_STYLES = {Style.EMPTY, Style.EMPTY.withFont(SMOOTH), Style.EMPTY.withFont(BOLD),
-			Style.EMPTY.withFont(SCRIPT), Style.EMPTY.withFont(ROUND)};
+	private static final Style[] CANARY_STYLES = {Style.EMPTY, S_SMOOTH, S_BOLD, S_SCRIPT, S_ROUND};
+	/** The probe is measured at most this often: callers ask up to three times a frame. */
+	private static final long PROBE_GAP_NS = 250_000_000L;
+	private static long lastProbe;
+	private static boolean probed;
+	/** How many probe strings were measured so far, for the test. */
+	static int canaryMeasures;
 
 	/**
 	 * Notices a resource or font change that happened while nothing here was drawing: measures a probe text in each of
@@ -139,15 +167,32 @@ public final class LyricsFont {
 	 * Fabric API or mixin, and it sees exactly what matters: glyph widths.
 	 */
 	static void checkFonts(Font font) {
+		checkFonts(font.getSplitter(), System.nanoTime());
+	}
+
+	/** {@link #checkFonts(Font)} at a given time; measures only when the last probe is 250 ms old or a reload was seen. */
+	static void checkFonts(StringSplitter splitter, long now) {
+		if (probed && now - lastProbe < PROBE_GAP_NS) {
+			return;
+		}
+		probed = true;
+		lastProbe = now;
 		float sum = 0;
 		for (Style style : CANARY_STYLES) {
-			sum = sum * 1.0009f + width(font, style, CANARY);
+			canaryMeasures++;
+			sum = sum * 1.0009f + width(splitter, style, CANARY);
 		}
 		WIDTHS.probe(sum);
 	}
 
+	/** Forgets when the probe last ran, so the next {@link #checkFonts} measures again (test seam). */
+	static void resetProbeGate() {
+		probed = false;
+	}
+
 	/** Drops every remembered width: a resource reload can change glyph widths. Called while the loading screen is up. */
 	static void fontsReloaded() {
+		probed = false;
 		WIDTHS.invalidate();
 	}
 
