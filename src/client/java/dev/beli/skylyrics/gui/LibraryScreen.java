@@ -1153,12 +1153,12 @@ public final class LibraryScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		sayNewSection = false;
 		stop = -1;
-		if (event.button() == 0 && !rescue.pressed()) {
+		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
 			return true;
 		}
 		double mx = event.x();
 		double my = event.y();
-		if (event.button() != 0) {
+		if (event.button() != ClickRescue.left()) {
 			return super.mouseClicked(event, doubleClick);
 		}
 		if (Ui.inside(mx, my, px + pw - 22, py + 8, 14, 14)) {

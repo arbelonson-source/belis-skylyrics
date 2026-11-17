@@ -1441,7 +1441,7 @@ public final class SkyLyricsScreen extends Screen {
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		announcement = null;
-		if (event.button() == 0 && !rescue.pressed()) {
+		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
 			return true;
 		}
 		double mx = event.x();
@@ -1450,7 +1450,7 @@ public final class SkyLyricsScreen extends Screen {
 			preview = false;
 			return true;
 		}
-		if (event.button() != 0) {
+		if (event.button() != ClickRescue.left()) {
 			return super.mouseClicked(event, doubleClick);
 		}
 
@@ -1547,7 +1547,7 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseReleased(MouseButtonEvent event) {
-		if (event.button() == 0 && !rescue.released()) {
+		if (event.button() == ClickRescue.left() && !rescue.released()) {
 			return true;
 		}
 		if (active != null) {

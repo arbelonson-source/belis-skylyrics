@@ -102,9 +102,18 @@ final class ClickRescue {
 		*///?}
 	}
 
+	/** The left mouse button's number in this Minecraft version: 0, but 1 on 26.3, where SDL numbers the buttons from 1. */
+	static int left() {
+		//? if >=1.21.9 {
+		return com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT;
+		//?} else {
+		/*return 0;
+		*///?}
+	}
+
 	private static MouseButtonEvent event(double x, double y) {
 		//? if >=1.21.9 {
-		return new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(0, 0));
+		return new MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(left(), 0));
 		//?} else {
 		/*return new MouseButtonEvent(x, y, 0);
 		*///?}
