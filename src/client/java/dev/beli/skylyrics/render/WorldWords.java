@@ -1632,7 +1632,7 @@ final class WorldWords {
 				float bend = tilt * curve * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1);
 				// Its highest word, however the line climbs or bows, stays well under the top of the screen
 				float drift = (float) Math.toDegrees(Math.atan(RISE_MAX * rise / distance));
-				top = Mth.clamp(Math.max(top, belowTop(centre[1], width, slope, bend, row, drift)), Sentence.START_UP, Sentence.START_DOWN);
+				top = Mth.clamp(Math.max(top, belowTop(centre[1], width, slope, bend, row, drift)), Sentence.START_UP, Sentence.startDown(centre[1]));
 				float cost = 0;
 				for (float[] o : taken) {
 					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + below - o[1]);
@@ -1716,9 +1716,9 @@ final class WorldWords {
 		return (float) Math.toDegrees(Math.atan(tan));
 	}
 
-	/** The lowest pitch a row may start on while you look at {@code pitch}: the bottom of the screen less a margin, never past {@link Sentence#ROW_LIMIT}. */
+	/** The lowest pitch a row may start on while you look at {@code pitch}: the bottom of the screen less a margin, never past {@link Sentence#rowLimit}. */
 	static float lowestSeen(float pitch, float halfView) {
-		return Math.min(Sentence.ROW_LIMIT, pitch + halfView - ROW_MARGIN);
+		return Math.min(Sentence.rowLimit(pitch), pitch + halfView - ROW_MARGIN);
 	}
 
 	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
@@ -2037,13 +2037,27 @@ final class WorldWords {
 		/** The same, for a line placed up to {@code aside} degrees to the side of where you looked. */
 		boolean lost(float yaw, float pitch, float aside) {
 			float off = Mth.wrapDegrees(yaw - (left + width / 2));
-			return Math.abs(off) > width / 2 + LOST_YAW + aside || Math.abs(Mth.clamp(pitch, START_UP, START_DOWN) - home) > LOST_PITCH;
+			return Math.abs(off) > width / 2 + LOST_YAW + aside || Math.abs(Mth.clamp(pitch, START_UP, startDown(pitch + LIFT)) - home) > LOST_PITCH;
 		}
 
 		/** The highest and lowest pitch a line starts on, in degrees (a view past them is judged as if at them). */
 		static final float START_UP = -70f, START_DOWN = 40f;
 		/** The lowest pitch a row may start on; a line that would go further down starts over at the top instead. */
 		static final float ROW_LIMIT = 50f;
+		/** Looking down, a line starts this far above where you look, and no lower than {@link #START_DOWN_MAX}. */
+		static final float DOWN_LEAD = 15f, START_DOWN_MAX = 65f;
+		/** Looking down, its rows may go this far above the bottom of where you look, and never past {@link #ROW_CAP}: near 90 they bunch up round the point under you. */
+		static final float LIMIT_LEAD = 5f, ROW_CAP = 80f;
+
+		/** The lowest pitch a line starts on while you look at {@code view}: {@link #START_DOWN}, or a little above where you look when that is further down. */
+		static float startDown(float view) {
+			return Mth.clamp(view - DOWN_LEAD, START_DOWN, START_DOWN_MAX);
+		}
+
+		/** The lowest pitch a row may start on while you look at {@code view}: {@link #ROW_LIMIT}, or a little above the bottom of where you look when that is further down. */
+		static float rowLimit(float view) {
+			return Mth.clamp(view - LIMIT_LEAD, ROW_LIMIT, ROW_CAP);
+		}
 
 		/** Whether the rows have gone as far down as they may, so the next piece starts the line over higher up. */
 		boolean full() {
@@ -2055,7 +2069,7 @@ final class WorldWords {
 		 * row never counts: a line that can't fit even one row stays where it is.
 		 */
 		boolean full(float low) {
-			return top > ROW_LIMIT || rows > 0 && top > low;
+			return top > Math.max(ROW_LIMIT, low) || rows > 0 && top > low;
 		}
 
 		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */

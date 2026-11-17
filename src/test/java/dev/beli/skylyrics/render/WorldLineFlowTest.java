@@ -81,4 +81,41 @@ class WorldLineFlowTest {
 		assertTrue(w.restyled(Style.EMPTY.withBold(true)));
 		assertFalse(w.restyled(Style.EMPTY.withBold(true)));
 	}
+
+	@Test
+	void atTheHorizonAndLookingUpTheStartAndTheLimitsStayAsTheyWere() {
+		for (float pitch : new float[] {-90, -30, 0, 30, 55}) {
+			assertEquals(40, WorldWords.Sentence.startDown(pitch), 1e-3, "start at " + pitch);
+			assertEquals(50, WorldWords.Sentence.rowLimit(pitch), 1e-3, "limit at " + pitch);
+			assertEquals(Math.min(50, pitch + 35 - WorldWords.ROW_MARGIN), WorldWords.lowestSeen(pitch, 35), 1e-3);
+		}
+	}
+
+	@Test
+	void lookingDownAtSeventyFiveAStartingLineIsOnScreenAndItsFirstRowIsNotFull() {
+		float view = 75, half = WorldWords.halfView(0, 70);
+		float top = WorldWords.Sentence.startDown(view);
+		assertTrue(Math.abs(top - view) < half, "starts at " + top);
+		WorldWords.Sentence s = new WorldWords.Sentence(-17, top, 10, 0);
+		assertFalse(s.full(WorldWords.lowestSeen(view, half)));
+		assertFalse(s.lost(0, view - 12, 36));
+		s.place(5, 3, 0, 0);
+		assertFalse(s.full(WorldWords.lowestSeen(view, half)));
+		assertFalse(s.lost(0, view - 12, 36));
+		assertTrue(Math.abs(s.top - view) < half, "first row at " + s.top);
+	}
+
+	@Test
+	void lookingStraightDownTheLimitsStayUnderEightyFive() {
+		assertTrue(WorldWords.Sentence.startDown(90) < 85);
+		assertTrue(WorldWords.Sentence.rowLimit(90) < 85);
+		assertTrue(WorldWords.lowestSeen(90, 55) < 85);
+		WorldWords.Sentence s = new WorldWords.Sentence(-17, WorldWords.Sentence.startDown(90), 10, 0);
+		float low = WorldWords.lowestSeen(90, WorldWords.halfView(0, 70));
+		for (int k = 0; k < 40 && !s.full(low); k++) {
+			s.place(5, 3, 0, 0);
+		}
+		assertTrue(s.full(low), "the line fills up");
+		assertTrue(s.top < 90, "rows end at " + s.top);
+	}
 }
