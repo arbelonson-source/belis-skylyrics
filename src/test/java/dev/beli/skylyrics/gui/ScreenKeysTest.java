@@ -33,6 +33,47 @@ class ScreenKeysTest {
 	}
 
 	@Test
+	void typesCharacterCoversLettersDigitsAndPunctuationButNotFunctionKeys() {
+		//? if >=26.3 {
+		/*// SDL scancodes: 4-39 letters and digits, 40-43 are Enter, Esc, Backspace, Tab, 44-56 space and punctuation, 57 Caps Lock
+		for (int key : new int[] {4, 39, 44, 56, 100}) {
+			assertTrue(ScreenKeys.typesCharacter(key), "key " + key);
+		}
+		for (int key : new int[] {3, 40, 43, 57, 99, 101, 58}) {
+			assertFalse(ScreenKeys.typesCharacter(key), "key " + key);
+		}
+		*///?} else {
+		// GLFW: 32 (space) to 96 (grave), plus 161 and 162
+		for (int key : new int[] {32, 96, 161, 162}) {
+			assertTrue(ScreenKeys.typesCharacter(key), "key " + key);
+		}
+		for (int key : new int[] {31, 97, 160, 163, com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE, F9}) {
+			assertFalse(ScreenKeys.typesCharacter(key), "key " + key);
+		}
+		//?}
+	}
+
+	@Test
+	void ctrlOrAltIsFoundInTheModifierBitsAndShiftAloneIsNot() {
+		//? if >=26.3 {
+		/*assertTrue(ScreenKeys.ctrlOrAlt(0xC0)); // either Ctrl
+		assertTrue(ScreenKeys.ctrlOrAlt(0x40));
+		assertTrue(ScreenKeys.ctrlOrAlt(0x300)); // either Alt
+		assertTrue(ScreenKeys.ctrlOrAlt(0x100));
+		assertFalse(ScreenKeys.ctrlOrAlt(0x1)); // left Shift
+		assertFalse(ScreenKeys.ctrlOrAlt(0x3));
+		assertFalse(ScreenKeys.ctrlOrAlt(0));
+		*///?} else {
+		assertTrue(ScreenKeys.ctrlOrAlt(2)); // GLFW_MOD_CONTROL
+		assertTrue(ScreenKeys.ctrlOrAlt(4)); // GLFW_MOD_ALT
+		assertTrue(ScreenKeys.ctrlOrAlt(1 | 2));
+		assertFalse(ScreenKeys.ctrlOrAlt(1)); // Shift
+		assertFalse(ScreenKeys.ctrlOrAlt(8)); // Super
+		assertFalse(ScreenKeys.ctrlOrAlt(0));
+		//?}
+	}
+
+	@Test
 	void shiftReversesOnlyTab() {
 		assertEquals(-1, ScreenKeys.focusDir(true, true, false));
 		assertEquals(1, ScreenKeys.focusDir(true, false, false));

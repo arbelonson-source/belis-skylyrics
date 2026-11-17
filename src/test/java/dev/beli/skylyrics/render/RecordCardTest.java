@@ -375,6 +375,8 @@ class RecordCardTest {
 		assertTrue(RecordCard.f3Covers(CardCorner.TOP_LEFT, 4, true));
 		assertTrue(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 200, true));
 		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 400, true));
+		assertTrue(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 319, true)); // just inside F3_REACH (320)
+		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 320, true)); // 320 is the first row clear of F3
 		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_RIGHT, 200, true));
 		assertFalse(RecordCard.f3Covers(CardCorner.BOTTOM_LEFT, 200, false));
 	}
