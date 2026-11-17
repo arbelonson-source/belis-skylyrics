@@ -65,6 +65,13 @@ import dev.beli.skylyrics.media.DemoSource;
  * the frames being caught. {@code burstat <name> <count> <everyMs>} first waits until the lyrics move to the next line
  * (so the first frame is the crosshair flash's peak, the start of a slide), and gives up after 10 s. One burst at a time.
  * <p>
+ * {@code click <x> <y>} left-clicks and releases at that spot of the open screen, in scaled GUI pixels. {@code scroll <amount>}
+ * scrolls the open screen's centre by that much (negative scrolls the other way). {@code search <text>} types into the
+ * settings screen's search box. {@code screen <class name>} opens another mod's screen by class name (e.g. Mod Menu's list).
+ * {@code title} opens the title screen, which {@code screen} can't in the production client. {@code set <field> <value>} changes
+ * one config field for this run only (not saved). {@code fastlines <ms> <a | b | c>} is {@code lines} with one line every
+ * {@code ms} milliseconds. {@code attack on|off} holds the Attack key down or lets go.
+ * <p>
  * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
  * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
  * highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
