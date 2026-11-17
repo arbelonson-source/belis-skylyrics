@@ -100,7 +100,8 @@ public final class RecordCard {
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
 
-		Track track = tracker.track();
+		dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
+		Track track = reading.track();
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.recordCard && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
 		*///?} else {
@@ -164,7 +165,7 @@ public final class RecordCard {
 			text(g, font, style, NowPlayingHud.clip(font, style, sub, room), tx, y + 21, scale, fade(SUB));
 		}
 
-		long played = tracker.positionMs(), length = track.lengthMs();
+		long played = tracker.positionMs(reading), length = track.lengthMs();
 		float done = TopBarLayout.progress(played, length);
 		float lineW = x + W - PAD - 2 - tx, lineY = y + 31;
 		int accent = SkyLyricsClient.get().art().color();
