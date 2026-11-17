@@ -1478,7 +1478,7 @@ public final class LibraryScreen extends Screen {
 		KeyMapping key = mod.libraryKey();
 		if (key != null && key.matches(event)) {
 			// A letter here starts a search, and a key held since it opened us only repeats
-			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), event.hasControlDown() || event.hasControlDownWithQuirk(), event.hasAltDown(), closeKeyHeld)) {
+			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), ScreenKeys.realCtrl(event) || event.hasControlDownWithQuirk(), event.hasAltDown(), closeKeyHeld)) {
 				onClose();
 				return true;
 			}

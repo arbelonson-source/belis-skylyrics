@@ -137,4 +137,13 @@ class ScreenKeysTest {
 		assertFalse(new LegacyInput.KeyEvent(tab, 0, 1).hasControlDown());
 	}
 	*///?}
+
+	@Test
+	void theRealCtrlBitIsCtrlAndNotCmdOrShift() {
+		assertTrue(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL));
+		assertTrue(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL | org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT));
+		assertFalse(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_SUPER));
+		assertFalse(ScreenKeys.hasCtrlBit(org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT | org.lwjgl.glfw.GLFW.GLFW_MOD_ALT));
+		assertFalse(ScreenKeys.hasCtrlBit(0));
+	}
 }
