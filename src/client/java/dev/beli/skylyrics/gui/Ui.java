@@ -132,8 +132,14 @@ final class Ui {
 	}
 
 	static String clip(Font font, String text, int maxW) {
-		return clip(font, text, maxW, maxW <= 0 ? 0 : font.width(text));
+		if (maxW <= 0) {
+			return "";
+		}
+		return CLIPS.get(Language.getInstance(), font, text, maxW, () -> clip(font, text, maxW, font.width(text)));
 	}
+
+	/** Cuts remembered between frames, per (font, text, room), dropped when the language object changes (a reload). Render thread only. */
+	private static final ClipCache CLIPS = new ClipCache(512);
 
 	/** {@link #clip(Font, String, int)} when the width of {@code text} is already known. */
 	static String clip(Font font, String text, int maxW, int textW) {
@@ -143,7 +149,7 @@ final class Ui {
 		if (textW <= maxW) {
 			return text;
 		}
-		return clipBy(text, maxW, font::width);
+		return CLIPS.get(Language.getInstance(), font, text, maxW, () -> clipBy(text, maxW, font::width));
 	}
 
 	/** The text cut to fit {@code maxW} and ending in "…", cut between whole characters (never inside a flag or an accent). */
@@ -173,6 +179,46 @@ final class Ui {
 		float k = 1 - (float) Math.exp(-dt * speed);
 		float next = value + (target - value) * k;
 		return Math.abs(target - next) < 0.002f ? target : next;
+	}
+
+	/**
+	 * A small least-recently-used memory of cut texts per (font, text, room), valid for one language object: a resource
+	 * reload or language switch makes a new one and everything is dropped, as glyph widths may have changed. Render thread only.
+	 */
+	static final class ClipCache {
+		private record Key(Object font, String text, int room) {}
+
+		private final int limit;
+		private final LinkedHashMap<Key, String> map;
+		private Object language;
+
+		ClipCache(int limit) {
+			this.limit = limit;
+			this.map = new LinkedHashMap<>(16, 0.75f, true) {
+				@Override
+				protected boolean removeEldestEntry(Map.Entry<Key, String> eldest) {
+					return size() > ClipCache.this.limit;
+				}
+			};
+		}
+
+		String get(Object language, Object font, String text, int room, Supplier<String> compute) {
+			if (language != this.language) {
+				map.clear();
+				this.language = language;
+			}
+			Key key = new Key(font, text, room);
+			String known = map.get(key);
+			if (known == null) {
+				known = compute.get();
+				map.put(key, known);
+			}
+			return known;
+		}
+
+		int size() {
+			return map.size();
+		}
 	}
 
 	/**
