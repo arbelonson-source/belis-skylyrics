@@ -207,12 +207,16 @@ public final class LyricsRenderer {
 		announced = null;
 		SkyEffects.forgetStars();
 		WorldWords.forgetPlayers();
+		Visibility.forget();
 	}
 
 	/** You joined a world: its first song title floats up again. A dimension change within a world doesn't count. */
 	public void onJoinWorld() {
 		announced = null;
 		resetAnchor();
+		// The arc lines' spots belong to the last world's view too
+		arcAnchors.clear();
+		Visibility.forget();
 	}
 
 	/** Forget where the lyrics were anchored, so the next frame starts them where you look now (Lazy follow). */
