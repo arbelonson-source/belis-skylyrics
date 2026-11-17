@@ -652,7 +652,9 @@ public final class LyricsRenderer {
 		float[] lock = ViewLock.update(cfg, camera.yRot(), camera.xRot());
 		float fixedYaw = lock != null ? lock[0] : cfg.direction.yaw;
 		float fixedPitch = lock != null ? lock[1] : Float.NaN;
-		Track track = tracker.track();
+		// One read of the tracker, so the title and the position belong to the same song
+		dev.beli.skylyrics.media.Snapshot song = tracker.snapshot();
+		Track track = song.track();
 		float alpha = visibility * cfg.opacity;
 		// Not while the lyrics are still loading (nothing is visible yet, and the title's few seconds would pass unseen)
 		if (!dead && !track.isNone() && !sameSong(track, announced) && titleCanShow(hasLyrics, alpha)) {
@@ -662,7 +664,7 @@ public final class LyricsRenderer {
 			}
 		}
 		// The raw song position, not the lyrics time: a timing slider moves the lyrics time without any seek
-		long position = tracker.positionMs();
+		long position = tracker.positionMs(song);
 		if (jumpedBack(worldTime, position)) {
 			worldWords.rewind(now);
 		}

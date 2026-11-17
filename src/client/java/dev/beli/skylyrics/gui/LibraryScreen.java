@@ -161,6 +161,8 @@ public final class LibraryScreen extends Screen {
 	/** A list being loaded page by page as you scroll. */
 	private final class Shelf {
 		final IntFunction<CompletableFuture<? extends Page<?>>> loader;
+		/** Liked songs and Recently heard shift while you scroll, so a song can come round again on a later page. */
+		final boolean noRepeats;
 		final List<Object> items = new ArrayList<>();
 		final List<Float> born = new ArrayList<>();
 		final List<Float> lift = new ArrayList<>();
@@ -175,7 +177,12 @@ public final class LibraryScreen extends Screen {
 		float scrollTarget;
 
 		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader) {
+			this(loader, false);
+		}
+
+		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader, boolean noRepeats) {
 			this.loader = loader;
+			this.noRepeats = noRepeats;
 		}
 
 		void more() {
@@ -199,8 +206,9 @@ public final class LibraryScreen extends Screen {
 			}
 			try {
 				Page<?> page = pending.join();
-				for (int i = 0; i < page.items().size(); i++) {
-					items.add(page.items().get(i));
+				List<?> fresh = noRepeats ? SpotifyLibrary.withoutRepeats(items, page.items()) : page.items();
+				for (int i = 0; i < fresh.size(); i++) {
+					items.add(fresh.get(i));
 					born.add(LibraryGrid.revealAt(clock, i, STAGGER));
 					lift.add(0f);
 				}
@@ -230,7 +238,7 @@ public final class LibraryScreen extends Screen {
 				case SEARCH -> offset -> lib.search(q, offset);
 				case LIKED -> lib::liked;
 				case PLAYLISTS -> lib::playlists;
-			});
+			}, s == Section.LIKED);
 			if (s != Section.SEARCH || !q.isEmpty()) {
 				shelf.more();
 			} else {
@@ -1599,5 +1607,10 @@ public final class LibraryScreen extends Screen {
 	@Override
 	public void removed() {
 		lastSection = section;
+		// Page loads still waiting for their turn are not wanted any more
+		shelves.values().forEach(Shelf::cancel);
+		if (opened != null) {
+			opened.cancel();
+		}
 	}
 }

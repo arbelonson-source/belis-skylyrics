@@ -5,7 +5,7 @@
 - **Demo song.** While the demo song plays, the top bar shows "Demo" next to the song, so you can tell it from your own music. Switching the demo song on now starts it from the top, playing, instead of somewhere in the middle (or still paused from last time). Turning **Demo song** off while the song library is open brings your own songs back instead of keeping the made-up ones.
 - **Can't read your music player.** If SkyLyrics can't read your music player (or can't reach the internet for Spotify) for 10 seconds, it now tells you with a pop-up, once per game start, and where to look.
 - **Spanish and Brazilian Portuguese.** The settings, song library, top bar, Record card and tour are now in Spanish (Spain and Latin America) and Brazilian Portuguese (also used for Portugal), with Minecraft's own names for its menus.
-- **Smooth letters for more alphabets.** Russian, Ukrainian and other Cyrillic, Greek and Vietnamese lyrics use smooth letters like the rest of the line instead of small pixel ones.
+- **Smooth letters for more alphabets.** Russian, Ukrainian and other Cyrillic, Greek and Vietnamese lyrics use smooth letters of the same weight as the rest of the line instead of small pixel ones.
 
 ### Fixed
 
@@ -99,6 +99,10 @@
 - **Linux without a session bus.** Where Linux has no desktop message bus (some containers and launchers), the mod no longer tries to reach it twice a second: it waits longer each time, up to 30 seconds, and still finds a bus that shows up later.
 - **Spotify sign-out.** Signing out of Spotify just as the mod asks it for the song no longer brings the old account's song back for a moment.
 - **Album cover on a song change.** The last song's album cover no longer shows for a moment next to the new song's title.
+- **Floating distance read-out.** With Floating placement, the **Distance** number now changes on every step of the slider; far out it used to stay the same while the lyrics still moved.
+- **Player from another computer.** When your settings file comes from another computer, the **Player** button shows the player it names instead of "Auto" (SkyLyrics still follows that player when it is open).
+- **Song library.** A song no longer shows twice in Liked songs or Recently heard when the list changes while you scroll, and Recently heard search finds "Beyoncé" when you type "beyonce". When Spotify is busy for a long time, the library says so at once instead of loading for half a minute, and if **Play** can't reach Spotify it says why (signed out or offline). An empty or garbled answer from Spotify (a Wi-Fi login page, say) shows "Spotify didn't answer" instead of an end to the list.
+- **Flowing line.** With **Flowing line** on, a long line no longer starts again on top of its own first words at bigger sizes or when you look straight up or down, and a very long line starts over higher up instead of running below your feet. The words are also laid out again when you change the font.
 
 ### Faster
 

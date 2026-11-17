@@ -22,13 +22,44 @@ class SettingsRowsTest {
 	void distanceShowsRealBlocks() {
 		assertEquals("10.7", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 64, 12));
 		assertEquals("4.0", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 8, 12));
-		assertEquals("16.0", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 160, 12));
+		assertEquals("16.00", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 160, 12));
 		assertEquals("100", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 12));
 		// capped to 80% of the render distance (8 chunks = 128 blocks -> 102)
 		assertEquals("102", SkyLyricsScreen.distanceBlocks(Placement.SKY, 160, 8));
 		// never closer than 8 blocks, even when the stored value or a tiny render distance would say less
 		assertEquals("8", SkyLyricsScreen.distanceBlocks(Placement.SKY, 2, 12));
 		assertEquals("26", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 2), "80% of 2 chunks");
+	}
+
+	@Test
+	void floatingDistanceReadoutChangesOnEveryStep() {
+		String previous = null;
+		for (int v = 8; v <= 160; v++) {
+			String text = SkyLyricsScreen.distanceBlocks(Placement.FLOATING, v, 12);
+			assertFalse(text.equals(previous), "step " + v + " reads the same as the one before: " + text);
+			previous = text;
+		}
+	}
+
+	@Test
+	void timingUnderFiveMillisecondsReadsZero() {
+		assertEquals("0 s", SkyLyricsScreen.seconds(0));
+		assertEquals("0 s", SkyLyricsScreen.seconds(1));
+		assertEquals("0 s", SkyLyricsScreen.seconds(-4));
+		assertEquals("+0.01 s", SkyLyricsScreen.seconds(5));
+		assertEquals("+0.05 s", SkyLyricsScreen.seconds(50));
+		assertEquals("-1.20 s", SkyLyricsScreen.seconds(-1200));
+	}
+
+	@Test
+	void aSavedPlayerThisSystemDoesNotListStillShowsItsName() {
+		String[] keys = {"", "spotify", "firefox"};
+		java.util.List<String> names = java.util.List.of("Spotify", "Firefox");
+		assertEquals(java.util.List.of("Auto", "Spotify", "Firefox"), SkyLyricsScreen.playerChoices(keys, names, "firefox", "Auto"));
+		assertEquals(2, SkyLyricsScreen.playerIndex(keys, "firefox"));
+		assertEquals(0, SkyLyricsScreen.playerIndex(keys, ""));
+		assertEquals(java.util.List.of("Auto", "Spotify", "Firefox", "edge"), SkyLyricsScreen.playerChoices(keys, names, "edge", "Auto"));
+		assertEquals(3, SkyLyricsScreen.playerIndex(keys, "edge"));
 	}
 
 	@Test

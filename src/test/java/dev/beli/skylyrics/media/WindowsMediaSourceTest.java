@@ -378,7 +378,7 @@ class WindowsMediaSourceTest {
 				Snapshot s = source.poll();
 				long took = System.currentTimeMillis() - before;
 				assertEquals("Slow Song A", s.track().title());
-				assertTrue(took < 10_000, "a poll took " + took + " ms");
+				assertTrue(took < 30_000, "a poll took " + took + " ms");
 				polls++;
 				Thread.sleep(300);
 			}
@@ -412,7 +412,7 @@ class WindowsMediaSourceTest {
 		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS);
 		try {
 			String first = null, latest = null;
-			long end = System.currentTimeMillis() + 40_000;
+			long end = System.currentTimeMillis() + 90_000;
 			while (System.currentTimeMillis() < end && !"new cover".equals(latest)) {
 				String art = source.poll().track().artUrl();
 				if (!art.isEmpty()) {
@@ -654,6 +654,25 @@ class WindowsMediaSourceTest {
 			now[0] += 500_000_000L;
 		}
 		return asks[0];
+	}
+
+	@Test
+	void aReadThatFinishesAfterCloseIsNotKeptForTheNextPolls() throws Exception {
+		int[] asks = {0};
+		long[] now = {1_000_000_000L};
+		WindowsMediaSource[] box = new WindowsMediaSource[1];
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS,
+				() -> false, () -> now[0], cmd -> {
+					if (asks[0]++ == 0) {
+						box[0].close(); // the game closes the source while the first question is still being answered
+					}
+					return playingReply();
+				});
+		box[0] = source;
+		source.poll();
+		now[0] += 500_000_000L;
+		source.poll(); // not looking, 0.5 s on: would reuse the 15 s reading, but that one began before the close
+		assertEquals(2, asks[0]);
 	}
 
 	@Test

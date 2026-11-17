@@ -21,6 +21,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -475,42 +476,109 @@ public final class NowPlayingHud {
 				return null;
 			}
 			Scoreboard scoreboard = mc.level.getScoreboard();
-			Objective objective = null;
-			PlayerTeam team = scoreboard.getPlayersTeam(mc.player.getScoreboardName());
-			if (team != null) {
-				//? if >=26.2 {
-				/*DisplaySlot slot = team.getColor().map(TeamColor::displaySlot).orElse(null);
-				*///?} else {
-				DisplaySlot slot = DisplaySlot.teamColorToSlot(team.getColor());
-				//?}
-				if (slot != null) {
-					objective = scoreboard.getDisplayObjective(slot);
-				}
-			}
-			if (objective == null) {
-				objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
-			}
+			Objective objective = sidebarObjective(scoreboard, mc.player.getScoreboardName());
 			if (objective == null) {
 				return null;
 			}
-			NumberFormat format = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT);
-			List<PlayerScoreEntry> entries = scoreboard.listPlayerScores(objective).stream()
-					.filter(entry -> !entry.isHidden())
-					.sorted(Comparator.comparing(PlayerScoreEntry::value).reversed()
-							.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER))
-					.limit(TopBarLayout.SIDEBAR_MAX)
-					.toList();
-			int[] nameW = new int[entries.size()], scoreW = new int[entries.size()];
-			for (int i = 0; i < nameW.length; i++) {
-				PlayerScoreEntry entry = entries.get(i);
-				nameW[i] = mc.font.width(PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName()));
-				scoreW[i] = mc.font.width(entry.formatValue(format));
+			long now = System.nanoTime();
+			float[] hit = SIDEBAR.lookup(scoreboard, objective, mc.font, guiW, guiH, now);
+			if (hit != null) {
+				return hit;
 			}
-			int widest = TopBarLayout.sidebarWidth(mc.font.width(objective.getDisplayName()), mc.font.width(": "), nameW, scoreW);
-			return TopBarLayout.sidebarBox(guiW, guiH, nameW.length, widest);
+			return SIDEBAR.store(measureSidebar(scoreboard, objective, mc.font::width, guiW, guiH), now);
 		} catch (RuntimeException | LinkageError e) {
 			return null;
 		}
+	}
+
+	/** The objective the game shows in the sidebar for this player: their team colour's slot first, else the sidebar slot. */
+	static Objective sidebarObjective(Scoreboard scoreboard, String playerName) {
+		Objective objective = null;
+		PlayerTeam team = scoreboard.getPlayersTeam(playerName);
+		if (team != null) {
+			//? if >=26.2 {
+			/*DisplaySlot slot = team.getColor().map(TeamColor::displaySlot).orElse(null);
+			*///?} else {
+			DisplaySlot slot = DisplaySlot.teamColorToSlot(team.getColor());
+			//?}
+			if (slot != null) {
+				objective = scoreboard.getDisplayObjective(slot);
+			}
+		}
+		return objective != null ? objective : scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
+	}
+
+	/** The measured sidebar box, kept while nothing that sizes it has changed (the vanilla scoreboard has no change counter). */
+	static final class SidebarCache {
+		private static final long MAX_AGE_NANOS = 1_000_000_000L;
+		private long signature;
+		private long storedAt;
+		private float[] box;
+		private long pending;
+		int measures;
+
+		/** The kept box when the scoreboard looks the same as when it was measured, else null (call {@link #store} next). */
+		float[] lookup(Scoreboard scoreboard, Objective objective, Object font, int guiW, int guiH, long now) {
+			long sig = signature(scoreboard, objective, font, guiW, guiH);
+			pending = sig;
+			return box != null && sig == signature && now - storedAt < MAX_AGE_NANOS ? box : null;
+		}
+
+		float[] store(float[] measured, long now) {
+			box = measured;
+			signature = pending;
+			storedAt = now;
+			measures++;
+			return measured;
+		}
+
+		private static long mix(long h, int v) {
+			return (h ^ v) * 0x9E3779B97F4A7C15L + (h >>> 29);
+		}
+
+		private static long signature(Scoreboard scoreboard, Objective objective, Object font, int guiW, int guiH) {
+			long h = mix(mix(mix(1, System.identityHashCode(objective)), System.identityHashCode(font)), guiW * 31 + guiH);
+			h = mix(h, objective.getDisplayName().hashCode());
+			h = mix(h, Objects.hashCode(objective.numberFormat()));
+			long entries = 0;
+			int count = 0;
+			for (PlayerScoreEntry entry : scoreboard.listPlayerScores(objective)) {
+				if (entry.isHidden()) {
+					continue;
+				}
+				PlayerTeam team = scoreboard.getPlayersTeam(entry.owner());
+				long e = mix(mix(mix(mix(7, entry.owner().hashCode()), entry.value()), Objects.hashCode(entry.display())),
+						Objects.hashCode(entry.numberFormatOverride()));
+				if (team != null) {
+					e = mix(mix(e, team.getPlayerPrefix().hashCode()), team.getPlayerSuffix().hashCode());
+				}
+				entries += e; // a sum, so the order the scoreboard lists them in doesn't matter
+				count++;
+			}
+			return mix(mix(h, count), (int) (entries ^ (entries >>> 32)));
+		}
+	}
+
+	private static final SidebarCache SIDEBAR = new SidebarCache();
+
+	/** Measures the sidebar box: up to 15 entries, the most points first, the way the game draws them. */
+	static float[] measureSidebar(Scoreboard scoreboard, Objective objective, java.util.function.ToIntFunction<FormattedText> width,
+			int guiW, int guiH) {
+		NumberFormat format = objective.numberFormatOrDefault(StyledFormat.SIDEBAR_DEFAULT);
+		List<PlayerScoreEntry> entries = scoreboard.listPlayerScores(objective).stream()
+				.filter(entry -> !entry.isHidden())
+				.sorted(Comparator.comparing(PlayerScoreEntry::value).reversed()
+						.thenComparing(PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER))
+				.limit(TopBarLayout.SIDEBAR_MAX)
+				.toList();
+		int[] nameW = new int[entries.size()], scoreW = new int[entries.size()];
+		for (int i = 0; i < nameW.length; i++) {
+			PlayerScoreEntry entry = entries.get(i);
+			nameW[i] = width.applyAsInt(PlayerTeam.formatNameForTeam(scoreboard.getPlayersTeam(entry.owner()), entry.ownerName()));
+			scoreW[i] = width.applyAsInt(entry.formatValue(format));
+		}
+		int widest = TopBarLayout.sidebarWidth(width.applyAsInt(objective.getDisplayName()), width.applyAsInt(Component.literal(": ")), nameW, scoreW);
+		return TopBarLayout.sidebarBox(guiW, guiH, nameW.length, widest);
 	}
 
 	/** How far down a bar at the top must start to keep clear of the potion effect icons (0 when it doesn't reach them). */

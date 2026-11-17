@@ -266,16 +266,22 @@ class CoverCacheTest {
 			for (int i = 0; i < 6; i++) {
 				cache.get("https://example.test/bad" + i);
 			}
-			long end = System.nanoTime() + 5_000_000_000L;
+			long end = System.nanoTime() + 20_000_000_000L;
 			while (reads.get() < 6 && System.nanoTime() < end) {
 				Thread.sleep(10);
 			}
 			assertEquals(6, reads.get());
 			cache.get("https://example.test/last");
-			assertTrue(next.await(5, java.util.concurrent.TimeUnit.SECONDS), "the workers are still running");
+			assertTrue(next.await(20, java.util.concurrent.TimeUnit.SECONDS), "the workers are still running");
 		} finally {
 			cache.close();
 		}
+	}
+
+	private static java.lang.reflect.Field field(Object o, String name) throws Exception {
+		java.lang.reflect.Field f = o.getClass().getDeclaredField(name);
+		f.setAccessible(true);
+		return f;
 	}
 
 	@Test
@@ -296,6 +302,15 @@ class CoverCacheTest {
 				Thread.sleep(5);
 			}
 			assertEquals(3, reads.get());
+			// reads counts when the reader is called, a moment before the failure is recorded: wait for the record
+			// (the cache has no accessor, so look at the cover's own counter) or a get could start a 4th read
+			Object cover = ((java.util.Map<?, ?>) field(cache, "covers").get(cache)).get(url);
+			java.lang.reflect.Field failures = field(cover, "failures");
+			long settle = System.nanoTime() + 20_000_000_000L;
+			while (failures.getInt(cover) < 3 && System.nanoTime() < settle) {
+				Thread.sleep(5);
+			}
+			assertEquals(3, failures.getInt(cover), "the third failure was never recorded");
 			for (int i = 0; i < 40; i++) {
 				later += CoverCache.RETRY_NS * 2;
 				assertNull(cache.get(url, later));

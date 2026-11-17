@@ -118,9 +118,10 @@ public final class MprisSource implements MediaSource {
 	private Connector connector = () -> sessionBus().build();
 	private LongSupplier nanos = System::nanoTime;
 	private Predicate<DBusConnection> connected = DBusConnection::isConnected;
-	private int connectFailures;
-	private long retryAt;
-	private @Nullable IOException lastConnectFailure;
+	// volatile: close() resets these from the shutdown thread
+	private volatile int connectFailures;
+	private volatile long retryAt;
+	private volatile @Nullable IOException lastConnectFailure;
 
 	/** For tests: the way the bus is opened, whether a connection still lives, and the clock. */
 	MprisSource(Supplier<String> preferredPlayer, Connector connector, Predicate<DBusConnection> connected, LongSupplier nanos) {
@@ -150,8 +151,9 @@ public final class MprisSource implements MediaSource {
 			} catch (Exception e) {
 				connectFailures++;
 				retryAt = nanos.getAsLong() + retryDelayNs(connectFailures);
-				lastConnectFailure = new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
-				throw lastConnectFailure;
+				IOException failure = new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				lastConnectFailure = failure;
+				throw failure; // the local: close() may clear the field in between
 			}
 		}
 		return connection;
@@ -651,6 +653,10 @@ public final class MprisSource implements MediaSource {
 	@Override
 	public void close() {
 		closed = true;
+		// A deliberate reconnect must not wait out the back-off of an earlier failure
+		connectFailures = 0;
+		retryAt = 0;
+		lastConnectFailure = null;
 		// The maps belong to the poll: clear them here only if no poll is running (or it ends within a moment),
 		// otherwise the poll clears them itself as it finishes
 		boolean got = false;

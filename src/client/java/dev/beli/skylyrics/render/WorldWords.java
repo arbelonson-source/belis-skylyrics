@@ -879,9 +879,23 @@ final class WorldWords {
 	 * @param fixedYaw  the compass direction new words appear around, or NaN for wherever you look
 	 * @param fixedPitch the pitch they gather round with a fixed yaw (a locked view), or NaN for the horizon
 	 */
+	/** The style the lyrics' widths were measured with. */
+	private @Nullable Style measured;
+
+	/** Whether the style changed since the words were measured (a font setting, a resource reload): then they're measured again. */
+	boolean restyled(Style style) {
+		boolean changed = measured != null && !measured.equals(style);
+		measured = style;
+		if (changed) {
+			newLyrics();
+		}
+		return changed;
+	}
+
 	void update(int index, @Nullable String text, float sungChars, boolean over, float fixedYaw, float fixedPitch, Camera camera,
 			@Nullable ClientLevel level, Font font, Style style, long now) {
 		boolean fresh = false;
+		restyled(style);
 		if (index != line || text != null && !text.equals(lineRaw)) {
 			fresh = true;
 			line = index;
@@ -1365,7 +1379,7 @@ final class WorldWords {
 	 */
 	private float[] follow(float[] centre, float[] at, float size, List<float[]> taken, List<float[]> firm) {
 		float aside = clearMiddle ? SIDE_YAW + SENTENCE_SHIFT_X : 0;
-		if (sentence != null && sentence.lost(centre[0], centre[1] - LIFT, aside)) {
+		if (sentence != null && (sentence.lost(centre[0], centre[1] - LIFT, aside) || sentence.full())) {
 			// You turned away mid-line: the rest of it starts again where you look now, clear of what's there
 			sentence = null;
 			last = null;
@@ -1404,7 +1418,7 @@ final class WorldWords {
 				float bend = tilt * curve * Mth.lerp(next(), SENTENCE_BEND_MIN, SENTENCE_BEND_MAX) * (next() < SENTENCE_ARCH ? 1 : -1);
 				// Its highest word, however the line climbs or bows, stays well under the top of the screen
 				float drift = (float) Math.toDegrees(Math.atan(RISE_MAX * rise / distance));
-				top = Mth.clamp(Math.max(top, belowTop(centre[1], width, slope, bend, row, drift)), -70, 40);
+				top = Mth.clamp(Math.max(top, belowTop(centre[1], width, slope, bend, row, drift)), Sentence.START_UP, Sentence.START_DOWN);
 				float cost = 0;
 				for (float[] o : taken) {
 					float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(left + halfW - o[0])), h = halfH + o[3] - Math.abs(top + below - o[1]);
@@ -1626,6 +1640,8 @@ final class WorldWords {
 		 * from where rows start it's written so far.
 		 */
 		float left, top, cursor;
+		/** The pitch the line's first row started on, which the view is judged against however far its rows have gone down. */
+		float home;
 		/** Pitch of the bottom of the rows above and of the lowest word on this row so far (before the slope). */
 		float above = Float.NEGATIVE_INFINITY, low = Float.NEGATIVE_INFINITY;
 		/**
@@ -1663,6 +1679,7 @@ final class WorldWords {
 			this.slope = slope;
 			this.left = left;
 			this.top = top;
+			this.home = top;
 			this.cursor = left;
 			this.distance = distance;
 			this.turn = turn;
@@ -1761,6 +1778,7 @@ final class WorldWords {
 		Sentence under() {
 			Sentence next = new Sentence(left, top, distance, turn, slope, rtl, bend);
 			next.width = width;
+			next.home = home;
 			next.cursor = cursor;
 			next.above = above;
 			next.low = low + VERSE_GAP;
@@ -1779,7 +1797,17 @@ final class WorldWords {
 		/** The same, for a line placed up to {@code aside} degrees to the side of where you looked. */
 		boolean lost(float yaw, float pitch, float aside) {
 			float off = Mth.wrapDegrees(yaw - (left + width / 2));
-			return Math.abs(off) > width / 2 + LOST_YAW + aside || Math.abs(pitch - top) > LOST_PITCH;
+			return Math.abs(off) > width / 2 + LOST_YAW + aside || Math.abs(Mth.clamp(pitch, START_UP, START_DOWN) - home) > LOST_PITCH;
+		}
+
+		/** The highest and lowest pitch a line starts on, in degrees (a view past them is judged as if at them). */
+		static final float START_UP = -70f, START_DOWN = 40f;
+		/** The lowest pitch a row may start on; a line that would go further down starts over at the top instead. */
+		static final float ROW_LIMIT = 50f;
+
+		/** Whether the rows have gone as far down as they may, so the next piece starts the line over higher up. */
+		boolean full() {
+			return top > ROW_LIMIT;
 		}
 
 		/** How far past a line's edge (yaw) or from its row (pitch), in degrees, you can look before it starts over. */
@@ -1798,6 +1826,7 @@ final class WorldWords {
 			top += moved;
 			above += moved;
 			low += moved;
+			home += moved;
 		}
 	}
 
