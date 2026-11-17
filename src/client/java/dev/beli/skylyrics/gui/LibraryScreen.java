@@ -127,7 +127,31 @@ public final class LibraryScreen extends Screen {
 	public LibraryScreen(@Nullable Screen parent) {
 		super(Component.literal(Tr.t("Song library")));
 		this.parent = parent;
+		KeyMapping open = mod.libraryKey();
+		closeKeyHeld = open != null && open.isDown();
 	}
+
+	/** The library key was still down when this opened (it opened from that key): its repeats must not close it again. */
+	private boolean closeKeyHeld;
+
+	//? if >=1.21.9 {
+	@Override
+	//?}
+	public boolean keyReleased(KeyEvent event) {
+		KeyMapping open = mod.libraryKey();
+		if (open != null && open.matches(event)) {
+			closeKeyHeld = false;
+		}
+		return false;
+	}
+
+	//? if <1.21.9 {
+	/*@Override
+	public boolean keyReleased(int key, int scancode, int modifiers) {
+		return keyReleased(new KeyEvent(key, scancode, modifiers));
+	}
+
+	*///?}
 
 	/**
 	 * Whether "Try made-up songs" still holds when the library opens again: until Spotify can be browsed. The Demo song
@@ -1360,9 +1384,15 @@ public final class LibraryScreen extends Screen {
 			return true;
 		}
 		KeyMapping key = mod.libraryKey();
-		if (!typing && key != null && key.matches(event)) {
-			onClose();
-			return true;
+		if (key != null && key.matches(event)) {
+			// A letter here starts a search, and a key held since it opened us only repeats
+			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), (event.modifiers() & 6) != 0, closeKeyHeld)) {
+				onClose();
+				return true;
+			}
+			if (closeKeyHeld) {
+				return true;
+			}
 		}
 		if (library == null) {
 			int dir = event.isCycleFocus() ? (event.hasShiftDown() ? -1 : 1)

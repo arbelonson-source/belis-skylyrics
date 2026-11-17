@@ -297,6 +297,8 @@ public final class SkyLyricsScreen extends Screen {
 	public SkyLyricsScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
 		this.parent = parent;
+		KeyMapping openKey = mod.openSettingsKey();
+		closeKeyHeld = openKey != null && openKey.isDown();
 		masterToggle = new Toggle(Tr.t("Lyrics"), null, () -> cfg.enabled, v -> cfg.enabled = v);
 		tabs.add(lyricsTab());
 		tabs.add(lookTab());
@@ -1589,6 +1591,27 @@ public final class SkyLyricsScreen extends Screen {
 		return super.mouseScrolled(mx, my, scrollX, scrollY);
 	}
 
+	/** The settings key was still down when this opened (it opened from that key): its repeats must not close it again. */
+	private boolean closeKeyHeld;
+
+	//? if >=1.21.9 {
+	@Override
+	//?}
+	public boolean keyReleased(KeyEvent event) {
+		KeyMapping open = mod.openSettingsKey();
+		if (open != null && open.matches(event)) {
+			closeKeyHeld = false;
+		}
+		return false;
+	}
+
+	//? if <1.21.9 {
+	/*@Override
+	public boolean keyReleased(int key, int scancode, int modifiers) {
+		return keyReleased(new KeyEvent(key, scancode, modifiers));
+	}
+
+	*///?}
 	//? if >=1.21.9 {
 	@Override
 	//?}
@@ -1609,7 +1632,7 @@ public final class SkyLyricsScreen extends Screen {
 			} else if (event.isCycleFocus() || event.isDown() || event.isUp()) {
 				// Tab or the arrows leave the box for the results
 				typing = false;
-				moveFocus(event.isUp() || event.hasShiftDown() ? -1 : 1);
+				moveFocus(ScreenKeys.focusDir(event.isCycleFocus(), event.hasShiftDown(), event.isUp()));
 			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
 				editSearch(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 			} else if (event.isPaste()) {
@@ -1629,7 +1652,9 @@ public final class SkyLyricsScreen extends Screen {
 		}
 		KeyMapping open = mod.openSettingsKey();
 		if (open != null && open.matches(event)) {
-			onClose();
+			if (!closeKeyHeld) {
+				onClose();
+			}
 			return true;
 		}
 		if (event.hasControlDown() && (event.isCycleFocus() || event.key() == InputConstants.KEY_PAGEUP
@@ -1640,7 +1665,7 @@ public final class SkyLyricsScreen extends Screen {
 			return true;
 		}
 		if (event.isCycleFocus() || event.isUp() || event.isDown()) {
-			moveFocus(event.isUp() || event.hasShiftDown() ? -1 : 1);
+			moveFocus(ScreenKeys.focusDir(event.isCycleFocus(), event.hasShiftDown(), event.isUp()));
 			return true;
 		}
 		if (active == null && (event.key() == InputConstants.KEY_PAGEUP || event.key() == InputConstants.KEY_PAGEDOWN)) {
