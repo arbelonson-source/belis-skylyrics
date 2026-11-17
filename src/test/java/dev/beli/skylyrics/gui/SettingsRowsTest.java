@@ -63,6 +63,22 @@ class SettingsRowsTest {
 	}
 
 	@Test
+	void aVeryLongUnlistedPlayerKeyShowsShortenedButIsNotChanged() {
+		String[] keys = {"", "spotify"};
+		java.util.List<String> names = java.util.List.of("Spotify");
+		String key = "x".repeat(200);
+		java.util.List<String> choices = SkyLyricsScreen.playerChoices(keys, names, key, "Auto");
+		assertEquals("x".repeat(23) + "\u2026", choices.get(2));
+		assertEquals(3, choices.size());
+		// Exactly 24 code points stay whole
+		assertEquals("y".repeat(24), SkyLyricsScreen.playerChoices(keys, names, "y".repeat(24), "Auto").get(2));
+		// Emoji (two chars each) are counted as one and never split
+		String emoji = "\uD83C\uDFB5".repeat(30);
+		String shown = SkyLyricsScreen.playerChoices(keys, names, emoji, "Auto").get(2);
+		assertEquals("\uD83C\uDFB5".repeat(23) + "\u2026", shown);
+	}
+
+	@Test
 	void constellationsAloneCountAsASkyEffect() {
 		SkyLyricsConfig cfg = new SkyLyricsConfig();
 		cfg.sky = SkyEffect.OFF;
