@@ -103,6 +103,8 @@
 - **Player from another computer.** When your settings file comes from another computer, the **Player** button shows the player it names instead of "Auto" (SkyLyrics still follows that player when it is open).
 - **Song library.** A song no longer shows twice in Liked songs or Recently heard when the list changes while you scroll, and Recently heard search finds "Beyoncé" when you type "beyonce". When Spotify is busy for a long time, the library says so at once instead of loading for half a minute, and if **Play** can't reach Spotify it says why (signed out or offline). An empty or garbled answer from Spotify (a Wi-Fi login page, say) shows "Spotify didn't answer" instead of an end to the list.
 - **Flowing line.** With **Flowing line** on, a long line no longer starts again on top of its own first words at bigger sizes or when you look straight up or down, and a very long line starts over higher up instead of running below your feet. The words are also laid out again when you change the font.
+- **Sky after /time set.** With the game's clock frozen (`/tick freeze`), `/time set day` or `night` now changes the painted sky and the lyrics' daylight at once instead of when you next move. Sparkles and shooting stars start fresh after the sky has been hidden instead of gliding in from where they were, and sky animations stay smooth in very long sessions.
+- **Keys.** A letter key used for the song library (N) no longer closes the library while you type a search (Esc or Ctrl+N closes it). Holding play/pause, next, previous or the lyrics toggle acts once instead of repeating, holding the settings or library key no longer makes the screen flicker, and Shift+Down in the settings moves down.
 
 ### Faster
 
