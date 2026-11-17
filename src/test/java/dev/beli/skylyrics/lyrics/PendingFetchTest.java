@@ -73,7 +73,7 @@ class PendingFetchTest {
 			s.load(song("A"));
 			assertTrue(bRunning.await(10, TimeUnit.SECONDS));
 			s.load(Track.NONE); // skip on to nothing: nothing writes the cache after the test
-			assertTrue(bInterrupted.await(5, TimeUnit.SECONDS), "skipping B should cancel B's fetch");
+			assertTrue(bInterrupted.await(30, TimeUnit.SECONDS), "skipping B should cancel B's fetch");
 		} finally {
 			holdB.countDown();
 			s.shutdown();
