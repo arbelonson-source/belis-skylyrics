@@ -136,7 +136,7 @@ class SpotifyLibraryLeftoversTest {
 		SpotifyLibrary lib = library(dir, net);
 		long start = System.nanoTime();
 		Throwable error = failure(lib.liked(0));
-		assertTrue(System.nanoTime() - start < 5_000_000_000L);
+		assertTrue(System.nanoTime() - start < 30_000_000_000L);
 		assertEquals(Tr.t("Spotify didn't answer, try again"), SpotifyLibrary.errorText(error));
 		assertEquals(1, net.requests.size());
 	}

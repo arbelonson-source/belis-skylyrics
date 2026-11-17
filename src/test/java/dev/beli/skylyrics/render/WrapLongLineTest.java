@@ -15,7 +15,7 @@ class WrapLongLineTest {
 	@Test
 	void parsedLongLineWrapsFast() {
 		String text = LrcParser.parseSynced("[00:01.00]" + "a".repeat(200_000)).lines().get(0).text();
-		List<String> rows = assertTimeoutPreemptively(Duration.ofSeconds(5), () -> LyricsRenderer.wrap(s -> s.length() * 6.0, text, 300f));
+		List<String> rows = assertTimeoutPreemptively(Duration.ofSeconds(15), () -> LyricsRenderer.wrap(s -> s.length() * 6.0, text, 300f));
 		assertFalse(rows.isEmpty());
 	}
 

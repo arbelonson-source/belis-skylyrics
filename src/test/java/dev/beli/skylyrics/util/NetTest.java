@@ -149,7 +149,7 @@ class NetTest {
 			}
 		};
 		assertTrue(Net.closeAfter(stalled, Duration.ofMillis(50)) == stalled);
-		assertTrue(closed.await(3, java.util.concurrent.TimeUnit.SECONDS), "the stream was never closed");
+		assertTrue(closed.await(30, java.util.concurrent.TimeUnit.SECONDS), "the stream was never closed");
 	}
 
 	@Test

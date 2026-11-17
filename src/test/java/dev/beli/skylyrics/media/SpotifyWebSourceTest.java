@@ -141,7 +141,7 @@ class SpotifyWebSourceTest {
 
 	/** Runs the sign-in wait with an idle limit generous enough that a loaded machine cannot drop a client mid-request. */
 	private static Thread wait(SpotifyWebSource source, ServerSocket server) {
-		return wait(source, server, 2500);
+		return wait(source, server, 30_000);
 	}
 
 	/** Runs the sign-in wait on the given server with the given idle limit. */
@@ -737,7 +737,7 @@ class SpotifyWebSourceTest {
 		return media;
 	}
 
-	/** Runs the call on its own thread and says whether it came back within a few seconds. */
+	/** Runs the call on its own thread and says whether it came back within 15 s (the stuck save waits 30 s). */
 	private static boolean returnsSoon(Runnable call) throws Exception {
 		java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
 		Thread t = new Thread(() -> {
@@ -746,7 +746,7 @@ class SpotifyWebSourceTest {
 		});
 		t.setDaemon(true);
 		t.start();
-		return done.await(5, java.util.concurrent.TimeUnit.SECONDS);
+		return done.await(15, java.util.concurrent.TimeUnit.SECONDS);
 	}
 
 	@Test

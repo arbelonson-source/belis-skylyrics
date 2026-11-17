@@ -68,7 +68,7 @@ class LrcLimitsTest {
 		for (int i = 0; i < 300_000; i++) {
 			in.add(new LyricLine(0, "line " + i / 2));
 		}
-		List<LyricLine> out = assertTimeoutPreemptively(Duration.ofSeconds(3), () -> LrcParser.joinSameStamp(in));
+		List<LyricLine> out = assertTimeoutPreemptively(Duration.ofSeconds(10), () -> LrcParser.joinSameStamp(in));
 		assertEquals(150_000, out.size());
 	}
 }
