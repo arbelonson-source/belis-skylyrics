@@ -311,15 +311,54 @@ public final class LibraryScreen extends Screen {
 
 	/** Height of the sign-in strip: 16 for one line of text, 26 when the text has to wrap onto two. */
 	private int bannerStripH() {
-		return LibraryViews.bannerStripH(font.width(signInText()), bannerRoom());
+		return banner().height();
 	}
 
 	private int bannerRoom() {
-		return Math.min(460, width - 16) - 20 - bannerButtonW() - 24;
+		return banner().room();
 	}
 
 	private int bannerButtonW() {
-		return font.width(Tr.t("Open Music tab")) + 14;
+		return banner().buttonW();
+	}
+
+	/** What the strip's size and text depend on: a language switch or resource reload swaps the Language, which also changes the widths. */
+	private record BannerKey(Object account, int screenW, Object font, Object language) {}
+
+	/** The strip as measured: its height, button width, text room and the one or two lines to draw. */
+	private record Banner(BannerKey key, int height, int buttonW, int room, net.minecraft.util.FormattedCharSequence[] lines) {}
+
+	private @Nullable Banner banner;
+
+	/** The strip's layout, measured again only when its key changes: drawing, clicks and the focus outline all read this one. */
+	private Banner banner() {
+		BannerKey key = new BannerKey(mod.spotify().account(), width, font, net.minecraft.locale.Language.getInstance());
+		Banner b = banner;
+		if (b != null && b.key().equals(key)) {
+			return b;
+		}
+		int bw = font.width(Tr.t("Open Music tab")) + 14;
+		int room = Math.min(460, width - 16) - 20 - bw - 24;
+		String text = signInText();
+		int sh = LibraryViews.bannerStripH(font.width(text), room);
+		net.minecraft.util.FormattedCharSequence[] lines;
+		if (sh == LibraryViews.BANNER_ONE) {
+			lines = new net.minecraft.util.FormattedCharSequence[] {Ui.visual(Ui.clip(font, text, room))};
+		} else {
+			List<net.minecraft.network.chat.FormattedText> split = font.getSplitter().splitLines(text, room, net.minecraft.network.chat.Style.EMPTY);
+			boolean rtl = Ui.paragraphRtl(text);
+			lines = new net.minecraft.util.FormattedCharSequence[Math.min(2, split.size())];
+			for (int i = 0; i < lines.length; i++) {
+				String line = split.get(i).getString();
+				// a third line cannot fit: the second keeps its end clipped rather than losing the words silently
+				if (i == 1 && split.size() > 2) {
+					line = Ui.clip(font, line + " " + split.get(2).getString(), room);
+				}
+				lines[i] = Ui.visual(line, rtl);
+			}
+		}
+		banner = b = new Banner(key, sh, bw, room, lines);
+		return b;
 	}
 
 	private Section[] sections() {
@@ -505,22 +544,11 @@ public final class LibraryScreen extends Screen {
 
 	/** A slim strip telling the user their own Spotify songs are one sign-in away. */
 	private void renderBanner(GuiGraphics g, Frame f) {
-		int y = py + HEADER_H + 3, bw = bannerButtonW(), sh = bannerStripH(), room = bannerRoom();
+		Banner strip = banner();
+		int y = py + HEADER_H + 3, bw = strip.buttonW(), sh = strip.height();
 		Ui.rect(g, px + 10, y, pw - 20, sh, 5, Ui.CARD);
-		String text = signInText();
-		if (sh == LibraryViews.BANNER_ONE) {
-			g.drawString(font, Ui.visual(Ui.clip(font, text, room)), px + 16, y + 4, Ui.MUTED, false);
-		} else {
-			List<net.minecraft.network.chat.FormattedText> lines = font.getSplitter().splitLines(text, room, net.minecraft.network.chat.Style.EMPTY);
-			boolean rtl = Ui.paragraphRtl(text);
-			for (int i = 0; i < Math.min(2, lines.size()); i++) {
-				String line = lines.get(i).getString();
-				// a third line cannot fit: the second keeps its end clipped rather than losing the words silently
-				if (i == 1 && lines.size() > 2) {
-					line = Ui.clip(font, line + " " + lines.get(2).getString(), room);
-				}
-				g.drawString(font, Ui.visual(line, rtl), px + 16, y + 3 + i * 10, Ui.MUTED, false);
-			}
+		for (int i = 0; i < strip.lines().length; i++) {
+			g.drawString(font, strip.lines()[i], px + 16, y + (sh == LibraryViews.BANNER_ONE ? 4 : 3 + i * 10), Ui.MUTED, false);
 		}
 		int bx = px + pw - 10 - bw - 2, by = bannerButtonY(y, sh);
 		Controls.drawButton(f, bx, by, bw, 14, Tr.t("Open Music tab"), Ui.inside(f.mx(), f.my(), bx, by, bw, 14), true, true);
