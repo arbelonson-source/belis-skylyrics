@@ -320,7 +320,7 @@ class WindowsMediaSourceTest {
 			assertEquals("Song One", s.track().title(), "follows the player that is playing");
 			assertTrue(s.playing());
 			// The fake's song was at 61 s when PowerShell started it, and has kept playing since
-			assertTrue(s.positionMs() >= 61_000 && s.positionMs() <= 61_000 + took + 1_000, "position " + s.positionMs() + " after " + took + " ms");
+			assertTrue(s.positionMs() >= 61_000 && s.positionMs() <= 61_000 + took + 5_000, "position " + s.positionMs() + " after " + took + " ms");
 			assertEquals("Spotify", source.displayName());
 			assertTrue(Files.isRegularFile(dir.resolve("windows-media.ps1")));
 

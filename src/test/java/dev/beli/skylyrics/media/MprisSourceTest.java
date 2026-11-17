@@ -479,4 +479,17 @@ class MprisSourceTest {
 		MprisSource.seek(p, "/org/mpris/MediaPlayer2/TrackList/NoTrack", 5_000, 8_000);
 		assertEquals(List.of("SetPosition:/com/spotify/track/42,30000000", "Seek:20000000", "Seek:-3000000"), calls);
 	}
+
+	@Test
+	void aPlayerWithoutATrackIdIsSeekedRelatively() {
+		java.util.List<String> calls = new java.util.ArrayList<>();
+		MprisSource.Player p = (MprisSource.Player) java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+				new Class<?>[] {MprisSource.Player.class}, (proxy, method, args) -> {
+					calls.add(method.getName() + (args == null ? "" : ":" + args[0]));
+					return null;
+				});
+		MprisSource.seekIfTrack(p, "", 30_000, 10_000);
+		MprisSource.seekIfTrack(p, null, 5_000, 8_000);
+		assertEquals(List.of("Seek:20000000", "Seek:-3000000"), calls);
+	}
 }

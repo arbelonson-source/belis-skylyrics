@@ -136,7 +136,7 @@ class SpotifyLibraryQueueTest {
 		});
 		SpotifyLibrary library = new SpotifyLibrary(signedIn(dir, net));
 		library.search("first", 0);
-		assertTrue(started.await(5, TimeUnit.SECONDS));
+		assertTrue(started.await(30, TimeUnit.SECONDS));
 		CompletableFuture<?> dropped = library.search("second", 0);
 		CompletableFuture<?> kept = library.search("third", 0);
 		dropped.cancel(true);

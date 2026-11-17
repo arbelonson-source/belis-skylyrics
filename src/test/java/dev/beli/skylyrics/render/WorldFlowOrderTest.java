@@ -70,6 +70,23 @@ class WorldFlowOrderTest {
 	}
 
 	@Test
+	void aLineThatStartsOverInTheMiddleOfAStretchOpensItAgainForWhatIsLeft() {
+		int[] runs = {0, WorldWords.RUN_FIRST, WorldWords.RUN_MIDDLE, WorldWords.RUN_LAST, 0};
+		// The new line's first piece is the stretch's middle one (the first was on the line that was left)
+		WorldWords.Sentence s = new WorldWords.Sentence(-20, 5, 10, 0, 0, false);
+		float[] half = new float[runs.length];
+		java.util.Arrays.fill(half, (float) (s.distance * Math.tan(Math.toRadians(2))));
+		float[] x = new float[runs.length];
+		for (int i = 2; i < runs.length; i++) {
+			WorldWords.openRun(s, runs, half, i, 1f, 1f);
+			x[i] = s.place(2, 1, 0, 0)[0];
+			WorldWords.closeRun(s, runs[i]);
+		}
+		assertTrue(x[3] < x[2] && x[2] < x[4], java.util.Arrays.toString(x));
+		assertTrue(x[2] - x[3] >= 4 - 1e-3f && x[4] - x[2] >= 4 - 1e-3f, java.util.Arrays.toString(x));
+	}
+
+	@Test
 	void aLineOfOneDirectionIsWrittenAsBefore() {
 		for (boolean rtl : new boolean[] {false, true}) {
 			WorldWords.Sentence a = new WorldWords.Sentence(-20, 5, 10, 0, 0, rtl), b = new WorldWords.Sentence(-20, 5, 10, 0, 0, rtl);

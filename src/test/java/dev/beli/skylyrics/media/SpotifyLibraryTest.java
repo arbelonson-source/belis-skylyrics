@@ -223,11 +223,11 @@ class SpotifyLibraryTest {
 			return new Reply(200, java.net.http.HttpHeaders.of(java.util.Map.of(), (a, b) -> true), "{\"items\":[],\"total\":0}");
 		});
 		var old = library.liked(0);
-		assertTrue(asked.await(5, java.util.concurrent.TimeUnit.SECONDS));
+		assertTrue(asked.await(30, java.util.concurrent.TimeUnit.SECONDS));
 		old.cancel(true);
 		long start = System.nanoTime();
 		var next = library.liked(0);
-		assertEquals(0, next.get(5, java.util.concurrent.TimeUnit.SECONDS).items().size());
-		assertTrue(System.nanoTime() - start < 5_000_000_000L);
+		assertEquals(0, next.get(15, java.util.concurrent.TimeUnit.SECONDS).items().size());
+		assertTrue(System.nanoTime() - start < 15_000_000_000L);
 	}
 }

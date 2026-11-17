@@ -345,6 +345,11 @@ final class WorldWords {
 	private int placing = -1;
 	private long rng = System.nanoTime();
 
+	/** For tests: fixes the random numbers, so a layout comes out the same every run. */
+	void seed(long seed) {
+		rng = seed;
+	}
+
 	/** You died: every word up drops out of the sky, spinning as it fades. */
 	void fall(long now) {
 		for (Card c : cards) {
@@ -1418,7 +1423,8 @@ final class WorldWords {
 		float halfW, halfH, shrink;
 		Vec3 pos;
 		seenHalf = halfView(ScreenLayer.tanHalfV(), sliderFov());
-		seenLow = lowestSeen(camera.xRot(), seenHalf);
+		// The line is laid out round centre, so the bottom of what it may use is judged from there, as rowFits does
+		seenLow = lowestSeen(centre[1], seenHalf);
 		for (boolean again = false;; again = true) {
 			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
 			Vec3 dir = direction(spot[0], spot[1]);
@@ -1663,7 +1669,7 @@ final class WorldWords {
 		float[] mark = sentence.mark();
 		int rowsBefore = sentence.rows;
 		float[] at2 = placeClear(sentence, halfW, halfH, next() * SENTENCE_INDENT, step(sentence.pieces, next()), firm);
-		if (!again && sentence.rows > rowsBefore && !rowFits(at2[1] + halfH, Mth.wrapDegrees(at2[0] - centre[0]), centre[1], seenHalf)) {
+		if (!again && sentence.rows > rowsBefore && !rowFitsToItsEnd(sentence, at2[1] + halfH, centre, seenHalf)) {
 			// This piece started a row whose words would run off the bottom of the screen: the line starts over at the top
 			// instead, and this piece begins it
 			startsOver(() -> "below: top " + sentence.top + " rows " + sentence.rows);
@@ -1682,8 +1688,9 @@ final class WorldWords {
 		int run = placing >= 0 && placing < runs.length ? runs[placing] : RUN_NONE;
 		if (run == RUN_NONE) {
 			sentence.forward();
-		} else if (run == RUN_FIRST) {
-			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it
+		} else if (run == RUN_FIRST || sentence.run <= 0) {
+			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it.
+			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left
 			float span = 0;
 			int count = 0;
 			for (int k = placing; k < runs.length; k++) {
@@ -1756,6 +1763,17 @@ final class WorldWords {
 		}
 		float cos = (float) Math.cos(Mth.clamp(Math.abs(yawOff), 0, 89) * DEG);
 		return down < 89 && Math.tan(down * DEG) / cos <= Math.tan(halfView * DEG) * (1 - HOTBAR_SHARE);
+	}
+
+	/**
+	 * Whether a row that has just started, whose first word's foot is at pitch {@code foot}, still shows at its far end. The
+	 * row's widest yaw offset from the view centre, the most it drops across its width (a downward slope, a downward bow)
+	 * and the most a word bobs down from the row are all counted, so the row is judged by where it can end up lowest, not where it starts.
+	 */
+	static boolean rowFitsToItsEnd(Sentence line, float foot, float[] centre, float halfView) {
+		float wide = Math.max(Math.abs(Mth.wrapDegrees(line.left - centre[0])), Math.abs(Mth.wrapDegrees(line.left + line.width - centre[0])));
+		float drop = line.width * Math.max(0, -(float) Math.tan(line.slope * DEG)) + Math.max(0, -line.bend) + SENTENCE_BOB;
+		return rowFits(foot + drop, wide, centre[1], halfView);
 	}
 
 	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */

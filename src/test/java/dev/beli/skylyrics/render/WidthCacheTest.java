@@ -110,4 +110,20 @@ class WidthCacheTest {
 		cache.probe(9 * glyph[0]); // the next frame's probe
 		assertEquals(20f, cache.get(FONT, STYLE, "hello", LANG, live));
 	}
+
+	@Test
+	void aChangedGlyphModeDropsTheWidthsLikeAReload() {
+		WidthCache cache = new WidthCache(8);
+		cache.mode(0); // the first call only remembers it
+		cache.get(FONT, STYLE, "hello", LANG, measure);
+		long before = cache.epoch();
+		cache.mode(0);
+		cache.get(FONT, STYLE, "hello", LANG, measure);
+		assertEquals(1, measures.get());
+		assertEquals(before, cache.epoch());
+		cache.mode(1); // Force Unicode Font toggled: no reload, same font and language objects
+		assertEquals(before + 1, cache.epoch());
+		cache.get(FONT, STYLE, "hello", LANG, measure);
+		assertEquals(2, measures.get());
+	}
 }

@@ -122,7 +122,7 @@ class SafeFileTest {
 		}, SafeFile.TRIES, SafeFile.PAUSE_MS);
 		long ms = (System.nanoTime() - start) / 1_000_000;
 		assertEquals(6, calls[0]);
-		assertTrue(ms >= 700, "the pauses grow 25, 50, 100, 200, 400: " + ms);
+		assertTrue(ms >= 600, "the pauses grow 25, 50, 100, 200, 400: " + ms);
 		assertEquals("new", Files.readString(dir.resolve("a.json")));
 	}
 

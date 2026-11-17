@@ -110,6 +110,10 @@ With the **Arc** and **Lines** layouts, the lyrics stay visible underground at f
 
 The **World** layout puts its words in the world around you, so blocks can still hide them. Turn on **See through blocks** on the Look tab if you want to see them through walls.
 
+## In the World layout, a long line keeps starting over at the top. Is that a bug?
+
+No. With **Flowing line** on (World layout, Lyrics tab), a long line is written in rows. It starts over at the top, and its old words fade out, when it runs into a hillside, when a word finds no clear spot, or when its next row would run off the bottom of the screen. That last check follows where you look and your field of view, and keeps clear of the hotbar. If you look steeply down (bridging, digging), the line starts a little above where you look, so it stays in view. In a tunnel or right by a wall it carries on instead, lifted out of the rock. For fewer restarts, turn **Size** down.
+
 ## Can I pin the lyrics in one place?
 
 Yes. Turn on **View lock** under **Lyrics → Position**. The lyrics are pinned where you are looking right now and stay there while you look around. You can also give a key to **Lock lyrics here** (Options → Controls → Key Binds → Beli's SkyLyrics) and press it to lock and unlock without opening the settings. Press it again, or turn the switch off, to let the lyrics follow you again. In the World layout, new words gather around the spot you locked. View lock shows when the lyrics are in the sky or the layout is World.
