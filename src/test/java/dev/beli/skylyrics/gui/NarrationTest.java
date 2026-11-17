@@ -1,6 +1,8 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -111,5 +113,56 @@ class NarrationTest {
 				}, SkyLyricsScreen::seconds);
 		assertEquals("Timing, slider, +0.50 seconds", timing.narration());
 		assertEquals("Timing, slider, +0.50 seconds, Late? Move right. Early? Left", timing.narrateHint().narration());
+	}
+
+	@Test
+	void theSignInCardSaysItsTextAndTheButtonEnterPresses() {
+		String text = "Sign in on the Music tab";
+		assertEquals("Sign in on the Music tab, Open Music tab, button", Narration.signIn(text, "Open Music tab", "Try made-up songs", -1, "button"));
+		assertEquals("Sign in on the Music tab, Open Music tab, button", Narration.signIn(text, "Open Music tab", "Try made-up songs", 0, "button"));
+		assertEquals("Sign in on the Music tab, Try made-up songs, button", Narration.signIn(text, "Open Music tab", "Try made-up songs", 1, "button"));
+	}
+
+	@Test
+	void theSongPlayingNowIsSaidSo() {
+		assertEquals("Ana, Now playing", Narration.underPlaying("Ana", true, "Now playing"));
+		assertEquals("Ana", Narration.underPlaying("Ana", false, "Now playing"));
+		assertEquals("Blue, Ana, Now playing, 3 of 50",
+				Narration.card("", "", "Blue", Narration.underPlaying("Ana", true, "Now playing"), "3 of 50"));
+	}
+
+	@Test
+	void aSectionSaysWhereItSits() {
+		assertEquals("Playlists, 3 of 3", Narration.section(true, false, "Mix", Narration.join("Playlists", "3 of 3")));
+		assertEquals("Mix", Narration.section(true, true, "Mix", Narration.join("Playlists", "3 of 3")));
+	}
+
+	@Test
+	void resultsAreCountedAfterTypingOrAPickedRecentSearch() {
+		assertTrue(Narration.countsResults(true, false));
+		assertTrue(Narration.countsResults(false, true));
+		assertFalse(Narration.countsResults(false, false));
+	}
+
+	@Test
+	void aHintIsSaidWithTheRowOnlyWhenAskedFor() {
+		assertEquals("Timing, slider, +0.50 seconds, Late? Move right", Narration.hinted("Timing, slider, +0.50 seconds", "Late? Move right"));
+		assertEquals("Timing, slider, +0.50 seconds", Narration.hinted("Timing, slider, +0.50 seconds", ""));
+	}
+
+	@Test
+	void aRowSaysItsHintApartFromItsNarration() {
+		Controls.Row row = new Controls.Row("Timing", "Late? Move right") {
+			@Override
+			int controlWidth(net.minecraft.client.gui.Font font) {
+				return 0;
+			}
+
+			@Override
+			void renderControl(Controls.Frame f) {
+			}
+		}.narrateHint();
+		assertEquals("Late? Move right", row.hint());
+		assertEquals("Timing", row.narration());
 	}
 }

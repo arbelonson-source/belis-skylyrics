@@ -543,5 +543,7 @@
   "skylyrics.ui.press_enter_to_open": "Pulsa Enter para abrir",
   "skylyrics.ui.1_result": "1 resultado",
   "skylyrics.ui.s_results": "%s resultados",
-  "skylyrics.ui.pulse": "Pulso"
+  "skylyrics.ui.pulse": "Pulso",
+  "skylyrics.ui.settings_reset": "Ajustes restablecidos",
+  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab cambia de sección, las flechas mueven, Enter reproduce o abre, Arriba desde la primera fila llega a los botones de vista y a las búsquedas recientes, Esc vuelve y escribir busca"
 }

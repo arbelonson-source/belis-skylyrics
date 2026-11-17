@@ -106,7 +106,12 @@ final class Controls {
 
 		/** What the Narrator says when this row has the keyboard focus. */
 		String narration() {
-			return Narration.join(narratedLabel(), kind(), spoken(), narrateHint && desc != null ? desc.get() : "");
+			return Narration.join(narratedLabel(), kind(), spoken());
+		}
+
+		/** The hint some rows say once, when the keyboard lands on them ("Late? Move right"); empty for the rest. */
+		String hint() {
+			return narrateHint && desc != null ? desc.get() : "";
 		}
 
 		/** The ring that shows this row has the keyboard focus. */

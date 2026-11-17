@@ -96,4 +96,11 @@ class FocusTest {
 		assertEquals(true, Focus.mouseMoved(100, 100, 100, 98));
 		assertEquals(false, Focus.mouseMoved(100, 100, 101.9, 98.1));
 	}
+
+	@Test
+	void aKeyOnAHoveredRowDoesNotPinTheKeyboardThere() {
+		// Hover A and press a key, then hover B and press one: no focus was taken, so B still gets the key
+		assertEquals(Focus.KeyTarget.MOUSE_ROW, Focus.keyTarget(false, true));
+		assertEquals(Focus.KeyTarget.MOUSE_ROW, Focus.keyTarget(false, true));
+	}
 }

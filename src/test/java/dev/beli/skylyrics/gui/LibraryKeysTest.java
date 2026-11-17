@@ -98,4 +98,12 @@ class LibraryKeysTest {
 		assertTrue(LibraryKeys.atTop(shelf, -1, 4, 2));
 		assertTrue(LibraryKeys.atTop(carousel, -1, 4, 2));
 	}
+
+	@Test
+	void closingAPlaylistPutsTheKeyboardBackOnIt() {
+		assertEquals(3, LibraryKeys.afterClose(3, 10));
+		assertEquals(4, LibraryKeys.afterClose(7, 5));
+		assertEquals(-1, LibraryKeys.afterClose(-1, 10));
+		assertEquals(-1, LibraryKeys.afterClose(2, 0));
+	}
 }

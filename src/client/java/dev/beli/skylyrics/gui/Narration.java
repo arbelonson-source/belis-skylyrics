@@ -82,6 +82,26 @@ final class Narration {
 		return count == 1 ? one : count == 0 ? none : many;
 	}
 
+	/** The sign-in card: what it says and the button the keyboard is on (Enter presses the first one before any arrow key). */
+	static String signIn(String text, String open, String made, int focus, String kind) {
+		return join(text, button(focus <= 0 ? open : made, kind));
+	}
+
+	/** The line under a song's title, with "Now playing" added when it is the song that is playing. */
+	static String underPlaying(String under, boolean current, String nowPlaying) {
+		return join(under, current ? nowPlaying : "");
+	}
+
+	/** A row's words with its hint after them, for the moment the row gets the keyboard (not on every value change). */
+	static String hinted(String narration, String hint) {
+		return join(narration, hint);
+	}
+
+	/** Whether the search's result count is spoken: while typing, or just after a recent search was picked. */
+	static boolean countsResults(boolean typing, boolean afterChip) {
+		return typing || afterChip;
+	}
+
 	/** A song or playlist tile as the keyboard lands on it: the card and what Enter does with it. */
 	static String tile(String card, String action) {
 		return join(card, action);
