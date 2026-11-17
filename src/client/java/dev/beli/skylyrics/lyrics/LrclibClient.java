@@ -140,10 +140,11 @@ public final class LrclibClient implements LyricsSource {
 				exact = get("/get", q);
 			} catch (StatusException busy) {
 				// LRCLIB often answers 5xx on /get for songs it hasn't cached while /search works.
-				// A quick error reply means the site is reachable, so go on to search. A 503 or 429
-				// says it is overloaded, and other errors (timeouts, no network) fail too: searching
-				// would only repeat them, so they are reported and the retry policy waits.
-				if (busy.status() < 500 || busy.status() == 503) {
+				// A quick 5xx reply (503 included: issue #1) means the site is reachable, so go on to search;
+				// if the search is busy too, that answer is reported and the retry policy waits (the first
+				// failing search ends the lookup). A 429 or other 4xx is reported without searching, as are
+				// timeouts and no network.
+				if (busy.status() < 500) {
 					throw busy;
 				}
 			}
