@@ -714,6 +714,102 @@ class SpotifyWebSourceTest {
 		assertEquals(SpotifyWebSource.Account.SIGNED_IN, source.account());
 	}
 
+	/** Runs a refresh that saves "r2" while the write is held at the gate; returns once the write has reached it. */
+	private static Thread slowRefresh(SpotifyWebSource source, FakeHttp http, java.util.concurrent.CountDownLatch atGate,
+			java.util.concurrent.CountDownLatch release) throws Exception {
+		http.newRefresh = "r2";
+		source.beforeSave = () -> {
+			atGate.countDown();
+			try {
+				release.await(30, java.util.concurrent.TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		};
+		Thread media = new Thread(() -> {
+			try {
+				source.poll();
+			} catch (Exception ignored) {
+			}
+		});
+		media.start();
+		assertTrue(atGate.await(30, java.util.concurrent.TimeUnit.SECONDS));
+		return media;
+	}
+
+	/** Runs the call on its own thread and says whether it came back within a few seconds. */
+	private static boolean returnsSoon(Runnable call) throws Exception {
+		java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+		Thread t = new Thread(() -> {
+			call.run();
+			done.countDown();
+		});
+		t.setDaemon(true);
+		t.start();
+		return done.await(5, java.util.concurrent.TimeUnit.SECONDS);
+	}
+
+	@Test
+	void aSlowSaveDoesNotHoldUpSigningOutOrSigningIn(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		source.loginPort = 0;
+		java.util.concurrent.CountDownLatch atGate = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		Thread media = slowRefresh(source, http, atGate, release);
+		try {
+			assertTrue(returnsSoon(() -> {
+				try {
+					source.startLogin();
+				} catch (IOException e) {
+					throw new AssertionError(e);
+				}
+			}), "Sign in waited for the save");
+			assertTrue(returnsSoon(source::cancelLogin), "Cancel waited for the save");
+			assertTrue(returnsSoon(() -> source.signInGeneration()), "the library worker waited for the save");
+			assertTrue(returnsSoon(source::signOut), "Sign out waited for the save");
+		} finally {
+			release.countDown();
+			media.join(30_000);
+		}
+	}
+
+	@Test
+	void aSaveThatFinishesAfterSigningOutDoesNotBringTheTokensBack(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		java.util.concurrent.CountDownLatch atGate = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		Thread media = slowRefresh(source, http, atGate, release);
+		try {
+			source.signOut();
+		} finally {
+			release.countDown();
+			media.join(30_000);
+		}
+		assertFalse(media.isAlive());
+		assertFalse(Files.exists(dir.resolve("login.json")), "no tokens on disk after Sign out");
+		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
+	}
+
+	@Test
+	void twoSavesInARowLeaveTheNewerOneOnDisk(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		java.util.concurrent.CountDownLatch atGate = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		Thread media = slowRefresh(source, http, atGate, release); // "r2" is held at the disk
+		source.beforeSave = () -> { };
+		com.google.gson.JsonObject next = new com.google.gson.JsonObject();
+		next.addProperty("access_token", "a");
+		next.addProperty("refresh_token", "r3");
+		source.acceptAndSave(ID, next);
+		release.countDown();
+		media.join(30_000);
+		assertFalse(media.isAlive());
+		assertTrue(Files.readString(dir.resolve("login.json")).contains("\"r3\""), Files.readString(dir.resolve("login.json")));
+	}
+
 	@Test
 	void savingARotatedTokenLeavesAnotherGamesTempFileAlone(@TempDir Path dir) throws Exception {
 		FakeHttp http = new FakeHttp(204);
