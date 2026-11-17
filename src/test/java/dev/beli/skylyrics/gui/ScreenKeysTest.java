@@ -12,24 +12,36 @@ class ScreenKeysTest {
 
 	@Test
 	void aLetterKeyDoesNotCloseTheLibraryItWouldStartASearchWith() {
-		assertFalse(ScreenKeys.libraryKeyCloses(false, true, N, false, false));
+		assertFalse(ScreenKeys.libraryKeyCloses(false, true, N, false, false, false));
 	}
 
 	@Test
-	void aLetterKeyWithCtrlOrAltStillCloses() {
-		assertTrue(ScreenKeys.libraryKeyCloses(false, true, N, true, false));
+	void aLetterKeyWithCtrlStillCloses() {
+		assertTrue(ScreenKeys.libraryKeyCloses(false, true, N, true, false, false));
+	}
+
+	@Test
+	void altGrOrOptionPlusTheLetterKeyDoesNotCloseButStartsASearch() {
+		// AltGr arrives as Ctrl+Alt on Windows (Polish AltGr+N types n with an ogonek); Option on a Mac is Alt
+		assertFalse(ScreenKeys.libraryKeyCloses(false, true, N, true, true, false));
+		assertFalse(ScreenKeys.libraryKeyCloses(false, true, N, false, true, false));
+	}
+
+	@Test
+	void altGrOnANonLetterKeyStillCloses() {
+		assertTrue(ScreenKeys.libraryKeyCloses(false, true, F9, true, true, false));
 	}
 
 	@Test
 	void aNonTypingKeyOrNoSearchStillCloses() {
-		assertTrue(ScreenKeys.libraryKeyCloses(false, true, F9, false, false));
-		assertTrue(ScreenKeys.libraryKeyCloses(false, false, N, false, false));
+		assertTrue(ScreenKeys.libraryKeyCloses(false, true, F9, false, false, false));
+		assertTrue(ScreenKeys.libraryKeyCloses(false, false, N, false, false, false));
 	}
 
 	@Test
 	void typingOrAKeyHeldFromOpeningNeverCloses() {
-		assertFalse(ScreenKeys.libraryKeyCloses(true, true, F9, true, false));
-		assertFalse(ScreenKeys.libraryKeyCloses(false, true, F9, false, true));
+		assertFalse(ScreenKeys.libraryKeyCloses(true, true, F9, true, false, false));
+		assertFalse(ScreenKeys.libraryKeyCloses(false, true, F9, false, false, true));
 	}
 
 	@Test
@@ -54,26 +66,6 @@ class ScreenKeysTest {
 	}
 
 	@Test
-	void ctrlOrAltIsFoundInTheModifierBitsAndShiftAloneIsNot() {
-		//? if >=26.3 {
-		/*assertTrue(ScreenKeys.ctrlOrAlt(0xC0)); // either Ctrl
-		assertTrue(ScreenKeys.ctrlOrAlt(0x40));
-		assertTrue(ScreenKeys.ctrlOrAlt(0x300)); // either Alt
-		assertTrue(ScreenKeys.ctrlOrAlt(0x100));
-		assertFalse(ScreenKeys.ctrlOrAlt(0x1)); // left Shift
-		assertFalse(ScreenKeys.ctrlOrAlt(0x3));
-		assertFalse(ScreenKeys.ctrlOrAlt(0));
-		*///?} else {
-		assertTrue(ScreenKeys.ctrlOrAlt(2)); // GLFW_MOD_CONTROL
-		assertTrue(ScreenKeys.ctrlOrAlt(4)); // GLFW_MOD_ALT
-		assertTrue(ScreenKeys.ctrlOrAlt(1 | 2));
-		assertFalse(ScreenKeys.ctrlOrAlt(1)); // Shift
-		assertFalse(ScreenKeys.ctrlOrAlt(8)); // Super
-		assertFalse(ScreenKeys.ctrlOrAlt(0));
-		//?}
-	}
-
-	@Test
 	void shiftReversesOnlyTab() {
 		assertEquals(-1, ScreenKeys.focusDir(true, true, false));
 		assertEquals(1, ScreenKeys.focusDir(true, false, false));
@@ -90,27 +82,43 @@ class ScreenKeysTest {
 
 	@Test
 	void ctrlCAndCtrlXCopyAndCutOnlyWithCtrlHeld() {
-		assertEquals(0, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, true));
-		assertEquals(1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_X, true));
-		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, false));
-		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_V, true));
+		assertEquals(0, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, true, false, false));
+		assertEquals(1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_X, true, false, false));
+		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, false, false, false));
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_V, true, false, false));
+	}
+
+	@Test
+	void altGrOptionAndShiftDoNotCopyOrCut() {
+		// Polish AltGr+C and AltGr+X type c and z with an accent: Ctrl+Alt on Windows, Alt (Option) on a Mac
+		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, true, false, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_X, true, false, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_X, false, false, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(ScreenKeys.LETTER_C, true, true, false));
 	}
 
 	@Test
 	void ctrlFNeedsCtrlAndTheLetterF() {
-		assertTrue(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, true));
-		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, false));
-		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_C, true));
+		assertTrue(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, true, false, false));
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, false, false, false));
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_C, true, false, false));
+	}
+
+	@Test
+	void altGrFAndCtrlShiftFDoNotOpenTheSettingsSearch() {
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, true, false, true));
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, false, false, true));
+		assertFalse(ScreenKeys.isCtrlF(ScreenKeys.LETTER_F, true, true, false));
 	}
 
 	//? if >=26.3 {
 	/*@Test
 	void onSdlTheScancodeOfCsPlaceIsNotTheLetterC() {
 		// Dvorak: the key in the QWERTY C place types another letter; its scancode must not copy, and the keycode of C must
-		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, true));
-		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEYCODE_V, true));
-		assertEquals(0, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEYCODE_C, true));
-		assertFalse(ScreenKeys.isCtrlF(com.mojang.blaze3d.platform.InputConstants.KEY_F, true));
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEY_C, true, false, false));
+		assertEquals(-1, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEYCODE_V, true, false, false));
+		assertEquals(0, ScreenKeys.copyOrCut(com.mojang.blaze3d.platform.InputConstants.KEYCODE_C, true, false, false));
+		assertFalse(ScreenKeys.isCtrlF(com.mojang.blaze3d.platform.InputConstants.KEY_F, true, false, false));
 	}
 
 	*///?}
@@ -119,4 +127,14 @@ class ScreenKeysTest {
 		assertFalse(ScreenKeys.acceptsTypedChar(true));
 		assertTrue(ScreenKeys.acceptsTypedChar(false));
 	}
+
+	//? if <1.21.9 {
+	/*@Test
+	void theLegacyEventsControlIsTheRealCtrlBitNotCmd() {
+		int tab = com.mojang.blaze3d.platform.InputConstants.KEY_TAB;
+		assertTrue(new LegacyInput.KeyEvent(tab, 0, 2).hasControlDown());
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 8).hasControlDown()); // Super (Cmd)
+		assertFalse(new LegacyInput.KeyEvent(tab, 0, 1).hasControlDown());
+	}
+	*///?}
 }

@@ -47,8 +47,9 @@ public final class LegacyInput {
 			return Screen.isPaste(key);
 		}
 
+		// The real Ctrl key (as from 1.21.9 on); on a Mac Screen.hasControlDown() is Cmd, which is hasControlDownWithQuirk
 		public boolean hasControlDown() {
-			return Screen.hasControlDown();
+			return (modifiers & org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL) != 0;
 		}
 
 		// What Minecraft's own text boxes use: Cmd on a Mac, which Screen.hasControlDown() already gives
@@ -58,6 +59,10 @@ public final class LegacyInput {
 
 		public boolean hasShiftDown() {
 			return Screen.hasShiftDown();
+		}
+
+		public boolean hasAltDown() {
+			return Screen.hasAltDown();
 		}
 	}
 

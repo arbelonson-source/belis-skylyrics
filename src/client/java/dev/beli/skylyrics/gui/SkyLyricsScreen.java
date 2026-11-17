@@ -1665,7 +1665,7 @@ public final class SkyLyricsScreen extends Screen {
 		*///?} else {
 		int letter = event.key();
 		//?}
-		if (ScreenKeys.isCtrlF(letter, event.hasControlDownWithQuirk())) {
+		if (ScreenKeys.isCtrlF(letter, event.hasControlDownWithQuirk(), event.hasShiftDown(), event.hasAltDown())) {
 			typing = true;
 			afterKeyboardAction();
 			return true;
