@@ -634,4 +634,84 @@ class WindowsMediaSourceTest {
 		assertFalse(WindowsMediaSource.staleCover("cover-4242-3.img", pid -> "", 60_000), "program unknown: kept while fresh");
 		assertTrue(WindowsMediaSource.staleCover("cover-4242-3.img", pid -> "", 25L * 3600 * 1000), "program unknown: gone after a day");
 	}
+
+	private static JsonObject playingReply() {
+		return JsonParser.parseString("{\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\","
+				+ "\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}").getAsJsonObject();
+	}
+
+	/** Polls every 500 ms for the given seconds on a fake clock; returns how many questions the helper was asked. */
+	private int asksOver(boolean[] looking, long seconds) throws Exception {
+		int[] asks = {0};
+		long[] now = {1_000_000_000L};
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS,
+				() -> looking[0], () -> now[0], cmd -> {
+					asks[0]++;
+					return playingReply();
+				});
+		for (long t = 0; t < seconds * 2; t++) {
+			assertEquals("Song", source.poll().track().title());
+			now[0] += 500_000_000L;
+		}
+		return asks[0];
+	}
+
+	@Test
+	void notLookingAsksTheHelperOncePer15Seconds() throws Exception {
+		assertEquals(4, asksOver(new boolean[] {false}, 60));
+	}
+
+	@Test
+	void lookingAsksOnEveryPoll() throws Exception {
+		assertEquals(60, asksOver(new boolean[] {true}, 30));
+	}
+
+	@Test
+	void notLookingReturnsTheSameReading() throws Exception {
+		long[] now = {1_000_000_000L};
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS,
+				() -> false, () -> now[0], cmd -> playingReply());
+		Snapshot first = source.poll();
+		now[0] += 500_000_000L;
+		assertSame(first, source.poll(), "the reading keeps its own time stamp, so the position is not counted twice");
+	}
+
+	@Test
+	void lookingAgainAsksAtOnce() throws Exception {
+		int[] asks = {0};
+		long[] now = {1_000_000_000L};
+		boolean[] looking = {false};
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS,
+				() -> looking[0], () -> now[0], cmd -> {
+					asks[0]++;
+					return playingReply();
+				});
+		source.poll();
+		now[0] += 500_000_000L;
+		source.poll();
+		assertEquals(1, asks[0]);
+		looking[0] = true;
+		now[0] += 500_000_000L;
+		source.poll();
+		assertEquals(2, asks[0], "the first poll after looking turns on asks again");
+	}
+
+	@Test
+	void aFailedAskIsTriedAgainOnTheNextPollEvenWhileNotLooking() throws Exception {
+		int[] asks = {0};
+		long[] now = {1_000_000_000L};
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, WindowsMediaSource::powershell, START_MS, REPLY_MS,
+				() -> false, () -> now[0], cmd -> {
+					if (++asks[0] <= 2) {
+						throw new IOException("no helper");
+					}
+					return playingReply();
+				});
+		assertThrows(IOException.class, source::poll);
+		now[0] += 500_000_000L;
+		assertThrows(IOException.class, source::poll);
+		now[0] += 500_000_000L;
+		assertEquals("Song", source.poll().track().title());
+		assertEquals(3, asks[0], "a failure is not reused: the helper's own back-off decides how often it really starts");
+	}
 }

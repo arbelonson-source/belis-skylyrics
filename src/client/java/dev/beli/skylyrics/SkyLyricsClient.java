@@ -305,7 +305,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	private static MediaSource musicSource(Path cache) {
 		if (windows()) {
-			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"));
+			return new WindowsMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, cache.resolve("windows"), SkyLyricsClient::anyoneLooking);
 		}
 		if (mac()) {
 			return new MacMediaSource(() -> SkyLyricsConfig.get().preferredPlayer, SkyLyricsClient::anyoneLooking);

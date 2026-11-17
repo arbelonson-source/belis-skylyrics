@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -62,6 +64,14 @@ public final class WindowsMediaSource implements MediaSource {
 	@SuppressWarnings("StringOperationCanBeSimplified")
 	private static final String END = new String("end");
 
+	/** While nothing on screen shows the song, an answer from the helper is reused this long (the Spotify Web poller's quiet pace). */
+	static final long QUIET_POLL_NS = SpotifyPace.QUIET_NS;
+
+	/** Asks the helper one question; tests swap in a stand-in. */
+	interface Requester {
+		JsonObject ask(String command) throws Exception;
+	}
+
 	/** How to start the helper; tests swap in a stand-in for Windows. */
 	interface Launcher {
 		List<String> command(Path script, Path coverDir);
@@ -72,6 +82,14 @@ public final class WindowsMediaSource implements MediaSource {
 	private final Launcher launcher;
 	private final long startTimeoutMs;
 	private final long replyTimeoutMs;
+	private final BooleanSupplier looking;
+	/** Pacing clock; tests swap it. */
+	private final LongSupplier clock;
+	private final Requester requester;
+	private boolean wasLooking = true;
+	/** The last poll's answer, reused while nobody is looking; null when there is none worth reusing. */
+	private volatile @Nullable Snapshot cached;
+	private long cachedAt;
 
 	private volatile @Nullable Process process;
 	private volatile @Nullable Writer input;
@@ -95,11 +113,25 @@ public final class WindowsMediaSource implements MediaSource {
 
 	/** @param dir where the helper script and the covers it saves go */
 	public WindowsMediaSource(Supplier<String> preferredPlayer, Path dir) {
-		this(preferredPlayer, dir, WindowsMediaSource::powershell, START_TIMEOUT_MS, REPLY_TIMEOUT_MS);
+		this(preferredPlayer, dir, () -> true);
+	}
+
+	/** @param looking whether anything on screen shows the song; when not, the helper is asked far less often */
+	public WindowsMediaSource(Supplier<String> preferredPlayer, Path dir, BooleanSupplier looking) {
+		this(preferredPlayer, dir, WindowsMediaSource::powershell, START_TIMEOUT_MS, REPLY_TIMEOUT_MS, looking, System::nanoTime, null);
 	}
 
 	/** Tests use a stand-in launcher, and longer timeouts for slow test machines. */
 	WindowsMediaSource(Supplier<String> preferredPlayer, Path dir, Launcher launcher, long startTimeoutMs, long replyTimeoutMs) {
+		this(preferredPlayer, dir, launcher, startTimeoutMs, replyTimeoutMs, () -> true, System::nanoTime, null);
+	}
+
+	/** @param requester how the helper is asked; null means the real helper */
+	WindowsMediaSource(Supplier<String> preferredPlayer, Path dir, Launcher launcher, long startTimeoutMs, long replyTimeoutMs,
+			BooleanSupplier looking, LongSupplier clock, @Nullable Requester requester) {
+		this.looking = looking;
+		this.clock = clock;
+		this.requester = requester != null ? requester : this::request;
 		this.preferredPlayer = preferredPlayer;
 		this.dir = dir;
 		this.launcher = launcher;
@@ -120,8 +152,24 @@ public final class WindowsMediaSource implements MediaSource {
 
 	@Override
 	public synchronized Snapshot poll() throws Exception {
+		boolean lookingNow = looking.getAsBoolean();
+		boolean returned = lookingNow && !wasLooking; // the song may have changed while nobody looked: ask at once
+		wasLooking = lookingNow;
+		Snapshot reuse = cached;
+		// The snapshot carries the moment it was read, so the tracker's clock keeps counting from there
+		if (reuse != null && !lookingNow && !returned && clock.getAsLong() - cachedAt < QUIET_POLL_NS) {
+			return reuse;
+		}
+		cached = null; // a failed ask must not leave an old answer to reuse
+		Snapshot fresh = ask();
+		cached = fresh;
+		cachedAt = clock.getAsLong();
+		return fresh;
+	}
+
+	private Snapshot ask() throws Exception {
 		Map<String, Seen> next = new HashMap<>();
-		List<Session> sessions = sessions(request("poll"), System.currentTimeMillis(), seen, next);
+		List<Session> sessions = sessions(requester.ask("poll"), System.currentTimeMillis(), seen, next);
 		seen = next;
 		Session chosen = PlayerPicker.choose(sessions, Session::key, s -> s.track().player(), Session::playing,
 				preferredPlayer.get(), followKey(sessions, current));
@@ -684,6 +732,7 @@ public final class WindowsMediaSource implements MediaSource {
 		if (s == null) {
 			return;
 		}
+		cached = null; // the player is about to change: the next poll must ask
 		try {
 			request(command + " " + s.index() + " " + s.id());
 		} catch (Exception e) {
@@ -719,6 +768,7 @@ public final class WindowsMediaSource implements MediaSource {
 	/** Stops the helper; the next poll starts it again straight away. Safe from any thread. */
 	@Override
 	public void close() {
+		cached = null;
 		stop();
 		retryAt = 0;
 	}
