@@ -487,6 +487,9 @@ public final class SkyLyricsConfig {
 			blocked.reader = reader;
 			return blocked;
 		}
+		if (text.strip().isEmpty() || text.equals("\uFEFF")) {
+			return new SkyLyricsConfig(); // nothing in it yet: not damaged, no copy
+		}
 		try {
 			Parsed parsed = parse(text);
 			if (parsed.damaged()) {
