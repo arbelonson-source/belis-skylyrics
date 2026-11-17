@@ -112,6 +112,7 @@
 - **Spotify sign-in.** When Spotify says "too many requests" while renewing your sign-in, SkyLyrics waits as long as Spotify asks (up to 5 minutes). If your Spotify app was deleted or reset, you are signed out with a message to check your Client ID instead of staying "Signed in" while nothing works. A program on your PC can't hold up the sign-in page by sending data slowly, and restarting a sign-in no longer shows the old attempt's error or a false "Sign-in timed out".
 - **First-run tour.** The "Where the songs come from" text no longer runs under the Demo song button in longer languages or on a Mac (a cut line ends in "…"), and the keyboard stays on a sensible button when you change pages or resize the window.
 - **Very long lines in World.** With Flow on, a line so long it fills the sky down to the bottom carries on at the top without writing over its own first words: the ones in the way give way at once.
+- **Song library sign-in strip.** On a small window or a large GUI scale, the "Sign in to Spotify" strip above your recently heard songs now wraps onto a second line instead of cutting off its text, and its button is shorter in Spanish, Portuguese and Hebrew.
 
 ### Faster
 
