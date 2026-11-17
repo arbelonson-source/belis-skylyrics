@@ -53,8 +53,6 @@ jobs:
           test "$(echo "$jars" | wc -l)" = "$want" || { echo "expected $want jars, got: $jars"; exit 1; }
           notes=".github/release-notes/$TAG.md"
           # --target makes the tag on this commit when it doesn't exist yet (Run workflow)
-          if [ -f "$notes" ]; then
-            gh release create "$TAG" $jars --target "$GITHUB_SHA" --title "Beli's SkyLyrics $TAG" --notes-file "$notes"
-          else
-            gh release create "$TAG" $jars --target "$GITHUB_SHA" --title "Beli's SkyLyrics $TAG" --generate-notes
-          fi
+          # no hand-written notes, no release: rename next.md to $TAG.md first
+          test -f "$notes" || { echo "missing $notes: rename .github/release-notes/next.md to $TAG.md first"; exit 1; }
+          gh release create "$TAG" $jars --target "$GITHUB_SHA" --title "Beli's SkyLyrics $TAG" --notes-file "$notes"

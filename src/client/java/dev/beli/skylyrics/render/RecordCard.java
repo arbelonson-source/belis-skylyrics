@@ -11,10 +11,10 @@ import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.ARGB;
-import net.minecraft.world.entity.player.ChatVisiblity;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.player.ChatVisiblity;
 
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
@@ -37,6 +37,8 @@ public final class RecordCard {
 	static final float SIDE_H = 9;
 	/** The dimmed lines are drawn this much smaller than the current one. */
 	private static final float SIDE_SCALE = 0.8f;
+	/** The title's bold style per letter kind, made once instead of every frame. */
+	private static final Style TITLE_SMOOTH = Style.EMPTY.withFont(LyricsFont.BOLD), TITLE_PIXEL = Style.EMPTY.withBold(true);
 	/** Space between the card and the edge of the screen. */
 	static final float MARGIN = 6;
 	/** Half the hotbar's width, which also covers the hearts and food above it. */
@@ -152,7 +154,7 @@ public final class RecordCard {
 		Font font = mc.font;
 		LyricsFont.checkFonts(font);
 		Style style = LyricsFont.base(cfg);
-		Style bold = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
+		Style bold = cfg.smoothFont ? TITLE_SMOOTH : TITLE_PIXEL;
 		float scale = cfg.smoothFont ? TEXT_SCALE : 1;
 		float tx = x + PAD + DISC + 6, room = (x + W - PAD - 2 - tx) / scale;
 		String title = track.title().isEmpty() ? unknownSong.get() : track.title();

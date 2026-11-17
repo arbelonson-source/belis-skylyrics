@@ -1830,6 +1830,12 @@ final class WorldWords {
 		return (float) -Math.toDegrees(Math.asin(Mth.clamp(v.y / v.length(), -1, 1)));
 	}
 
+	/** The most a piece of a flowing line may tip either way (degrees), given half its width in letter pixels. */
+	static float tipFor(float halfWidth) {
+		float most = LEAN * SENTENCE_LEAN;
+		return halfWidth <= TIP_DROP ? most : Math.min(most, (float) Math.toDegrees(Math.asin(TIP_DROP / halfWidth)));
+	}
+
 	/**
 	 * The patch of sky a card takes up, as yaw, pitch and half width/height in degrees, for a card at {@code to} from
 	 * the eye that has floated up by {@code risen}. Every card floats up at the same pace until it stops, so next to
@@ -1837,12 +1843,6 @@ final class WorldWords {
 	 * would be placed where the older one is right now and the two would cross.
 	 * The width is in yaw, which a card high up in the sky spans more of than one on the horizon.
 	 */
-	/** The most a piece of a flowing line may tip either way (degrees), given half its width in letter pixels. */
-	static float tipFor(float halfWidth) {
-		float most = LEAN * SENTENCE_LEAN;
-		return halfWidth <= TIP_DROP ? most : Math.min(most, (float) Math.toDegrees(Math.asin(TIP_DROP / halfWidth)));
-	}
-
 	static float[] footprint(Vec3 to, float risen, float halfWidth, float halfHeight) {
 		Vec3 now = to.add(0, risen, 0);
 		float from = pitchOf(to), at = pitchOf(now);
@@ -1851,14 +1851,14 @@ final class WorldWords {
 		return new float[] {yawOf(to), (from + at) / 2, halfAngle(halfWidth, flat), halfAngle(halfHeight, far) + Math.abs(from - at) / 2};
 	}
 
-	/**
-	 * Finds words that sit on top of each other as seen from here and sends the newer one to the nearest clear side,
-	 * gliding there over a moment rather than jumping.
-	 */
 	/** Scratch lists for {@link #separate}: filled and read inside one call, never kept (render thread only). */
 	private final List<float[]> nudgeSeen = new ArrayList<>();
 	private final List<Card> nudgeOrder = new ArrayList<>();
 
+	/**
+	 * Finds words that sit on top of each other as seen from here and sends the newer one to the nearest clear side,
+	 * gliding there over a moment rather than jumping.
+	 */
 	private void separate(Vec3 eye, long now) {
 		float dt = lastNudge == 0 ? 0 : Mth.clamp((now - lastNudge) / 1e9f, 0, 0.1f);
 		lastNudge = now;
