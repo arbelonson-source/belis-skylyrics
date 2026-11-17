@@ -244,6 +244,59 @@ class UpdaterTest {
 	private static final java.util.function.Predicate<java.net.URI> LOCAL = u -> "127.0.0.1".equals(u.getHost());
 
 	@Test
+	void apiRedirectsAreFollowedByHandAndChecked() throws Exception {
+		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		byte[] json = "{\"tag_name\":\"v9\"}".getBytes(StandardCharsets.UTF_8);
+		server.createContext("/ok", ex -> {
+			ex.getResponseHeaders().add("Location", "/body");
+			ex.sendResponseHeaders(302, -1);
+			ex.close();
+		});
+		server.createContext("/body", ex -> {
+			ex.sendResponseHeaders(200, json.length);
+			ex.getResponseBody().write(json);
+			ex.close();
+		});
+		server.createContext("/evil", ex -> {
+			ex.getResponseHeaders().add("Location", "https://evil.example/x");
+			ex.sendResponseHeaders(302, -1);
+			ex.close();
+		});
+		server.createContext("/loop", ex -> {
+			ex.getResponseHeaders().add("Location", "/loop");
+			ex.sendResponseHeaders(302, -1);
+			ex.close();
+		});
+		server.start();
+		try {
+			String base = "http://127.0.0.1:" + server.getAddress().getPort();
+			HttpClient api = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
+			assertEquals("{\"tag_name\":\"v9\"}", Updater.fetchReply(api, base + "/ok", LOCAL));
+			assertNull(Updater.fetchReply(api, base + "/evil", LOCAL));
+			assertNull(Updater.fetchReply(api, base + "/loop", LOCAL));
+			assertThrows(IllegalArgumentException.class, () -> Updater.fetchReply(HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build(), base + "/ok", LOCAL));
+		} finally {
+			server.stop(0);
+		}
+	}
+
+	@Test
+	void apiRedirectRuleAcceptsTheApiHostOnly() {
+		java.util.function.Function<String, java.net.URI> u = java.net.URI::create;
+		assertTrue(Updater.allowedApiRedirect(u.apply("https://api.github.com/repos/x/y/releases/latest")));
+		assertTrue(Updater.allowedApiRedirect(u.apply("https://github.com/x")));
+		assertTrue(Updater.allowedApiRedirect(u.apply("https://objects.githubusercontent.com/x")));
+		assertFalse(Updater.allowedApiRedirect(u.apply("http://api.github.com/x")));
+		assertFalse(Updater.allowedApiRedirect(u.apply("https://evil.example/x")));
+		assertFalse(Updater.allowedApiRedirect(u.apply("https://api.github.com.evil.example/x")));
+		assertFalse(Updater.allowedApiRedirect(u.apply("https://u@api.github.com/x")));
+		assertFalse(Updater.allowedApiRedirect(u.apply("https://api.github.com:8443/x")));
+		assertFalse(Updater.allowedApiRedirect(u.apply("https://other.github.com/x")));
+		// the download rule is unchanged
+		assertFalse(Updater.allowedRedirect(u.apply("https://api.github.com/x")));
+	}
+
+	@Test
 	void redirectsAreFollowedByHandAndChecked() throws Exception {
 		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
 		server.createContext("/ok", ex -> {

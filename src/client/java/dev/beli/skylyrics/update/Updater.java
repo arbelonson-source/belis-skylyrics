@@ -98,22 +98,64 @@ public final class Updater {
 			cleanLeftovers(jar.getParent(), now);
 			cleanLeftovers(Path.of(System.getProperty("java.io.tmpdir")), now);
 		}
-		// The API call may follow redirects; the jar download never does, it follows them itself after checking each one
-		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NORMAL).build();
+		// Neither client follows redirects by itself: both follow them by hand after checking each one
+		HttpClient api = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
 		HttpClient http = HttpClient.newBuilder().connectTimeout(TIMEOUT).followRedirects(HttpClient.Redirect.NEVER).build();
 		Path memory = FabricLoader.getInstance().getGameDir().resolve(".cache").resolve(SkyLyricsClient.MOD_ID)
 				.resolve("update-refused.json");
 		notice = look(mode, () -> {
-			HttpResponse<InputStream> response = api.send(request(LATEST).header("Accept", "application/vnd.github+json").build(),
+			return fetchReply(api, LATEST, Updater::allowedApiRedirect);
+		}, http, jar, runningVersion, mcKey, memory, Updater::running);
+	}
+
+	/**
+	 * The release API's reply as text: follows at most MAX_HOPS redirects by hand, each only where redirectOk accepts.
+	 * Null (with one line in the log) for a refused redirect, a non-200 answer or a reply that is too big.
+	 */
+	static String fetchReply(HttpClient api, String url, java.util.function.Predicate<URI> redirectOk)
+			throws IOException, InterruptedException {
+		if (api.followRedirects() != HttpClient.Redirect.NEVER) {
+			throw new IllegalArgumentException("the API client must not follow redirects by itself");
+		}
+		URI uri = URI.create(url);
+		for (int hop = 0; hop <= MAX_HOPS; hop++) {
+			HttpResponse<InputStream> response = api.send(request(uri.toString()).header("Accept", "application/vnd.github+json").build(),
 					HttpResponse.BodyHandlers.ofInputStream());
 			try (InputStream in = response.body()) {
-				if (response.statusCode() != 200) {
-					LOG.info("Update check got HTTP {}", response.statusCode());
+				int status = response.statusCode();
+				if (status == 301 || status == 302 || status == 303 || status == 307 || status == 308) {
+					String location = response.headers().firstValue("Location").orElse(null);
+					URI next;
+					try {
+						next = location == null ? null : uri.resolve(location);
+					} catch (IllegalArgumentException e) {
+						next = null;
+					}
+					if (next == null || !redirectOk.test(next)) {
+						LOG.info("Update check refused a redirect to {}", next == null ? "nowhere" : next.getHost());
+						return null;
+					}
+					uri = next;
+					continue;
+				}
+				if (status != 200) {
+					LOG.info("Update check got HTTP {}", status);
 					return null;
 				}
 				return readReply(in);
 			}
-		}, http, jar, runningVersion, mcKey, memory, Updater::running);
+		}
+		LOG.info("Update check refused: too many redirects");
+		return null;
+	}
+
+	/** The redirect rule for the API call: the download's rule, plus https to api.github.com itself. */
+	static boolean allowedApiRedirect(URI uri) {
+		if (allowedRedirect(uri)) {
+			return true;
+		}
+		return uri != null && "https".equalsIgnoreCase(uri.getScheme()) && uri.getRawUserInfo() == null
+				&& (uri.getPort() == -1 || uri.getPort() == 443) && "api.github.com".equalsIgnoreCase(uri.getHost());
 	}
 
 	/** The release API's reply as text, or null (with one line in the log) when it is bigger than 1 MB. */
