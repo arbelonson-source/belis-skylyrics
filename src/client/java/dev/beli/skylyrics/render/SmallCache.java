@@ -17,6 +17,24 @@ final class SmallCache<K, V> {
 		values = new Object[slots];
 	}
 
+	/** The remembered result for a key equal to {@code probe}, or null. Allocates nothing, so a reused probe is fine. */
+	@SuppressWarnings("unchecked")
+	V find(Object probe) {
+		for (int i = 0; i < keys.length; i++) {
+			if (probe.equals(keys[i])) {
+				return (V) values[i];
+			}
+		}
+		return null;
+	}
+
+	/** Remembers a result; {@code key} must be an object of its own, never a probe that is reused. */
+	void put(K key, V value) {
+		keys[next] = key;
+		values[next] = value;
+		next = (next + 1) % keys.length;
+	}
+
 	@SuppressWarnings("unchecked")
 	V get(K key, Function<K, V> make) {
 		for (int i = 0; i < keys.length; i++) {
