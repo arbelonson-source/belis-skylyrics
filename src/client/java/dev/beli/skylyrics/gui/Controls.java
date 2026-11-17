@@ -897,6 +897,7 @@ final class Controls {
 		private List<net.minecraft.util.FormattedCharSequence> lines = List.of();
 		private static final String FONT_PROBE = "Mw0♪漢א ع";
 		private int linesProbe;
+		private int linesMode;
 		private int linesWidth = -1;
 		private String linesText = "";
 		private boolean linesRtl;
@@ -923,8 +924,10 @@ final class Controls {
 			int probe = font.width(FONT_PROBE);
 			// the direction depends on the game language too: a switch with the same text and width re-orders the lines
 			boolean rtl = Ui.paragraphRtl(t);
-			if (width != linesWidth || !t.equals(linesText) || probe != linesProbe || rtl != linesRtl) {
+			int mode = dev.beli.skylyrics.util.GlyphMode.current(); // Force Unicode Font and the like move widths with no reload
+			if (mode != linesMode || width != linesWidth || !t.equals(linesText) || probe != linesProbe || rtl != linesRtl) {
 				linesProbe = probe;
+				linesMode = mode;
 				linesRtl = rtl;
 				// split logically, then order every line in the direction of the whole paragraph
 				lines = font.getSplitter().splitLines(t, Math.max(1, width - 20), net.minecraft.network.chat.Style.EMPTY).stream()

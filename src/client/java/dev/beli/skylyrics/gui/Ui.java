@@ -4,7 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
@@ -136,19 +135,7 @@ final class Ui {
 		if (maxW <= 0) {
 			return "";
 		}
-		return CLIPS.get(Language.getInstance(), glyphMode(), font, text, maxW, () -> clip(font, text, maxW, font.width(text)));
-	}
-
-	/**
-	 * Which glyph set the game uses: Force Unicode Font and Japanese glyph variants change glyph widths in place
-	 * (Options callback -> Minecraft.updateFontOptions -> FontManager.updateOptions), with no resource reload and no new Language.
-	 */
-	private static int glyphMode() {
-		Minecraft mc = Minecraft.getInstance();
-		if (mc == null || mc.options == null) {
-			return 0;
-		}
-		return (mc.options.forceUnicodeFont().get() ? 1 : 0) | (mc.options.japaneseGlyphVariants().get() ? 2 : 0);
+		return CLIPS.get(Language.getInstance(), dev.beli.skylyrics.util.GlyphMode.current(), font, text, maxW, () -> clip(font, text, maxW, font.width(text)));
 	}
 
 	/** Cuts remembered between frames, per (font, text, room), dropped when the language object or the glyph mode changes. Render thread only. */
@@ -162,7 +149,7 @@ final class Ui {
 		if (textW <= maxW) {
 			return text;
 		}
-		return CLIPS.get(Language.getInstance(), glyphMode(), font, text, maxW, () -> clipBy(text, maxW, font::width));
+		return CLIPS.get(Language.getInstance(), dev.beli.skylyrics.util.GlyphMode.current(), font, text, maxW, () -> clipBy(text, maxW, font::width));
 	}
 
 	/** The text cut to fit {@code maxW} and ending in "…", cut between whole characters (never inside a flag or an accent). */
