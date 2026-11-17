@@ -72,6 +72,20 @@ public final class LyricsRenderer {
 	/** Copies in the one ring that light effects draw. */
 	private static final int GLOW_LIGHT = 3;
 
+	/** A word's glow in the Arc layout: the inner ring, with as few copies as {@link #glowCopies} allows for its strength. */
+	static void glowRing(Canvas canvas, float x, float y, FormattedCharSequence haloSeq, float glow, float alpha, int halo, boolean light) {
+		float strength = glow * alpha;
+		int copies = glowCopies(1, strength, light);
+		int glowByte = Math.round(strength * 1.28f / copies * 255);
+		if (!glowVisible(glowByte)) {
+			return;
+		}
+		for (int k = 0; k < copies; k++) {
+			float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
+			canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, haloSeq, false, glowByte << 24 | halo, 3);
+		}
+	}
+
 	/**
 	 * Copies to draw in a glow ring (1 inner, 2 outer) at this strength. A faint glow can't show a rounder
 	 * halo, so it gets fewer copies of the same total brightness and no outer ring, which saves frames on
@@ -1105,7 +1119,7 @@ public final class LyricsRenderer {
 
 	/** One frame's worth of drawing settings. */
 	/** Where the text ends up: in the world, or over the finished screen. */
-	private interface Canvas {
+	interface Canvas {
 		/** Moves to (x, y), turns by {@code angle} degrees (clockwise on screen) and scales. */
 		void push(float x, float y, float scale, float angle);
 
@@ -1451,16 +1465,8 @@ public final class LyricsRenderer {
 			Display d = Display.of(word, rtl);
 			int argb = Math.max(4, Math.round(alpha * 255)) << 24 | 0xFFFFFF;
 			if (cfg.glow > 0.01f) {
-				int copies = LyricsRenderer.this.light ? GLOW_LIGHT : GLOW_INNER;
-				int glowByte = Math.round(cfg.glow * alpha * 1.28f / copies * 255);
-				if (glowVisible(glowByte)) {
-					int halo = mix(glowOf(face), 0x000000, 0.75f * daylight);
-					FormattedCharSequence haloSeq = colored(d, halo);
-					for (int k = 0; k < copies; k++) {
-						float ang = k * Mth.TWO_PI / copies + Mth.PI / copies;
-						canvas.letters(x + Mth.cos(ang) * 0.85f, y + Mth.sin(ang) * 0.85f, haloSeq, false, glowByte << 24 | halo, 3);
-					}
-				}
+				int halo = mix(glowOf(face), 0x000000, 0.75f * daylight);
+				glowRing(canvas, x, y, colored(d, halo), cfg.glow, alpha, halo, LyricsRenderer.this.light);
 			}
 			if (cfg.depth && withDepth) {
 				float sin = Mth.sin(angle * DEG), cos = Mth.cos(angle * DEG);

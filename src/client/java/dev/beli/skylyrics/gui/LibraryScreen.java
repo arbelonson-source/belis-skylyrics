@@ -1412,7 +1412,12 @@ public final class LibraryScreen extends Screen {
 				edit(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 				return true;
 			}
-			int copy = ScreenKeys.copyOrCut(event.key(), event.hasControlDownWithQuirk());
+			//? if >=26.3 {
+			/*int letter = event.shortcutKey();
+			*///?} else {
+			int letter = event.key();
+			//?}
+			int copy = ScreenKeys.copyOrCut(letter, event.hasControlDownWithQuirk());
 			if (copy >= 0) {
 				if (!query.isEmpty()) {
 					minecraft.keyboardHandler.setClipboard(query);
