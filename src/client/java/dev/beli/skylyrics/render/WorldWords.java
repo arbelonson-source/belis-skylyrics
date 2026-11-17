@@ -345,6 +345,11 @@ final class WorldWords {
 	private int placing = -1;
 	private long rng = System.nanoTime();
 
+	/** For tests: fixes the random numbers, so a layout comes out the same every run. */
+	void seed(long seed) {
+		rng = seed;
+	}
+
 	/** You died: every word up drops out of the sky, spinning as it fades. */
 	void fall(long now) {
 		for (Card c : cards) {
