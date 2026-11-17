@@ -138,7 +138,7 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 ## The flashes or motion stopped, or seem gone
 
-Check Minecraft's **Accessibility** settings. **Hide Lightning Flashes** on turns off the lyrics' flashes (glow pulse, crosshair flash, hat flare, sky pulse and the World words' white flash), and **Distortion Effects** at 0 keeps the line pop, the World words' sway, the hat's wobble and spin and the spinning record still. Turn the flashes back on, or raise **Distortion Effects**, to get them back.
+Check Minecraft's **Accessibility** settings. **Hide Lightning Flashes** on turns off the lyrics' flashes (glow pulse, crosshair flash, hat flare, sky pulse and the World words' white flash), and **Distortion Effects** at 0 keeps the line pop, the World words' sway, the hat's wobble and spin and the spinning record still. The World words then only fade when they leave, fall, slide in or make room for each other. Turn the flashes back on, or raise **Distortion Effects**, to get them back.
 
 ## Lyrics vanish in caves
 
