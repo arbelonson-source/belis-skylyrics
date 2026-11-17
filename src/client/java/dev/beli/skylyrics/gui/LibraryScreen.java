@@ -85,6 +85,7 @@ public final class LibraryScreen extends Screen {
 	private int signInFocus = -1;
 	/** The playlist's place in its list while it is open, so closing it puts the keyboard back there; -1 if none. */
 	private int openedFrom = -1;
+	private @Nullable LibraryPlaylist openedList;
 	/** The last input was a key, not a click. */
 	private boolean keyboardLast;
 	/** A recent search was just picked, so the Narrator says how many results it found; any later key or click ends that. */
@@ -1107,6 +1108,7 @@ public final class LibraryScreen extends Screen {
 			openedAtNs = System.nanoTime();
 			openedName = list.name();
 			openedFrom = index;
+			openedList = list;
 			selected = -1;
 			sayNewSection = true;
 			return;
@@ -1135,13 +1137,20 @@ public final class LibraryScreen extends Screen {
 	/** After a playlist closes: scroll back to where it was, and put the keyboard on it only if the keyboard was used last. */
 	private void restorePlace() {
 		Shelf back = shelf();
-		int at = LibraryKeys.afterClose(openedFrom, back == null ? 0 : back.items.size());
+		int from = openedFrom;
+		if (back != null && openedList != null && !(from >= 0 && from < back.items.size() && back.items.get(from) == openedList)) {
+			// The list changed while the playlist was open: find it again
+			int found = back.items.indexOf(openedList);
+			from = found >= 0 ? found : from;
+		}
+		openedList = null;
+		int at = LibraryKeys.afterClose(from, back == null ? 0 : back.items.size());
 		openedFrom = -1;
 		selected = -1;
 		if (back != null && at >= 0) {
 			selected = at;
 			reveal(back);
-			selected = keyboardLast ? at : -1;
+			selected = keyboardLast || view() == SkyLyricsConfig.LibraryView.CAROUSEL ? at : -1;
 		}
 	}
 
