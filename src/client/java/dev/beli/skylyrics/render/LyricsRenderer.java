@@ -113,6 +113,8 @@ public final class LyricsRenderer {
 	}
 	/** How far back the song time must drop between two frames to count as a seek back, twice the tracker's 350 ms of jitter. */
 	static final long SEEK_BACK_MS = 700;
+	/** The limit for a drop that comes with a pause being noticed late (up to a poll of extrapolated position). */
+	static final long SEEK_BACK_LATE_PAUSE_MS = 1500;
 	private static final float ROW_H = 10f;
 	/** Title screen: rows of height the lyrics need, the size limits, and the wrap width (in text pixels). */
 	private static final float MENU_ROWS = 3.6f * ROW_H, MENU_MAX_SCALE = 1.5f, MENU_MIN_SCALE = 0.55f, MENU_WRAP = 260;
@@ -201,6 +203,8 @@ public final class LyricsRenderer {
 	private final WorldWords worldWords = new WorldWords();
 	/** The song time the World words were last updated at, to notice a jump back; MIN_VALUE when they weren't. */
 	private long worldTime = Long.MIN_VALUE;
+	/** Whether that earlier frame's reading was playing. */
+	private boolean worldPlaying;
 
 	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
 	public void onLeaveWorld() {
@@ -686,10 +690,11 @@ public final class LyricsRenderer {
 		}
 		// The raw song position, not the lyrics time: a timing slider moves the lyrics time without any seek
 		long position = tracker.positionMs(song);
-		if (jumpedBack(worldTime, position)) {
+		if (jumpedBack(worldTime, position, worldPlaying, song.playing())) {
 			worldWords.rewind(now);
 		}
 		worldTime = position;
+		worldPlaying = song.playing();
 		if (!dead) {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
@@ -781,7 +786,18 @@ public final class LyricsRenderer {
 	 * no earlier frame.
 	 */
 	static boolean jumpedBack(long previousMs, long timeMs) {
-		return previousMs != Long.MIN_VALUE && previousMs - timeMs > SEEK_BACK_MS;
+		return jumpedBack(previousMs, timeMs, true, true);
+	}
+
+	/**
+	 * The same with the play states of the two frames. A pause is noticed one poll late (the position is extrapolated
+	 * until then), so the reading that says paused can sit up to a poll behind: a drop that comes with playing to paused
+	 * keeps the old {@link #SEEK_BACK_LATE_PAUSE_MS} limit. A drop with the same play state (a real seek, while playing
+	 * or paused) or into playing, and a buffering stall's snap back (still playing), count past {@link #SEEK_BACK_MS}.
+	 */
+	static boolean jumpedBack(long previousMs, long timeMs, boolean wasPlaying, boolean playing) {
+		long limit = wasPlaying && !playing ? SEEK_BACK_LATE_PAUSE_MS : SEEK_BACK_MS;
+		return previousMs != Long.MIN_VALUE && previousMs - timeMs > limit;
 	}
 
 	private boolean sungLine(int index) {
