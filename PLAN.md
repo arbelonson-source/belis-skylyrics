@@ -94,7 +94,7 @@ photos + videos, keep improving until it's perfect, then upload to GitHub (FOSS)
 - [x] Top bar: "now playing" look between lines (song title · artist) instead of an empty bar
 - [x] Top bar: optional clock on the left of the bar
 - [x] Current word slightly larger while it is being sung (optional)
-- [ ] Settings screen: live preview of the sky lyrics inside the menu looks right at every GUI scale
+- [x] Settings screen: live preview of the sky lyrics inside the menu looks right at every GUI scale (seen 2026-11-18, game 67 on 26.3: the settings and the full-screen preview fit at GUI scales 1, 2, 3 and auto)
 
 ## Log
 - 2026-10-25: started. Template from FabricMC/fabric-example-mod@1.21.11.
