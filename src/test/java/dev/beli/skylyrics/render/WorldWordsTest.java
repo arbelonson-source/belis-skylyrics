@@ -1045,6 +1045,57 @@ class WorldWordsTest {
 		}
 	}
 
+	/** The words of the line up (not the title) that are not leaving, by reflection like the other card tests. */
+	private static int standingWords(WorldWords words) throws Exception {
+		Class<?> cardClass = Class.forName("dev.beli.skylyrics.render.WorldWords$Card");
+		var cardsField = WorldWords.class.getDeclaredField("cards");
+		cardsField.setAccessible(true);
+		var titleField = cardClass.getDeclaredField("title");
+		titleField.setAccessible(true);
+		var goneAt = cardClass.getDeclaredField("goneAt");
+		goneAt.setAccessible(true);
+		int standing = 0;
+		for (Object card : (List<?>) cardsField.get(words)) {
+			if (!titleField.getBoolean(card) && goneAt.getLong(card) < 0) {
+				standing++;
+			}
+		}
+		return standing;
+	}
+
+	/**
+	 * A seek back of a second inside the line being sung: the renderer's check calls for a rewind, and then none of the
+	 * words placed stays and only the words sung up to the new spot come back, one by one, never an unsung one.
+	 */
+	@Test
+	void aSeekBackInsideTheLineTakesItsWordsBackAndPlacesThemAgainFromTheNewSpot() throws Exception {
+		WorldWords.measureHook = t -> t.length() * 4.0;
+		try {
+			WorldWords words = new WorldWords();
+			words.seed(12345);
+			words.tune(30, 6, 1, 1, 1, false, true, false, 1);
+			words.players(false, false);
+			net.minecraft.client.Camera camera = new net.minecraft.client.Camera();
+			net.minecraft.network.chat.Style style = net.minecraft.network.chat.Style.EMPTY;
+			String line = "Neon skyline, keep it spinning";
+			long ns = 1_000_000_000L;
+			for (int step = 0; step <= 4; step++) {
+				words.update(0, line, step * 4, false, Float.NaN, Float.NaN, camera, null, null, style, ns + step * 1000L);
+			}
+			int before = standingWords(words);
+			assertTrue(before >= 3, "the words sung so far are up: " + before);
+			// the song is at 60.0 s, then 59.0 s: a seek back
+			assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000));
+			words.rewind(2 * ns);
+			words.update(0, line, 1, false, Float.NaN, Float.NaN, camera, null, null, style, 2 * ns);
+			assertEquals(1, standingWords(words), "only the first word is up again, nothing already sung after the new spot");
+			words.update(0, line, 8, false, Float.NaN, Float.NaN, camera, null, null, style, 3 * ns);
+			assertEquals(2, standingWords(words), "the next word comes as it is sung again");
+		} finally {
+			WorldWords.measureHook = null;
+		}
+	}
+
 	/**
 	 * A flowing line that starts over (it filled the sky, or you turned away) clears its own earlier words that any
 	 * later piece lands on, on any touch and quickly, while the line still being written and other lines' words are
