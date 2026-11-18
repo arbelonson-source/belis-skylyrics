@@ -40,6 +40,8 @@ final class ArcLayout {
 	private static final float PAUSE_BONUS = 0.85f;
 	/** Half the height of a lower-case word, for centring the block. */
 	private static final float HALF_HEIGHT = 4f;
+	/** Air kept between a row's groups and the row above's, once the row is pushed down to clear them. */
+	private static final float ROW_MARGIN = 1f;
 
 	/** Above this many steps (rows x words squared) the exact search is skipped for a plain fill; about 15 ms of work. */
 	private static final long MAX_DP_STEPS = 5_000_000L;
@@ -335,7 +337,10 @@ final class ArcLayout {
 		float flip = unit(seed, 0, SALT_FLIP) < 0.5f ? 1 : -1;
 		int groupNo = 0;
 		float rowY = 0, above = 0;
+		List<Float> reach = new ArrayList<>(); // each placed group's half width on screen, same order as out
+		int prevStart = 0;
 		for (int r = 0; r < rows; r++) {
+			int rowStart = out.size();
 			int from = rowStarts[r], to = r + 1 < rows ? rowStarts[r + 1] : n;
 			// Split the row into groups and measure them
 			List<int[]> spans = new ArrayList<>();
@@ -404,7 +409,21 @@ final class ArcLayout {
 					wx += widths[i] + (tight != null && pair >= s[0] && pair < s[1] - 1 && tight[pair] ? 0 : space);
 				}
 				out.add(new Group(s[0], s[1], cx, y, angle, scale[g], wordX));
+				reach.add(inner * scale[g] / 2);
 			}
+			// The step, the tilt and the bend can bring a group of this row up into the row above: push the row down
+			// by just what it takes, so a common line keeps its spacing
+			if (r > 0) {
+				float down = clearance(out, reach, prevStart, rowStart);
+				if (down > 0) {
+					for (int i = rowStart; i < out.size(); i++) {
+						Group g = out.get(i);
+						out.set(i, new Group(g.from(), g.to(), g.x(), g.y() + down, g.angle(), g.scale(), g.wordX()));
+					}
+					rowY += down;
+				}
+			}
+			prevStart = rowStart;
 		}
 		// Centre the block vertically: the raised ends would otherwise push it up
 		float top = Float.MAX_VALUE, bottom = -Float.MAX_VALUE;
@@ -415,6 +434,41 @@ final class ArcLayout {
 		float shift = (top + bottom) / 2;
 		out.replaceAll(g -> new Group(g.from(), g.to(), g.x(), g.y() - shift, g.angle(), g.scale(), g.wordX()));
 		return out;
+	}
+
+	/**
+	 * How far the groups from {@code lowerFrom} on must move down so that none touches a group of {@code upperFrom ..
+	 * lowerFrom-1} (0 if they already clear). A tilted group is taken as a strip with straight top and bottom edges
+	 * over the width it covers, so the worst place is one of the two ends of where two groups share their width.
+	 */
+	private static float clearance(List<Group> groups, List<Float> reach, int upperFrom, int lowerFrom) {
+		float down = 0;
+		for (int a = upperFrom; a < lowerFrom; a++) {
+			Group u = groups.get(a);
+			float[] ue = edges(u, reach.get(a));
+			for (int b = lowerFrom; b < groups.size(); b++) {
+				Group l = groups.get(b);
+				float[] le = edges(l, reach.get(b));
+				float lo = Math.max(ue[0], le[0]), hi = Math.min(ue[1], le[1]);
+				if (lo >= hi) {
+					continue;
+				}
+				for (float x : new float[] {lo, hi}) {
+					float bottom = u.y() + (x - u.x()) * ue[2] + ue[3];
+					float top = l.y() + (x - l.x()) * le[2] - le[3];
+					down = Math.max(down, bottom + ROW_MARGIN - top);
+				}
+			}
+		}
+		return down;
+	}
+
+	/** A group's left and right end on screen, the slope of its edges, and how far they are above and below its centre line. */
+	private static float[] edges(Group g, float halfWidth) {
+		double a = Math.toRadians(g.angle());
+		float half = HALF_HEIGHT * g.scale();
+		float across = halfWidth * (float) Math.cos(a) + half * (float) Math.abs(Math.sin(a));
+		return new float[] {g.x() - across, g.x() + across, (float) Math.tan(a), half / (float) Math.cos(a)};
 	}
 
 	/** How far left on screen the group {@code span} starts: its smallest word rank. */
