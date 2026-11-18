@@ -81,12 +81,17 @@ class ArcMixedOrderTest {
 					List<ArcLayout.Group> now = ArcLayout.place(widths, rows, 3f, seed, rtl, tight);
 					List<ArcLayout.Group> old = oldPlace(widths, rows, 3f, seed, rtl, tight);
 					assertEquals(old.size(), now.size());
+					// A row may sit lower than before when it would touch the row above, so compare y inside each row
+					int firstOfRow = 0;
 					for (int g = 0; g < old.size(); g++) {
 						ArcLayout.Group a = old.get(g), b = now.get(g);
+						if (g > 0 && rowOf(rows, a.from()) != rowOf(rows, old.get(g - 1).from())) {
+							firstOfRow = g;
+						}
 						assertEquals(a.from(), b.from());
 						assertEquals(a.to(), b.to());
 						assertEquals(a.x(), b.x(), 1e-3f);
-						assertEquals(a.y(), b.y(), 1e-3f);
+						assertEquals(a.y() - old.get(firstOfRow).y(), b.y() - now.get(firstOfRow).y(), 1e-3f);
 						assertEquals(a.angle(), b.angle(), 1e-3f);
 						assertEquals(a.scale(), b.scale(), 1e-3f);
 						for (int k = 0; k < a.wordX().length; k++) {
@@ -96,6 +101,14 @@ class ArcMixedOrderTest {
 				}
 			}
 		}
+	}
+
+	private static int rowOf(int[] rows, int word) {
+		int r = 0;
+		while (r + 1 < rows.length && rows[r + 1] <= word) {
+			r++;
+		}
+		return r;
 	}
 
 	/** The placement from before: groups laid left to right in sung order, then every x mirrored for a right-to-left line. */
