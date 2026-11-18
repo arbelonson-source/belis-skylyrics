@@ -111,8 +111,8 @@ public final class LyricsRenderer {
 	static boolean glowVisible(int alphaByte) {
 		return alphaByte >= MIN_TEXT_ALPHA;
 	}
-	/** How far back the song time must drop between two frames to count as a seek back, well above position noise. */
-	static final long SEEK_BACK_MS = 1500;
+	/** How far back the song time must drop between two frames to count as a seek back, twice the tracker's 350 ms of jitter. */
+	static final long SEEK_BACK_MS = 700;
 	private static final float ROW_H = 10f;
 	/** Title screen: rows of height the lyrics need, the size limits, and the wrap width (in text pixels). */
 	private static final float MENU_ROWS = 3.6f * ROW_H, MENU_MAX_SCALE = 1.5f, MENU_MIN_SCALE = 0.55f, MENU_WRAP = 260;
