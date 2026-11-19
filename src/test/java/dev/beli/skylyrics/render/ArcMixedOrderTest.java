@@ -126,14 +126,21 @@ class ArcMixedOrderTest {
 				spans.add(new int[] {i, end});
 				i = end;
 			}
-			float[] scale = new float[spans.size()], advance = new float[spans.size()];
+			float[] scale = new float[spans.size()], advance = new float[spans.size()], over = new float[spans.size()];
 			float rowWidth = ArcLayout.GAP * (spans.size() - 1), biggest = 0;
 			for (int g = 0; g < spans.size(); g++) {
 				int[] s = spans.get(g);
 				scale[g] = ArcLayout.groupScale(seed, s[0]);
 				biggest = Math.max(biggest, scale[g]);
-				advance[g] = ArcLayout.width(widths, tight, s[0], s[1], space) * (1 + (scale[g] - 1) * 0.5f);
+				float w = ArcLayout.width(widths, tight, s[0], s[1], space);
+				advance[g] = w * (1 + (scale[g] - 1) * 0.5f);
+				over[g] = Math.max(0, w * scale[g] - advance[g]) / 2;
 				rowWidth += advance[g];
+			}
+			float[] gapAfter = new float[spans.size()];
+			for (int g = 0; g + 1 < spans.size(); g++) { // big groups stick out past their advance: more room between them
+				gapAfter[g] = ArcLayout.GAP + (over[g] + over[g + 1]) * 1.25f;
+				rowWidth += gapAfter[g] - ArcLayout.GAP;
 			}
 			if (r > 0) {
 				rowY += ArcLayout.ROW_PITCH * Math.max(1, (above + biggest) / 2);
@@ -143,7 +150,7 @@ class ArcMixedOrderTest {
 			for (int g = 0; g < spans.size(); g++, groupNo++) {
 				int[] s = spans.get(g);
 				float cx = x + advance[g] / 2;
-				x += advance[g] + ArcLayout.GAP;
+				x += advance[g] + (g + 1 < spans.size() ? gapAfter[g] : ArcLayout.GAP);
 				if (rtl) {
 					cx = -cx;
 				}
