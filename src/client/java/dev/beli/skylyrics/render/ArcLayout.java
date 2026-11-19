@@ -36,6 +36,8 @@ final class ArcLayout {
 	static final float MAX_SCALE = 1.5f;
 	/** A bigger group pushes its neighbours only this much of its extra width; the rest may overlap a little. */
 	private static final float PUSH = 0.5f;
+	/** The share of a big group's overhang that is added again for the width a tilt takes. */
+	private static final float TILT_ROOM = 0.25f;
 	/** Two rows split after a comma or full stop count as this much more even, so lines break at a natural pause. */
 	private static final float PAUSE_BONUS = 0.85f;
 	/** Half the height of a lower-case word, for centring the block. */
@@ -360,13 +362,16 @@ final class ArcLayout {
 			}
 			float[] scale = new float[spans.size()];
 			float[] advance = new float[spans.size()];
+			float[] over = new float[spans.size()]; // how far a group is drawn past its advance, each side
 			float rowWidth = GAP * (spans.size() - 1);
 			float biggest = 0;
 			for (int g = 0; g < spans.size(); g++) {
 				int[] s = spans.get(g);
 				scale[g] = groupScale(seed, s[0]);
 				biggest = Math.max(biggest, scale[g]);
-				advance[g] = width(widths, tight, s[0], s[1], space) * (1 + (scale[g] - 1) * PUSH);
+				float inner = width(widths, tight, s[0], s[1], space);
+				advance[g] = inner * (1 + (scale[g] - 1) * PUSH);
+				over[g] = Math.max(0, inner * scale[g] - advance[g]) / 2;
 				rowWidth += advance[g];
 			}
 			// Big words need more room between the rows, or the row below runs into them
@@ -380,11 +385,18 @@ final class ArcLayout {
 				seen[g] = g;
 			}
 			Arrays.sort(seen, (a, b) -> Integer.compare(leftmost(rank, spans.get(a)), leftmost(rank, spans.get(b))));
+			// A big group is drawn wider than its advance: the gap to each neighbour grows by what the two stick out
+			float[] gapAfter = new float[seen.length];
+			for (int k = 0; k + 1 < seen.length; k++) {
+				gapAfter[k] = GAP + (over[seen[k]] + over[seen[k + 1]]) * (1 + TILT_ROOM);
+				rowWidth += gapAfter[k] - GAP;
+			}
 			float[] centre = new float[spans.size()];
 			float x = -rowWidth / 2;
-			for (int g : seen) {
+			for (int k = 0; k < seen.length; k++) {
+				int g = seen[k];
 				centre[g] = x + advance[g] / 2;
-				x += advance[g] + GAP;
+				x += advance[g] + (k + 1 < seen.length ? gapAfter[k] : GAP);
 			}
 			// y = rowY - curve * x², rising by the row's rise at its ends
 			float half = Math.max(1, rowWidth / 2);
