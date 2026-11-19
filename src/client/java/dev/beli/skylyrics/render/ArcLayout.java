@@ -34,7 +34,10 @@ final class ArcLayout {
 	static final float STEP = 3.5f;
 	static final float MIN_SCALE = 0.75f;
 	static final float MAX_SCALE = 1.5f;
-	/** A bigger group pushes its neighbours only this much of its extra width; the rest may overlap a little. */
+	/**
+	 * A bigger group pushes the row's width (and so its bend) only this much of its extra width; the gap to its
+	 * neighbours makes room for the rest (see {@code gapAfter} in {@code place}), so neighbours never overlap.
+	 */
 	private static final float PUSH = 0.5f;
 	/** The share of a big group's overhang that is added again for the width a tilt takes. */
 	private static final float TILT_ROOM = 0.25f;
