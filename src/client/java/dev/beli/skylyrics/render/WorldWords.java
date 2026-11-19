@@ -1914,6 +1914,8 @@ final class WorldWords {
 		float width = WIDTH;
 		/** Space between pieces, in their own half heights (about a letter, like a written word space), and between rows, in degrees. */
 		static final float GAP = 0.7f, ROW_GAP = 0.4f;
+		/** The pitch (degrees) past which a piece's yaw span stops growing with it, see {@link #yawHalf}. */
+		static final float YAW_PITCH = 50f;
 		/** Extra room, in degrees, between the lines of a verse than between the rows of one line; never less than {@link #CLEAR_PAD}. */
 		static final float VERSE_GAP = 0.6f;
 		/**
@@ -1989,11 +1991,18 @@ final class WorldWords {
 			// A stretch against the line's direction takes room for all of it when its first piece comes, then each piece
 			// sits in it from the far end back
 			boolean first = run > 0 && Float.isNaN(runAt);
-			float whole = first ? run / 2 : halfW;
+			// A row high or low in the sky takes more yaw for the same width than one at the horizon, so a piece's width
+			// along the row is its yaw span there, or it'd be drawn over the piece beside it
+			float steepNow = (float) Math.tan(slope * DEG), alongNow = Mth.clamp((cursor - left) / width, 0, 1);
+			float wy = yawHalf(halfW, top + bob - (cursor - left) * steepNow - bend * 4 * alongNow * (1 - alongNow));
+			float whole = first ? run / 2 : wy;
 			float yaw = cursor + GAP * halfH + whole;
 			boolean inRun = run > 0 && !first;
 			boolean wrap = !inRun && (newRow || cursor > left && yaw + whole > left + width);
 			if (wrap) {
+				// It starts the next row, which sits about a row lower: its width is the yaw span there
+				wy = yawHalf(halfW, low + ROW_GAP + 2 * halfH + bob);
+				whole = first ? run / 2 : wy;
 				newRow = false;
 				rows++;
 				// A short last row is centred under the full one above it
@@ -2008,8 +2017,8 @@ final class WorldWords {
 				if (first) {
 					runAt = cursor;
 				}
-				yaw = runAt - halfW;
-				runAt = yaw - halfW - GAP * halfH;
+				yaw = runAt - wy;
+				runAt = yaw - wy - GAP * halfH;
 			}
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
@@ -2033,6 +2042,16 @@ final class WorldWords {
 			low = Math.max(low, middle + reach);
 			pieces++;
 			return new float[] {yaw, middle - rise, lean};
+		}
+
+		/**
+		 * Half the yaw a piece of this half width (degrees, as seen square on) spans at {@code pitch}: a card high or low in
+		 * the sky covers more of the horizon's circle, by 1 / cos(pitch). Counted up to {@link #YAW_PITCH} only: nearer the
+		 * poles a row can't be as wide as it's drawn and still fit on the screen.
+		 */
+		static float yawHalf(float halfW, float pitch) {
+			float p = Math.min(Math.abs(pitch), YAW_PITCH) * DEG;
+			return (float) Math.toDegrees(Math.atan(Math.tan(halfW * DEG) / Math.cos(p)));
 		}
 
 		/** Where writing has got to, for {@link #back}. */

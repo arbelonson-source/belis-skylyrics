@@ -413,8 +413,9 @@ class WorldWordsTest {
 	void aFlowingLineReadsLeftToRight() {
 		WorldWords.Sentence line = new WorldWords.Sentence(-10, 5, 10, 0);
 		float[] first = line.place(3, 1, 0, 0), second = line.place(2, 0.5f, 0, 0);
-		assertEquals(-10 + WorldWords.Sentence.GAP + 3, first[0], 1e-4);
-		assertEquals(first[0] + 3 + WorldWords.Sentence.GAP * 0.5f + 2, second[0], 1e-4);
+		// A few degrees down the sky a piece spans a hair more yaw (1 / cos pitch), hence the 0.05
+		assertEquals(-10 + WorldWords.Sentence.GAP + 3, first[0], 0.05);
+		assertEquals(first[0] + 3 + WorldWords.Sentence.GAP * 0.5f + 2, second[0], 0.05);
 		// A big word and a small one sit on the same line
 		assertEquals(5, first[1] + 1, 1e-4);
 		assertEquals(5, second[1] + 0.5f, 1e-4);
@@ -471,7 +472,7 @@ class WorldWordsTest {
 		while (last[1] == b[1]) {
 			last = rtl.place(5, 1, 0, 0);
 		}
-		assertEquals(-10 + WorldWords.Sentence.WIDTH - 5, last[0], 1e-4);
+		assertEquals(-10 + WorldWords.Sentence.WIDTH - 5, last[0], 0.1);
 	}
 
 	@Test
@@ -789,7 +790,7 @@ class WorldWordsTest {
 			last = line.place(5, 1, 1, 0);
 		}
 		assertEquals(row + 2 + WorldWords.Sentence.ROW_GAP, last[1], 1e-4);
-		assertEquals(1 + 5, last[0], 1e-4);
+		assertEquals(1 + 5, last[0], 0.05);
 		assertTrue(line.place(5, 1, 0, 0)[0] > last[0]);
 	}
 
@@ -810,7 +811,7 @@ class WorldWordsTest {
 		// A clear gap under the last line, even when the new word bobs up
 		assertTrue(first[1] - 1 - lowest >= WorldWords.Sentence.ROW_GAP + WorldWords.Sentence.VERSE_GAP - 1e-4f);
 		// A short next line sits in the middle under the last row
-		assertEquals(end / 2, first[0], 1e-3);
+		assertEquals(end / 2, first[0], 0.05);
 	}
 
 	@Test
@@ -825,7 +826,7 @@ class WorldWordsTest {
 			last = line.place(5, 1, 0, 0);
 		}
 		// What's left is about one piece wide, so it goes under the middle of the full row
-		assertEquals(edge / 2, last[0], 1e-3);
+		assertEquals(edge / 2, last[0], 0.05);
 		// A line with plenty still to come starts its next row at the left as usual
 		WorldWords.Sentence longer = new WorldWords.Sentence(0, 0, 10, 0);
 		longer.rest = 200;
@@ -833,7 +834,7 @@ class WorldWordsTest {
 		while (l[1] == row) {
 			l = longer.place(5, 1, 0, 0);
 		}
-		assertEquals(5, l[0], 1e-4);
+		assertEquals(5, l[0], 0.05);
 	}
 
 	@Test
