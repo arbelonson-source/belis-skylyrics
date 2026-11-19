@@ -111,10 +111,12 @@ public final class LyricsRenderer {
 	static boolean glowVisible(int alphaByte) {
 		return alphaByte >= MIN_TEXT_ALPHA;
 	}
-	/** How far back the song time must drop between two frames to count as a seek back, twice the tracker's 350 ms of jitter. */
-	static final long SEEK_BACK_MS = 700;
-	/** The limit for a drop that comes with a pause being noticed late (up to a poll of extrapolated position). */
-	static final long SEEK_BACK_LATE_PAUSE_MS = 1500;
+	/** A drop this big right after a seek the mod asked for is that seek: just above the tracker's 350 ms of jitter. */
+	static final long SEEK_BACK_MS = 400;
+	/** A drop seen only through polling (no seek asked for) counts past this, so a lagging player position never wipes the line. */
+	static final long SEEK_BACK_UNASKED_MS = 1500;
+	/** How long after asking for a seek its new position can arrive: a poll (about a second, more on a slow web API) and a margin. */
+	static final long SEEK_WINDOW_NANOS = 3_000_000_000L;
 	private static final float ROW_H = 10f;
 	/** Title screen: rows of height the lyrics need, the size limits, and the wrap width (in text pixels). */
 	private static final float MENU_ROWS = 3.6f * ROW_H, MENU_MAX_SCALE = 1.5f, MENU_MIN_SCALE = 0.55f, MENU_WRAP = 260;
@@ -203,8 +205,8 @@ public final class LyricsRenderer {
 	private final WorldWords worldWords = new WorldWords();
 	/** The song time the World words were last updated at, to notice a jump back; MIN_VALUE when they weren't. */
 	private long worldTime = Long.MIN_VALUE;
-	/** Whether that earlier frame's reading was playing. */
-	private boolean worldPlaying;
+	/** The request time of the last seek that already rewound the words (or was passed by), so each seek rewinds at most once. */
+	private long worldSeekUsed;
 
 	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
 	public void onLeaveWorld() {
@@ -690,11 +692,15 @@ public final class LyricsRenderer {
 		}
 		// The raw song position, not the lyrics time: a timing slider moves the lyrics time without any seek
 		long position = tracker.positionMs(song);
-		if (jumpedBack(worldTime, position, worldPlaying, song.playing())) {
+		long seekAt = tracker.seekRequestedNanos();
+		boolean asked = seekAt != worldSeekUsed && seekRecent(seekAt, System.nanoTime());
+		if (jumpedBack(worldTime, position, asked)) {
 			worldWords.rewind(now);
+			worldSeekUsed = seekAt;
+		} else if (asked && worldTime != Long.MIN_VALUE && Math.abs(position - worldTime) > SEEK_BACK_MS) {
+			worldSeekUsed = seekAt; // the asked seek arrived as a jump forward
 		}
 		worldTime = position;
-		worldPlaying = song.playing();
 		if (!dead) {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
@@ -779,24 +785,21 @@ public final class LyricsRenderer {
 		return time - LEAD_MS > lyrics.lineEnd(index) + WORLD_LINGER_MS;
 	}
 
-	/**
-	 * Whether the song time jumped back far enough to be a seek or a restart. The reported position carries some noise
-	 * (the tracker alone lets 350 ms pass as jitter), so only a drop past {@link #SEEK_BACK_MS} counts; a pause (the same
-	 * time again), a line change and a forward jump never do. {@code previousMs} is {@link Long#MIN_VALUE} when there is
-	 * no earlier frame.
-	 */
-	static boolean jumpedBack(long previousMs, long timeMs) {
-		return jumpedBack(previousMs, timeMs, true, true);
+	/** Whether a seek asked for at {@code seekAt} (System.nanoTime, 0 for none) is recent enough that its new position may still be arriving. */
+	static boolean seekRecent(long seekAt, long nowNanos) {
+		return seekAt != 0 && nowNanos - seekAt < SEEK_WINDOW_NANOS;
 	}
 
 	/**
-	 * The same with the play states of the two frames. A pause is noticed one poll late (the position is extrapolated
-	 * until then), so the reading that says paused can sit up to a poll behind: a drop that comes with playing to paused
-	 * keeps the old {@link #SEEK_BACK_LATE_PAUSE_MS} limit. A drop with the same play state (a real seek, while playing
-	 * or paused) or into playing, and a buffering stall's snap back (still playing), count past {@link #SEEK_BACK_MS}.
+	 * Whether the song time jumped back far enough to be a seek or a restart. A seek the mod asked for a moment ago
+	 * ({@code seekedRecently}) is certain, so a drop past {@link #SEEK_BACK_MS} counts. Without one, the position can
+	 * also snap back through polling alone (a player whose reading lags, the tracker accepts 350 ms off in either
+	 * direction), so only a drop past {@link #SEEK_BACK_UNASKED_MS} counts; a late-noticed pause also stays under it.
+	 * A pause (the same time again), a line change and a forward jump never count. {@code previousMs} is
+	 * {@link Long#MIN_VALUE} when there is no earlier frame.
 	 */
-	static boolean jumpedBack(long previousMs, long timeMs, boolean wasPlaying, boolean playing) {
-		long limit = wasPlaying && !playing ? SEEK_BACK_LATE_PAUSE_MS : SEEK_BACK_MS;
+	static boolean jumpedBack(long previousMs, long timeMs, boolean seekedRecently) {
+		long limit = seekedRecently ? SEEK_BACK_MS : SEEK_BACK_UNASKED_MS;
 		return previousMs != Long.MIN_VALUE && previousMs - timeMs > limit;
 	}
 
