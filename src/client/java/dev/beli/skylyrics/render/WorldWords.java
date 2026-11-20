@@ -2002,6 +2002,15 @@ final class WorldWords {
 			boolean inRun = run > 0 && !first;
 			float pitchNow = inRun ? runPitch : top + bob - (cursor - left) * steepNow - bend * 4 * alongNow * (1 - alongNow);
 			float wy = yawHalf(halfW, pitchNow);
+			if (rtl && !inRun) {
+				// It is drawn mirrored, so the row's slope and bow are those at its mirrored middle, not at the cursor
+				for (int k = 0; k < 3; k++) {
+					float x = 2 * left + width - (cursor + GAP * halfH + wy);
+					float a = Mth.clamp((x - left) / width, 0, 1);
+					pitchNow = top + bob - (x - left) * steepNow - bend * 4 * a * (1 - a);
+					wy = yawHalf(halfW, pitchNow);
+				}
+			}
 			if (first) {
 				// Its pieces take the yaw they span at this pitch, as every other piece of the row does
 				runPitch = pitchNow;
