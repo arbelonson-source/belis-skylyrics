@@ -203,10 +203,8 @@ public final class LyricsRenderer {
 	private long wrapCacheEpoch;
 	private @Nullable Pending pending;
 	private final WorldWords worldWords = new WorldWords();
-	/** The song time the World words were last updated at, to notice a jump back; MIN_VALUE when they weren't. */
-	private long worldTime = Long.MIN_VALUE;
-	/** The request time of the last seek that already rewound the words (or was passed by), so each seek rewinds at most once. */
-	private long worldSeekUsed;
+	/** Notices a jump back of the song time (a seek or a restart) between frames of the World words. */
+	private final SeekWatch worldSeek = new SeekWatch();
 
 	/** You left a world: let go of its level so the whole thing can be freed while you sit on the title screen. */
 	public void onLeaveWorld() {
@@ -426,7 +424,7 @@ public final class LyricsRenderer {
 			return;
 		}
 		worldWords.clear();
-		worldTime = Long.MIN_VALUE;
+		worldSeek.reset();
 		if (visibility <= 0.01f || shown.isEmpty() && !shown.instrumental()) {
 			return;
 		}
@@ -692,15 +690,9 @@ public final class LyricsRenderer {
 		}
 		// The raw song position, not the lyrics time: a timing slider moves the lyrics time without any seek
 		long position = tracker.positionMs(song);
-		long seekAt = tracker.seekRequestedNanos();
-		boolean asked = seekAt != worldSeekUsed && seekRecent(seekAt, System.nanoTime());
-		if (jumpedBack(worldTime, position, asked)) {
+		if (worldSeek.step(position, tracker.seekRequestedNanos(), System.nanoTime())) {
 			worldWords.rewind(now);
-			worldSeekUsed = seekAt;
-		} else if (asked && worldTime != Long.MIN_VALUE && Math.abs(position - worldTime) > SEEK_BACK_MS) {
-			worldSeekUsed = seekAt; // the asked seek arrived as a jump forward
 		}
-		worldTime = position;
 		if (!dead) {
 			worldWords.update(index, text, sungChars, over, fixedYaw, fixedPitch, camera, mc.level, mc.font, style, now);
 		}
