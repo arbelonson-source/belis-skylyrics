@@ -181,4 +181,4 @@
 - **Help pages.** The Troubleshooting page and FAQ now say what to expect with Replay Mod and Flashback recordings (the lyrics follow the music playing when you render, not when you recorded) and with Distant Horizons (which night skies can show in front of far-away terrain).
 - **Game log.** The mod's lines in the game log no longer show song names or your home folder name, and a problem that repeats (offline, a failed save) is written once, so the log is safe to attach to a bug report.
 
-- **World layout and seeking.** Jumping back a moment in a song (about a second is enough) now takes the World layout's words back too, and the line being sung places its words again from the new spot.
+- **World layout and seeking.** Jumping back a moment with the mod's progress bar (half a second is enough) now takes the World layout's words back too, and the line being sung places its words again from the new spot. A jump back made in the music player itself counts from 1.5 seconds as before, so a player that reports its position a little late never wipes the words in the middle of a song.
