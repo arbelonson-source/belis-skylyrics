@@ -54,4 +54,19 @@ class RoundRectTest {
 			assertArrayEquals(old[i], RoundRect.cornerPixels(i), "size index " + i);
 		}
 	}
+
+	@Test
+	void cornersNeverOverlapOnOddSizes() {
+		// A pill as tall as its radius is round (r = h / 2): with an odd height the two corners used to be rounded up to
+		// half a pixel more each, so they shared a row, and a see-through bar was drawn twice there (a darker line)
+		for (int h = 1; h <= 41; h++) {
+			for (int w = h; w <= h + 3; w++) {
+				int c = RoundRect.corner(w, h, h / 2f);
+				assertTrue(2 * c <= h && 2 * c <= w, "box " + w + "x" + h + ": corner " + c + " overlaps");
+				assertTrue(c >= h / 2, "box " + w + "x" + h + ": corner " + c + " too small");
+			}
+		}
+		assertEquals(4, RoundRect.corner(100, 30, 4.4f));
+		assertEquals(5, RoundRect.corner(100, 30, 4.6f));
+	}
 }
