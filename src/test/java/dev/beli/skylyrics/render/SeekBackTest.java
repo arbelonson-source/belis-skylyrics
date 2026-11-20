@@ -6,51 +6,51 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 
 class SeekBackTest {
+	private static final long SEC = 1_000_000_000L;
+
 	@Test
-	void aSeekBackOrARestartCounts() {
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 20_000));
-		assertTrue(LyricsRenderer.jumpedBack(200_000, 0)); // a loop
-		assertTrue(LyricsRenderer.jumpedBack(10_000, 10_000 - LyricsRenderer.SEEK_BACK_MS - 1));
+	void anAskedSeekBackCountsFromJustAboveTheTrackersJitter() {
+		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000, true), "1000 ms");
+		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_400, true), "600 ms");
+		assertTrue(LyricsRenderer.jumpedBack(60_000, 20_000, true));
+		assertFalse(LyricsRenderer.jumpedBack(60_000, 59_700, true), "300 ms is noise");
+		assertFalse(LyricsRenderer.jumpedBack(60_000, 60_000 - LyricsRenderer.SEEK_BACK_MS, true), "right at the limit");
+		assertFalse(LyricsRenderer.jumpedBack(60_000, 60_500, true), "forward");
 	}
 
-	/** A seek back of a second inside a line (the report: the demo song, back from "keep" to "Neon skyline,") counts. */
+	/** The review's case: a lagging player position snaps back by a second during normal playback. */
 	@Test
-	void aSeekBackOfAboutASecondCounts() {
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000));
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_200));
+	void aDropWithoutAskedSeekNeedsMoreThan1500() {
+		assertFalse(LyricsRenderer.jumpedBack(60_000, 59_000, false), "1000 ms, no seek");
+		assertFalse(LyricsRenderer.jumpedBack(60_000, 58_600, false), "1400 ms, no seek");
+		assertFalse(LyricsRenderer.jumpedBack(60_000, 58_500, false), "right at 1500");
+		assertTrue(LyricsRenderer.jumpedBack(60_000, 58_000, false), "2000 ms, no seek");
+		assertTrue(LyricsRenderer.jumpedBack(200_000, 0, false), "a loop");
 	}
 
-	/** The tracker lets 350 ms pass as jitter, so a frame-to-frame drop up to twice that never counts. */
 	@Test
-	void positionNoiseUpToTwiceTheTrackersJitterDoesNotCount() {
-		for (long drop = 0; drop <= 700; drop += 50) {
-			assertFalse(LyricsRenderer.jumpedBack(60_000, 60_000 - drop), "a drop of " + drop + " ms");
-		}
+	void aSeekCountsAsAskedOnlyInsideTheWindow() {
+		long now = 100 * SEC;
+		assertTrue(LyricsRenderer.seekRecent(now - 1 * SEC, now));
+		assertTrue(LyricsRenderer.seekRecent(now - LyricsRenderer.SEEK_WINDOW_NANOS + 1, now));
+		assertFalse(LyricsRenderer.seekRecent(now - LyricsRenderer.SEEK_WINDOW_NANOS, now), "older: like no seek");
+		assertFalse(LyricsRenderer.seekRecent(now - 10 * SEC, now));
+		assertFalse(LyricsRenderer.seekRecent(0, now), "never asked");
 	}
 
 	@Test
 	void positionNoiseAPauseAndGoingForwardDoNot() {
-		assertFalse(LyricsRenderer.jumpedBack(10_000, 10_000)); // paused
-		assertFalse(LyricsRenderer.jumpedBack(10_000, 9_700)); // 0.3 s of noise
-		assertFalse(LyricsRenderer.jumpedBack(10_000, 10_000 - LyricsRenderer.SEEK_BACK_MS)); // right at the threshold
-		assertFalse(LyricsRenderer.jumpedBack(10_000, 10_016)); // an ordinary frame
-		assertFalse(LyricsRenderer.jumpedBack(10_000, 90_000)); // a fast skip forward
+		for (long drop = 0; drop <= 400; drop += 50) {
+			assertFalse(LyricsRenderer.jumpedBack(60_000, 60_000 - drop, true), "asked, drop " + drop);
+			assertFalse(LyricsRenderer.jumpedBack(60_000, 60_000 - drop, false), "unasked, drop " + drop);
+		}
+		assertFalse(LyricsRenderer.jumpedBack(10_000, 10_016, false)); // an ordinary frame
+		assertFalse(LyricsRenderer.jumpedBack(10_000, 90_000, true)); // a fast skip forward
 	}
 
 	@Test
 	void noEarlierFrameIsNoJump() {
-		assertFalse(LyricsRenderer.jumpedBack(Long.MIN_VALUE, 0));
-		assertFalse(LyricsRenderer.jumpedBack(Long.MIN_VALUE, 50_000));
-	}
-
-	/** A pause noticed one poll late snaps the position back by up to a poll: that is not a seek, a real one is. */
-	@Test
-	void aLatePauseIsNotASeekButASeekWithTheSamePlayStateIs() {
-		assertFalse(LyricsRenderer.jumpedBack(60_000, 59_000, true, false), "1 s drop, playing to paused");
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 58_000, true, false), "2 s drop, playing to paused: as before");
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000, true, true), "1 s drop while playing");
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000, false, false), "a seek while paused");
-		assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000, false, true), "a seek that also starts playing");
-		assertFalse(LyricsRenderer.jumpedBack(Long.MIN_VALUE, 0, true, false));
+		assertFalse(LyricsRenderer.jumpedBack(Long.MIN_VALUE, 0, true));
+		assertFalse(LyricsRenderer.jumpedBack(Long.MIN_VALUE, 50_000, false));
 	}
 }

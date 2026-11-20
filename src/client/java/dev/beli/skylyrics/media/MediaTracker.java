@@ -30,6 +30,7 @@ public final class MediaTracker {
 	});
 
 	private volatile Snapshot snapshot = Snapshot.NOTHING;
+	private volatile long seekRequestedAt;
 	private volatile String sourceName = "";
 	private volatile boolean connected;
 	private volatile String error = "";
@@ -383,7 +384,14 @@ public final class MediaTracker {
 		executor.execute(() -> safely(source()::previous));
 	}
 
+	/** When the last seek was asked for (System.nanoTime, never 0), or 0 if none: a drop in the position soon after it is that seek. */
+	public long seekRequestedNanos() {
+		return seekRequestedAt;
+	}
+
 	public void seek(long positionMs) {
+		long at = System.nanoTime();
+		seekRequestedAt = at == 0 ? 1 : at;
 		executor.execute(() -> safely(() -> source().seek(positionMs)));
 	}
 

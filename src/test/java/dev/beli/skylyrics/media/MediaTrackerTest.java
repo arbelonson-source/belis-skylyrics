@@ -364,4 +364,20 @@ class MediaTrackerTest {
 			tracker.shutdown();
 		}
 	}
+
+	/** The renderer tells a seek the mod asked for from a position that merely snapped back, by when it was requested. */
+	@Test
+	void seekRecordsWhenItWasRequested() {
+		MediaTracker tracker = new MediaTracker(new FakeSource(), () -> false);
+		try {
+			assertEquals(0, tracker.seekRequestedNanos(), "none yet");
+			long before = System.nanoTime();
+			tracker.seek(10_000);
+			long after = System.nanoTime();
+			long at = tracker.seekRequestedNanos();
+			assertTrue(at - before >= 0 && after - at >= 0, "stamped between the two clock reads: " + at);
+		} finally {
+			tracker.shutdown();
+		}
+	}
 }
