@@ -28,7 +28,7 @@ final class RoundRect {
 			return;
 		}
 		int x0 = Math.round(x), y0 = Math.round(y), x1 = Math.round(x + w), y1 = Math.round(y + h);
-		int c = Math.round(Math.min(r, Math.min(x1 - x0, y1 - y0) / 2f));
+		int c = corner(x1 - x0, y1 - y0, r);
 		int i = sizeIndex(c);
 		Identifier id = c <= 0 ? null : texture(i);
 		if (id == null) {
@@ -47,6 +47,14 @@ final class RoundRect {
 			g.fill(x0, y0 + c, x0 + c, y1 - c, color);
 			g.fill(x1 - c, y0 + c, x1, y1 - c, color);
 		}
+	}
+
+	/**
+	 * The corner size for a w by h box with radius r (pixels): r rounded, at most half the box's width and height rounded
+	 * down, so two corners never share a row or column (an odd-sized see-through pill would get a darker line there).
+	 */
+	static int corner(int w, int h, float r) {
+		return Math.min(Math.round(r), Math.min(w, h) / 2);
 	}
 
 	static int sizeIndex(int radius) {
