@@ -281,6 +281,41 @@ class UpdaterTest {
 	}
 
 	@Test
+	void aReplyThatStallsAfterItsHeadersIsDropped() throws Exception {
+		HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+		server.createContext("/stall", ex -> {
+			// Headers and a few bytes of a 100-byte body, then silence
+			ex.sendResponseHeaders(200, 100);
+			ex.getResponseBody().write("{\"tag".getBytes(StandardCharsets.UTF_8));
+			ex.getResponseBody().flush();
+			try {
+				done.await(20, java.util.concurrent.TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			ex.close();
+		});
+		server.start();
+		try {
+			String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/stall";
+			HttpClient api = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NEVER).build();
+			// Closed after 300 ms: a dropped connection (IOException) or the cut-off bytes, never a wait for the rest
+			org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(java.time.Duration.ofSeconds(10), () -> {
+				try {
+					String reply = Updater.fetchReply(api, url, LOCAL, java.time.Duration.ofMillis(300));
+					assertTrue(reply == null || reply.length() < 100, "a cut-off reply: " + reply);
+				} catch (IOException dropped) {
+					// fine: the body was dropped
+				}
+			}, "the update check waited on a silent server");
+		} finally {
+			done.countDown();
+			server.stop(0);
+		}
+	}
+
+	@Test
 	void apiRedirectRuleAcceptsTheApiHostOnly() {
 		java.util.function.Function<String, java.net.URI> u = java.net.URI::create;
 		assertTrue(Updater.allowedApiRedirect(u.apply("https://api.github.com/repos/x/y/releases/latest")));
