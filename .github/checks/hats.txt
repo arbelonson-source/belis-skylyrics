@@ -1,0 +1,87 @@
+# Hats on your own player in third person (back and front): bare, on a player head, a zombie head and an iron helmet,
+# after a respawn and in the Nether, and in the inventory. On a worn head the hat must sit on top (no head corners
+# poking up through the top hat's brim or the cap's edge, the flower crown's vine showing all round).
+# Run it for both versions, and with -f mod_ref=main to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/hats96 -f version=26.3 -f script=.github/checks/hats.txt
+#   gh workflow run screenshots.yml --ref fix/hats96 -f version=1.21.11 -f script=.github/checks/hats.txt
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+cmd gamerule doImmediateRespawn true
+cmd gamerule immediate_respawn true
+cmd effect give @p minecraft:resistance 600 255 true
+set hatPulse true
+set hat TOP_HAT
+view 1
+look 0 25
+sleep 10
+shot hats-top-hat-back
+view 2
+look 0 -25
+sleep 3
+shot hats-top-hat-front
+
+# A player head: top hat, flower crown, propeller cap
+cmd item replace entity @p armor.head with minecraft:player_head
+sleep 3
+shot hats-top-hat-player-head
+set hat FLOWER_CROWN
+sleep 3
+shot hats-flower-player-head
+set hat PROPELLER_CAP
+sleep 3
+shot hats-cap-player-head
+
+# A zombie head: top hat and shades
+cmd item replace entity @p armor.head with minecraft:zombie_head
+set hat TOP_HAT
+sleep 3
+shot hats-top-hat-zombie-head
+set hat SHADES
+sleep 3
+shot hats-shades-zombie-head
+
+# An iron helmet, as before
+cmd item replace entity @p armor.head with minecraft:iron_helmet
+set hat TOP_HAT
+sleep 3
+shot hats-top-hat-helmet
+cmd item replace entity @p armor.head with minecraft:air
+
+# After a respawn (press Respawn in case the gamerule didn't take)
+set hat FLOWER_CROWN
+cmd kill @p
+sleep 4
+press Respawn
+sleep 5
+view 2
+look 0 -25
+sleep 3
+shot hats-after-respawn
+
+# In the Nether, in a cleared pocket on an obsidian floor
+cmd effect give @p minecraft:resistance 600 255 true
+cmd execute in minecraft:the_nether run tp @p 0 100 0
+sleep 8
+cmd execute as @p at @p run fill ~-3 ~ ~-3 ~3 ~3 ~3 minecraft:air
+cmd execute as @p at @p run fill ~-3 ~-1 ~-3 ~3 ~-1 ~3 minecraft:obsidian
+sleep 4
+set hat PROPELLER_CAP
+view 2
+look 0 -25
+sleep 3
+shot hats-nether
+view 1
+look 0 25
+sleep 3
+shot hats-nether-back
+
+# The inventory's player preview, then back to first person
+inventory
+sleep 3
+shot hats-inventory
+close
+view 0
+set hat NONE
