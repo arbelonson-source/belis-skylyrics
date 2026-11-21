@@ -171,6 +171,8 @@
 - **Tour on a Mac.** On a Mac, the tour's **Where the songs come from** page no longer cuts its text off with "…" in some languages, leaving out the line about the demo song: those texts are a little shorter, so every word fits above the **Demo song** button.
 - **Cut-off names and values.** A setting whose name ends in "…", and a read-only line cut short like the **Status**, now shows its whole text in a tooltip when you point at it, as a cut-off description already did. In the smallest window that happens to the Russian **Song name only on change** (Display tab), the German **Flash with the lyrics** (Look tab, with a crosshair picked) and the Spanish **Status** while the demo song plays.
 - **Links on the About tab.** After you click **LRCLIB**, the keyboard is on it: Enter opens LRCLIB again and the Narrator says "LRCLIB, 2 of 2", instead of Enter opening GitHub.
+- **Record card and the scoreboard.** In a small window or at a big GUI scale, a **Record card** on the right that steps out of the way of a server's scoreboard sidebar no longer drops down over the hunger bar, the XP bar or the held item's name. It goes above the sidebar when there is room there, and fades while there is none.
+- **Record card under the open chat.** In a small window or at a big GUI scale, the open chat's messages are no longer drawn over a **Record card** in the bottom right or in a top corner: the card fades while the chat's box covers it, as it already did in the bottom left (not when chat is set to Hidden).
 
 ### Faster
 

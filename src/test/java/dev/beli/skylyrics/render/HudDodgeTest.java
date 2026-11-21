@@ -144,4 +144,53 @@ class HudDodgeTest {
 		assertEquals(0, TopBarLayout.demoClear(true, 480, 120, 300), 0f);
 		assertEquals(0, TopBarLayout.demoClear(false, 480, 120, 474), 0f);
 	}
+
+	/** 1280x720 at GUI scale 3, the card with its lyric line, a right-handed player with full health. */
+	private static final int NARROW_W = 427, NARROW_H = 240;
+	private static final float CARD_H = RecordCard.height(true, 1);
+
+	private static float[] cornerOn(CardCorner c, int w, int h) {
+		return RecordCard.corner(c, w, h, 0, CARD_H, true, false, 0, RecordCard.liftUp(true, 39), null);
+	}
+
+	private static float[] placed(CardCorner c, int w, int h, boolean chatOpen, boolean chatHidden, float[] sidebar) {
+		return RecordCard.place(c, h, CARD_H, k -> cornerOn(k, w, h), chatOpen, chatHidden, 320, 180, sidebar, null);
+	}
+
+	@Test
+	void aRightCardSteppingOutOfTheSidebarNeverDropsOntoTheHotbar() {
+		int w = NARROW_W, h = NARROW_H;
+		// Lifted above the hotbar's reach on this narrow screen: its bottom is the lowest it may go
+		float lowest = cornerOn(CardCorner.BOTTOM_RIGHT, w, h)[1] + CARD_H;
+		assertEquals(h - RecordCard.liftUp(true, 39), lowest, 1e-3f);
+		// A 10-line sidebar leaves no room above it, and under it the card would sit on the hunger bar: it fades
+		float[] ten = TopBarLayout.sidebarBox(w, h, 10, 80);
+		for (CardCorner c : new CardCorner[] {CardCorner.BOTTOM_RIGHT, CardCorner.TOP_RIGHT}) {
+			assertTrue(TopBarLayout.overlaps(ten, cornerOn(c, w, h)[0], cornerOn(c, w, h)[1], W, CARD_H), "control: in the sidebar's way, " + c);
+			float[] at = placed(c, w, h, false, false, ten);
+			assertTrue(at == null || at[1] + CARD_H <= lowest + 1e-3f, c + " dropped to " + (at == null ? 0 : at[1] + CARD_H) + ", lowest " + lowest);
+		}
+		// A 3-line sidebar has room above it, so the card goes up rather than down onto the held item's name
+		float[] three = TopBarLayout.sidebarBox(w, h, 3, 80);
+		float[] at = placed(CardCorner.BOTTOM_RIGHT, w, h, false, false, three);
+		assertNotNull(at);
+		assertEquals(three[1] - TopBarLayout.DODGE_GAP - CARD_H, at[1], 1e-3f);
+	}
+
+	@Test
+	void theOpenChatFadesACardItsBoxCoversInAnyCorner() {
+		int w = NARROW_W, h = NARROW_H;
+		// The default chat (320 wide, 180 tall when open) reaches x 332 and y 20 here: over every corner's card
+		for (CardCorner c : CardCorner.values()) {
+			assertNull(placed(c, w, h, true, false, null), c.name());
+			// With the chat closed, or set to Hidden (no box), the card stays
+			assertNotNull(placed(c, w, h, false, false, null), c.name());
+			assertNotNull(placed(c, w, h, true, true, null), c.name());
+		}
+		// 1920x1080 at GUI scale 3: the right cards and the top cards are clear of the box
+		for (CardCorner c : new CardCorner[] {CardCorner.BOTTOM_RIGHT, CardCorner.TOP_RIGHT, CardCorner.TOP_LEFT}) {
+			assertNotNull(placed(c, 640, 360, true, false, null), c.name());
+		}
+		assertNull(placed(CardCorner.BOTTOM_LEFT, 640, 360, true, false, null));
+	}
 }
