@@ -904,8 +904,26 @@ public final class LyricsRenderer {
 		if (!lyrics.synced() || index < 0 || index >= lyrics.lines().size() || lyrics.get(index).isBreak()) {
 			return 1;
 		}
+		return overFade(lyrics, index, time);
+	}
+
+	/** 1 until line {@code index} has been over for {@link #STALE_AFTER_MS}, then down to 0 over {@link #STALE_FADE_MS}. */
+	private static float overFade(Lyrics lyrics, int index, long time) {
 		long late = time - (lyrics.lineEnd(index) + STALE_AFTER_MS);
 		return late <= 0 ? 1 : Mth.clamp(1 - late / (float) STALE_FADE_MS, 0, 1);
+	}
+
+	/**
+	 * How much of line {@code i} of the Lines layout's stack around {@code center} still shows. The line being sung goes
+	 * when it has been over for a while, and the lines around it stay, as the next one is still to come. After the
+	 * song's last line (words, or the notes of a closing pause) nothing comes: the whole stack goes with it, so the line
+	 * before it doesn't stay up through the outro.
+	 */
+	static float slotFade(Lyrics lyrics, int center, int i, long time) {
+		if (lyrics.synced() && center >= 0 && center == lyrics.lines().size() - 1) {
+			return overFade(lyrics, center, time);
+		}
+		return i == center ? staleFade(lyrics, i, time) : 1;
 	}
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
@@ -1092,8 +1110,7 @@ public final class LyricsRenderer {
 					flareT = cfg.animation == Animation.WORDS ? flash - 0.06f : flash;
 				}
 			}
-			// The line being sung goes when it has been over for a while; the lines around it stay as they are
-			float stale = i == center ? staleFade(shown, i, time) : 1;
+			float stale = slotFade(shown, center, i, time);
 			items.add(new Item(text, r, scale, a * alpha * stale, highlight, sung, maxChars, wordsT, flareT));
 		}
 		if (items.isEmpty()) {
