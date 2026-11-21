@@ -563,8 +563,8 @@ public final class RecordCard {
 
 	/**
 	 * The card's place with everything on the right and left that the game draws over it taken into account: the scoreboard
-	 * sidebar and (bottom right) the subtitles move a right card out of their way, and the open chat screen covers a bottom
-	 * left one. Null when there is no room clear of them, which fades the card.
+	 * sidebar and (bottom right) the subtitles move a right card out of their way, and the open chat's box covers a card
+	 * wherever it reaches. Null when there is no room clear of them, which fades the card.
 	 */
 	private static float[] place(Minecraft mc, CardCorner corner, int guiW, int guiH, float h) {
 		int effects = effectsBottom(mc);
@@ -587,21 +587,20 @@ public final class RecordCard {
 	 */
 	static float[] place(CardCorner corner, int guiH, float h, java.util.function.Function<CardCorner, float[]> cornerAt,
 			boolean chatOpen, boolean chatHidden, float chatW, float chatH, float[] sidebar, float[] subtitles) {
+		float[] at = placeClear(corner, guiH, h, cornerAt, chatOpen, sidebar, subtitles);
+		// The open chat's box is drawn over the card wherever it reaches: the bottom right too on a narrow screen, and the
+		// top corners on a short one
+		return at != null && TopBarLayout.chatBoxCovers(chatOpen, chatHidden, guiH, chatW, chatH, at[0], at[1], W, h) ? null : at;
+	}
+
+	/** The card's place clear of the open chat's text field, the sidebar and the subtitles (not yet of the chat's box). */
+	private static float[] placeClear(CardCorner corner, int guiH, float h, java.util.function.Function<CardCorner, float[]> cornerAt,
+			boolean chatOpen, float[] sidebar, float[] subtitles) {
 		float[] at = cornerAt.apply(corner);
-		if (corner == CardCorner.BOTTOM_LEFT) {
-			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
-			if (TopBarLayout.chatBoxCovers(chatOpen, chatHidden, guiH, chatW, chatH, at[0], at[1], W, h)) {
-				return null;
-			}
-			return at;
-		}
-		if (corner == CardCorner.TOP_LEFT) {
-			return at;
-		}
-		if (corner == CardCorner.BOTTOM_RIGHT) {
+		if (corner == CardCorner.BOTTOM_LEFT || corner == CardCorner.BOTTOM_RIGHT) {
 			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
 		}
-		if (sidebar == null && subtitles == null) {
+		if (corner == CardCorner.BOTTOM_LEFT || corner == CardCorner.TOP_LEFT || sidebar == null && subtitles == null) {
 			return at;
 		}
 		// Going up, it stops at where a card in the top right corner would start, and going down at where one in the bottom

@@ -168,6 +168,7 @@
 - **Sliders in a small window.** In a small window or at a big GUI scale, where a slider sits on a line under its name, a click on its name or description no longer grabs the slider and changes the setting; only the slider's own line does.
 - **Status line.** The Music tab's **Status** (and the other read-only lines, like **Right now**) now uses all the room beside its name instead of stopping at a fixed width, so a long one is no longer cut short (in Spanish, "Reproduciendo la canción de prueba" showed as "Reproduciendo la canción de…").
 - **Record card and the scoreboard.** In a small window or at a big GUI scale, a **Record card** on the right that steps out of the way of a server's scoreboard sidebar no longer drops down over the hunger bar, the XP bar or the held item's name. It goes above the sidebar when there is room there, and fades while there is none.
+- **Record card under the open chat.** In a small window or at a big GUI scale, the open chat's messages are no longer drawn over a **Record card** in the bottom right or in a top corner: the card fades while the chat's box covers it, as it already did in the bottom left (not when chat is set to Hidden).
 
 ### Faster
 

@@ -176,4 +176,21 @@ class HudDodgeTest {
 		assertNotNull(at);
 		assertEquals(three[1] - TopBarLayout.DODGE_GAP - CARD_H, at[1], 1e-3f);
 	}
+
+	@Test
+	void theOpenChatFadesACardItsBoxCoversInAnyCorner() {
+		int w = NARROW_W, h = NARROW_H;
+		// The default chat (320 wide, 180 tall when open) reaches x 332 and y 20 here: over every corner's card
+		for (CardCorner c : CardCorner.values()) {
+			assertNull(placed(c, w, h, true, false, null), c.name());
+			// With the chat closed, or set to Hidden (no box), the card stays
+			assertNotNull(placed(c, w, h, false, false, null), c.name());
+			assertNotNull(placed(c, w, h, true, true, null), c.name());
+		}
+		// 1920x1080 at GUI scale 3: the right cards and the top cards are clear of the box
+		for (CardCorner c : new CardCorner[] {CardCorner.BOTTOM_RIGHT, CardCorner.TOP_RIGHT, CardCorner.TOP_LEFT}) {
+			assertNotNull(placed(c, 640, 360, true, false, null), c.name());
+		}
+		assertNull(placed(CardCorner.BOTTOM_LEFT, 640, 360, true, false, null));
+	}
 }
