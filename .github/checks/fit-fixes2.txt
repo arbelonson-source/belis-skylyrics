@@ -24,20 +24,4 @@ sleep 3
 shot fit2-playlists-es
 close
 
-# The songs heard lately always open on their only list, with the sign-in strip above them
-set demoMode false
-set recentSongs true
-lang ru_ru
-sleep 15
-screen dev.beli.skylyrics.gui.LibraryScreen
-sleep 4
-shot fit2-signin-strip-ru
-close
-
-lang uk_ua
-sleep 15
-screen dev.beli.skylyrics.gui.LibraryScreen
-sleep 4
-shot fit2-signin-strip-uk
-close
-set demoMode true
+# (The Russian and Ukrainian sign-in strip needs the demo song off, which checks never do; LibraryFitTest covers it.)
