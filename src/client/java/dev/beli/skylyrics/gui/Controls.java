@@ -204,6 +204,11 @@ final class Controls {
 			return isPrepared() ? preparedControlW : controlWidth(font);
 		}
 
+		/** The font the row was measured with ({@link #prepare}), or the game's. */
+		final Font font() {
+			return preparedFont != null ? preparedFont : net.minecraft.client.Minecraft.getInstance().font;
+		}
+
 		boolean hovered(Frame f) {
 			return f.hoverAllowed() && Ui.inside(f.mx(), f.my(), x, y, w, height());
 		}
@@ -336,6 +341,18 @@ final class Controls {
 			return x + w - 10 - WIDTH;
 		}
 
+		/**
+		 * Top (and, below, height) of the part that takes the mouse: the whole row beside the label, only the slider's own
+		 * line when it sits under its name, so a click on the name or description doesn't move it.
+		 */
+		private int grabY() {
+			return stacked() ? y + baseHeight() : y;
+		}
+
+		private int grabH() {
+			return stacked() ? controlHeight() : height();
+		}
+
 		@Override
 		String kind() {
 			return Tr.t("slider");
@@ -352,7 +369,7 @@ final class Controls {
 			float t = (float) Mth.clamp((v - min) / (max - min), 0, 1);
 			int sx = sx();
 			int cy = controlCy();
-			boolean hot = dragging || hovered(f) && Ui.inside(f.mx(), f.my(), sx - 4, y, WIDTH + 8, height());
+			boolean hot = dragging || hovered(f) && Ui.inside(f.mx(), f.my(), sx - 4, grabY(), WIDTH + 8, grabH());
 			knobAnim = Ui.approach(knobAnim, hot ? 1 : 0, f.dt(), 16);
 			Ui.rect(f.g(), sx, cy - 1, WIDTH, 3, 1, Ui.TRACK);
 			int filled = Math.round(t * WIDTH);
@@ -367,7 +384,7 @@ final class Controls {
 
 		@Override
 		boolean click(double mx, double my) {
-			if (!Ui.inside(mx, my, sx() - 6, y, WIDTH + 12, height())) {
+			if (!Ui.inside(mx, my, sx() - 6, grabY(), WIDTH + 12, grabH())) {
 				return false;
 			}
 			dragging = true;
@@ -462,14 +479,32 @@ final class Controls {
 		/** Never less than this around a name: 4 each side, so the highlight does not touch the next name. */
 		static final int MIN_PAD = 8;
 
-		@Override
-		int controlWidth(Font font) {
+		/** Width of every name side by side. */
+		private int sideBySide(Font font) {
 			int pad = pad(font);
 			int total = 4;
 			for (int i = 0; i < options.length; i++) {
 				total += optionWidth(font, i, pad);
 			}
 			return total;
+		}
+
+		/**
+		 * Whether names {@code sideBySideW} wide don't fit a row {@code rowW} wide even on a line of their own: the row then
+		 * shows the picked one between arrows, like a {@link Cycle}, instead of running past the row's left edge.
+		 */
+		static boolean squeezed(int rowW, int sideBySideW) {
+			return rowW > 0 && sideBySideW > rowW - 20;
+		}
+
+		@Override
+		int controlWidth(Font font) {
+			int total = sideBySide(font);
+			return squeezed(w, total) ? Cycle.width(font, List.of(options)) : total;
+		}
+
+		private String picked() {
+			return options[Mth.clamp(get.getAsInt(), 0, options.length - 1)];
 		}
 
 		@Override
@@ -479,6 +514,12 @@ final class Controls {
 			int total = 4;
 			for (int i = 0; i < options.length; i++) {
 				total += optionWidth(font, i, pad);
+			}
+			if (squeezed(w, total)) {
+				int bw = controlW(font);
+				int bx = x + w - 10 - bw;
+				Cycle.draw(f, bx, controlCy() - 8, bw, picked(), hovered(f) && Ui.inside(f.mx(), f.my(), bx, controlCy() - 8, bw, 16));
+				return;
 			}
 			int bx = x + w - 10 - total;
 			int by = controlCy() - 8;
@@ -510,9 +551,17 @@ final class Controls {
 
 		@Override
 		boolean click(double mx, double my) {
-			Font font = net.minecraft.client.Minecraft.getInstance().font;
+			Font font = font();
 			int pad = pad(font);
-			int total = controlWidth(font);
+			int total = sideBySide(font);
+			if (squeezed(w, total)) {
+				int bw = controlWidth(font);
+				int dir = Cycle.side(mx, my, x + w - 10 - bw, controlCy(), bw);
+				if (dir != 0) {
+					set.accept(Math.floorMod(get.getAsInt() + dir, options.length));
+				}
+				return dir != 0;
+			}
 			int ox = x + w - 10 - total + 2;
 			for (int i = 0; i < options.length; i++) {
 				int ow = optionWidth(font, i, pad);
@@ -569,8 +618,13 @@ final class Controls {
 
 		@Override
 		int controlWidth(Font font) {
+			return width(font, labels);
+		}
+
+		/** Width of the button for these names: the widest, and room for the arrows. */
+		static int width(Font font, List<String> names) {
 			int widest = 0;
-			for (String l : labels) {
+			for (String l : names) {
 				widest = Math.max(widest, font.width(l));
 			}
 			return widest + 32;
@@ -583,12 +637,24 @@ final class Controls {
 			int bx = x + w - 10 - bw;
 			int by = controlCy() - 8;
 			boolean hover = hovered(f) && Ui.inside(f.mx(), f.my(), bx, by, bw, 16);
+			draw(f, bx, by, bw, labels.get(Mth.clamp(get.getAsInt(), 0, labels.size() - 1)), hover);
+		}
+
+		/** The button {@code bw} wide with its top-left corner at bx, by: the value between a back and a forward arrow. */
+		static void draw(Frame f, int bx, int by, int bw, String value, boolean hover) {
 			Ui.rect(f.g(), bx, by, bw, 16, 4, hover ? Ui.CONTROL_HOVER : Ui.CONTROL);
 			boolean leftHalf = f.mx() < bx + bw / 2;
 			chevron(f.g(), bx + 6, by + 5, false, hover && leftHalf ? Ui.ACCENT : Ui.MUTED);
 			chevron(f.g(), bx + bw - 6 - CHEVRON_W, by + 5, true, hover && !leftHalf ? Ui.ACCENT : Ui.MUTED);
-			String value = labels.get(Mth.clamp(get.getAsInt(), 0, labels.size() - 1));
-			f.g().drawCenteredString(font, Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
+			f.g().drawCenteredString(f.font(), Ui.visual(value), bx + bw / 2, by + 4, Ui.TEXT);
+		}
+
+		/** Which way a click at mx, my steps the button {@code bw} wide at {@code bx} on the line through {@code cy}: -1, 1, or 0 when it misses. */
+		static int side(double mx, double my, int bx, int cy, int bw) {
+			if (!Ui.inside(mx, my, bx, cy - 9, bw, 18)) {
+				return 0;
+			}
+			return mx < bx + bw / 2 ? -1 : 1;
 		}
 
 		/**
@@ -608,11 +674,11 @@ final class Controls {
 		boolean click(double mx, double my) {
 			Font font = net.minecraft.client.Minecraft.getInstance().font;
 			int bw = controlWidth(font);
-			int bx = x + w - 10 - bw;
-			if (!Ui.inside(mx, my, bx, controlCy() - 9, bw, 18)) {
+			int dir = side(mx, my, x + w - 10 - bw, controlCy(), bw);
+			if (dir == 0) {
 				return false;
 			}
-			step(mx < bx + bw / 2 ? -1 : 1);
+			step(dir);
 			return true;
 		}
 
@@ -879,14 +945,15 @@ final class Controls {
 			return Narration.join(narratedLabel(), value.get(), desc == null ? "" : desc.get());
 		}
 
+		/** As wide as the text, up to all the room the label leaves beside it (at least 160, where the label is cut instead). */
 		@Override
 		int controlWidth(Font font) {
-			return Math.min(160, font.width(value.get()));
+			return Math.min(font.width(value.get()), Math.max(160, w - 28 - font.width(label)));
 		}
 
 		@Override
 		void renderControl(Frame f) {
-			String text = Ui.clip(f.font(), value.get(), 160);
+			String text = Ui.clip(f.font(), value.get(), stacked() ? w - 20 : controlW(f.font()));
 			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), controlCy() - 4, Ui.MUTED, false);
 		}
 	}
