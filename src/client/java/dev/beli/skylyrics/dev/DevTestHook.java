@@ -51,7 +51,8 @@ import dev.beli.skylyrics.media.DemoSource;
  * <p>
  * {@code debug on|off} opens or closes the F3 debug screen, as the F3 key does.
  * <p>
- * World changes: {@code pause} opens the pause menu, as Escape does in a world. {@code quit} leaves the world to the title
+ * World changes: {@code pause} opens the pause menu, as Escape does in a world ({@code pause nomenu} pauses as F3 + Esc
+ * does, with no menu drawn). {@code quit} leaves the world to the title
  * screen, as the pause menu's "Save and Quit to Title" does (the single-player world is saved before the command returns).
  * {@code join <world folder name>} (e.g. {@code join SkyTest}) joins that single-player world from the title screen, as
  * quick play does. {@code inventory} opens the player's inventory screen (the survival one; the creative inventory shows no
@@ -669,7 +670,7 @@ public final class DevTestHook {
 					} else if (currentScreen(client) != null) {
 						SkyLyricsClient.LOG.info("Test hook: pause ignored (a screen is already open)");
 					} else {
-						showScreen(client, new net.minecraft.client.gui.screens.PauseScreen(true));
+						showScreen(client, new net.minecraft.client.gui.screens.PauseScreen(!arg.equals("nomenu")));
 					}
 				}
 				case "quit" -> {
