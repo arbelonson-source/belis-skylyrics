@@ -129,6 +129,13 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void anArtistWhoseNameStartsWithASeparatorKeepsIt() {
+		assertEquals("&Nova", TitleCleaner.mainArtist("&Nova"));
+		assertEquals("&Nova", TitleCleaner.mainArtist("&Nova, Someone Else"));
+		assertEquals("&Nova", TitleCleaner.mainArtist(" &Nova feat. Someone Else"));
+	}
+
+	@Test
 	void instrumentalAndKaraokeAreNotTheSungSong() {
 		different("Song (Instrumental)", "Song");
 		different("Song [Karaoke Version]", "Song");
