@@ -1,0 +1,36 @@
+# The settings screen in the smallest window any GUI scale gives (1280x720 at GUI scale 4 = 320x180): the footer
+# buttons (Reset all must stop before Done) and the Preview hint (it wraps onto more lines instead of running off the
+# sides), in Russian and German, then the hint at GUI scale 2 in English (one line, where it always was).
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/settings-small.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+lang ru_ru
+sleep 15
+guiscale 4
+gui 0
+sleep 3
+shot settings-small-ru
+preview
+sleep 2
+shot settings-preview-ru
+close
+lang de_de
+sleep 15
+gui 0
+sleep 3
+shot settings-small-de
+preview
+sleep 2
+shot settings-preview-de
+close
+lang en_us
+sleep 15
+guiscale 2
+gui 0
+sleep 3
+preview
+sleep 2
+shot settings-preview-en-g2
+close
