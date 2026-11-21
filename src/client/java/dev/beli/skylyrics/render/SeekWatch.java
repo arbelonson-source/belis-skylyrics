@@ -23,7 +23,7 @@ final class SeekWatch {
 	 * the words should rewind.
 	 */
 	boolean step(long positionMs, long seekRequestedNanos, long nowNanos) {
-		boolean asked = seekRequestedNanos != used && LyricsRenderer.seekRecent(seekRequestedNanos, nowNanos);
+		boolean asked = seekRequestedNanos != used && seekRequestedNanos != 0;
 		boolean rewind = LyricsRenderer.jumpedBack(time, positionMs, asked);
 		if (rewind) {
 			used = seekRequestedNanos;
