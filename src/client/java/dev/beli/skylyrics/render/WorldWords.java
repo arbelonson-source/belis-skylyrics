@@ -1374,7 +1374,13 @@ final class WorldWords {
 				letters++;
 			}
 		}
-		float size = SIZE * sizeFor(letters, next()) * (big && bigPiece >= 0 && lineChunks.indexOf(chunk) == bigPiece ? BIG : 1);
+		float roll = next();
+		if (flow && slot >= 0 && slot < lineRuns.length && lineRuns[slot] != RUN_NONE) {
+			// A piece of a stretch against the line is the size its room was measured for (see nominalHalf), so the
+			// stretch's words fill that room and its last one doesn't stick out of it
+			roll = 0.5f;
+		}
+		float size = SIZE * sizeFor(letters, roll) * (big && bigPiece >= 0 && slot == bigPiece ? BIG : 1);
 		Vec3 eye = camera.position();
 		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
 		List<float[]> taken = new ArrayList<>(cards.size());
@@ -1661,10 +1667,12 @@ final class WorldWords {
 			sentence.width = width;
 			sentence.rest = wide;
 		}
-		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
+		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
+		float depth = (next() * 2 - 1) * SENTENCE_DEPTH;
+		// A piece of a stretch against the line stands as far out as its room was measured at
+		float distance = sentence.distance * (1 + (run == RUN_NONE ? depth : 0));
 		size = fitted(size, at, wordScale, distance);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
-		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
 		openRun(sentence, lineRuns, lineHalf, placing, wordScale, halfH);
 		float[] mark = sentence.mark();
 		int rowsBefore = sentence.rows;
@@ -1690,25 +1698,35 @@ final class WorldWords {
 			sentence.forward();
 		} else if (run == RUN_FIRST || sentence.run <= 0) {
 			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it.
-			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left
+			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left.
+			// One wider than a row is written a row's worth at a time, as wrapped text is, each part in its own order
+			float[] halves = new float[runs.length - placing];
 			int count = 0;
+			float span = -Sentence.GAP * halfH;
+			// Measured where it comes out widest, on this row or the next one down, and leaving room for a new row's indent
+			float below = (Float.isInfinite(sentence.low) ? sentence.top : sentence.low) + Sentence.ROW_GAP + 2 * halfH + SENTENCE_BOB;
+			// and wherever along the row its slope and bow take it
+			float right = sentence.left + sentence.width;
+			float pitch = Math.max(Math.abs(sentence.widest(sentence.left, right, sentence.top, halfH, sentence.top)),
+					Math.abs(sentence.widest(sentence.left, right, below, halfH, below)));
 			for (int k = placing; k < runs.length; k++) {
-				count++;
+				float h = halfAngle(half[k] * wordScale, sentence.distance);
+				span += 2 * Sentence.yawHalf(h, pitch) + Sentence.GAP * halfH;
+				if (count > 0 && span > sentence.width - SENTENCE_INDENT) {
+					break;
+				}
+				halves[count++] = h;
 				if (runs[k] == RUN_LAST) {
 					break;
 				}
 			}
-			float[] halves = new float[count];
-			for (int k = 0; k < count; k++) {
-				halves[k] = halfAngle(half[placing + k] * wordScale, sentence.distance);
-			}
-			sentence.reverse(halves, (count - 1) * Sentence.GAP * halfH);
+			sentence.reverse(java.util.Arrays.copyOf(halves, count), (count - 1) * Sentence.GAP * halfH);
 		}
 	}
 
-	/** After a piece of kind {@code run} is written: the end of a stretch goes back to writing along the line. */
+	/** After a piece of kind {@code run} is written: the end of a stretch, or of the part of it a row holds, goes back to writing along the line. */
 	static void closeRun(Sentence sentence, int run) {
-		if (run == RUN_LAST) {
+		if (run == RUN_LAST || run != RUN_NONE && --sentence.runLeft <= 0) {
 			sentence.forward();
 		}
 	}
@@ -1859,15 +1877,22 @@ final class WorldWords {
 	}
 
 	static float[] placeClear(Sentence line, float halfW, float halfH, float indent, float bob, List<float[]> taken) {
+		if (line.run > 0 && !Float.isNaN(line.runAt)) {
+			// The rest of a stretch against the line sit in the room its first piece found for all of it: moved on alone,
+			// each try would take the next place back, out past the edge the line's rows start from and across the middle
+			return line.place(halfW, halfH, indent, bob);
+		}
 		float[] mark = line.mark();
 		int rows = line.rows, best = 0;
 		float least = Float.MAX_VALUE;
 		for (int t = 0; t < CLEAR_TRIES; t++) {
-			float[] at = line.place(halfW, halfH, indent, bob);
+			float[] at = tryPlace(line, halfW, halfH, indent, bob);
 			if (line.rows - rows > 1) {
 				break;
 			}
-			float crowd = crowding(at[0], at[1], halfW, halfH, taken);
+			// A stretch's first piece needs its whole room clear, as high and as low as its words step off the row
+			float crowd = line.run > 0 ? crowding(line.roomMiddle(), (line.runHigh + line.runLow) / 2, line.run / 2, halfH + (line.runLow - line.runHigh) / 2, taken)
+					: crowding(at[0], at[1], halfW, halfH, taken);
 			if (crowd == 0) {
 				return at;
 			}
@@ -1880,9 +1905,20 @@ final class WorldWords {
 		line.back(mark);
 		float[] at = null;
 		for (int t = 0; t <= best; t++) {
-			at = line.place(halfW, halfH, indent, bob);
+			at = tryPlace(line, halfW, halfH, indent, bob);
 		}
 		return at;
+	}
+
+	/**
+	 * One try at placing the next piece. A stretch's first piece tries again as its first, taking room for all of it
+	 * further along the row: the whole stretch moves on as one piece does, its words still in their own order.
+	 */
+	private static float[] tryPlace(Sentence line, float halfW, float halfH, float indent, float bob) {
+		if (line.run > 0) {
+			line.runAt = Float.NaN;
+		}
+		return line.place(halfW, halfH, indent, bob);
 	}
 
 	/** Whether a card of this half size, in degrees, has room here away from the given footprints. */
@@ -1954,6 +1990,10 @@ final class WorldWords {
 		/** The stretch's pieces' half widths as seen square on, the room between them, and the pitch its room was measured at. */
 		float[] runHalves = new float[0];
 		float runGap, runPitch;
+		/** The highest and lowest pitch the open stretch's words may sit at, stepping off its row: what its room is checked over. */
+		float runHigh, runLow;
+		/** How many of the open stretch's pieces are still to be written. */
+		int runLeft;
 		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
 		boolean newRow;
 		/** How many rows have been started after the first. */
@@ -2012,9 +2052,13 @@ final class WorldWords {
 				}
 			}
 			if (first) {
-				// Its pieces take the yaw they span at this pitch, as every other piece of the row does
+				// Its pieces take the yaw they span where they are drawn, as every other piece of the row does: the row's
+				// slope and bow lift or drop them across the room, so the room is measured where it comes out widest
 				runPitch = pitchNow;
-				run = runWidth(pitchNow);
+				for (int k = 0; k < 2; k++) {
+					runPitch = widest(cursor + GAP * halfH, cursor + GAP * halfH + runWidth(runPitch), top + bob, halfH, runPitch);
+				}
+				run = runWidth(runPitch);
 			}
 			float whole = first ? run / 2 : wy;
 			float yaw = cursor + GAP * halfH + whole;
@@ -2024,15 +2068,18 @@ final class WorldWords {
 				float pitchWrap = low + ROW_GAP + 2 * halfH + bob;
 				wy = yawHalf(halfW, pitchWrap);
 				if (first) {
-					runPitch = pitchWrap;
-					run = runWidth(pitchWrap);
+					// Where on the new row its room ends up depends on its width: measured over all of the row
+					runPitch = widest(left, left + width, pitchWrap, halfH, pitchWrap);
+					run = runWidth(runPitch);
 				}
 				whole = first ? run / 2 : wy;
 				newRow = false;
 				rows++;
-				// A short last row is centred under the full one above it
-				float centre = (cursor - left - Math.max(rest, 2 * whole)) / 2;
-				yaw = left + Math.max(indent, centre) + whole;
+				// A short last row is centred under the full one above it. The indent never takes a piece past the row's far
+				// end, and one wider than the whole row (a big word low in the sky) sits on its middle, so it sticks out a
+				// little at both ends instead of all of it at the far one
+				float centre = (cursor - left - Math.max(rest, 2 * whole)) / 2, room = width - 2 * whole;
+				yaw = left + (room < 0 ? room / 2 : Math.min(Math.max(indent, centre), room)) + whole;
 			}
 			if (run <= 0 || first) {
 				rest -= yaw + whole - cursor;
@@ -2043,7 +2090,8 @@ final class WorldWords {
 					runAt = cursor;
 				}
 				yaw = runAt - wy;
-				runAt = yaw - wy - GAP * halfH;
+				// The room between its pieces is what the stretch's room was measured with
+				runAt = yaw - wy - (runHalves.length > 1 ? runGap / (runHalves.length - 1) : GAP * halfH);
 			}
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
@@ -2064,6 +2112,11 @@ final class WorldWords {
 			}
 			// A word never reaches up into the row above, however big it is or however it bobs
 			float middle = Math.max(top - halfH + bob, above + ROW_GAP + reach);
+			if (first) {
+				// The stretch's later words step up and down off the row as every piece does, the most a step goes either way
+				runHigh = Math.max(top - halfH - SENTENCE_BOB, above + ROW_GAP + reach) - rise;
+				runLow = Math.max(top - halfH + SENTENCE_BOB, above + ROW_GAP + reach) - rise;
+			}
 			low = Math.max(low, middle + reach);
 			pieces++;
 			return new float[] {yaw, middle - rise, lean};
@@ -2088,8 +2141,36 @@ final class WorldWords {
 		void reverse(float[] halves, float gap) {
 			runHalves = halves;
 			runGap = gap;
+			runLeft = halves.length;
 			run = runWidth(0);
 			runAt = Float.NaN;
+		}
+
+		/** The middle, as drawn (yaw, degrees), of the room the stretch being written took along its row. */
+		float roomMiddle() {
+			float middle = cursor - run / 2;
+			return rtl ? 2 * left + width - middle : middle;
+		}
+
+		/**
+		 * Of {@code pitch} and the pitches pieces are drawn at from {@code from} to {@code to} along this row (as written,
+		 * before a right-to-left row is mirrored), the one furthest from the horizon, where a piece spans the most yaw.
+		 * {@code foot} is the row's line before its slope and bow; a piece's middle sits {@code halfH} above it.
+		 */
+		float widest(float from, float to, float foot, float halfH, float pitch) {
+			float steep = (float) Math.tan(slope * DEG);
+			for (int k = 0; k <= 8; k++) {
+				float x = Mth.lerp(k / 8f, from, to), yaw = rtl ? 2 * left + width - x : x;
+				float along = Mth.clamp((yaw - left) / width, 0, 1), rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
+				float low = foot - rise, high = foot - halfH - rise;
+				if (Math.abs(low) > Math.abs(pitch)) {
+					pitch = low;
+				}
+				if (Math.abs(high) > Math.abs(pitch)) {
+					pitch = high;
+				}
+			}
+			return pitch;
 		}
 
 		/** How wide the stretch's pieces are together along a row at {@code pitch}, with the room between them. */
@@ -2192,10 +2273,14 @@ final class WorldWords {
 		void swing(float turn, float tilt) {
 			left += turn;
 			cursor += turn;
+			// A phrase against the line that is half written keeps the rest of its room beside its first word (NaN, no
+			// room taken yet, stays NaN)
+			runAt += turn;
 			float shown = shownPitch(top, clip, tilt);
 			float moved = shown - top;
 			clip = top + clip + tilt - shown;
 			top += moved;
+			runPitch += moved;
 			above += moved;
 			low += moved;
 			home += moved;
