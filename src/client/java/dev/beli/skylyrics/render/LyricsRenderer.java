@@ -1094,21 +1094,20 @@ public final class LyricsRenderer {
 				continue;
 			}
 			float a = slotAlpha(cfg, r);
-			if (a <= 0.01f) {
+			if (a <= 0.01f || !hasSlot(shown, i)) {
 				continue;
 			}
 			String text;
 			float sung;
 			if (i < 0) {
-				// Before the first line: little notes that fill up until the singing starts
-				long first = shown.lines().isEmpty() ? 0 : shown.get(0).timeMs();
-				if (i < -1 || first < 2500) {
-					continue;
-				}
+				// Before the first line: little notes that fill up until the singing starts. A wait too short for them
+				// keeps its place all the same, so the first line waits below it and rises from there
+				long first = shown.get(0).timeMs();
 				text = DOTS;
-				sung = Mth.clamp(time / (float) first, 0, 1);
-			} else if (i >= shown.lines().size()) {
-				continue;
+				sung = Mth.clamp(time / (float) Math.max(1, first), 0, 1);
+				if (!introNotes(first)) {
+					a = 0;
+				}
 			} else {
 				LyricLine line = shown.get(i);
 				if (line.isBreak()) {
@@ -1155,33 +1154,70 @@ public final class LyricsRenderer {
 			return;
 		}
 
-		// Stack the lines top to bottom, then move the stack so the r=0 point sits at the anchor
-		float[] centers = new float[items.size()];
-		float y = 0;
+		float[] rs = new float[items.size()], heights = new float[items.size()];
 		for (int k = 0; k < items.size(); k++) {
 			Item it = items.get(k);
-			float h = draw.rows(it.text).size() * ROW_H * it.scale;
-			centers[k] = y + h / 2;
-			y += h + GAP;
+			rs[k] = it.r;
+			heights[k] = draw.rows(it.text).size() * ROW_H * it.scale;
 		}
-		float focus = centers[0] - items.getFirst().r * (items.size() > 1 ? centers[1] - centers[0] : 0);
-		for (int k = 0; k + 1 < items.size(); k++) {
-			float r0 = items.get(k).r, r1 = items.get(k + 1).r;
+		float[] ys = stack(rs, heights);
+		for (int k = 0; k < items.size(); k++) {
+			Item it = items.get(k);
+			draw.line(it.text, ys[k], it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT, it.flareT);
+		}
+	}
+
+	/** The wait before the first line shows its little notes only when it is at least this long. */
+	static final long INTRO_NOTES_MS = 2500;
+
+	/** Whether the wait before a first line at {@code firstMs} shows the little notes that fill up until the singing starts. */
+	static boolean introNotes(long firstMs) {
+		return firstMs >= INTRO_NOTES_MS;
+	}
+
+	/**
+	 * Whether line {@code i} has a place in the Lines layout's stack: a line of the song, or the wait before the first
+	 * line (-1). The wait keeps its place even when it is too short for the notes, so the first line waits below it in
+	 * the next line's place, not where the line being sung goes (Rise took it from there down a slot and back up).
+	 */
+	static boolean hasSlot(Lyrics lyrics, int i) {
+		if (i >= 0) {
+			return i < lyrics.lines().size();
+		}
+		return i == -1 && !lyrics.isEmpty();
+	}
+
+	/**
+	 * Where the middle of each line of the stack sits, relative to the anchor: the lines {@code r} slots from the line
+	 * being sung (top to bottom, in order) and {@code heights} tall are stacked with a gap between them, and the stack is
+	 * moved so the point r = 0 sits at the anchor.
+	 */
+	static float[] stack(float[] r, float[] heights) {
+		int n = r.length;
+		float[] centers = new float[n];
+		float y = 0;
+		for (int k = 0; k < n; k++) {
+			centers[k] = y + heights[k] / 2;
+			y += heights[k] + GAP;
+		}
+		float focus = centers[0] - r[0] * (n > 1 ? centers[1] - centers[0] : 0);
+		for (int k = 0; k + 1 < n; k++) {
+			float r0 = r[k], r1 = r[k + 1];
 			if (r0 <= 0 && r1 >= 0) {
 				focus = Mth.lerp(-r0 / (r1 - r0), centers[k], centers[k + 1]);
 				break;
 			}
-			if (k + 2 == items.size()) {
+			if (k + 2 == n) {
 				focus = centers[k + 1] - r1 * (centers[k + 1] - centers[k]);
 			}
 		}
-		for (int k = 0; k < items.size(); k++) {
-			Item it = items.get(k);
-			draw.line(it.text, centers[k] - focus, it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT, it.flareT);
+		for (int k = 0; k < n; k++) {
+			centers[k] -= focus;
 		}
+		return centers;
 	}
 
-	private static float slotAlpha(SkyLyricsConfig cfg, float r) {
+	static float slotAlpha(SkyLyricsConfig cfg, float r) {
 		float prev = cfg.showPrevious ? 0.5f : 0;
 		float next = cfg.showNext ? 0.42f : 0;
 		if (r <= -1) return prev * (2 + r);
