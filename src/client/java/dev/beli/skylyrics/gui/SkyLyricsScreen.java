@@ -1466,7 +1466,7 @@ public final class SkyLyricsScreen extends Screen {
 		int w = textW + PREVIEW_PAD;
 		int h = 8 + 10 * lines.size();
 		int x = (width - w) / 2;
-		int y = height - 34 - h; // a longer hint grows upward from where the one line sits
+		int y = height - 26 - h; // one line sits where it always did (18 high, 44 up); a longer hint grows upward from there
 		Ui.rect(g, x, y, w, h, 9, 0xE0141019);
 		Ui.rect(g, x + 8, y + 7, 4, 4, 2, Ui.ACCENT);
 		for (int i = 0; i < lines.size(); i++) {
