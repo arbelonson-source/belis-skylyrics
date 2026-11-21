@@ -1,0 +1,33 @@
+# A small check: the demo song's lyrics in the night sky, a few frames of a line change, and the settings screen.
+# Run it: gh workflow run screenshots.yml --ref <branch> -f version=26.3 -f script=.github/checks/example.txt
+# One test hook command per line (see DevTestHook.java); `sleep <s>` waits, `wait <log text>` waits for the log.
+# Lines next to each other go to the game together; a sleep sends them.
+
+# A clear night that stays night, looking a little above the horizon
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 8
+where
+shot example-night
+
+# The arc layout, caught as the next line ("Neon skyline, can you hear it", at 20 s) starts
+set layout ARC
+seek 18.5
+sleep 0.5
+burstat example-arc 6 400
+wait burst example-arc wrote
+
+# Jump to a known line and read where the song is
+seek 47
+sleep 3
+where
+shot example-seek
+
+# The settings screen, first tab
+gui 0
+sleep 4
+shot example-settings
+close
