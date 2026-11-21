@@ -1,0 +1,37 @@
+# A top left Record card and potion effect icons, in the smallest screen (run with size=640x480: GUI scale 2 = 320x240):
+# with 6 good effects the card stays at the top; the 7th icon reaches it, so it moves under the row; with 7 bad ones
+# too it goes under both rows. A top right card is shown for comparison.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f size=640x480 -f script=.github/checks/card-effects.txt
+
+cmd time set noon
+cmd weather clear
+look 0 -20
+set recordCard true
+set cardLyrics true
+set cardCorner TOP_LEFT
+guiscale 2
+sleep 6
+cmd effect give @p minecraft:speed 600
+cmd effect give @p minecraft:haste 600
+cmd effect give @p minecraft:strength 600
+cmd effect give @p minecraft:jump_boost 600
+cmd effect give @p minecraft:regeneration 600
+cmd effect give @p minecraft:resistance 600
+sleep 2
+shot effects-6-tl
+cmd effect give @p minecraft:fire_resistance 600
+sleep 2
+shot effects-7-tl
+cmd effect give @p minecraft:slowness 600
+cmd effect give @p minecraft:mining_fatigue 600
+cmd effect give @p minecraft:weakness 600
+cmd effect give @p minecraft:hunger 600
+cmd effect give @p minecraft:unluck 600
+cmd effect give @p minecraft:glowing 600
+cmd effect give @p minecraft:bad_omen 600
+sleep 2
+shot effects-7-7-tl
+set cardCorner TOP_RIGHT
+sleep 2
+shot effects-7-7-tr
+cmd effect clear @p
