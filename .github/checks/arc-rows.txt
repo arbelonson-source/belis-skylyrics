@@ -1,0 +1,27 @@
+# Arc layout, long lines on 3-5 rows with commas and tiny words: no word may touch a word of a row above it,
+# also two rows up past a short row. Compare a branch with main by running it twice.
+# Run: gh workflow run screenshots.yml --ref main -f version=26.3 -f mod_ref=<branch or commit> -f script=.github/checks/arc-rows.txt
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout ARC
+look 0 -20
+sleep 6
+lines Lanterns glowing over every quiet hill tonight, oh, I, lanterns glowing over every quiet hill tonight | Wide rivers singing, a, o, wide rivers singing through the endless silver valley below | We run, oh, we run, a, I, through the bright and burning neon streets until the morning finds us
+seek 0
+sleep 4
+shot arc-rows-g2-a
+sleep 4
+shot arc-rows-g2-b
+sleep 4
+shot arc-rows-g2-c
+guiscale 3
+seek 0
+sleep 4
+shot arc-rows-g3-a
+sleep 4
+shot arc-rows-g3-b
+sleep 4
+shot arc-rows-g3-c
