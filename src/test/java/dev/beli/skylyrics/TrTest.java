@@ -154,6 +154,23 @@ class TrTest {
 	}
 
 	@Test
+	void russianAndUkrainianAreEachTheirOwnLanguage() throws IOException {
+		Map<String, String> ru = lang("ru_ru.json"), uk = lang("uk_ua.json");
+		long differing = ru.keySet().stream().filter(k -> !ru.get(k).equals(uk.get(k))).count();
+		assertTrue(differing >= 400, "uk_ua.json must be its own Ukrainian translation; only " + differing + " texts differ from ru_ru.json");
+		// Letters only one of the two alphabets has: Russian ы э ъ ё, Ukrainian і ї є ґ
+		Pattern russianOnly = Pattern.compile("[ыэъёЫЭЪЁ]");
+		Pattern ukrainianOnly = Pattern.compile("[іїєґІЇЄҐ]");
+		uk.forEach((k, v) -> assertFalse(russianOnly.matcher(v).find(), "uk_ua.json has a Russian letter in " + k + ": " + v));
+		ru.forEach((k, v) -> assertFalse(ukrainianOnly.matcher(v).find(), "ru_ru.json has a Ukrainian letter in " + k + ": " + v));
+		// The button that opens Minecraft's Controls screen, and Done, use Minecraft's own words
+		assertEquals("Управление", ru.get("skylyrics.ui.controls"));
+		assertEquals("Керування", uk.get("skylyrics.ui.controls"));
+		assertEquals("Готово", ru.get("skylyrics.ui.done"));
+		assertEquals("Готово", uk.get("skylyrics.ui.done"));
+	}
+
+	@Test
 	void keysStayTheSameAsBeforeTheRegexesWereCompiledOnce() {
 		String[][] golden = {
 				{"Hello World", "skylyrics.ui.hello_world"},
