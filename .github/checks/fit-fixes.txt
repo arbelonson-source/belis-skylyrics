@@ -53,13 +53,3 @@ sleep 1
 shot fit-library-message-ru
 close
 
-lang uk_ua
-sleep 15
-set demoMode false
-sleep 11
-shot fit-popup-uk-a
-sleep 2
-shot fit-popup-uk-b
-sleep 3
-shot fit-popup-uk-c
-set demoMode true
