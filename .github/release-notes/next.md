@@ -14,7 +14,7 @@
 
 ### Fixed
 
-- **Arc layout rows.** In the Arc layout, a line on two or more rows no longer has a word of a lower row drawn over a word of the row above; the lower row sits a little further down only when it would otherwise touch.
+- **Arc layout rows.** In the Arc layout, a line on two or more rows no longer has a word of a lower row drawn over a word of the row above, or of a row higher up when the row in between is short (a word or two); the lower row sits a little further down only when it would otherwise touch.
 - **Arc layout big words.** In the Arc layout, two big words (or phrases) side by side in the same row no longer overlap; there is a little more room between them, and nothing changes between normal-sized words.
 - **Crashes and clashes.** Pressing Left or Right on **Pick a look** while the look is Custom (after changing any look setting) no longer crashes the game: Right picks the first look and Left the last. A rare error in the mod's drawing no longer crashes the game: the part that failed pauses for 5 seconds and the error goes to the log. Fixes a clash with other font mods on Minecraft 1.21.1 and 1.21.4, and a small memory leak when a letter can't be loaded.
 - **Updates.** Updates install and are announced correctly in more situations.
