@@ -428,6 +428,21 @@ public final class RecordCard {
 		return bottom;
 	}
 
+	/**
+	 * The least a top left card's top may be so it keeps clear of the potion effect icons: Minecraft draws them from the
+	 * top right corner leftwards, 25 units each (good effects in a row along the top, bad ones in a second row under
+	 * it), so seven or more good effects reach the card on a 320 wide screen and eleven on a 427 wide one. The card goes
+	 * under each row that reaches it, as the top bar does. 0 for the other corners: the top right card goes under the
+	 * icons through {@code effects} in {@link #corner}, and the bottom ones are far from them.
+	 */
+	static float effectsClear(CardCorner corner, int guiW, int good, int bad, boolean demo) {
+		if (corner != CardCorner.TOP_LEFT) {
+			return 0;
+		}
+		return TopBarLayout.effectsClear(guiW, MARGIN + W, good, bad, TopBarLayout.effectRow(GOOD_ROW, demo),
+				TopBarLayout.effectRow(BAD_ROW, demo));
+	}
+
 	static float[] corner(CardCorner corner, int guiW, int guiH) {
 		return corner(corner, guiW, guiH, 0);
 	}
@@ -635,6 +650,9 @@ public final class RecordCard {
 		return new float[] {at[0], y};
 	}
 
+	/** No good and no bad effect icons, for a corner that doesn't count them. */
+	private static final int[] NO_EFFECTS = {0, 0};
+
 	/** The card with the hotbar's neighbours taken from the player's settings. */
 	private static float[] corner(Minecraft mc, CardCorner corner, int guiW, int guiH, int effects, float h) {
 		boolean rightHanded = mc.options.mainHand().get() == HumanoidArm.RIGHT;
@@ -643,7 +661,10 @@ public final class RecordCard {
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
 		float demo = TopBarLayout.demoClear(mc.isDemo(), guiW, NowPlayingHud.demoTimerWidth(mc),
 				corner == CardCorner.TOP_LEFT ? MARGIN + W : guiW - MARGIN);
-		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0),
+		int[] counts = corner == CardCorner.TOP_LEFT ? effectCounts(mc) : NO_EFFECTS;
+		float icons = effectsClear(corner, guiW, counts[0], counts[1], mc.isDemo());
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator,
+				Math.max(Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0), icons),
 				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc), NowPlayingHud.topBox());
 	}
 

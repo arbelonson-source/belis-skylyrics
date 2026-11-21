@@ -170,6 +170,7 @@
 - **Record card and the scoreboard.** In a small window or at a big GUI scale, a **Record card** on the right that steps out of the way of a server's scoreboard sidebar no longer drops down over the hunger bar, the XP bar or the held item's name. It goes above the sidebar when there is room there, and fades while there is none.
 - **Record card under the open chat.** In a small window or at a big GUI scale, the open chat's messages are no longer drawn over a **Record card** in the bottom right or in a top corner: the card fades while the chat's box covers it, as it already did in the bottom left (not when chat is set to Hidden).
 - **Record card and top bar when the music stops.** When the music stops, the **Record card** and the top bar keep showing the last song (its name, artist, times and lyric line) while they fade out, instead of showing "Unknown song" for a moment.
+- **Record card and many potion effects.** A **Record card** in the top left now moves down under the potion effect icons when there are enough of them for their row to reach it (in a small window or at a big GUI scale, from about seven effects), as a card in the top right already did, instead of overlapping them.
 
 ### Faster
 
