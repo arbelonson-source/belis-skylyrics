@@ -116,8 +116,13 @@ final class LibraryViews {
 
 	/** Whether the mouse is on the line after the last column (drawn at {@code lineY}, {@code tailW} wide). */
 	static boolean tailHit(double mx, double my, int viewX, int left, int width, int tailW, int lineY) {
+		return tailHit(mx, my, viewX, left, width, tailW, lineY, 1);
+	}
+
+	/** The same for {@code lines} lines 10 apart, the first drawn at {@code lineY}. */
+	static boolean tailHit(double mx, double my, int viewX, int left, int width, int tailW, int lineY, int lines) {
 		// a little slack around the text, like the grid's error line
-		return tailW > 0 && Ui.inside(mx, my, tailX(viewX, left, width) - 4, lineY - 4, tailW + 8, 17);
+		return tailW > 0 && Ui.inside(mx, my, tailX(viewX, left, width) - 4, lineY - 4, tailW + 8, 17 + 10 * (lines - 1));
 	}
 
 	/** Moves the selection by whole columns and rows, staying put at an edge. */

@@ -126,4 +126,12 @@ class LibraryViewsTest {
 		assertFalse(LibraryViews.tailHit(200, 80, 10, 0, 176, 60, 50), "below it");
 		assertFalse(LibraryViews.tailHit(200, 53, 10, 0, 176, 0, 50), "no line");
 	}
+
+	@Test
+	void aClickOnAnyLineOfALongFailedShelfPageMessageTriesAgain() {
+		// The same message on three lines from y 50: the last is drawn at y 70
+		assertTrue(LibraryViews.tailHit(200, 73, 10, 0, 176, 60, 50, 3), "a click on its third line");
+		assertFalse(LibraryViews.tailHit(200, 73, 10, 0, 176, 60, 50, 1), "where a one-line message has nothing");
+		assertFalse(LibraryViews.tailHit(200, 90, 10, 0, 176, 60, 50, 3), "below its last line");
+	}
 }
