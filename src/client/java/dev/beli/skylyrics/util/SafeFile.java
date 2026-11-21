@@ -91,11 +91,12 @@ public final class SafeFile {
 	/**
 	 * Copies a damaged file to {@code <name>.bad} so a reset never costs the original. An earlier copy is never
 	 * overwritten: the new one goes to the first free {@code .bad.1} to {@code .bad.9}, and when all ten are taken it
-	 * replaces the oldest one (by modified time).
+	 * replaces the oldest one (by modified time). Returns the copy that holds the file's bytes, new or made before.
 	 */
-	public static void keepBad(Path file) throws IOException {
-		if (hasCopy(file)) {
-			return;
+	public static Path keepBad(Path file) throws IOException {
+		Path earlier = copyOf(file);
+		if (earlier != null) {
+			return earlier;
 		}
 		Path target = freeBadName(file);
 		if (target == null) {
@@ -112,22 +113,23 @@ public final class SafeFile {
 			target = oldest;
 		}
 		Files.copy(file, target, StandardCopyOption.REPLACE_EXISTING);
+		return target;
 	}
 
-	/** Whether one of the {@code .bad} copies already holds exactly these bytes (a copy that vanishes or can't be read doesn't count). */
-	private static boolean hasCopy(Path file) throws IOException {
+	/** The {@code .bad} copy that already holds exactly these bytes, or null (a copy that vanishes or can't be read doesn't count). */
+	private static Path copyOf(Path file) throws IOException {
 		long size = Files.size(file);
 		for (int i = 0; i <= 9; i++) {
 			Path p = file.resolveSibling(file.getFileName() + (i == 0 ? ".bad" : ".bad." + i));
 			try {
 				if (Files.size(p) == size && Files.mismatch(file, p) == -1) {
-					return true;
+					return p;
 				}
 			} catch (IOException e) {
 				// no such copy, gone since, or one that can't be read (locked, a folder): it isn't this one, look on
 			}
 		}
-		return false;
+		return null;
 	}
 
 	/** A settings-sized file (heard list, sign-in) bigger than this is not ours: reading it whole could run the game out of memory. */

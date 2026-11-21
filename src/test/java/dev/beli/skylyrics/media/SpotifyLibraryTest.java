@@ -90,6 +90,23 @@ class SpotifyLibraryTest {
 	}
 
 	@Test
+	void playlistPagingCountsTheGapsSpotifySentToo() {
+		// Spotify has sent null in place of a playlist it won't show this app: the next page still starts after the gap,
+		// or the playlist at the page's edge shows twice
+		String body = """
+				{"total":5,"offset":0,"items":[
+				 {"id":"p1","uri":"spotify:playlist:p1","name":"Night Drive","owner":{"id":"me"}},
+				 null,
+				 {"id":"p3","uri":"spotify:playlist:p3","name":"Glass Harbour","owner":{"id":"me"}}
+				]}""";
+		SpotifyLibrary.Page<LibraryPlaylist> page = SpotifyLibrary.parsePlaylists(body, "me");
+		assertEquals(2, page.items().size());
+		assertEquals(3, page.next());
+		// A page of nothing but gaps is not the end of the list
+		assertEquals(2, SpotifyLibrary.parsePlaylists("{\"total\":5,\"offset\":0,\"items\":[null,null]}", "me").next());
+	}
+
+	@Test
 	void onlyYourOwnOrSharedPlaylistsOpen() {
 		String body = """
 				{"total":3,"offset":0,"items":[

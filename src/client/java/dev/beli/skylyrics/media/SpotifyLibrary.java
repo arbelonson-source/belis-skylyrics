@@ -363,7 +363,8 @@ public final class SpotifyLibrary implements Library {
 			return Page.empty();
 		}
 		List<LibraryPlaylist> out = new ArrayList<>();
-		for (JsonObject p : objects(array(json, "items"))) {
+		JsonArray entries = array(json, "items");
+		for (JsonObject p : objects(entries)) {
 			String id = string(p, "id");
 			if (id == null) {
 				continue;
@@ -378,7 +379,8 @@ public final class SpotifyLibrary implements Library {
 			int songs = count == null ? 0 : (int) number(count, "total");
 			out.add(new LibraryPlaylist(id, orEmpty(string(p, "uri")), plain(string(p, "name")), bestImage(array(p, "images")), songs, mine || shared));
 		}
-		return new Page<>(List.copyOf(out), (int) number(json, "total"), (int) number(json, "offset"));
+		// A gap (null where Spotify hides a playlist from this app) still counts towards Spotify's offset, like a dropped song
+		return new Page<>(List.copyOf(out), (int) number(json, "total"), (int) number(json, "offset"), entries == null ? 0 : entries.size());
 	}
 
 	private interface Unwrap {
