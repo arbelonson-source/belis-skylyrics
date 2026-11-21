@@ -49,15 +49,27 @@ public final class SettingsSearch {
 		return SPACES.matcher(INVISIBLE.matcher(s).replaceAll("")).replaceAll(" ");
 	}
 
-	/** The text as it is compared: cleaned, lower case, without accents or niqqud, Hebrew final letters as plain ones. */
+	/**
+	 * The text as it is compared: cleaned, lower case, without accents or niqqud, Hebrew final letters as plain ones,
+	 * and letters a keyboard may type another way as one: ß as ss (Swiss keyboards have none), œ and æ as oe and ae,
+	 * and every apostrophe (’ ʼ ‘) as ' (the Ukrainian labels have ’, keyboards type ' or ʼ).
+	 */
 	public static String fold(String s) {
 		String d = MARKS.matcher(java.text.Normalizer.normalize(clean(s), java.text.Normalizer.Form.NFD)).replaceAll("");
 		d = d.toLowerCase(Locale.ROOT);
 		StringBuilder out = new StringBuilder(d.length());
 		for (int i = 0; i < d.length(); i++) {
 			char c = d.charAt(i);
-			int at = FINALS.indexOf(c);
-			out.append(at < 0 ? c : PLAIN.charAt(at));
+			switch (c) {
+				case 'ß' -> out.append("ss");
+				case 'œ' -> out.append("oe");
+				case 'æ' -> out.append("ae");
+				case '’', '‘', 'ʼ' -> out.append('\'');
+				default -> {
+					int at = FINALS.indexOf(c);
+					out.append(at < 0 ? c : PLAIN.charAt(at));
+				}
+			}
 		}
 		return out.toString();
 	}
