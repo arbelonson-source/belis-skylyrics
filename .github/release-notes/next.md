@@ -176,6 +176,7 @@
 - **Record card and top bar when the music stops.** When the music stops, the **Record card** and the top bar keep showing the last song (its name, artist, times and lyric line) while they fade out, instead of showing "Unknown song" for a moment.
 - **Record card and many potion effects.** A **Record card** in the top left now moves down under the potion effect icons when there are enough of them for their row to reach it (in a small window or at a big GUI scale, from about seven effects), as a card in the top right already did, instead of overlapping them.
 - **Hats on a mob head or player head.** With a mob head or player head on, the hats now sit on top of it the way they sit on your bare head. Before, its corners stuck up through the brim of the **Top hat** and the edge of the **Propeller cap**, and a player head hid the **Flower crown**'s vine and leaves: the hats grew only as much as for a helmet, and Minecraft draws a worn head bigger than a helmet.
+- **Sky pulse at a song change.** With **Pulse with the lyrics** on, the night sky no longer jumps a third brighter at once when the song changes (while the next song's lyrics are found) and back down when they arrive, or when the lyrics hide in a menu with **Hide in menus** on. It now eases between its steady and pulsing brightness over about a second, also when you switch the pulse or **Hide Lightning Flashes**.
 
 ### Faster
 

@@ -113,6 +113,10 @@ public final class SkyEffects {
 	private float fade;
 	/** With the sky pulse on: how bright the sky sits between lines, as a share of its full strength. */
 	static final float BEAT_REST = 0.75f;
+	/** Seconds the pulse's resting brightness takes to move all the way between {@link #BEAT_REST} and full. */
+	static final float REST_SECONDS = 1;
+	/** The resting brightness of the sky pulse, eased (see {@link #easeRest}); NaN to snap to its target next frame. */
+	private float beatRest = Float.NaN;
 	/** 0..1: how much of the synthwave sky, the eclipse and the constellations shows. */
 	private float amount;
 	private float baseYaw;
@@ -160,6 +164,7 @@ public final class SkyEffects {
 	void resetShow() {
 		presence = 0;
 		skyStars = Float.NaN;
+		beatRest = Float.NaN;
 		sparkleShow = 0;
 		meteorsAlive = 0;
 		skyUp = false;
@@ -173,6 +178,7 @@ public final class SkyEffects {
 	 */
 	void hideSky() {
 		skyUp = false;
+		beatRest = Float.NaN;
 		sparkleShow = 0;
 		meteorsAlive = 0;
 		for (int i = 0; i < METEORS; i++) {
@@ -203,7 +209,8 @@ public final class SkyEffects {
 
 	/**
 	 * How bright the sky is for the pulse: steady at full strength with the pulse off, otherwise a little dimmer
-	 * between lines and full for a moment as each one starts.
+	 * between lines and full for a moment as each one starts. This is where it settles; the sky eases its resting
+	 * brightness there ({@link #easeRest}) when synced lyrics come or go.
 	 *
 	 * @param since seconds since the lyrics moved to a new line, or NaN with the pulse off
 	 * @param syncedShown whether synced lyrics are on show: with none (unsynced lyrics, no lyrics, an instrumental
@@ -211,7 +218,34 @@ public final class SkyEffects {
 	 *                    A break inside synced lyrics still counts as shown, so the sky doesn't jump there.
 	 */
 	static float beat(float since, boolean syncedShown) {
-		return Float.isNaN(since) || !syncedShown ? 1 : BEAT_REST + (1 - BEAT_REST) * LyricsRenderer.pulse(since);
+		return beatAt(since, restTarget(since, syncedShown));
+	}
+
+	/**
+	 * The brightness the sky rests at between pulses: {@link #BEAT_REST} while there are synced lyrics to pulse with,
+	 * full strength with nothing to pulse with (the pulse off, Hide Lightning Flashes on, or no synced lyrics on show).
+	 */
+	static float restTarget(float since, boolean syncedShown) {
+		return Float.isNaN(since) || !syncedShown ? 1 : BEAT_REST;
+	}
+
+	/**
+	 * Moves the resting brightness {@code rest} towards {@code target}, all the way in {@link #REST_SECONDS}. Synced
+	 * lyrics come and go at a song change (none while the next song's are found), when the lyrics hide (Hide in menus,
+	 * Hide with F1) and with the pulse or Hide Lightning Flashes switched; stepping straight there made the whole sky
+	 * jump a third brighter or dimmer in one frame. NaN {@code rest} (nothing shown yet) snaps.
+	 */
+	static float easeRest(float rest, float target, float dt) {
+		if (!Float.isFinite(rest)) {
+			return target;
+		}
+		float step = dt * (1 - BEAT_REST) / REST_SECONDS;
+		return rest < target ? Math.min(target, rest + step) : Math.max(target, rest - step);
+	}
+
+	/** The sky's brightness for the pulse: the resting brightness {@code rest}, lifted to full as each line starts. */
+	static float beatAt(float since, float rest) {
+		return rest + (1 - rest) * LyricsRenderer.pulse(since);
 	}
 
 	/**
@@ -436,8 +470,10 @@ public final class SkyEffects {
 		float partial = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
 		skyStars = easeStars(skyStars, starBrightness(level, camera, partial), dt);
 		boolean syncedShown = cfg.skyPulse && lyrics.visible() && syncedLyricsShown();
+		float since = cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN;
+		beatRest = easeRest(beatRest, restTarget(since, syncedShown), dt);
 		fade = starVisibility(skyStars, level.getRainLevel(partial), cfg.skyStrength) * smooth(presence)
-				* beat(cfg.skyPulse ? lyrics.secondsSinceLineChange() : Float.NaN, syncedShown);
+				* beatAt(since, beatRest);
 		if (fade < 0.01f) {
 			hideSky();
 			return;
