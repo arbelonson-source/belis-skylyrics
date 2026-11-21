@@ -157,6 +157,8 @@
 - **Safer downloads and caches.** Downloads are safer and the cache folders stay small.
   - An album cover address that points at a shared folder on another computer is no longer opened (on Windows that could have sent your login details to that computer). An album cover link from the internet can no longer redirect the game to this computer or your home network. Links your music player gives directly still work, so album covers from a music server on your own network keep showing. Replies from the lyrics sites are limited in size and time. A lyrics file with a long run of odd characters can no longer slow the lyrics down. Odd data from the NetEase backup no longer makes a song's lyrics search fail for good.
   - Saved lyrics and album covers are kept to their limits while you play, not only when the game starts, so a very long session or skipping through thousands of songs no longer lets the folders grow far past them.
+- **Hebrew and Arabic artists in the top bar.** When the top bar shows the song's name and a Hebrew or Arabic artist, the dot between them now sits between the name and the artist, instead of after the artist with the artist run straight into the name (the same for an artist written in digits only, like "112", in a Hebrew or Arabic game). A shortened artist keeps its "…" at the end it is read to.
+- **Top bar note without a cover.** On Minecraft 1.21.1 to 1.21.5, the note the top bar shows when a song has no album cover no longer blinks bright white for a moment as the bar appears or hides.
 
 ### Faster
 
