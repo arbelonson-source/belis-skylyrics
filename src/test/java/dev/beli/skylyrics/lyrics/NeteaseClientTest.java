@@ -264,6 +264,19 @@ class NeteaseClientTest {
 	}
 
 	@Test
+	void withNoArtistTwoArtistsThatFitTheLengthMeanNone() throws Exception {
+		// Like the main site: with no artist tag nothing tells two artists' songs of one name apart
+		songs(song(31, "Intro", "Some Band", 200_300), song(32, "Intro", "Other Singer", 200_600));
+		lyric(31, LYRIC);
+		lyric(32, LYRIC);
+		assertFalse(client.find(track("Intro", "", 200_000)).found());
+		// several uploads of one artist's song are fine, and so is another artist whose length is far off
+		songs(song(33, "Intro", "Some Band", 200_300), song(34, "Intro", "SOME BAND", 200_600), song(35, "Intro", "Other Singer", 240_000));
+		lyric(33, LYRIC);
+		assertTrue(client.find(track("Intro", "", 200_000)).found());
+	}
+
+	@Test
 	void theLongInstrumentalWordingIsAPlaceholderButARealLyricIsNot() {
 		org.junit.jupiter.api.Assertions.assertTrue(NeteaseClient.isPlaceholder("[00:00.00] 此歌曲为没有填词的纯音乐，请您欣赏"));
 		org.junit.jupiter.api.Assertions.assertFalse(NeteaseClient.isPlaceholder("[00:00.00]他说纯音乐很好听\n[00:05.00]请欣赏"));

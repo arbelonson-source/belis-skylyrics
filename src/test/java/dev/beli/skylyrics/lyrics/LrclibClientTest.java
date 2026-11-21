@@ -442,4 +442,29 @@ class LrclibClientTest {
 		assertTrue(client.find(song("Song (2011 Remaster)", "Artist", 200)).found());
 		assertEquals(List.of("/api/get", "/api/search"), asked);
 	}
+
+	@Test
+	void aSyncedCopyWithNoWordsNeverBeatsOneWithWords() throws Exception {
+		String real = hit("A Made-Up Song", BAND, 202, "[00:01.00]A made-up line");
+		// Only time stamps (shown as "instrumental"), only tags, or words without times: closer in length, nothing to sing along to
+		for (String junk : new String[] {"[00:01.00]\\n[00:30.00]", "[ar:Someone]\\n[ti:Song]", "Made-up words without times"}) {
+			assertEquals("[00:01.00]A made-up line", findWith(TRACK, hit("A Made-Up Song", BAND, 200, junk), real).synced(), junk);
+		}
+		// Alone, a copy of only time stamps still counts as instrumental, as before
+		assertTrue(LyricsService.parse(findWith(TRACK, hit("A Made-Up Song", BAND, 200, "[00:01.00]\\n[00:30.00]")), 200_000).instrumental());
+	}
+
+	@Test
+	void anArtistNameThatStartsWithAnAmpersandIsNeverLeftOutOfTheSearch() throws Exception {
+		List<String> queries = new CopyOnWriteArrayList<>();
+		// Like LRCLIB: a search naming the artist finds only that artist's songs, one without finds another band's song of that name
+		searchByQuery = q -> {
+			queries.add(q);
+			return q.contains("&Nova") ? "[]" : "[" + hit("Paper Lantern", "Someone Else", 200, "[00:01.00]Another band's made-up line") + "]";
+		};
+		assertFalse(client.find(song("Paper Lantern", "&Nova", 200)).found());
+		for (String q : queries) {
+			assertTrue(q.contains("&Nova"), q);
+		}
+	}
 }

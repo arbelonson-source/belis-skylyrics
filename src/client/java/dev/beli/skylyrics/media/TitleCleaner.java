@@ -230,9 +230,20 @@ public final class TitleCleaner {
 		return a.length() <= SHOWN_ARTIST_MAX ? a : CREDIT_SPLIT.split(a, 2)[0].trim();
 	}
 
-	/** First artist only: "A, B & C" -> "A". */
+	private static final Pattern CREDIT_JOIN = Pattern.compile("\\s*(,|&|\\bfeat\\.?|\\bft\\.?|\\bx\\b)\\s*");
+
+	/**
+	 * First artist only: "A, B & C" -> "A". A name that starts with one of the joining signs ("&Nova") keeps it: cut there
+	 * it would be empty, and a lookup by an empty artist takes any band's song of that title.
+	 */
 	public static String mainArtist(String artist) {
-		String[] parts = artist.split("\\s*(,|&|\\bfeat\\.?|\\bft\\.?|\\bx\\b)\\s*", 2);
-		return parts[0].trim();
+		String a = artist.trim();
+		Matcher m = CREDIT_JOIN.matcher(a);
+		while (m.find()) {
+			if (m.start() > 0) {
+				return a.substring(0, m.start()).trim();
+			}
+		}
+		return a;
 	}
 }
