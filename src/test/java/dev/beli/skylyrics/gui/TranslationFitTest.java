@@ -96,7 +96,7 @@ class TranslationFitTest {
 	}
 
 	/** The width the game gives {@code text}, or -1 when it has a letter outside the bitmap fonts. */
-	private static int width(String text) {
+	static int width(String text) {
 		int w = 0;
 		for (int cp : text.codePoints().toArray()) {
 			Integer a = ADVANCE.get(cp);
@@ -109,7 +109,7 @@ class TranslationFitTest {
 	}
 
 	/** Every language file by name, each as key to text. */
-	private static Map<String, Map<String, String>> languages() throws IOException {
+	static Map<String, Map<String, String>> languages() throws IOException {
 		Map<String, Map<String, String>> all = new TreeMap<>();
 		try (Stream<Path> list = Files.list(LANG)) {
 			for (Path f : (Iterable<Path>) list.filter(f -> f.toString().endsWith(".json"))::iterator) {
@@ -178,7 +178,7 @@ class TranslationFitTest {
 	private static final int SMALLEST_SCREEN = 320;
 
 	/** A text of a language, or the English one when that language doesn't have it (as the game shows it). */
-	private static String text(Map<String, Map<String, String>> all, String lang, String key) {
+	static String text(Map<String, Map<String, String>> all, String lang, String key) {
 		String t = all.get(lang).get(key);
 		return t != null ? t : all.get("en_us.json").get(key);
 	}

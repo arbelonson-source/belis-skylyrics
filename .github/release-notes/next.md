@@ -169,6 +169,8 @@
 - **Status line.** The Music tab's **Status** (and the other read-only lines, like **Right now**) now uses all the room beside its name instead of stopping at a fixed width, so a long one is no longer cut short (in Spanish, "Reproduciendo la canción de prueba" showed as "Reproduciendo la canción de…").
 - **Tour arrows.** With the game in a right-to-left language, the "<" and ">" buttons on the tour's **Pick a look** page now point outwards (the previous look on the left, the next on the right) instead of both pointing in at the look's name.
 - **Tour on a Mac.** On a Mac, the tour's **Where the songs come from** page no longer cuts its text off with "…" in some languages, leaving out the line about the demo song: those texts are a little shorter, so every word fits above the **Demo song** button.
+- **Cut-off names and values.** A setting whose name ends in "…", and a read-only line cut short like the **Status**, now shows its whole text in a tooltip when you point at it, as a cut-off description already did. In the smallest window that happens to the Russian **Song name only on change** (Display tab), the German **Flash with the lyrics** (Look tab, with a crosshair picked) and the Spanish **Status** while the demo song plays.
+- **Links on the About tab.** After you click **LRCLIB**, the keyboard is on it: Enter opens LRCLIB again and the Narrator says "LRCLIB, 2 of 2", instead of Enter opening GitHub.
 
 ### Faster
 

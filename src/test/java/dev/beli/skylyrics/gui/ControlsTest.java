@@ -1,10 +1,13 @@
 package dev.beli.skylyrics.gui;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.input.KeyEvent;
 import org.junit.jupiter.api.Test;
 
 /** The settings rows laid out with no game running, measured with a stand-in font. */
@@ -142,5 +145,34 @@ class ControlsTest {
 		Controls.Info narrow = info("Estado", "Reproduciendo la canción de prueba", 184);
 		assertTrue(narrow.stacked());
 		assertEquals(160, narrow.controlW(FONT));
+	}
+
+	@Test
+	void clickingALinkPutsTheKeyboardOnIt() {
+		// The About tab's Links row. Its buttons only count presses here: nothing opens a web page
+		int[] opened = new int[2];
+		Controls.Buttons row = new Controls.Buttons("Links", null,
+				new Controls.Button("GitHub", () -> opened[0]++), new Controls.Button("LRCLIB", () -> opened[1]++));
+		row.x = 0;
+		row.y = 0;
+		row.w = 320;
+		row.prepare(FONT);
+		assertEquals("Links, GitHub, button, 1 of 2", row.narration());
+
+		// LRCLIB is the right one: 16 wider than its name, 10 in from the row's right edge
+		int lrclib = row.x + row.w - 10 - (FONT.width("LRCLIB") + 16) / 2;
+		assertTrue(row.click(lrclib, row.controlCy()));
+		assertArrayEquals(new int[] {0, 1}, opened);
+		assertEquals("Links, LRCLIB, button, 2 of 2", row.narration(), "the Narrator says the button clicked");
+
+		// Enter then presses LRCLIB again, not GitHub
+		assertTrue(row.key(new KeyEvent(InputConstants.KEY_RETURN, 0, 0)));
+		assertArrayEquals(new int[] {0, 2}, opened);
+
+		int github = row.x + row.w - 10 - row.controlW(FONT) + 4;
+		assertTrue(row.click(github, row.controlCy()));
+		assertEquals("Links, GitHub, button, 1 of 2", row.narration());
+		assertTrue(row.key(new KeyEvent(InputConstants.KEY_RETURN, 0, 0)));
+		assertArrayEquals(new int[] {2, 2}, opened);
 	}
 }
