@@ -1374,7 +1374,13 @@ final class WorldWords {
 				letters++;
 			}
 		}
-		float size = SIZE * sizeFor(letters, next()) * (big && bigPiece >= 0 && lineChunks.indexOf(chunk) == bigPiece ? BIG : 1);
+		float roll = next();
+		if (flow && slot >= 0 && slot < lineRuns.length && lineRuns[slot] != RUN_NONE) {
+			// A piece of a stretch against the line is the size its room was measured for (see nominalHalf), so the
+			// stretch's words fill that room and its last one doesn't stick out of it
+			roll = 0.5f;
+		}
+		float size = SIZE * sizeFor(letters, roll) * (big && bigPiece >= 0 && slot == bigPiece ? BIG : 1);
 		Vec3 eye = camera.position();
 		// Where the other cards are, as seen from here: yaw, pitch and half width/height, in degrees
 		List<float[]> taken = new ArrayList<>(cards.size());
@@ -1661,10 +1667,12 @@ final class WorldWords {
 			sentence.width = width;
 			sentence.rest = wide;
 		}
-		float distance = sentence.distance * (1 + (next() * 2 - 1) * SENTENCE_DEPTH);
+		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
+		float depth = (next() * 2 - 1) * SENTENCE_DEPTH;
+		// A piece of a stretch against the line stands as far out as its room was measured at
+		float distance = sentence.distance * (1 + (run == RUN_NONE ? depth : 0));
 		size = fitted(size, at, wordScale, distance);
 		float halfW = halfAngle(at[at.length - 1] * size * wordScale / 2, distance), halfH = halfAngle(5 * size * wordScale, distance);
-		int run = placing >= 0 && placing < lineRuns.length ? lineRuns[placing] : RUN_NONE;
 		openRun(sentence, lineRuns, lineHalf, placing, wordScale, halfH);
 		float[] mark = sentence.mark();
 		int rowsBefore = sentence.rows;
@@ -1695,10 +1703,13 @@ final class WorldWords {
 			float[] halves = new float[runs.length - placing];
 			int count = 0;
 			float span = -Sentence.GAP * halfH;
+			// Measured where it comes out widest, on this row or the next one down, and leaving room for a new row's indent
+			float below = (Float.isInfinite(sentence.low) ? sentence.top : sentence.low) + Sentence.ROW_GAP + 2 * halfH + SENTENCE_BOB;
+			float pitch = Math.max(Math.abs(sentence.top), Math.abs(below));
 			for (int k = placing; k < runs.length; k++) {
 				float h = halfAngle(half[k] * wordScale, sentence.distance);
-				span += 2 * Sentence.yawHalf(h, sentence.top) + Sentence.GAP * halfH;
-				if (count > 0 && span > sentence.width) {
+				span += 2 * Sentence.yawHalf(h, pitch) + Sentence.GAP * halfH;
+				if (count > 0 && span > sentence.width - SENTENCE_INDENT) {
 					break;
 				}
 				halves[count++] = h;
@@ -2066,7 +2077,8 @@ final class WorldWords {
 					runAt = cursor;
 				}
 				yaw = runAt - wy;
-				runAt = yaw - wy - GAP * halfH;
+				// The room between its pieces is what the stretch's room was measured with
+				runAt = yaw - wy - (runHalves.length > 1 ? runGap / (runHalves.length - 1) : GAP * halfH);
 			}
 			if (rtl) {
 				// The same handwriting mirrored: from the row's right end leftwards
