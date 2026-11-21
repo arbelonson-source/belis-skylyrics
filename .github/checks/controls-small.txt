@@ -1,0 +1,48 @@
+# Settings rows in the smallest window (1280x720 at GUI scale 4 = 320x180): a choice too wide for its row shows the
+# picked name between arrows (Look tab: Colour, Font; Display tab: the Record card's Corner) instead of running off
+# the row's left edge; sliders under their names. Then German, and the Music tab's Status in Spanish at GUI scale 2
+# ("Reproduciendo la canción de prueba" in full).
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/controls-small.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+set recordCard true
+guiscale 4
+gui 1
+sleep 3
+shot look-en
+scroll -2
+sleep 1
+shot look-en-2
+scroll -2
+sleep 1
+shot look-en-3
+gui 3
+sleep 3
+shot display-en
+scroll -2
+sleep 1
+shot display-en-2
+scroll -2
+sleep 1
+shot display-en-3
+close
+lang de_de
+sleep 15
+gui 1
+sleep 3
+shot look-de
+gui 0
+sleep 3
+scroll -3
+sleep 1
+shot lyrics-de-2
+close
+lang es_es
+sleep 15
+guiscale 2
+gui 2
+sleep 3
+shot music-es-g2
+close
