@@ -952,11 +952,17 @@ final class Controls {
 
 		@Override
 		boolean click(double mx, double my) {
-			Font font = net.minecraft.client.Minecraft.getInstance().font;
+			Font font = font();
 			int bx = x + w - 10 - controlW(font);
-			for (Button b : buttons) {
+			for (int i = 0; i < buttons.size(); i++) {
+				Button b = buttons.get(i);
 				int bw = width(font, b);
-				if (Ui.inside(mx, my, bx, controlCy() - 9, bw, 18) && b.enabled().getAsBoolean()) {
+				if (Ui.inside(mx, my, bx, controlCy() - 9, bw, 18)) {
+					// The keyboard goes to the button clicked (the screen puts it on this row), so Enter presses that one
+					sub = i;
+					if (!b.enabled().getAsBoolean()) {
+						return false;
+					}
 					b.action().run();
 					return true;
 				}
