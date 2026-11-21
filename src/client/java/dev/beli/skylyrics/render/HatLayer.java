@@ -20,6 +20,9 @@ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 //?} else {
 /*import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.AbstractSkullBlock;
 *///?}
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -43,17 +46,22 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 	/** The middle of the head (head space, y down): a worn helmet, pumpkin or head puffs the head out round it. */
 	static final float HEAD_CENTER = HEAD_TOP / 2;
 	/**
-	 * What a hat grows by when something is worn on the head. Armor, a carved pumpkin and a skull reach about 0.5625 above the neck and
+	 * What a hat grows by when something is worn on the head. Armor and a carved pumpkin reach about 0.5625 above the neck and
 	 * 0.3125 out from the middle; the lowest hats start 0.285 from the middle (top hat brim, cap dome, flower vine), so this clears them.
 	 */
 	static final float WORN_HEAD_SCALE = 1.15f;
+	/**
+	 * Minecraft draws a worn mob head or player head as the head made this much bigger from the neck, so its top is higher than a
+	 * helmet's (0.59 above the neck, a player head's outer layer 0.61). A hat grows the same way, so it sits on one as on a bare head.
+	 */
+	static final float SKULL_SCALE = 1.1875f;
 	/** How bright the hat sits between flares, and how much a flare adds. */
 	static final float REST = 0.7f, FLARE = 0.3f;
 	private static final int FULL_BRIGHT = 0xF000F0;
 	private static final int DARK = 0xFF24242E, STRAW = 0xFFD8B878, STRAW_DARK = 0xFFC6A462, STRAW_TIP = 0xFFE6CC92;
 	private static final int GOLD = 0xFFF2C14E, GOLD_DARK = 0xFFC08A2A, GOLD_LIGHT = 0xFFFFE08A;
 	/** Ear cups sit just outside the head (half a block wide), around ear height. */
-	private static final float CUP_IN = 0.27f, CUP_OUT = 0.33f, CUP_Y = -0.23f, CUP_HALF = 0.11f, BAND_TOP = -0.6f;
+	static final float CUP_IN = 0.27f, CUP_OUT = 0.33f, CUP_Y = -0.23f, CUP_HALF = 0.11f, BAND_TOP = -0.6f;
 	static final float CONE_BRIM = 0.5f, CONE_BASE = HEAD_TOP + 0.05f, CONE_APEX = HEAD_TOP - 0.32f;
 	private static final int CROWN_POINTS = 8;
 	/**
@@ -140,6 +148,16 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		return headCovered ? WORN_HEAD_SCALE : 1f;
 	}
 
+	/** How much to scale every hat so it sits outside whatever is worn on the head, {@code skull} for a mob head or player head. */
+	static float hatScale(boolean headCovered, boolean skull) {
+		return skull ? SKULL_SCALE : hatScale(headCovered);
+	}
+
+	/** The height (head space) a hat is scaled about: the middle of the head, or the neck for a mob head or player head. */
+	static float hatPivot(boolean skull) {
+		return skull ? 0 : HEAD_CENTER;
+	}
+
 	private static RenderType paint() {
 		//? if >=26.3 {
 		/*return RenderTypes.text(WHITE);
@@ -186,14 +204,18 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 				/*getParentModel().getHead().translateAndRotate(pose);
 				*///?}
 				//? if >=1.21.2 {
-				float scale = hatScale(headCovered(state.headEquipment.isEmpty(), state.headItem.isEmpty(), state.wornHeadType != null));
+				boolean skull = state.wornHeadType != null;
+				float scale = hatScale(headCovered(state.headEquipment.isEmpty(), state.headItem.isEmpty(), skull), skull);
 				//?} else {
-				/*float scale = hatScale(!player.getItemBySlot(EquipmentSlot.HEAD).isEmpty());
+				/*ItemStack worn = player.getItemBySlot(EquipmentSlot.HEAD);
+				boolean skull = worn.getItem() instanceof BlockItem item && item.getBlock() instanceof AbstractSkullBlock;
+				float scale = hatScale(!worn.isEmpty(), skull);
 				*///?}
 				if (scale != 1f) {
-					pose.translate(0, HEAD_CENTER, 0);
+					float pivot = hatPivot(skull);
+					pose.translate(0, pivot, 0);
 					pose.scale(scale, scale, scale);
-					pose.translate(0, -HEAD_CENTER, 0);
+					pose.translate(0, -pivot, 0);
 				}
 				switch (cfg.hat) {
 					case HALO -> {
