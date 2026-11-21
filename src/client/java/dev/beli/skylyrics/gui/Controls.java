@@ -341,6 +341,18 @@ final class Controls {
 			return x + w - 10 - WIDTH;
 		}
 
+		/**
+		 * Top (and, below, height) of the part that takes the mouse: the whole row beside the label, only the slider's own
+		 * line when it sits under its name, so a click on the name or description doesn't move it.
+		 */
+		private int grabY() {
+			return stacked() ? y + baseHeight() : y;
+		}
+
+		private int grabH() {
+			return stacked() ? controlHeight() : height();
+		}
+
 		@Override
 		String kind() {
 			return Tr.t("slider");
@@ -357,7 +369,7 @@ final class Controls {
 			float t = (float) Mth.clamp((v - min) / (max - min), 0, 1);
 			int sx = sx();
 			int cy = controlCy();
-			boolean hot = dragging || hovered(f) && Ui.inside(f.mx(), f.my(), sx - 4, y, WIDTH + 8, height());
+			boolean hot = dragging || hovered(f) && Ui.inside(f.mx(), f.my(), sx - 4, grabY(), WIDTH + 8, grabH());
 			knobAnim = Ui.approach(knobAnim, hot ? 1 : 0, f.dt(), 16);
 			Ui.rect(f.g(), sx, cy - 1, WIDTH, 3, 1, Ui.TRACK);
 			int filled = Math.round(t * WIDTH);
@@ -372,7 +384,7 @@ final class Controls {
 
 		@Override
 		boolean click(double mx, double my) {
-			if (!Ui.inside(mx, my, sx() - 6, y, WIDTH + 12, height())) {
+			if (!Ui.inside(mx, my, sx() - 6, grabY(), WIDTH + 12, grabH())) {
 				return false;
 			}
 			dragging = true;

@@ -68,4 +68,46 @@ class ControlsTest {
 		assertTrue(row.click(rainbow, row.controlCy()));
 		assertEquals(2, picked[0]);
 	}
+
+	@Test
+	void aSliderUnderItsNameOnlyMovesFromItsOwnLine() {
+		// Glow in a 184 px row: the slider goes on a line under its name and description
+		double[] glow = {0.5};
+		Controls.Slider row = new Controls.Slider("Glow", "Soft light around the letters", 0, 1, 0.05,
+				() -> glow[0], v -> glow[0] = v, v -> Math.round(v * 100) + "%");
+		row.x = 0;
+		row.y = 0;
+		row.w = 184;
+		row.prepare(FONT);
+		assertTrue(row.stacked());
+
+		// a click on the description, above the slider's right end, leaves the setting alone
+		assertFalse(row.click(170, row.y + 20));
+		assertFalse(row.dragging);
+		assertEquals(0.5, glow[0]);
+		assertFalse(row.click(100, row.y + 8), "nor on the name's line");
+		assertEquals(0.5, glow[0]);
+
+		// on the slider's own line it still takes hold
+		assertTrue(row.click(170, row.controlCy()));
+		assertTrue(row.dragging);
+		assertEquals(0.95, glow[0], 1e-9);
+		row.release();
+	}
+
+	@Test
+	void aSliderBesideItsNameTakesTheWholeRowHeight() {
+		double[] size = {1};
+		Controls.Slider row = new Controls.Slider("Size", null, 0.3, 3, 0.05,
+				() -> size[0], v -> size[0] = v, v -> String.format(java.util.Locale.ROOT, "%.2f×", v));
+		row.x = 0;
+		row.y = 0;
+		row.w = 320;
+		row.prepare(FONT);
+		assertFalse(row.stacked());
+		// the slider runs from x 214 to 310; a click near the row's top edge still grabs it
+		assertTrue(row.click(310 - 1, row.y + 1));
+		assertEquals(3, size[0], 0.051);
+		row.release();
+	}
 }
