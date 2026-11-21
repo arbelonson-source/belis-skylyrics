@@ -38,9 +38,22 @@ class VisibilityTest {
 
 	@Test
 	void divingDeepIsNotACave() {
-		assertFalse(Visibility.underground(false, 2, true));
-		assertFalse(Visibility.underground(true, 2, true));
+		// From open water, however deep and dark it gets under the surface
+		for (int light = 0; light <= 15; light++) {
+			assertFalse(Visibility.underground(false, light, true));
+		}
 		assertTrue(Visibility.underground(false, 2, false));
+	}
+
+	@Test
+	void aPoolInACaveIsStillACave() {
+		// Dark cave, then the head goes under the water of a pool in it: still no open sky above, so Hide in caves must
+		// not bring the lyrics, the top bar and the Record card back for as long as the head is under
+		assertTrue(Visibility.underground(true, 0, true));
+		assertTrue(Visibility.underground(true, Visibility.HIDE_AT, true));
+		// Swimming out under open sky still ends it, before coming up
+		assertFalse(Visibility.underground(true, Visibility.SHOW_AT, true));
+		assertFalse(Visibility.underground(true, 15, true));
 	}
 
 	@Test

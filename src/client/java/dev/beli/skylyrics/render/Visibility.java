@@ -2,12 +2,17 @@ package dev.beli.skylyrics.render;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.DeathScreen;
+import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.material.FogType;
+import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig;
+import dev.beli.skylyrics.gui.SkyLyricsScreen;
 
 public final class Visibility {
 	static final int HIDE_AT = 6;
@@ -23,6 +28,16 @@ public final class Visibility {
 	static void forget() {
 		checkedAt = System.nanoTime() - CHECK_NS;
 		underground = false;
+	}
+
+	/**
+	 * Whether the open screen counts as a menu for Hide in menus. The death screen doesn't: the world still shows through
+	 * it, and the words drop away there. Nor do the mod's own settings, so changes can be seen on the real lyrics, nor
+	 * the pause of F3 + Esc, which stops the game without drawing a menu.
+	 */
+	static boolean inMenu(@Nullable Screen screen) {
+		return screen != null && !(screen instanceof SkyLyricsScreen) && !(screen instanceof DeathScreen)
+				&& !(screen instanceof PauseScreen pause && !pause.showsPauseMenu());
 	}
 
 	public static boolean hidden(Minecraft mc, SkyLyricsConfig cfg) {
@@ -80,9 +95,12 @@ public final class Visibility {
 		return hasSkyLight || hasCeiling;
 	}
 
-	/** Diving deep in open water dims the sky light too, so being underwater never counts as under cover. */
+	/**
+	 * Diving deep in open water dims the sky light too, so going under never starts counting as under cover. But it
+	 * doesn't end it either: a pool in a dark cave stays a cave, until the sky light says open sky ({@link #SHOW_AT}).
+	 */
 	static boolean underground(boolean was, int skyLight, boolean inWater) {
-		return !inWater && underground(was, skyLight);
+		return inWater ? was && skyLight < SHOW_AT : underground(was, skyLight);
 	}
 
 	static boolean underground(boolean was, int skyLight) {
