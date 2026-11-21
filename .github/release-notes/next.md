@@ -179,6 +179,7 @@
 - **Lines layout after the last lyric.** Once a song's last line has been over for a second and a half and fades out, the line above it (the previous line) now fades with it, instead of staying in the sky through the whole outro. The same goes for the notes of a closing pause (lyrics that end with an empty line) and the last words above them.
 - **Big lyrics stay on the screen.** From a **Size** of about 1.8 at the usual FOV (sooner with a lower FOV or a squarer window), a long line in the Lines layout could run off both sides of the screen, its first and last words out of sight. Now its rows are wrapped narrow enough to fit across the screen; at the usual sizes nothing changes.
 - **The first line in the Lines layout.** In a song whose singing starts within the first two and a half seconds (the demo song too), the first line no longer waits in the middle, where the line being sung goes. It waits below, like every next line. With the **Rise** animation (the **Karaoke** look) it used to drop a row as it started and then rise back up; now it rises straight from there.
+- **Hide in caves and cave water.** With **Hide in caves** on, putting your head under the water of a pool or lake in a dark cave no longer brings the lyrics, the top bar and the **Record card** back until you come up again. Diving in open water still doesn't hide them, and swimming out from under cover into open water shows them again before you surface.
 
 ### Faster
 

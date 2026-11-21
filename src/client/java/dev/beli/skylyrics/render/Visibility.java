@@ -80,9 +80,12 @@ public final class Visibility {
 		return hasSkyLight || hasCeiling;
 	}
 
-	/** Diving deep in open water dims the sky light too, so being underwater never counts as under cover. */
+	/**
+	 * Diving deep in open water dims the sky light too, so going under never starts counting as under cover. But it
+	 * doesn't end it either: a pool in a dark cave stays a cave, until the sky light says open sky ({@link #SHOW_AT}).
+	 */
 	static boolean underground(boolean was, int skyLight, boolean inWater) {
-		return !inWater && underground(was, skyLight);
+		return inWater ? was && skyLight < SHOW_AT : underground(was, skyLight);
 	}
 
 	static boolean underground(boolean was, int skyLight) {
