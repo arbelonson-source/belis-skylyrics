@@ -536,7 +536,7 @@
   "skylyrics.ui.optional_spotify_web_needs_premium_and_a_free_de": "Facultatif : Spotify Web (nécessite Premium et une app de développeur gratuite) suit Spotify partout.",
   "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics ne peut pas lire votre lecteur de musique",
   "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics ne peut accéder ni à Internet ni à Spotify",
-  "skylyrics.ui.open_the_settings_s_music_to_see_why": "Ouvrez les paramètres (%s) → Musique pour savoir pourquoi",
+  "skylyrics.ui.open_the_settings_s_music_to_see_why": "Ouvrez Paramètres (%s) → Musique pour savoir pourquoi",
   "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "Rien en lecture dans Spotify ou Musique (les navigateurs ne sont pas lisibles sur Mac)",
   "skylyrics.ui.seconds": "secondes",
   "skylyrics.ui.previous_look": "Thème précédent",
