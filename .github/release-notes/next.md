@@ -105,6 +105,7 @@
 - **Reset all and Done.** In a small window or at a big GUI scale, the "Click again to reset" button of the longer languages (Russian, Ukrainian, Spanish, Portuguese and others) no longer runs under **Done**, where a click on **Done** reset every setting. Its words are cut to fit instead.
 - **Settings search letters.** The settings search finds a word however your keyboard types its letters: any apostrophe (' ’ ʼ) finds the others, so the Ukrainian **Сузір’я** and **М’які краї** are found as typed, ß and ss find each other (**Grösse** finds **Größe**, also from a Swiss keyboard, which has no ß) and oe finds œ (**coeur**). The song library's search of your recently heard songs matches the same way.
 - **Preview hint.** In a small window or at a big GUI scale, the hint shown while you preview (or that nothing is playing) now wraps onto more lines instead of running off both sides of the screen, which it did in English too.
+- **Finding a look.** The settings search now finds **Pick a look** by the name of any look, as your game shows it or in English ("Dreamy", "Verträumt", "Грёзы"), instead of saying nothing matches.
 - **World words.** World words stay put and behave better around moves, respawns and each other.
   - On Linux, a music player that answers slowly, or Spotify right after a pause or resume, no longer makes the World words vanish for a moment. Moving the **Timing** slider no longer makes them blink.
   - In the World layout the song title shows for its full time even when the lyrics take a moment to load, and a long title is shrunk to fit.

@@ -235,4 +235,31 @@ class TranslationFitTest {
 		assertTrue(measured >= 10, "only " + measured + " texts measured");
 		assertTrue(off.isEmpty(), "the preview hint runs off the sides of a " + SMALLEST_SCREEN + " wide screen: " + off);
 	}
+
+	/** The lang key Tr gives a one- or two-word English text, like "skylyrics.ui.dreamy". */
+	private static String key(String english) {
+		return "skylyrics.ui." + english.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "_");
+	}
+
+	@Test
+	void everyLookIsFoundByItsNameInEveryLanguage() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		List<String> missed = new ArrayList<>();
+		for (String lang : all.keySet()) {
+			// the look picker's search words in that language: each look's name as the game shows it there
+			String shown = ThemePicker.names(t -> text(all, lang, key(t.name().get())));
+			for (dev.beli.skylyrics.config.Themes.Theme theme : dev.beli.skylyrics.config.Themes.ALL) {
+				String name = all.get(lang).get(key(theme.name().get()));
+				if (name == null || !SettingsSearch.matches(shown, name)) {
+					missed.add(lang + " " + theme.id() + " \"" + name + "\"");
+				}
+			}
+		}
+		assertTrue(missed.isEmpty(), "a look's name isn't found: " + missed);
+		// typed the way people do: without ё, without accents
+		Map<String, String> ru = all.get("ru_ru.json");
+		assertTrue(SettingsSearch.matches(ThemePicker.names(t -> ru.get(key(t.name().get()))), "грезы"), "Грёзы");
+		Map<String, String> de = all.get("de_de.json");
+		assertTrue(SettingsSearch.matches(ThemePicker.names(t -> de.get(key(t.name().get()))), "vertraumt"), "Verträumt");
+	}
 }
