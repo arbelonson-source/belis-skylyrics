@@ -1,0 +1,247 @@
+# The standard pictures of the screenshots workflow: the demo song by night and day, the boss bar, the settings at
+# every GUI scale and in Hebrew, the layouts, the top bar, the night skies. Format: .github/scripts/game-check.sh.
+# Leave the game the way you found it at the end of each part (placement, layout, sky, time, GUI).
+
+set growWord true
+set barClock true
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -28
+sleep 12
+shot night-sky
+sleep 3
+shot night-sky-2
+cmd time set noon
+sleep 8
+shot daytime
+cmd bossbar add skylyrics:test "Made Up Boss"
+cmd bossbar set skylyrics:test players @a
+sleep 4
+shot boss-bar
+cmd bossbar remove skylyrics:test
+set placement FLOATING
+look 0 0
+sleep 6
+shot floating
+set placement SKY
+cmd time set midnight
+guiscale 1
+gui 0
+sleep 4
+shot settings-scale-1
+guiscale 2
+gui 0
+sleep 4
+shot settings-scale-2
+guiscale 3
+gui 0
+sleep 4
+shot settings-scale-3
+guiscale 4
+gui 0
+sleep 4
+shot settings-scale-4
+guiscale 2
+gui 3
+sleep 3
+shot settings-display
+close
+
+# The settings and the top bar in Hebrew, which reads right to left
+lang he_il
+# reloading the game's resources takes a while on a software screen
+sleep 15
+gui 0
+sleep 4
+shot hebrew-settings-lyrics
+gui 2
+sleep 3
+shot hebrew-settings-music
+close
+lang en_us
+sleep 10
+
+# The sky lyrics layouts: the arc by night and by day, words standing in the world, and the stacked lines.
+# Arc lines appear where you look when they start, so each look is followed by a wait for the next line.
+set layout ARC
+cmd time set midnight
+look 0 -12
+sleep 10
+shot lyrics-arc-night
+sleep 4
+shot lyrics-arc-night-2
+# The same drawn in the world pass instead of over the finished picture
+set layer WORLD
+sleep 6
+shot lyrics-arc-night-world
+set layer AUTO
+cmd time set noon
+look 0 -12
+sleep 8
+shot lyrics-arc-day
+# Words in the world: look a little down so they stand around the crosshair, then step aside and turn
+set layout WORLD
+look 0 8
+sleep 8
+shot lyrics-world-day
+cmd execute as @p at @p run tp @s ~1.5 ~ ~1
+look 20 8
+sleep 1
+shot lyrics-world-day-moved
+sleep 5
+shot lyrics-world-day-2
+cmd execute as @p at @p run tp @s ~-1.5 ~ ~-1
+set layout LINES
+cmd time set midnight
+look 0 -28
+sleep 6
+shot lyrics-lines
+set layout ARC
+look 0 -28
+sleep 2
+
+# The top bar: a sung line, the widest line, the song's name between lines, and GUI scales 1 to 3. Each `seek`
+# puts the demo song 2.5 s before the moment wanted, so the picture after the sleep lands on it.
+cmd time set midnight
+look 0 -28
+set barClock true
+set barStats true
+guiscale 3
+sleep 3
+# "Build it up and let it go", halfway
+seek 46.8
+sleep 2.5
+shot hud-scale-3
+# the longest line, near its end
+seek 32.3
+sleep 2.5
+shot hud-scale-3-long
+# between lines: title and artist
+seek 35
+sleep 2.5
+shot hud-scale-3-between
+guiscale 1
+sleep 3
+seek 23
+sleep 2.5
+shot hud-scale-1
+guiscale 2
+sleep 3
+seek 23
+sleep 2.5
+shot hud-scale-2
+
+# Night sky effects: the synthwave sky, the eclipse and the constellations. The lyrics are pinned to the north, so
+# the suns sit just right of and below them. Seen from a glass block 40 blocks up so hills don't hide the suns.
+cmd weather clear
+cmd time set midnight
+close
+set direction NORTH
+cmd execute as @a at @s run fill ~-1 ~39 ~-1 ~1 ~39 ~1 minecraft:glass
+cmd execute as @a at @s run tp @s ~ ~40 ~
+sleep 3
+set sky SYNTHWAVE
+look 192 -16
+sleep 8
+shot sky-synthwave
+look 206 -5
+sleep 6
+shot sky-synthwave-sun
+set sky ECLIPSE
+look 184 -20
+sleep 8
+shot sky-eclipse
+look 150 -32
+sleep 6
+shot sky-eclipse-milky-way
+set sky OFF
+look 196 -26
+sleep 8
+shot sky-constellations
+set sky AURORA
+look 258 -34
+sleep 6
+shot sky-aurora-constellations
+# Back down, glass gone; the synthwave sky once more from the ground
+cmd execute as @a at @s run tp @s ~ ~-40 ~
+cmd execute as @a at @s run fill ~-1 ~39 ~-1 ~1 ~39 ~1 minecraft:air
+set sky SYNTHWAVE
+look 196 -14
+sleep 6
+shot sky-synthwave-ground
+set sky AURORA
+set direction FOLLOW
+look 0 -28
+sleep 3
+
+# The settings rows: the Lyrics and Look tabs at GUI scale 2 and 3, scrolled to the middle and the end (a scroll
+# step is 24 GUI px; big steps stop at the bottom of the tab)
+guiscale 2
+gui 0
+sleep 4
+shot settings-2-lyrics
+scroll -20
+sleep 2
+shot settings-2-lyrics-end
+gui 1
+sleep 3
+shot settings-2-look
+scroll -5
+sleep 2
+shot settings-2-look-mid
+scroll -20
+sleep 2
+shot settings-2-look-end
+guiscale 3
+gui 0
+sleep 4
+shot settings-3-lyrics
+scroll -20
+sleep 2
+shot settings-3-lyrics-end
+gui 1
+sleep 3
+shot settings-3-look
+scroll -5
+sleep 2
+shot settings-3-look-mid
+scroll -20
+sleep 2
+shot settings-3-look-end
+# The Lines layout brings back the previous and next line rows; World hides placement and direction
+guiscale 2
+set layout LINES
+gui 0
+sleep 3
+# the screen places itself on its first frame, so scroll after it shows
+scroll -4
+sleep 2
+shot settings-lines-layout
+set layout WORLD
+gui 0
+sleep 3
+shot settings-world-layout
+set layout ARC
+gui 3
+sleep 3
+scroll -4
+sleep 2
+shot settings-display-bar
+close
+# Hebrew reads right to left: the new rows have to fit there too
+lang he_il
+sleep 15
+gui 1
+sleep 4
+shot hebrew-settings-look
+# the longest sky name, and the arrows around it
+set sky SYNTHWAVE
+scroll -20
+sleep 2
+shot hebrew-settings-look-end
+close
+lang en_us
+set sky AURORA
+sleep 10

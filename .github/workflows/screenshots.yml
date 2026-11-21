@@ -1,56 +1,86 @@
-# Starts the real game on a virtual screen with the demo song and takes pictures of the lyrics and the
-# settings (.github/scripts/screenshots.sh). Start it by hand: Actions tab → screenshots → Run workflow
-# (pick the branch to photograph), or `gh workflow run screenshots.yml --ref <branch>`.
-# The pictures are saved as an artifact and on the "ci-screenshots" branch, one folder per run.
+# Plays a check in a real game on a virtual screen: builds the mod from any branch or commit, starts one Minecraft
+# version (any of the 9) with the demo song and the test hook, plays a list of test hook commands and keeps the
+# pictures and the game's log (.github/scripts/game-check.sh). Without a script it takes the standard pictures
+# (.github/checks/pictures.txt).
+#
+# Run a check from the command line (the workflow and the script runner come from --ref, the mod from mod_ref):
+#   gh workflow run screenshots.yml --ref ci/game-check -f version=26.3 -f mod_ref=land/batch60 -f script=.github/checks/example.txt
+#   gh run list --workflow screenshots.yml --limit 3        (the newest run's id)
+#   gh run watch <id> --exit-status && gh run download <id> -D /tmp/claude-1000/check-<id>
+# script is a path in mod_ref's files or, if it isn't there, in --ref's: a plain text file with one test hook command
+# per line (the list is in DevTestHook.java), "sleep <seconds>", "wait <log text>" and "# comments"; see
+# .github/checks/example.txt. The run's summary page shows the graphics, the frame rate and any command the hook
+# couldn't run. The demo song is always on; a script that turns it off is refused.
 
 name: screenshots
+run-name: check ${{ inputs.version }} on ${{ inputs.mod_ref || github.ref_name }} (${{ inputs.script }})
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Minecraft version to play
+        type: choice
+        default: '1.21.11'
+        options: ['1.21.11', '1.21.1', '1.21.4', '1.21.5', '1.21.8', '1.21.10', '26.1.2', '26.2', '26.3']
+      mod_ref:
+        description: Branch or commit of the mod to build and play (empty = the branch this runs from)
+        default: ''
+      script:
+        description: Test hook commands to play, one per line (a path in mod_ref, else in this branch)
+        default: .github/checks/pictures.txt
+      size:
+        description: Game window size (local test games use 1280x720)
+        default: 1280x720
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  screenshots:
+  check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ inputs.version }}
+      SCRIPT: ${{ inputs.script }}
+      SIZE: ${{ inputs.size }}
     steps:
-      - name: checkout repository
+      - name: checkout the check tools
         uses: actions/checkout@v6
+        with:
+          path: tools
+          sparse-checkout: .github
+      - name: checkout the mod
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.mod_ref || github.sha }}
+          path: mod
       - name: setup jdk
         uses: actions/setup-java@v5
         with:
           java-version: '25'
           distribution: 'microsoft'
+      - name: setup gradle
+        # Keeps Minecraft, its assets and the libraries between runs
+        uses: gradle/actions/setup-gradle@v6
       - name: install a virtual screen
-        run: sudo apt-get update -q && sudo apt-get install -y -q xvfb libgl1-mesa-dri mesa-utils jq
+        # Mesa draws in software (llvmpipe for OpenGL, lavapipe for Vulkan); the X libraries are for 26.3's SDL window
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q xvfb libgl1-mesa-dri libegl1 mesa-utils mesa-vulkan-drivers jq unzip \
+            libxcursor1 libxi6 libxrandr2 libxinerama1 libxss1 libxkbcommon-x11-0 libxtst6
       - name: build the mod
-        run: chmod +x ./gradlew && ./gradlew :1.21.11:assemble
-      - name: play the demo song and take pictures
-        run: OUT=shots bash .github/scripts/screenshots.sh
+        working-directory: mod
+        run: chmod +x ./gradlew && ./gradlew ":$VERSION:assemble"
+      - name: play the check
+        working-directory: mod
+        run: |
+          script=$SCRIPT
+          if [ ! -f "$script" ] && [ -f "../tools/$script" ]; then script=../tools/$script; fi
+          OUT=../out bash ../tools/.github/scripts/game-check.sh "$VERSION" "$script"
       - name: keep the pictures
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: screenshots
-          path: |
-            shots/
-            game.log
-      - name: put the pictures on the ci-screenshots branch
-        run: |
-          dir="$GITHUB_RUN_ID-${GITHUB_SHA::7}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin ci-screenshots && git worktree add pics origin/ci-screenshots || {
-            git worktree add --detach pics && git -C pics checkout --orphan ci-screenshots && git -C pics rm -rfq .
-          }
-          mkdir -p "pics/$dir" && cp shots/* "pics/$dir/"
-          git -C pics add "$dir"
-          git -C pics commit -qm "Screenshots from $GITHUB_REF_NAME ${GITHUB_SHA::7}"
-          # Other runs may push at the same time; each adds its own folder, so replaying on top always works
-          for i in 1 2 3 4 5; do
-            git -C pics push origin HEAD:ci-screenshots && exit 0
-            sleep $((i * 3))
-            git -C pics fetch origin ci-screenshots && git -C pics rebase -q FETCH_HEAD
-          done
-          exit 1
+          name: check-${{ inputs.version }}
+          path: out/
+          if-no-files-found: warn
