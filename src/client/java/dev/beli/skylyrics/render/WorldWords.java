@@ -1705,7 +1705,10 @@ final class WorldWords {
 			float span = -Sentence.GAP * halfH;
 			// Measured where it comes out widest, on this row or the next one down, and leaving room for a new row's indent
 			float below = (Float.isInfinite(sentence.low) ? sentence.top : sentence.low) + Sentence.ROW_GAP + 2 * halfH + SENTENCE_BOB;
-			float pitch = Math.max(Math.abs(sentence.top), Math.abs(below));
+			// and wherever along the row its slope and bow take it
+			float right = sentence.left + sentence.width;
+			float pitch = Math.max(Math.abs(sentence.widest(sentence.left, right, sentence.top, halfH, sentence.top)),
+					Math.abs(sentence.widest(sentence.left, right, below, halfH, below)));
 			for (int k = placing; k < runs.length; k++) {
 				float h = halfAngle(half[k] * wordScale, sentence.distance);
 				span += 2 * Sentence.yawHalf(h, pitch) + Sentence.GAP * halfH;
@@ -2049,9 +2052,13 @@ final class WorldWords {
 				}
 			}
 			if (first) {
-				// Its pieces take the yaw they span at this pitch, as every other piece of the row does
+				// Its pieces take the yaw they span where they are drawn, as every other piece of the row does: the row's
+				// slope and bow lift or drop them across the room, so the room is measured where it comes out widest
 				runPitch = pitchNow;
-				run = runWidth(pitchNow);
+				for (int k = 0; k < 2; k++) {
+					runPitch = widest(cursor + GAP * halfH, cursor + GAP * halfH + runWidth(runPitch), top + bob, halfH, runPitch);
+				}
+				run = runWidth(runPitch);
 			}
 			float whole = first ? run / 2 : wy;
 			float yaw = cursor + GAP * halfH + whole;
@@ -2061,8 +2068,9 @@ final class WorldWords {
 				float pitchWrap = low + ROW_GAP + 2 * halfH + bob;
 				wy = yawHalf(halfW, pitchWrap);
 				if (first) {
-					runPitch = pitchWrap;
-					run = runWidth(pitchWrap);
+					// Where on the new row its room ends up depends on its width: measured over all of the row
+					runPitch = widest(left, left + width, pitchWrap, halfH, pitchWrap);
+					run = runWidth(runPitch);
 				}
 				whole = first ? run / 2 : wy;
 				newRow = false;
@@ -2142,6 +2150,27 @@ final class WorldWords {
 		float roomMiddle() {
 			float middle = cursor - run / 2;
 			return rtl ? 2 * left + width - middle : middle;
+		}
+
+		/**
+		 * Of {@code pitch} and the pitches pieces are drawn at from {@code from} to {@code to} along this row (as written,
+		 * before a right-to-left row is mirrored), the one furthest from the horizon, where a piece spans the most yaw.
+		 * {@code foot} is the row's line before its slope and bow; a piece's middle sits {@code halfH} above it.
+		 */
+		float widest(float from, float to, float foot, float halfH, float pitch) {
+			float steep = (float) Math.tan(slope * DEG);
+			for (int k = 0; k <= 8; k++) {
+				float x = Mth.lerp(k / 8f, from, to), yaw = rtl ? 2 * left + width - x : x;
+				float along = Mth.clamp((yaw - left) / width, 0, 1), rise = (yaw - left) * steep + bend * 4 * along * (1 - along);
+				float low = foot - rise, high = foot - halfH - rise;
+				if (Math.abs(low) > Math.abs(pitch)) {
+					pitch = low;
+				}
+				if (Math.abs(high) > Math.abs(pitch)) {
+					pitch = high;
+				}
+			}
+			return pitch;
 		}
 
 		/** How wide the stretch's pieces are together along a row at {@code pitch}, with the room between them. */
