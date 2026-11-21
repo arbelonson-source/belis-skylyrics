@@ -799,11 +799,19 @@ public final class NowPlayingHud {
 			try {
 				g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
 				g.pose().scale(0.85f, 0.85f);
-				g.drawCenteredString(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
+				g.drawCenteredString(font, "♪", 0, -4, noteColor(a * dim));
 			} finally {
 				g.pose().popMatrix();
 			}
 		}
+	}
+
+	/**
+	 * The no-cover note's colour, {@code a} (0 to 1) visible. Its alpha never goes below 4, like {@link #fade}'s: Minecraft
+	 * 1.21.5 and older draw text with less fully opaque, so the note blinked white as the bar appeared or hid.
+	 */
+	static int noteColor(float a) {
+		return ARGB.color(Math.max(4, Math.round(a * 230)), 0xFFFFFF);
 	}
 
 	/** A number from 0 to 1 that looks random but is the same for the same seed. */
@@ -1032,8 +1040,14 @@ public final class NowPlayingHud {
 		return (int) Math.ceil(limit);
 	}
 
-	private static String dotted(String sub) {
-		return DOTTED.get(sub, x -> "  ·  " + x);
+	/**
+	 * {@code "  ·  " + sub}, drawn right after the title. A left-to-right mark keeps the dot on the left, next to the title,
+	 * and the sub text is isolated so it keeps its own direction: a Hebrew or Arabic artist (or "112" in a Hebrew game)
+	 * would otherwise pull the dot to its far end and run straight into the title, and a cut one keeps its "…" at its own
+	 * end. The marks are never drawn and take no room.
+	 */
+	static String dotted(String sub) {
+		return DOTTED.get(sub, x -> "‎  ·  ⁨" + x + "⁩");
 	}
 
 	/** The gap between the line's words, in GUI units. */
