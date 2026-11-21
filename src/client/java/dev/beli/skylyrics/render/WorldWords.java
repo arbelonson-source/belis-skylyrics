@@ -1691,16 +1691,18 @@ final class WorldWords {
 		} else if (run == RUN_FIRST || sentence.run <= 0) {
 			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it.
 			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left
-			float span = 0;
 			int count = 0;
 			for (int k = placing; k < runs.length; k++) {
-				span += 2 * halfAngle(half[k] * wordScale, sentence.distance);
 				count++;
 				if (runs[k] == RUN_LAST) {
 					break;
 				}
 			}
-			sentence.reverse(span + (count - 1) * Sentence.GAP * halfH);
+			float[] halves = new float[count];
+			for (int k = 0; k < count; k++) {
+				halves[k] = halfAngle(half[placing + k] * wordScale, sentence.distance);
+			}
+			sentence.reverse(halves, (count - 1) * Sentence.GAP * halfH);
 		}
 	}
 
@@ -1949,6 +1951,9 @@ final class WorldWords {
 		 * its pieces ends, counted along the row (NaN before the stretch's first piece has found its room).
 		 */
 		float run, runAt = Float.NaN;
+		/** The stretch's pieces' half widths as seen square on, the room between them, and the pitch its room was measured at. */
+		float[] runHalves = new float[0];
+		float runGap, runPitch;
 		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
 		boolean newRow;
 		/** How many rows have been started after the first. */
@@ -1994,14 +1999,34 @@ final class WorldWords {
 			// A row high or low in the sky takes more yaw for the same width than one at the horizon, so a piece's width
 			// along the row is its yaw span there, or it'd be drawn over the piece beside it
 			float steepNow = (float) Math.tan(slope * DEG), alongNow = Mth.clamp((cursor - left) / width, 0, 1);
-			float wy = yawHalf(halfW, top + bob - (cursor - left) * steepNow - bend * 4 * alongNow * (1 - alongNow));
+			boolean inRun = run > 0 && !first;
+			float pitchNow = inRun ? runPitch : top + bob - (cursor - left) * steepNow - bend * 4 * alongNow * (1 - alongNow);
+			float wy = yawHalf(halfW, pitchNow);
+			if (rtl && !inRun) {
+				// It is drawn mirrored, so the row's slope and bow are those at its mirrored middle, not at the cursor
+				for (int k = 0; k < 3; k++) {
+					float x = 2 * left + width - (cursor + GAP * halfH + wy);
+					float a = Mth.clamp((x - left) / width, 0, 1);
+					pitchNow = top + bob - (x - left) * steepNow - bend * 4 * a * (1 - a);
+					wy = yawHalf(halfW, pitchNow);
+				}
+			}
+			if (first) {
+				// Its pieces take the yaw they span at this pitch, as every other piece of the row does
+				runPitch = pitchNow;
+				run = runWidth(pitchNow);
+			}
 			float whole = first ? run / 2 : wy;
 			float yaw = cursor + GAP * halfH + whole;
-			boolean inRun = run > 0 && !first;
 			boolean wrap = !inRun && (newRow || cursor > left && yaw + whole > left + width);
 			if (wrap) {
 				// It starts the next row, which sits about a row lower: its width is the yaw span there
-				wy = yawHalf(halfW, low + ROW_GAP + 2 * halfH + bob);
+				float pitchWrap = low + ROW_GAP + 2 * halfH + bob;
+				wy = yawHalf(halfW, pitchWrap);
+				if (first) {
+					runPitch = pitchWrap;
+					run = runWidth(pitchWrap);
+				}
 				whole = first ? run / 2 : wy;
 				newRow = false;
 				rows++;
@@ -2060,9 +2085,20 @@ final class WorldWords {
 		}
 
 		/** The next pieces, {@code span} wide together, read against the line's direction: written from the far end back. */
-		void reverse(float span) {
-			run = span;
+		void reverse(float[] halves, float gap) {
+			runHalves = halves;
+			runGap = gap;
+			run = runWidth(0);
 			runAt = Float.NaN;
+		}
+
+		/** How wide the stretch's pieces are together along a row at {@code pitch}, with the room between them. */
+		private float runWidth(float pitch) {
+			float span = runGap;
+			for (float h : runHalves) {
+				span += 2 * yawHalf(h, pitch);
+			}
+			return span;
 		}
 
 		/** Back to writing along the line's direction. */

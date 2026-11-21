@@ -40,6 +40,8 @@ public final class Updater {
 	private static final int MAX_HOPS = 5;
 	private static final Logger LOG = LoggerFactory.getLogger("SkyLyrics");
 	private static final Duration TIMEOUT = Duration.ofSeconds(10);
+	/** How long an update check's reply body may take after its headers. */
+	private static final Duration REPLY_TIMEOUT = Duration.ofSeconds(60);
 
 	/** What to tell the player: a new version is out, or it is already downloaded and needs a restart. */
 	public record Notice(String version, boolean downloaded, String needs, String what) {
@@ -114,6 +116,16 @@ public final class Updater {
 	 */
 	static String fetchReply(HttpClient api, String url, java.util.function.Predicate<URI> redirectOk)
 			throws IOException, InterruptedException {
+		return fetchReply(api, url, redirectOk, REPLY_TIMEOUT);
+	}
+
+	/**
+	 * Like {@link #fetchReply(HttpClient, String, java.util.function.Predicate)}; a reply whose body hasn't come in
+	 * {@code bodyLimit} after its headers is dropped, so a server that sends the headers and then goes silent can't hold
+	 * the update check forever (the request's own time limit ends at the headers).
+	 */
+	static String fetchReply(HttpClient api, String url, java.util.function.Predicate<URI> redirectOk, Duration bodyLimit)
+			throws IOException, InterruptedException {
 		if (api.followRedirects() != HttpClient.Redirect.NEVER) {
 			throw new IllegalArgumentException("the API client must not follow redirects by itself");
 		}
@@ -142,7 +154,7 @@ public final class Updater {
 					LOG.info("Update check got HTTP {}", status);
 					return null;
 				}
-				return readReply(in);
+				return readReply(dev.beli.skylyrics.util.Net.closeAfter(in, bodyLimit));
 			}
 		}
 		LOG.info("Update check refused: too many redirects");

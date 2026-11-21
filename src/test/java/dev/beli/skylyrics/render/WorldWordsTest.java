@@ -1086,7 +1086,7 @@ class WorldWordsTest {
 			int before = standingWords(words);
 			assertTrue(before >= 3, "the words sung so far are up: " + before);
 			// the song is at 60.0 s, then 59.0 s: a seek back
-			assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000));
+			assertTrue(LyricsRenderer.jumpedBack(60_000, 59_000, true));
 			words.rewind(2 * ns);
 			words.update(0, line, 1, false, Float.NaN, Float.NaN, camera, null, null, style, 2 * ns);
 			assertEquals(1, standingWords(words), "only the first word is up again, nothing already sung after the new spot");
