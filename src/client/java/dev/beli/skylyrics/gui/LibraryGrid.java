@@ -32,6 +32,10 @@ final class LibraryGrid {
 		if (selected < 0) {
 			return 0;
 		}
+		if (selected >= count) {
+			// Left over from a longer list that was swapped for this one: come back to its end instead of staying out of reach
+			return count - 1;
+		}
 		int next = selected + step;
 		return next < 0 || next >= count ? selected : next;
 	}

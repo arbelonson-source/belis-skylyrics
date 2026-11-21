@@ -87,4 +87,12 @@ class LibraryViewsTest {
 		assertEquals(16, LibraryViews.bannerStripH(5, -4));
 		assertEquals(16, LibraryViews.bannerStripH(400, 0));
 	}
+
+	@Test
+	void aShelfChoicePastTheEndOfAShorterListComesBack() {
+		// card 10 chosen on two rows, and the list now holds 3: the arrows bring the choice back instead of doing nothing
+		assertEquals(2, LibraryViews.shelfMove(9, 1, 0, 2, 3), "Right");
+		assertEquals(2, LibraryViews.shelfMove(9, -1, 0, 2, 3), "Left");
+		assertEquals(2, LibraryViews.shelfMove(9, 0, -1, 2, 3), "Up");
+	}
 }

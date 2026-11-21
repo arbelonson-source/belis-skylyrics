@@ -183,6 +183,9 @@ public final class LibraryScreen extends Screen {
 			shelves.values().forEach(Shelf::cancel);
 			shelves.clear();
 			closeOpened();
+			// The chosen card and header button were places in the old list and header: the new list starts at its top
+			selected = -1;
+			stop = -1;
 		}
 		if (library instanceof HeardLibrary && section == Section.PLAYLISTS) {
 			section = Section.LIKED;

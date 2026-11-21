@@ -111,4 +111,12 @@ class LibraryGridTest {
 		// scrolled to the bottom by the mouse still loads, with nothing chosen too
 		assertTrue(LibraryGrid.nearEnd(content - viewH, viewH, content, cellH, -1, 50, 6));
 	}
+
+	@Test
+	void aChoicePastTheEndOfAShorterListComesBackOnTheArrows() {
+		// the list was swapped for a shorter one under the keyboard: card 10 chosen, 3 cards now
+		assertEquals(2, LibraryGrid.move(9, 1, 3), "Right");
+		assertEquals(2, LibraryGrid.move(9, -1, 3), "Left");
+		assertEquals(2, LibraryGrid.move(9, -6, 3), "Up");
+	}
 }
