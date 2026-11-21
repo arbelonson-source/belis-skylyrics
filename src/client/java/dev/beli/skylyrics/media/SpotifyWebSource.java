@@ -1137,10 +1137,9 @@ public final class SpotifyWebSource implements MediaSource {
 
 	private void control(String method, String path) {
 		try {
-			HttpResponse<String> response = api(method, path, access());
-			if (response.statusCode() == 429) {
-				holdOff(response);
-			}
+			// Through call(), so a token Spotify calls stale (the game's clock stood still while the computer slept) is
+			// renewed and the press sent again instead of lost, and a 429 holds the poller too
+			HttpResponse<String> response = call(method, path, null);
 			if (response.statusCode() >= 300) {
 				LOG.debug("Spotify control {} answered {}", path, response.statusCode());
 			}
