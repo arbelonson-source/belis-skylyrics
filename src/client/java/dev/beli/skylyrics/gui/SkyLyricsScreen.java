@@ -867,13 +867,18 @@ public final class SkyLyricsScreen extends Screen {
 
 	// ---- Layout -----------------------------------------------------------------------------------
 
+	/** Width of the settings rows on a screen {@code screenW} wide: the panel (at most 440, 8 from each edge) less the sidebar. */
+	static int rowWidth(int screenW) {
+		return Math.max(1, Math.min(440, screenW - 16) - SIDEBAR_W - 24);
+	}
+
 	private void layout() {
 		pw = Math.min(440, width - 16);
 		ph = Math.min(272, height - 16);
 		px = (width - pw) / 2;
 		py = (height - ph) / 2 + Math.round((1 - openAnim) * 8);
 		viewX = px + SIDEBAR_W + 12;
-		viewW = Math.max(1, pw - SIDEBAR_W - 24);
+		viewW = rowWidth(width);
 		viewY = py + HEADER_H;
 		viewH = ph - HEADER_H - FOOTER_H;
 
@@ -1384,10 +1389,14 @@ public final class SkyLyricsScreen extends Screen {
 				return new org.joml.Vector2i(at[0], at[1]);
 			};
 
-	/** A hovered description as tooltip lines, each in the paragraph's direction (right to left in Hebrew). */
-	private List<net.minecraft.util.FormattedCharSequence> tooltip(String text) {
-		boolean rtl = Ui.paragraphRtl(text);
-		return tooltipLines(font.getSplitter(), text, width).stream().map(line -> Ui.visual(line, rtl)).toList();
+	/** The hovered row's cut texts as tooltip lines, one text after another, each in its own direction (right to left in Hebrew). */
+	private List<net.minecraft.util.FormattedCharSequence> tooltip(List<String> texts) {
+		List<net.minecraft.util.FormattedCharSequence> lines = new ArrayList<>();
+		for (String text : texts) {
+			boolean rtl = Ui.paragraphRtl(text);
+			tooltipLines(font.getSplitter(), text, width).forEach(line -> lines.add(Ui.visual(line, rtl)));
+		}
+		return lines;
 	}
 
 	private void renderContent(GuiGraphics g, Frame f) {
@@ -1419,8 +1428,9 @@ public final class SkyLyricsScreen extends Screen {
 				if (focusVisible && row == focus) {
 					row.renderFocus(inner);
 				}
-				if (row.descClipped && row.hovered(inner) && row.desc != null) {
-					List<net.minecraft.util.FormattedCharSequence> tip = tooltip(row.desc.get());
+				List<String> cut = row.hovered(inner) ? row.cutTexts(font) : List.of();
+				if (!cut.isEmpty()) {
+					List<net.minecraft.util.FormattedCharSequence> tip = tooltip(cut);
 					//? if >=1.21.6 {
 					g.setTooltipForNextFrame(font, tip, TOOLTIP_PLACE, f.mx(), f.my(), false);
 					//?} else {
