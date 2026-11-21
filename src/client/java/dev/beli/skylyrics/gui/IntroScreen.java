@@ -77,6 +77,15 @@ public final class IntroScreen extends Screen {
 		return LibraryKeys.nextButton(at, Themes.ALL.size(), step);
 	}
 
+	/**
+	 * The sign on the look button one step back ({@code step} below 0, on the left) or on (on the right). A right-to-left
+	 * game (Hebrew) mirrors a lone "<" into ">" when it draws a button's label, which made both arrows point inwards, so
+	 * there it gets the other sign and the game turns it back.
+	 */
+	static String arrow(int step, boolean rtlGame) {
+		return (step < 0) != rtlGame ? "<" : ">";
+	}
+
 	/** Whether to open the tour: only over the very title screen that asked, and not over a tour already open. */
 	public static boolean shouldOpen(@Nullable Object current, Object titleScreen) {
 		return current == titleScreen && !(current instanceof IntroScreen);
@@ -193,8 +202,9 @@ public final class IntroScreen extends Screen {
 				return;
 			}
 			case 1 -> {
-				add("look-", "<", Tr.t("Previous look"), px + 40, mid, 20, () -> pickTheme(-1));
-				add("look+", ">", Tr.t("Next look"), px + pw - 60, mid, 20, () -> pickTheme(1));
+				boolean rtlGame = net.minecraft.locale.Language.getInstance().isDefaultRightToLeft();
+				add("look-", arrow(-1, rtlGame), Tr.t("Previous look"), px + 40, mid, 20, () -> pickTheme(-1));
+				add("look+", arrow(1, rtlGame), Tr.t("Next look"), px + pw - 60, mid, 20, () -> pickTheme(1));
 			}
 			case 2 -> {
 				Layout[] layouts = {Layout.WORLD, Layout.ARC, Layout.LINES};
