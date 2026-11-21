@@ -1,0 +1,65 @@
+# The smallest window any GUI scale gives (a 640x480 window at GUI scale 2 = 320x240), with the made-up songs:
+# - the song library's tabs in Spanish and European Portuguese end before the Grid, Shelf and Carousel buttons
+#   ("Canciones favoritas", "Favoritas"; the Playlists tab whole, not under the buttons);
+# - the message after a click on a song, "These songs are made up, so nothing plays", on two lines in Spanish and
+#   Russian instead of ending in "…";
+# - last, the "SkyLyrics can't read your music player" pop-up in Ukrainian, inside the screen with its left end and
+#   first letters showing. It comes once per game, about 10 s after reading the music player starts failing, so it
+#   shows only if the runner can't read music players (no D-Bus session); otherwise there is no pop-up to see.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f size=640x480 -f script=.github/checks/fit-fixes.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+guiscale 2
+set demoMode true
+set libraryView GRID
+
+lang es_es
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot fit-library-tabs-es
+key right
+sleep 0.5
+key enter
+sleep 1
+shot fit-library-message-es
+key tab
+sleep 3
+shot fit-library-playlists-es
+# back to the liked songs (Tab goes on to Search, then Liked songs), where the library opens next time
+key tab
+sleep 0.5
+key tab
+sleep 1
+close
+
+lang pt_pt
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot fit-library-tabs-pt
+close
+
+lang ru_ru
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+key right
+sleep 0.5
+key enter
+sleep 1
+shot fit-library-message-ru
+close
+
+lang uk_ua
+sleep 15
+set demoMode false
+sleep 11
+shot fit-popup-uk-a
+sleep 2
+shot fit-popup-uk-b
+sleep 3
+shot fit-popup-uk-c
+set demoMode true

@@ -536,7 +536,7 @@
   "skylyrics.ui.optional_spotify_web_needs_premium_and_a_free_de": "За бажанням: Spotify Web (потрібні Premium і безкоштовний застосунок розробника) стежить за Spotify на будь-якому пристрої.",
   "skylyrics.ui.skylyrics_can_t_read_your_music_player": "SkyLyrics не може прочитати ваш плеєр",
   "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics не може з’єднатися з інтернетом чи Spotify",
-  "skylyrics.ui.open_the_settings_s_music_to_see_why": "Відкрийте налаштування (%s) → «Музика», щоб дізнатися причину",
+  "skylyrics.ui.open_the_settings_s_music_to_see_why": "Причина — у налаштуваннях (%s) → «Музика»",
   "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "Spotify і «Музика» не грають (браузерів на Mac не видно)",
   "skylyrics.ui.seconds": "секунди",
   "skylyrics.ui.previous_look": "Попередня тема",

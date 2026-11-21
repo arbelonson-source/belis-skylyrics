@@ -535,7 +535,7 @@
   "skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers": "Toque uma música no app Música ou Spotify (num Mac não dá para ler navegadores) e a letra aparece. Se o macOS pedir permissão, clique em OK.",
   "skylyrics.ui.optional_spotify_web_needs_premium_and_a_free_de": "Opcional: Spotify Web (precisa de Premium e de um app de desenvolvedor gratuito) segue o Spotify em qualquer lugar.",
   "skylyrics.ui.skylyrics_can_t_read_your_music_player": "O SkyLyrics não consegue ler seu player de música",
-  "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "O SkyLyrics não consegue acessar a internet ou o Spotify",
+  "skylyrics.ui.skylyrics_can_t_reach_the_internet_or_spotify": "SkyLyrics não consegue acessar a internet ou o Spotify",
   "skylyrics.ui.open_the_settings_s_music_to_see_why": "Abra os ajustes (%s) → Música para ver o motivo",
   "skylyrics.ui.no_spotify_or_music_playing_browsers_can_t_be_re": "Nenhum Spotify ou Música tocando (navegadores não podem ser lidos num Mac)",
   "skylyrics.ui.seconds": "segundos",

@@ -1,0 +1,141 @@
+package dev.beli.skylyrics.gui;
+
+import static dev.beli.skylyrics.gui.TranslationFitTest.languages;
+import static dev.beli.skylyrics.gui.TranslationFitTest.text;
+import static dev.beli.skylyrics.gui.TranslationFitTest.width;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Texts outside the settings rows, in every language, measured with the game's own letter widths (see
+ * {@link TranslationFitTest}) in the smallest window the game gives (320 wide) and at 426 wide.
+ */
+class SmallWindowFitTest {
+	/** The narrowest screen the game gives at any GUI scale. */
+	private static final int SMALLEST = 320;
+	/** A 1280x720 window at GUI scale 3. */
+	private static final int SMALL = 426;
+
+	@BeforeAll
+	static void readTheGameFont() throws IOException {
+		TranslationFitTest.readTheGameFont();
+	}
+
+	/** The lang key {@code Tr} gives an English text. */
+	private static String key(String english) {
+		String slug = english.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
+		if (slug.length() > 48) {
+			slug = slug.substring(0, 48).replaceAll("_+$", "");
+		}
+		return "skylyrics.ui." + slug;
+	}
+
+	/** A text of a language by its English, with {@code %s} filled in, as the game shows it. */
+	private static String shown(Map<String, Map<String, String>> all, String lang, String english, Object... args) {
+		assertNotNull(all.get("en_us.json").get(key(english)), "no such text: " + english);
+		return String.format(Locale.ROOT, text(all, lang, key(english)), args);
+	}
+
+	/** The game's pop-up (a SystemToast) is 30 wider than its longer line, at least 160, and stands against the screen's right edge. */
+	private static int popUpWidth(int titleW, int bodyW) {
+		return Math.max(160, 30 + Math.max(titleW, bodyW));
+	}
+
+	@Test
+	void theCantReadYourMusicPlayerPopUpStaysOnTheSmallestScreen() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		List<String> off = new ArrayList<>();
+		int measured = 0;
+		for (String lang : all.keySet()) {
+			String body = shown(all, lang, "Open the settings (%s) → Music to see why", "J");
+			for (String title : List.of(shown(all, lang, "SkyLyrics can't read your music player"),
+					shown(all, lang, "SkyLyrics can't reach the internet or Spotify"))) {
+				int tw = width(title), bw = width(body);
+				if (tw < 0 || bw < 0) {
+					continue;
+				}
+				measured++;
+				int w = popUpWidth(tw, bw);
+				if (w > SMALLEST) {
+					off.add(lang + " " + w + " wide, from \"" + (tw >= bw ? title : body) + "\"");
+				}
+			}
+		}
+		assertTrue(measured >= 20, "only " + measured + " pop-ups measured");
+		assertTrue(off.isEmpty(), "the pop-up is wider than a " + SMALLEST + " wide screen, so its left end (and some of its text) is off the screen: " + off);
+	}
+
+	@Test
+	void theLibraryTabsEndBeforeTheViewButtonsInTheSmallestWindow() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		int pw = LibraryScreen.panelW(SMALLEST);
+		int buttons = LibraryScreen.viewButtonsLeft(pw);
+		List<String> under = new ArrayList<>();
+		int measured = 0;
+		for (String lang : all.keySet()) {
+			// With Spotify (or the made-up songs) there are three sections; with only the songs heard lately, two
+			for (List<String> names : List.of(List.of(shown(all, lang, "Search"), shown(all, lang, "Liked songs"), shown(all, lang, "Playlists")),
+					List.of(shown(all, lang, "Search"), shown(all, lang, "Recently heard")))) {
+				int right = LibraryScreen.TABS_LEFT - LibraryScreen.TAB_GAP;
+				boolean known = true;
+				for (String name : names) {
+					known &= width(name) >= 0;
+					right += LibraryScreen.TAB_GAP + width(name) + LibraryScreen.TAB_PAD;
+				}
+				if (!known) {
+					continue;
+				}
+				measured++;
+				// at least the gap the tabs keep between each other
+				if (right + LibraryScreen.TAB_GAP > buttons) {
+					under.add(lang + " " + names + " end at " + right + ", the view buttons start at " + buttons);
+				}
+			}
+		}
+		assertTrue(measured >= 20, "only " + measured + " tab rows measured");
+		assertTrue(under.isEmpty(), "the library's tabs run under the Grid, Shelf and Carousel buttons: " + under);
+	}
+
+	@Test
+	void aLibraryMessageShowsEveryWord() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> Math.max(0, width(Character.toString(cp))));
+		List<String> cut = new ArrayList<>();
+		int measured = 0;
+		for (int screenW : new int[] {SMALLEST, SMALL}) {
+			int room = LibraryScreen.toastRoom(LibraryScreen.panelW(screenW));
+			for (String lang : all.keySet()) {
+				// What the library says after a click on a song or a playlist: the made-up songs, the songs heard lately, Spotify
+				List<String> messages = List.of(shown(all, lang, "Starting %s…", "Neon Skyline"), shown(all, lang, "Playing %s", "Neon Skyline"),
+						shown(all, lang, "These songs are made up, so nothing plays"),
+						shown(all, lang, "Spotify keeps this playlist's songs hidden, so it plays from the top"),
+						shown(all, lang, "This player can't start songs from here"), shown(all, lang, "%s isn't open, so it can't play this", "Spotify"),
+						shown(all, lang, "Spotify didn't start the song, try again"), shown(all, lang, "Spotify Premium is needed to start songs"),
+						shown(all, lang, "Spotify didn't allow that on this device"), shown(all, lang, "Open Spotify on your computer or phone first"),
+						shown(all, lang, "Sign in to Spotify on the Music tab to see your songs here"), shown(all, lang, "Can't reach the internet or Spotify"));
+				for (String message : messages) {
+					if (width(message) < 0) {
+						continue;
+					}
+					measured++;
+					List<String> lines = LibraryScreen.toastLines(splitter, message, room);
+					String said = String.join("", lines).replaceAll("\\s", "");
+					boolean fits = lines.stream().allMatch(l -> width(l) <= room);
+					if (!said.equals(message.replaceAll("\\s", "")) || !fits) {
+						cut.add(screenW + " wide, " + lang + " \"" + String.join(" / ", lines) + "\" (" + width(message) + " for " + room + ")");
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 300, "only " + measured + " messages measured");
+		assertTrue(cut.isEmpty(), cut.size() + " library messages are cut short, like: " + cut.subList(0, Math.min(8, cut.size())));
+	}
+}
