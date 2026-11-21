@@ -1,0 +1,48 @@
+# The Record card next to a server's scoreboard sidebar (1280x720 at GUI scale 3 = 426x240): with 10 sidebar lines a
+# right card has no room and fades (before, it dropped onto the hunger bar); with 3 lines it sits above the sidebar.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/card-sidebar.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+set recordCard true
+set cardLyrics true
+set cardCorner BOTTOM_RIGHT
+guiscale 3
+sleep 3
+shot card-br-plain
+cmd scoreboard objectives add sky dummy
+cmd scoreboard objectives setdisplay sidebar sky
+cmd scoreboard players set Line01 sky 1
+cmd scoreboard players set Line02 sky 2
+cmd scoreboard players set Line03 sky 3
+cmd scoreboard players set Line04 sky 4
+cmd scoreboard players set Line05 sky 5
+cmd scoreboard players set Line06 sky 6
+cmd scoreboard players set Line07 sky 7
+cmd scoreboard players set Line08 sky 8
+cmd scoreboard players set Line09 sky 9
+cmd scoreboard players set Line10 sky 10
+sleep 3
+shot card-br-side10
+cmd scoreboard players reset Line04 sky
+cmd scoreboard players reset Line05 sky
+cmd scoreboard players reset Line06 sky
+cmd scoreboard players reset Line07 sky
+cmd scoreboard players reset Line08 sky
+cmd scoreboard players reset Line09 sky
+cmd scoreboard players reset Line10 sky
+sleep 3
+shot card-br-side3
+set cardCorner TOP_RIGHT
+sleep 3
+shot card-tr-side3
+cmd scoreboard players set Line04 sky 4
+cmd scoreboard players set Line05 sky 5
+cmd scoreboard players set Line06 sky 6
+cmd scoreboard players set Line07 sky 7
+cmd scoreboard players set Line08 sky 8
+cmd scoreboard players set Line09 sky 9
+cmd scoreboard players set Line10 sky 10
+sleep 3
+shot card-tr-side10
