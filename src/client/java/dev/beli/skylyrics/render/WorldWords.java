@@ -2064,9 +2064,11 @@ final class WorldWords {
 				whole = first ? run / 2 : wy;
 				newRow = false;
 				rows++;
-				// A short last row is centred under the full one above it
-				float centre = (cursor - left - Math.max(rest, 2 * whole)) / 2;
-				yaw = left + Math.max(indent, centre) + whole;
+				// A short last row is centred under the full one above it. The indent never takes a piece past the row's far
+				// end, and one wider than the whole row (a big word low in the sky) sits on its middle, so it sticks out a
+				// little at both ends instead of all of it at the far one
+				float centre = (cursor - left - Math.max(rest, 2 * whole)) / 2, room = width - 2 * whole;
+				yaw = left + (room < 0 ? room / 2 : Math.min(Math.max(indent, centre), room)) + whole;
 			}
 			if (run <= 0 || first) {
 				rest -= yaw + whole - cursor;
