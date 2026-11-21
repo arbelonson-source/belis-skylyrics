@@ -567,18 +567,31 @@ public final class RecordCard {
 	 * left one. Null when there is no room clear of them, which fades the card.
 	 */
 	private static float[] place(Minecraft mc, CardCorner corner, int guiW, int guiH, float h) {
-		float[] at = corner(mc, corner, guiW, guiH, effectsBottom(mc), h);
+		int effects = effectsBottom(mc);
 		boolean chatOpen = NowPlayingHud.chatOpen(mc);
+		double scale = mc.options.chatScale().get();
+		float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
+		float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
+		boolean chatHidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
+		boolean right = corner == CardCorner.TOP_RIGHT || corner == CardCorner.BOTTOM_RIGHT;
+		float[] sidebar = right ? NowPlayingHud.sidebarBox(mc, guiW, guiH) : null;
+		float[] subtitles = corner == CardCorner.BOTTOM_RIGHT && mc.options.showSubtitles().get()
+				? NowPlayingHud.subtitleBox(mc, guiW, guiH) : null;
+		return place(corner, guiH, h, c -> corner(mc, c, guiW, guiH, effects, h), chatOpen, chatHidden, chatW, chatH, sidebar, subtitles);
+	}
+
+	/**
+	 * {@link #place(Minecraft, CardCorner, int, int, float)} from plain values: {@code cornerAt} gives the card's place in a
+	 * corner ({@link #corner}), the chat's box is {@code chatW} by {@code chatH}, and {@code sidebar} and {@code subtitles}
+	 * are their boxes (null when they don't show).
+	 */
+	static float[] place(CardCorner corner, int guiH, float h, java.util.function.Function<CardCorner, float[]> cornerAt,
+			boolean chatOpen, boolean chatHidden, float chatW, float chatH, float[] sidebar, float[] subtitles) {
+		float[] at = cornerAt.apply(corner);
 		if (corner == CardCorner.BOTTOM_LEFT) {
 			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
-			if (chatOpen) {
-				double scale = mc.options.chatScale().get();
-				float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
-				float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
-				boolean hidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
-				if (TopBarLayout.chatBoxCovers(true, hidden, guiH, chatW, chatH, at[0], at[1], W, h)) {
-					return null;
-				}
+			if (TopBarLayout.chatBoxCovers(chatOpen, chatHidden, guiH, chatW, chatH, at[0], at[1], W, h)) {
+				return null;
 			}
 			return at;
 		}
@@ -588,15 +601,15 @@ public final class RecordCard {
 		if (corner == CardCorner.BOTTOM_RIGHT) {
 			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
 		}
-		float[] sidebar = NowPlayingHud.sidebarBox(mc, guiW, guiH);
-		float[] subtitles = corner == CardCorner.BOTTOM_RIGHT && mc.options.showSubtitles().get()
-				? NowPlayingHud.subtitleBox(mc, guiW, guiH) : null;
 		if (sidebar == null && subtitles == null) {
 			return at;
 		}
-		// Going up, it stops at where a card in the top right corner would start
-		float minTop = corner == CardCorner.TOP_RIGHT ? at[1] : corner(mc, CardCorner.TOP_RIGHT, guiW, guiH, effectsBottom(mc), h)[1];
-		float y = TopBarLayout.dodgeY(at[0], at[1], W, h, minTop, guiH, sidebar, subtitles);
+		// Going up, it stops at where a card in the top right corner would start, and going down at where one in the bottom
+		// right sits, which already clears the hotbar, the hunger bar, the bottom bar and the open chat's text field
+		float minTop = corner == CardCorner.TOP_RIGHT ? at[1] : cornerAt.apply(CardCorner.TOP_RIGHT)[1];
+		float lowest = corner == CardCorner.BOTTOM_RIGHT ? at[1]
+				: TopBarLayout.aboveChatInput(chatOpen, cornerAt.apply(CardCorner.BOTTOM_RIGHT)[1], h, guiH);
+		float y = TopBarLayout.dodgeY(at[0], at[1], W, h, minTop, lowest + h, sidebar, subtitles);
 		if (Float.isNaN(y)) {
 			return null;
 		}

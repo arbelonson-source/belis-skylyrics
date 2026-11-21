@@ -167,6 +167,7 @@
 - **Choices in a small window.** A choice whose names don't fit side by side even on a line of their own (only possible with long names in a very small window or at a big GUI scale) now shows the picked name between two arrows, like **Night sky**, instead of running off the row's left edge, where its first choices would be cut away and couldn't be clicked.
 - **Sliders in a small window.** In a small window or at a big GUI scale, where a slider sits on a line under its name, a click on its name or description no longer grabs the slider and changes the setting; only the slider's own line does.
 - **Status line.** The Music tab's **Status** (and the other read-only lines, like **Right now**) now uses all the room beside its name instead of stopping at a fixed width, so a long one is no longer cut short (in Spanish, "Reproduciendo la canción de prueba" showed as "Reproduciendo la canción de…").
+- **Record card and the scoreboard.** In a small window or at a big GUI scale, a **Record card** on the right that steps out of the way of a server's scoreboard sidebar no longer drops down over the hunger bar, the XP bar or the held item's name. It goes above the sidebar when there is room there, and fades while there is none.
 
 ### Faster
 
