@@ -332,7 +332,7 @@ class SpotifyWebSourceTest {
 	private static final class FakeHttp extends HttpClient {
 		final int apiStatus;
 		final List<String> calls = new ArrayList<>();
-		/** Answers for the next Web API calls ("204" for no content, else a 200 body); empty means apiStatus with no body. */
+		/** Answers for the next Web API calls (a bare status such as "204" or "401" with no body, else a 200 body); empty means apiStatus with no body. */
 		final java.util.Deque<String> apiAnswers = new java.util.ArrayDeque<>();
 		/** Token endpoint: refresh tokens it accepts; any other one gets invalid_grant. Null accepts everything. */
 		java.util.Set<String> acceptedRefresh;
@@ -396,8 +396,9 @@ class SpotifyWebSourceTest {
 			}
 			if (!token && !apiAnswers.isEmpty()) {
 				String a = apiAnswers.poll();
-				status = a.equals("204") ? 204 : 200;
-				body = a.equals("204") ? "" : a;
+				boolean bare = a.matches("\\d{3}");
+				status = bare ? Integer.parseInt(a) : 200;
+				body = bare ? "" : a;
 			}
 			final int statusF = status;
 			final String bodyF = body;
@@ -457,6 +458,17 @@ class SpotifyWebSourceTest {
 		long now = System.nanoTime();
 		assertFalse(source.pollDue(now + 2 * SEC, true));
 		assertTrue(source.pollDue(now + 5 * SEC, true));
+	}
+
+	@Test
+	void aControlWhoseTokenWentStaleIsSentAgainWithAFreshOne(@TempDir Path dir) throws Exception {
+		// The game's clock says the access token has most of its hour left, but that clock stands still while the
+		// computer sleeps (Linux, macOS): after waking Spotify refuses the token, and the press must not be lost
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		http.apiAnswers.add("401");
+		source.next();
+		assertEquals(List.of("token", "api", "token", "api"), http.calls, "renewed the token and asked for Next again");
 	}
 
 	@Test
