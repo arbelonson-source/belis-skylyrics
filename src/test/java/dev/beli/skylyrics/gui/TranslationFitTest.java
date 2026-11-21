@@ -235,4 +235,62 @@ class TranslationFitTest {
 		assertTrue(measured >= 10, "only " + measured + " texts measured");
 		assertTrue(off.isEmpty(), "the preview hint runs off the sides of a " + SMALLEST_SCREEN + " wide screen: " + off);
 	}
+
+	/** The lang key Tr gives a one- or two-word English text, like "skylyrics.ui.dreamy". */
+	private static String key(String english) {
+		return "skylyrics.ui." + english.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "_");
+	}
+
+	@Test
+	void everyLookIsFoundByItsNameInEveryLanguage() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		List<String> missed = new ArrayList<>();
+		for (String lang : all.keySet()) {
+			// the look picker's search words in that language: each look's name as the game shows it there
+			String shown = ThemePicker.names(t -> text(all, lang, key(t.name().get())));
+			for (dev.beli.skylyrics.config.Themes.Theme theme : dev.beli.skylyrics.config.Themes.ALL) {
+				String name = all.get(lang).get(key(theme.name().get()));
+				if (name == null || !SettingsSearch.matches(shown, name)) {
+					missed.add(lang + " " + theme.id() + " \"" + name + "\"");
+				}
+			}
+		}
+		assertTrue(missed.isEmpty(), "a look's name isn't found: " + missed);
+		// typed the way people do: without ё, without accents
+		Map<String, String> ru = all.get("ru_ru.json");
+		assertTrue(SettingsSearch.matches(ThemePicker.names(t -> ru.get(key(t.name().get()))), "грезы"), "Грёзы");
+		Map<String, String> de = all.get("de_de.json");
+		assertTrue(SettingsSearch.matches(ThemePicker.names(t -> de.get(key(t.name().get()))), "vertraumt"), "Verträumt");
+	}
+
+	@Test
+	void aHoveredDescriptionStaysOnScreenAtBothEdges() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> ADVANCE.getOrDefault(cp, 0).floatValue());
+		List<String> off = new ArrayList<>();
+		int measured = 0;
+		for (int screenW : new int[] {SMALLEST_SCREEN, 427, 480}) {
+			for (String lang : all.keySet()) {
+				for (String text : all.get(lang).values()) {
+					if (width(text) < 0) {
+						continue;
+					}
+					measured++;
+					List<String> lines = SkyLyricsScreen.tooltipLines(splitter, text, screenW);
+					assertEquals(text.replaceAll("\\s", ""), String.join("", lines).replaceAll("\\s", ""), lang + ": every word is shown");
+					int w = lines.stream().mapToInt(TranslationFitTest::width).max().orElse(0);
+					for (int mx : new int[] {0, screenW / 3, screenW / 2, screenW - 1}) {
+						int[] at = SkyLyricsScreen.tooltipPos(screenW, 240, mx, 120, w, 10 * lines.size());
+						// the tooltip's box reaches 4 past its text on each side
+						if (at[0] - 4 < 0 || at[0] + w + 4 > screenW) {
+							off.add(screenW + " wide, mouse at " + mx + ": " + lang + " \"" + Ui.clipBy(text, 120, TranslationFitTest::width) + "\" "
+									+ (at[0] - 4) + " to " + (at[0] + w + 4));
+						}
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 1000, "only " + measured + " texts measured");
+		assertTrue(off.isEmpty(), off.size() + " tooltips run off the screen, like: " + off.subList(0, Math.min(6, off.size())));
+	}
 }

@@ -1348,6 +1348,48 @@ public final class SkyLyricsScreen extends Screen {
 		g.drawString(font, Ui.visual(Ui.clip(font, text, pillW - 22)), pillX + 15, py + 16, hover ? 0xFFFFFFFF : Ui.TEXT, false);
 	}
 
+	/** Widest a hovered description's tooltip gets before it wraps. */
+	private static final int TOOLTIP_MAX_W = 240;
+	/** Room kept between a tooltip's text and a screen edge: its box reaches 4 past the text, and 4 more stay clear. */
+	private static final int TOOLTIP_EDGE = 8;
+
+	/** A hovered description in lines no wider than {@link #TOOLTIP_MAX_W} that also fit a screen {@code screenW} wide. */
+	static List<String> tooltipLines(net.minecraft.client.StringSplitter splitter, String text, int screenW) {
+		int room = Math.max(1, Math.min(TOOLTIP_MAX_W, screenW - 2 * TOOLTIP_EDGE));
+		return splitter.splitLines(text, room, net.minecraft.network.chat.Style.EMPTY).stream()
+				.map(net.minecraft.network.chat.FormattedText::getString).toList();
+	}
+
+	/**
+	 * Where a tooltip {@code w} by {@code h} goes for the mouse at {@code mx}, {@code my} on a screen {@code screenW} by
+	 * {@code screenH}: {x, y} of its text. Like vanilla, right of the mouse or else left of it, and above the bottom; but
+	 * its box stays clear of both side edges (vanilla's could reach 4 past the right one).
+	 */
+	static int[] tooltipPos(int screenW, int screenH, int mx, int my, int w, int h) {
+		int x = mx + 12;
+		int y = my - 12;
+		if (x + w + TOOLTIP_EDGE > screenW) {
+			x = mx - 12 - w;
+		}
+		x = Math.max(TOOLTIP_EDGE, Math.min(x, screenW - TOOLTIP_EDGE - w));
+		if (y + h + 3 > screenH) {
+			y = screenH - h - 3;
+		}
+		return new int[] {x, y};
+	}
+
+	private static final net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipPositioner TOOLTIP_PLACE =
+			(screenW, screenH, mx, my, w, h) -> {
+				int[] at = tooltipPos(screenW, screenH, mx, my, w, h);
+				return new org.joml.Vector2i(at[0], at[1]);
+			};
+
+	/** A hovered description as tooltip lines, each in the paragraph's direction (right to left in Hebrew). */
+	private List<net.minecraft.util.FormattedCharSequence> tooltip(String text) {
+		boolean rtl = Ui.paragraphRtl(text);
+		return tooltipLines(font.getSplitter(), text, width).stream().map(line -> Ui.visual(line, rtl)).toList();
+	}
+
 	private void renderContent(GuiGraphics g, Frame f) {
 		boolean hoverOk = f.hoverAllowed() && inView(f.mx(), f.my());
 		Frame inner = new Frame(g, font, f.mx(), f.my(), f.dt(), hoverOk);
@@ -1378,11 +1420,12 @@ public final class SkyLyricsScreen extends Screen {
 					row.renderFocus(inner);
 				}
 				if (row.descClipped && row.hovered(inner) && row.desc != null) {
+					List<net.minecraft.util.FormattedCharSequence> tip = tooltip(row.desc.get());
 					//? if >=1.21.6 {
-					g.setTooltipForNextFrame(font, Component.literal(row.desc.get()), f.mx(), f.my());
+					g.setTooltipForNextFrame(font, tip, TOOLTIP_PLACE, f.mx(), f.my(), false);
 					//?} else {
 					/*// Drawn after render() returns, so the row clip above can't cut it (renderTooltip draws on the spot here)
-					setTooltipForNextRenderPass(Component.literal(row.desc.get()));
+					setTooltipForNextRenderPass(tip, TOOLTIP_PLACE, true);
 					*///?}
 				}
 			}
