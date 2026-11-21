@@ -145,6 +145,8 @@ public final class NowPlayingHud {
 
 	private @Nullable Content content;
 	private @Nullable Content old;
+	/** The music player's reading the progress line drew last (null while the bar isn't showing), kept while it fades out. */
+	private dev.beli.skylyrics.media.@Nullable Snapshot shownReading;
 	private long swappedAt;
 	/** The pill's width, tweened from {@link #widthFrom} to {@link #widthTo} since {@link #resizedAt}. */
 	private float width = -1, widthFrom, widthTo, widthSpeed;
@@ -322,13 +324,16 @@ public final class NowPlayingHud {
 			topBox = null;
 			content = null;
 			old = null;
+			shownReading = null;
 			width = -1;
 			widthSpeed = 0;
 			top = -1;
 			return;
 		}
 
-		Content next = line != null && now - shownAt >= TITLE_NS ? line : songInfo(track, snap.state());
+		// Fading out, the bar keeps what it shows (the stopped music's empty reading would say "Unknown song")
+		Content next = TopBarLayout.keptWhileFading(want, content, line != null && now - shownAt >= TITLE_NS ? line : songInfo(track, snap.state()));
+		shownReading = TopBarLayout.keptWhileFading(want, shownReading, tracker.snapshot());
 		if (content == null || !content.key().equals(next.key())) {
 			old = content;
 			oldScroll = scroll;
@@ -779,8 +784,8 @@ public final class NowPlayingHud {
 			}
 
 			// Song progress: a thin line under the words that fills as the song plays
-			dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
-			Track track = reading.track();
+			dev.beli.skylyrics.media.Snapshot reading = shownReading;
+			Track track = reading == null ? null : reading.track();
 			float done = track == null ? -1 : TopBarLayout.progress(tracker.positionMs(reading), track.lengthMs());
 			if (cfg.barProgress && done >= 0) {
 				float lx = Math.round((x + ART_INSET + ART + TEXT_GAP) * s);
