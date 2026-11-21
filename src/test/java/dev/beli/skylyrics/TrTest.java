@@ -107,6 +107,8 @@ class TrTest {
 		}
 		assertTrue(files.contains("he_il.json"), "he_il.json missing");
 		assertTrue(files.contains("es_es.json"), "es_es.json missing");
+		assertTrue(files.contains("de_de.json"), "de_de.json missing");
+		assertTrue(files.contains("fr_fr.json"), "fr_fr.json missing");
 		for (String file : files) {
 			Map<String, String> tr = lang(file);
 			for (String k : en.keySet()) {
@@ -125,7 +127,7 @@ class TrTest {
 
 	@Test
 	void regionalCopiesMatchTheirBaseLanguage() throws IOException {
-		// Minecraft falls back to en_us (not es_es) for es_mx etc., so the copies must be byte-identical.
+		// Minecraft falls back to en_us (not es_es) for es_mx, de_at, fr_ca etc., so the copies must be byte-identical.
 		List<String> files = new ArrayList<>();
 		try (Stream<Path> list = Files.list(LANG)) {
 			list.map(f -> f.getFileName().toString()).filter(f -> f.endsWith(".json")).sorted().forEach(files::add);
@@ -151,6 +153,23 @@ class TrTest {
 		assertTrue(differing >= 100, "pt_pt.json must stay its own European Portuguese translation; only " + differing + " texts differ from pt_br.json");
 		assertEquals("Ecr\u00e3", pt.get("skylyrics.ui.display"), "the Display tab is 'Ecra' in Portugal");
 		assertNotEquals(br.get("skylyrics.ui.display"), pt.get("skylyrics.ui.display"));
+	}
+
+	@Test
+	void russianAndUkrainianAreEachTheirOwnLanguage() throws IOException {
+		Map<String, String> ru = lang("ru_ru.json"), uk = lang("uk_ua.json");
+		long differing = ru.keySet().stream().filter(k -> !ru.get(k).equals(uk.get(k))).count();
+		assertTrue(differing >= 400, "uk_ua.json must be its own Ukrainian translation; only " + differing + " texts differ from ru_ru.json");
+		// Letters only one of the two alphabets has: Russian ы э ъ ё, Ukrainian і ї є ґ
+		Pattern russianOnly = Pattern.compile("[ыэъёЫЭЪЁ]");
+		Pattern ukrainianOnly = Pattern.compile("[іїєґІЇЄҐ]");
+		uk.forEach((k, v) -> assertFalse(russianOnly.matcher(v).find(), "uk_ua.json has a Russian letter in " + k + ": " + v));
+		ru.forEach((k, v) -> assertFalse(ukrainianOnly.matcher(v).find(), "ru_ru.json has a Ukrainian letter in " + k + ": " + v));
+		// The button that opens Minecraft's Controls screen, and Done, use Minecraft's own words
+		assertEquals("Управление", ru.get("skylyrics.ui.controls"));
+		assertEquals("Керування", uk.get("skylyrics.ui.controls"));
+		assertEquals("Готово", ru.get("skylyrics.ui.done"));
+		assertEquals("Готово", uk.get("skylyrics.ui.done"));
 	}
 
 	@Test

@@ -1,0 +1,118 @@
+# The settings tabs in the new languages (German, French, Russian, Ukrainian) at GUI scale 2 and the first tab at 3:
+# every label, button and choice should fit, nothing cut or pushed under its label (e.g. the Lyrics switch under the tabs).
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/languages.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+
+lang de_de
+sleep 15
+guiscale 2
+gui 0
+sleep 3
+shot de_de-tab0
+gui 1
+sleep 3
+shot de_de-tab1
+gui 2
+sleep 3
+shot de_de-tab2
+gui 3
+sleep 3
+shot de_de-tab3
+gui 4
+sleep 3
+shot de_de-tab4
+guiscale 3
+gui 0
+sleep 3
+shot de_de-tab0-g3
+close
+guiscale 2
+sleep 3
+shot de_de-bar
+
+lang fr_fr
+sleep 15
+guiscale 2
+gui 0
+sleep 3
+shot fr_fr-tab0
+gui 1
+sleep 3
+shot fr_fr-tab1
+gui 2
+sleep 3
+shot fr_fr-tab2
+gui 3
+sleep 3
+shot fr_fr-tab3
+gui 4
+sleep 3
+shot fr_fr-tab4
+guiscale 3
+gui 0
+sleep 3
+shot fr_fr-tab0-g3
+close
+guiscale 2
+sleep 3
+shot fr_fr-bar
+
+lang ru_ru
+sleep 15
+guiscale 2
+gui 0
+sleep 3
+shot ru_ru-tab0
+gui 1
+sleep 3
+shot ru_ru-tab1
+gui 2
+sleep 3
+shot ru_ru-tab2
+gui 3
+sleep 3
+shot ru_ru-tab3
+gui 4
+sleep 3
+shot ru_ru-tab4
+guiscale 3
+gui 0
+sleep 3
+shot ru_ru-tab0-g3
+close
+guiscale 2
+sleep 3
+shot ru_ru-bar
+
+lang uk_ua
+sleep 15
+guiscale 2
+gui 0
+sleep 3
+shot uk_ua-tab0
+gui 1
+sleep 3
+shot uk_ua-tab1
+gui 2
+sleep 3
+shot uk_ua-tab2
+gui 3
+sleep 3
+shot uk_ua-tab3
+gui 4
+sleep 3
+shot uk_ua-tab4
+guiscale 3
+gui 0
+sleep 3
+shot uk_ua-tab0-g3
+close
+guiscale 2
+sleep 3
+shot uk_ua-bar
+
+lang en_us
+sleep 10

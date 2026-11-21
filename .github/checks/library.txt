@@ -1,0 +1,65 @@
+# The song library with the demo's made-up songs (12 per page): the grid, holding Down to the end of a long list,
+# the shelf scrolled to its end, and the carousel.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/library.txt
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot library-grid
+
+# Down, one row at a time, past the first page: each new page should load and the selection carry on
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 1.5
+shot library-grid-down4
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 1.5
+shot library-grid-down10
+key end
+sleep 2
+shot library-grid-end
+
+# The shelf, scrolled to its end: "Loading…" (while a page comes) must show whole after the last column
+close
+set libraryView SHELF
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot library-shelf
+key end
+sleep 0.3
+shot library-shelf-end-a
+sleep 2
+shot library-shelf-end-b
+
+# The carousel
+close
+set libraryView CAROUSEL
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot library-carousel
+key right
+sleep 0.5
+key right
+sleep 1
+shot library-carousel-right2
+close
+set libraryView GRID

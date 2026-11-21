@@ -1,0 +1,35 @@
+# World layout, Flowing line on: a phrase in the other reading direction must stay on the line's rows (no row starting
+# far to the side), read in its own order, and touch nothing. Compare a branch with main by running it twice.
+# Run: gh workflow run screenshots.yml --ref main -f version=26.3 -f mod_ref=<branch or commit> -f script=.github/checks/world-mixed-rows.txt
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout WORLD
+set worldFlow true
+set worldClearMiddle true
+look 0 0
+sleep 6
+lines השירים שלנו עולים Under The Bright Night Sky כל הלילה עד הבוקר ועוד קצת אחרי זה כדי שהשורה תהיה ארוכה מאוד
+seek 0
+sleep 6
+shot mixed-he-level-a
+sleep 5
+shot mixed-he-level-b
+
+look 0 -30
+lines We keep on singing שיר של לילה ארוך all the way across the sky until the morning comes back again
+seek 0
+sleep 6
+shot mixed-en-up30-a
+sleep 5
+shot mixed-en-up30-b
+
+look 0 30
+lines We keep on singing שיר של לילה ארוך all the way across the sky until the morning comes back again
+seek 0
+sleep 6
+shot mixed-en-down30-a
+sleep 5
+shot mixed-en-down30-b
