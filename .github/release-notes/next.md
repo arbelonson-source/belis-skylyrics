@@ -171,6 +171,7 @@
 - **Tour on a Mac.** On a Mac, the tour's **Where the songs come from** page no longer cuts its text off with "…" in some languages, leaving out the line about the demo song: those texts are a little shorter, so every word fits above the **Demo song** button.
 - **Cut-off names and values.** A setting whose name ends in "…", and a read-only line cut short like the **Status**, now shows its whole text in a tooltip when you point at it, as a cut-off description already did. In the smallest window that happens to the Russian **Song name only on change** (Display tab), the German **Flash with the lyrics** (Look tab, with a crosshair picked) and the Spanish **Status** while the demo song plays.
 - **Links on the About tab.** After you click **LRCLIB**, the keyboard is on it: Enter opens LRCLIB again and the Narrator says "LRCLIB, 2 of 2", instead of Enter opening GitHub.
+- **Hats on a mob head or player head.** With a mob head or player head on, the hats now sit on top of it the way they sit on your bare head. Before, its corners stuck up through the brim of the **Top hat** and the edge of the **Propeller cap**, and a player head hid the **Flower crown**'s vine and leaves: the hats grew only as much as for a helmet, and Minecraft draws a worn head bigger than a helmet.
 
 ### Faster
 

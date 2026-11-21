@@ -189,4 +189,19 @@ class HatLayerTest {
 		assertTrue(HatLayer.LENS_Z * s < -helmetHalf - 0.01f, "the shades are in front of the helmet's face");
 		assertTrue(s < 1.3f, "not so big it looks wrong");
 	}
+
+	@Test
+	void everyHatSitsOutsideAWornMobHeadOrPlayerHead() {
+		// Minecraft draws a worn mob head or player head as the head made 1.1875 times as big from the neck: its top is 8
+		// pixels up, and a player head's outer layer reaches a quarter pixel further up and out. That is higher than a helmet.
+		float px = 1.1875f / 16, top = -8.25f * px, half = 4.25f * px;
+		float c = HatLayer.hatPivot(true), s = HatLayer.hatScale(true, true);
+		for (float y : new float[] {HatLayer.TOP_HAT_BRIM_Y, HatLayer.CAP_Y, HatLayer.FLOWER_Y}) {
+			assertTrue(c + (y - c) * s < top - 0.005f, "a hat at y=" + y + " sits above a worn player head, at " + (c + (y - c) * s));
+		}
+		assertTrue(HatLayer.PUMPKIN_HALF * s > half + 0.03f, "the pumpkin hat is clear of its sides");
+		assertTrue(HatLayer.LENS_Z * s < -half - 0.01f, "the shades are in front of its face");
+		assertTrue(HatLayer.CUP_IN * s > half, "the headphones' ear cups are outside its sides");
+		assertTrue(s < 1.3f, "not so big it looks wrong");
+	}
 }
