@@ -2236,10 +2236,14 @@ final class WorldWords {
 		void swing(float turn, float tilt) {
 			left += turn;
 			cursor += turn;
+			// A phrase against the line that is half written keeps the rest of its room beside its first word (NaN, no
+			// room taken yet, stays NaN)
+			runAt += turn;
 			float shown = shownPitch(top, clip, tilt);
 			float moved = shown - top;
 			clip = top + clip + tilt - shown;
 			top += moved;
+			runPitch += moved;
 			above += moved;
 			low += moved;
 			home += moved;
