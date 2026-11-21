@@ -110,4 +110,37 @@ class ControlsTest {
 		assertEquals(3, size[0], 0.051);
 		row.release();
 	}
+
+	private static Controls.Info info(String label, String value, int rowW) {
+		Controls.Info row = new Controls.Info(label, null, () -> value);
+		row.x = 0;
+		row.y = 0;
+		row.w = rowW;
+		row.prepare(FONT);
+		return row;
+	}
+
+	@Test
+	void aStatusLineUsesTheRoomItsNameLeaves() {
+		// The Music tab's Status in Spanish with the demo song on, in a full-size window: it was cut at 160 px
+		String demo = "Reproduciendo la canción de prueba";
+		Controls.Info row = info("Estado", demo, 320);
+		assertFalse(row.stacked());
+		assertEquals(FONT.width(demo), row.controlW(FONT), "the whole line fits beside its name");
+
+		// longer than the room: cut where the name ends, the name kept whole beside it
+		String mac = "No Spotify or Music playing (browsers can't be read on a Mac)";
+		Controls.Info macRow = info("Status", mac, 320);
+		assertFalse(macRow.stacked());
+		assertEquals(320 - 28 - FONT.width("Status"), macRow.controlW(FONT));
+	}
+
+	@Test
+	void aShortStatusLineOrANarrowRowKeepsTheOldLayout() {
+		assertEquals(FONT.width("No music playing"), info("Status", "No music playing", 320).controlW(FONT));
+		// in the smallest window the line still goes under its name
+		Controls.Info narrow = info("Estado", "Reproduciendo la canción de prueba", 184);
+		assertTrue(narrow.stacked());
+		assertEquals(160, narrow.controlW(FONT));
+	}
 }

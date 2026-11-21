@@ -164,6 +164,7 @@
 - **Top bar note without a cover.** On Minecraft 1.21.1 to 1.21.5, the note the top bar shows when a song has no album cover no longer blinks bright white for a moment as the bar appears or hides.
 - **Choices in a small window.** In a small window or at a big GUI scale, a choice whose names don't fit side by side even on a line of their own (in English the Look tab's **Colour** and **Font**, **Animation** on the Lyrics tab and the **Record card**'s **Corner**; more of them in longer languages) now shows the picked name between two arrows, like **Night sky**, instead of running off the left edge, where its first choices were cut away and couldn't be clicked.
 - **Sliders in a small window.** In a small window or at a big GUI scale, where a slider sits on a line under its name, a click on its name or description no longer grabs the slider and changes the setting; only the slider's own line does.
+- **Status line.** The Music tab's **Status** (and the other read-only lines, like **Right now**) now uses all the room beside its name instead of stopping at a fixed width, so the demo song line in Spanish and the "Can't reach music players" line in Spanish, French and Portuguese are no longer cut short, and on a Mac more of the "No Spotify or Music playing" note shows.
 
 ### Faster
 

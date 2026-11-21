@@ -945,14 +945,15 @@ final class Controls {
 			return Narration.join(narratedLabel(), value.get(), desc == null ? "" : desc.get());
 		}
 
+		/** As wide as the text, up to all the room the label leaves beside it (at least 160, where the label is cut instead). */
 		@Override
 		int controlWidth(Font font) {
-			return Math.min(160, font.width(value.get()));
+			return Math.min(font.width(value.get()), Math.max(160, w - 28 - font.width(label)));
 		}
 
 		@Override
 		void renderControl(Frame f) {
-			String text = Ui.clip(f.font(), value.get(), 160);
+			String text = Ui.clip(f.font(), value.get(), stacked() ? w - 20 : controlW(f.font()));
 			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), controlCy() - 4, Ui.MUTED, false);
 		}
 	}
