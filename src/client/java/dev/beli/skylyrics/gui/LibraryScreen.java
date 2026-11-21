@@ -42,7 +42,7 @@ import dev.beli.skylyrics.render.CoverCache;
 public final class LibraryScreen extends Screen {
 	private static final int HEADER_H = 52;
 	private static final int TEXT_H = 22;
-	private static final int SEARCH_W = 130;
+	static final int SEARCH_W = 130;
 	private static final int SHELF_COVER = 84;
 	/** Space under a shelf row for the floor line. */
 	private static final int SHELF_FLOOR = 12;
