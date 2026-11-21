@@ -40,7 +40,6 @@ final class Controls {
 		final String label;
 		@Nullable Supplier<String> desc;
 		int x, y, w;
-		boolean descClipped;
 		private BooleanSupplier shownIf = () -> true;
 		private boolean searchWhenHidden = true;
 		private @Nullable String narratedName;
@@ -218,17 +217,53 @@ final class Controls {
 
 		abstract void renderControl(Frame f);
 
+		/** Room for the name and the description: the whole row when the control sits under them, else up to the control. */
+		int textRoom(Font font) {
+			return stacked() ? w - 20 : w - 20 - controlW(font) - 8;
+		}
+
+		private int labelWidth(Font font) {
+			return isPrepared() ? preparedLabelW : font.width(label);
+		}
+
+		/**
+		 * The whole of each text this row cuts short with "…" for want of room: its name first, then its value, then its
+		 * description. The screen shows them in a tooltip while the mouse is on the row; empty when everything fits.
+		 */
+		final List<String> cutTexts(Font font) {
+			int room = textRoom(font);
+			List<String> cut = new java.util.ArrayList<>(3);
+			if (!label.isEmpty() && labelWidth(font) > room) {
+				cut.add(label);
+			}
+			String value = cutValue(font);
+			if (!value.isEmpty()) {
+				cut.add(value);
+			}
+			if (desc != null) {
+				String d = desc.get();
+				if (font.width(d) > room) {
+					cut.add(d);
+				}
+			}
+			return cut;
+		}
+
+		/** The control's own text when it is drawn cut short, like a long Status line; empty for the rest. */
+		String cutValue(Font font) {
+			return "";
+		}
+
 		void render(Frame f) {
 			Font font = f.font();
-			int textW = stacked() ? w - 20 : w - 20 - controlW(font) - 8;
-			int labelW = isPrepared() ? preparedLabelW : font.width(label);
+			int textW = textRoom(font);
+			int labelW = labelWidth(font);
 			if (desc == null) {
 				f.g().drawString(font, Ui.visual(Ui.clip(font, label, textW, labelW)), x + 10, y + 8, Ui.TEXT, false);
 			} else {
 				String d = desc.get();
 				int descW = font.width(d);
 				f.g().drawString(font, Ui.visual(Ui.clip(font, label, textW, labelW)), x + 10, y + 7, Ui.TEXT, false);
-				descClipped = descW > textW;
 				f.g().drawString(font, Ui.visual(Ui.clip(font, d, textW, descW)), x + 10, y + 18, Ui.MUTED, false);
 			}
 			renderControl(f);
@@ -951,9 +986,20 @@ final class Controls {
 			return Math.min(font.width(value.get()), Math.max(160, w - 28 - font.width(label)));
 		}
 
+		/** Room for the text: the whole row on a line of its own under the name, else what controlWidth gives it. */
+		private int valueRoom(Font font) {
+			return stacked() ? w - 20 : controlW(font);
+		}
+
+		@Override
+		String cutValue(Font font) {
+			String text = value.get();
+			return font.width(text) > valueRoom(font) ? text : "";
+		}
+
 		@Override
 		void renderControl(Frame f) {
-			String text = Ui.clip(f.font(), value.get(), stacked() ? w - 20 : controlW(f.font()));
+			String text = Ui.clip(f.font(), value.get(), valueRoom(f.font()));
 			f.g().drawString(f.font(), Ui.visual(text), x + w - 10 - f.font().width(text), controlCy() - 4, Ui.MUTED, false);
 		}
 	}
