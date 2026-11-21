@@ -103,4 +103,39 @@ class SmallWindowFitTest {
 		assertTrue(measured >= 20, "only " + measured + " tab rows measured");
 		assertTrue(under.isEmpty(), "the library's tabs run under the Grid, Shelf and Carousel buttons: " + under);
 	}
+
+	@Test
+	void aLibraryMessageShowsEveryWord() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> Math.max(0, width(Character.toString(cp))));
+		List<String> cut = new ArrayList<>();
+		int measured = 0;
+		for (int screenW : new int[] {SMALLEST, SMALL}) {
+			int room = LibraryScreen.toastRoom(LibraryScreen.panelW(screenW));
+			for (String lang : all.keySet()) {
+				// What the library says after a click on a song or a playlist: the made-up songs, the songs heard lately, Spotify
+				List<String> messages = List.of(shown(all, lang, "Starting %s…", "Neon Skyline"), shown(all, lang, "Playing %s", "Neon Skyline"),
+						shown(all, lang, "These songs are made up, so nothing plays"),
+						shown(all, lang, "Spotify keeps this playlist's songs hidden, so it plays from the top"),
+						shown(all, lang, "This player can't start songs from here"), shown(all, lang, "%s isn't open, so it can't play this", "Spotify"),
+						shown(all, lang, "Spotify didn't start the song, try again"), shown(all, lang, "Spotify Premium is needed to start songs"),
+						shown(all, lang, "Spotify didn't allow that on this device"), shown(all, lang, "Open Spotify on your computer or phone first"),
+						shown(all, lang, "Sign in to Spotify on the Music tab to see your songs here"), shown(all, lang, "Can't reach the internet or Spotify"));
+				for (String message : messages) {
+					if (width(message) < 0) {
+						continue;
+					}
+					measured++;
+					List<String> lines = LibraryScreen.toastLines(splitter, message, room);
+					String said = String.join("", lines).replaceAll("\\s", "");
+					boolean fits = lines.stream().allMatch(l -> width(l) <= room);
+					if (!said.equals(message.replaceAll("\\s", "")) || !fits) {
+						cut.add(screenW + " wide, " + lang + " \"" + String.join(" / ", lines) + "\" (" + width(message) + " for " + room + ")");
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 300, "only " + measured + " messages measured");
+		assertTrue(cut.isEmpty(), cut.size() + " library messages are cut short, like: " + cut.subList(0, Math.min(8, cut.size())));
+	}
 }

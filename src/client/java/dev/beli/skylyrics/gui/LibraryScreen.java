@@ -1136,16 +1136,64 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
+	/** Room for the toast's words in a panel this wide. */
+	static int toastRoom(int pw) {
+		return pw - 60;
+	}
+
+	/**
+	 * The toast's words in lines that fit {@code room}: one line when it fits, else two. Only a message too long even for
+	 * two keeps the end of its second line cut with "…".
+	 */
+	static List<String> toastLines(net.minecraft.client.StringSplitter splitter, String text, int room) {
+		List<String> lines = splitter.splitLines(text, room, net.minecraft.network.chat.Style.EMPTY).stream()
+				.map(line -> line.getString().strip()).toList();
+		if (lines.isEmpty()) {
+			return List.of(text);
+		}
+		if (lines.size() <= 2) {
+			return lines;
+		}
+		String rest = String.join(" ", lines.subList(1, lines.size()));
+		return List.of(lines.get(0), Ui.clipBy(rest, room, t -> (int) Math.ceil(splitter.stringWidth(t))));
+	}
+
+	/** The toast's lines as last worked out, and for which message, room and font: worked out again only when one changes. */
+	private List<String> toastShownLines = List.of();
+	private String toastLinesFor = "";
+	private int toastLinesRoom = -1;
+	private @Nullable Object toastLinesFont;
+
+	private List<String> toastLines() {
+		int room = toastRoom(pw);
+		if (!toast.equals(toastLinesFor) || room != toastLinesRoom || font != toastLinesFont) {
+			toastShownLines = toastLines(font.getSplitter(), toast, room);
+			toastLinesFor = toast;
+			toastLinesRoom = room;
+			toastLinesFont = font;
+		}
+		return toastShownLines;
+	}
+
 	private void renderToast(GuiGraphics g) {
 		float shown = toastShown();
 		if (toast.isEmpty() || toastAge >= shown) {
 			return;
 		}
 		float a = Mth.clamp(Math.min(toastAge * 6, (shown - toastAge) * 3), 0, 1);
-		String text = Ui.clip(font, toast, pw - 60);
-		int w = font.width(text) + 20, x = px + (pw - w) / 2, y = py + ph - 24 + Math.round((1 - a) * 6);
-		Ui.rect(g, x, y, w, 16, 8, Ui.alpha(Ui.CONTROL_HOVER, a));
-		g.drawCenteredString(font, Ui.visual(text), px + pw / 2, y + 4, Ui.alpha(Ui.TEXT, a));
+		List<String> lines = toastLines();
+		int textW = 0;
+		for (String line : lines) {
+			textW = Math.max(textW, font.width(line));
+		}
+		// One line sits where it always did (16 high, its bottom 8 above the panel's); a second line grows it upward
+		int h = 6 + 10 * lines.size();
+		int w = textW + 20, x = px + (pw - w) / 2, y = py + ph - 8 - h + Math.round((1 - a) * 6);
+		Ui.rect(g, x, y, w, h, 8, Ui.alpha(Ui.CONTROL_HOVER, a));
+		boolean rtl = Ui.paragraphRtl(toast);
+		for (int i = 0; i < lines.size(); i++) {
+			g.drawCenteredString(font, Ui.visual(lines.get(i), rtl), px + pw / 2, y + 4 + 10 * i, Ui.alpha(Ui.TEXT, a));
+		}
 	}
 
 	private void say(String text) {
