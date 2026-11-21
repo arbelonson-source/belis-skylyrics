@@ -293,4 +293,37 @@ class TranslationFitTest {
 		assertTrue(measured >= 1000, "only " + measured + " texts measured");
 		assertTrue(off.isEmpty(), off.size() + " tooltips run off the screen, like: " + off.subList(0, Math.min(6, off.size())));
 	}
+
+	@Test
+	void theTourSongsPageShowsEveryWordAboveTheDemoButton() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		List<String> cut = new ArrayList<>();
+		int measured = 0;
+		// The tour's panel is 300 x 190 in every window from 320 x 240 up; 320 x 180 (Force Unicode Font) squeezes it
+		for (int screenH : new int[] {240, 180}) {
+			int pw = IntroScreen.fit(SMALLEST_SCREEN, 300), ph = IntroScreen.fit(screenH, 190);
+			int py = Math.max(4, (screenH - ph) / 2);
+			for (String lang : all.keySet()) {
+				for (String first : List.of("skylyrics.ui.play_a_song_in_the_music_or_spotify_app_browsers", // the Mac text
+						"skylyrics.ui.play_a_song_in_spotify_or_your_music_player_and")) {
+					List<String> page = List.of(text(all, lang, first), text(all, lang, "skylyrics.ui.optional_spotify_web_needs_premium_and_a_free_de"),
+							text(all, lang, "skylyrics.ui.no_music_right_now_try_the_demo_song"));
+					if (page.stream().anyMatch(p -> width(p) < 0)) {
+						continue;
+					}
+					measured++;
+					// Drawn like IntroScreen.lines on page 3: 20 in from each side, from 38 down, stopping above the demo button
+					List<IntroScreen.Row> rows = IntroScreen.rows(page, pw - 40, py + IntroScreen.vy(38, ph), IntroScreen.textLimit(3, py, ph),
+							TranslationFitTest::width);
+					String shown = String.join("", rows.stream().map(IntroScreen.Row::text).toList()).replaceAll("\\s", "");
+					if (!shown.equals(String.join("", page).replaceAll("\\s", ""))) {
+						cut.add(screenH + " high, " + lang + (first.contains("music_or_spotify_app") ? " (Mac)" : "") + " ends \""
+								+ rows.get(rows.size() - 1).text() + "\"");
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 20, "only " + measured + " pages measured");
+		assertTrue(cut.isEmpty(), "the tour's songs page cuts its text off: " + cut);
+	}
 }

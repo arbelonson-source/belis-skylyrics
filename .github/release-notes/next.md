@@ -165,6 +165,7 @@
 - **Hebrew and Arabic artists in the top bar.** When the top bar shows the song's name and a Hebrew or Arabic artist, the dot between them now sits between the name and the artist, instead of after the artist with the artist run straight into the name (the same for an artist written in digits only, like "112", in a Hebrew or Arabic game). A shortened artist keeps its "…" at the end it is read to.
 - **Top bar note without a cover.** On Minecraft 1.21.1 to 1.21.5, the note the top bar shows when a song has no album cover no longer blinks bright white for a moment as the bar appears or hides.
 - **Tour arrows in Hebrew.** With the game in Hebrew, the "<" and ">" buttons on the tour's **Pick a look** page now point outwards (the previous look on the left, the next on the right) instead of both pointing in at the look's name.
+- **Tour on a Mac in Spanish and Portuguese.** On a Mac with the game in Spanish or Portuguese, the tour's **Where the songs come from** page no longer cuts its text off with "…" and leaves out the line about the demo song: the texts are a little shorter, so every word fits above the **Demo song** button.
 
 ### Faster
 
