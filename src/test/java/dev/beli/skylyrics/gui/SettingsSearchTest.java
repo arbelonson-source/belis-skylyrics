@@ -73,6 +73,21 @@ class SettingsSearchTest {
 	}
 
 	@Test
+	void lettersAKeyboardTypesAnotherWayStillMatch() {
+		// Ukrainian labels are written with ’ (Сузір’я, М’які краї, Об’єм); keyboards type ' or ʼ
+		assertTrue(SettingsSearch.matches("Сузір’я", "сузір'я"), "' finds ’");
+		assertTrue(SettingsSearch.matches("М’які краї", "мʼякі"), "ʼ finds ’");
+		assertTrue(SettingsSearch.matches("Об'єм", "об’єм"), "’ finds '");
+		// A Swiss keyboard has no ß, and capitals have none either: Grösse and GROSSE find Größe
+		assertTrue(SettingsSearch.matches("Größe", "grösse"), "ss finds ß");
+		assertTrue(SettingsSearch.matches("Größe", "GROSSE"), "capitals find ß");
+		assertTrue(SettingsSearch.matches("Leistengrösse", "größe"), "ß finds ss");
+		// French Cœur typed without the joined letters
+		assertTrue(SettingsSearch.matches("Cœur", "coeur"), "oe finds œ");
+		assertFalse(SettingsSearch.matches("Größe", "grosser"));
+	}
+
+	@Test
 	void accentsNiqqudAndFinalLettersAreFolded() {
 		assertTrue(SettingsSearch.matches("M\u00fasica", "musica"));
 		assertTrue(SettingsSearch.matches("Music", "m\u00fasic"));
