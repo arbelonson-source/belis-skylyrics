@@ -207,4 +207,32 @@ class TranslationFitTest {
 		assertTrue(measured >= 10, "only " + measured + " texts measured");
 		assertTrue(under.isEmpty(), "Reset all runs under Done, so a click on Done resets every setting: " + under);
 	}
+
+	@Test
+	void thePreviewHintFitsTheSmallestWindow() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> ADVANCE.getOrDefault(cp, 0).floatValue());
+		List<String> off = new ArrayList<>();
+		int measured = 0;
+		for (String lang : all.keySet()) {
+			for (String key : List.of("skylyrics.ui.nothing_is_playing_turn_on_the_demo_song_on_the",
+					"skylyrics.ui.previewing_click_or_press_any_key_to_go_back")) {
+				String hint = text(all, lang, key);
+				if (width(hint) < 0) {
+					continue;
+				}
+				measured++;
+				List<String> lines = SkyLyricsScreen.previewLines(splitter, hint, SMALLEST_SCREEN);
+				assertEquals(hint.replaceAll("\\s", ""), String.join("", lines).replaceAll("\\s", ""), lang + ": every word is shown");
+				for (String line : lines) {
+					// the pill is 24 wider than its text and keeps 8 from each edge of the screen
+					if (width(line) + 24 > SMALLEST_SCREEN - 16) {
+						off.add(lang + " \"" + line + "\" " + (width(line) + 24) + "px");
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 10, "only " + measured + " texts measured");
+		assertTrue(off.isEmpty(), "the preview hint runs off the sides of a " + SMALLEST_SCREEN + " wide screen: " + off);
+	}
 }

@@ -1442,16 +1442,36 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
+	/** Room the preview hint's pill takes beside its text (17 on the left with the dot, 7 on the right), and from each screen edge. */
+	private static final int PREVIEW_PAD = 24;
+	private static final int PREVIEW_EDGE = 8;
+
+	/** The preview hint in lines that fit a screen {@code screenW} wide, pill and edges included. */
+	static List<String> previewLines(net.minecraft.client.StringSplitter splitter, String text, int screenW) {
+		int room = Math.max(1, screenW - 2 * PREVIEW_EDGE - PREVIEW_PAD);
+		return splitter.splitLines(text, room, net.minecraft.network.chat.Style.EMPTY).stream()
+				.map(net.minecraft.network.chat.FormattedText::getString).toList();
+	}
+
 	private void renderPreviewHint(GuiGraphics g) {
 		boolean nothing = mod.tracker().track() == Track.NONE;
 		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song on the Music tab to try it.")
 				: Tr.t("Previewing. Click or press any key to go back.");
-		int w = font.width(text) + 24;
+		List<String> lines = previewLines(font.getSplitter(), text, width);
+		boolean rtl = Ui.paragraphRtl(text);
+		int textW = 0;
+		for (String line : lines) {
+			textW = Math.max(textW, font.width(line));
+		}
+		int w = textW + PREVIEW_PAD;
+		int h = 8 + 10 * lines.size();
 		int x = (width - w) / 2;
-		int y = height - 44;
-		Ui.rect(g, x, y, w, 18, 9, 0xE0141019);
+		int y = height - 34 - h; // a longer hint grows upward from where the one line sits
+		Ui.rect(g, x, y, w, h, 9, 0xE0141019);
 		Ui.rect(g, x + 8, y + 7, 4, 4, 2, Ui.ACCENT);
-		g.drawString(font, Ui.visual(text), x + 17, y + 5, Ui.TEXT, false);
+		for (int i = 0; i < lines.size(); i++) {
+			g.drawString(font, Ui.visual(lines.get(i), rtl), x + 17, y + 5 + 10 * i, Ui.TEXT, false);
+		}
 	}
 
 	// ---- Input ------------------------------------------------------------------------------------
