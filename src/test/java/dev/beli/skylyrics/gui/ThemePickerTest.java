@@ -3,6 +3,7 @@ package dev.beli.skylyrics.gui;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 
@@ -46,5 +47,17 @@ class ThemePickerTest {
 		assertSame(ALL.get(0), ThemePicker.step(on(1), false));
 		assertSame(ALL.get(0), ThemePicker.step(on(ALL.size() - 1), true));
 		assertSame(ALL.get(ALL.size() - 1), ThemePicker.step(on(0), false));
+	}
+
+	@Test
+	void theSearchFindsTheLookPickerByAnyLooksName() {
+		ThemePicker picker = new ThemePicker(new SkyLyricsConfig());
+		// what the settings search looks through for this row: its words as shown, then in English
+		String text = picker.searchText() + " " + picker.englishSearchText();
+		assertTrue(SettingsSearch.matches(text, "dreamy"), "Dreamy");
+		for (Theme theme : ALL) {
+			assertTrue(SettingsSearch.matches(text, theme.name().get()), theme.name().get());
+		}
+		assertTrue(SettingsSearch.matches(text, "look"), "its own name still finds it");
 	}
 }

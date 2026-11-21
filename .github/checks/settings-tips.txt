@@ -1,0 +1,43 @@
+# Settings search by a look's name and the tooltip of a cut-off description (it wraps onto several lines and stays on
+# screen). The mouse sits in the middle of the window, so the tooltip belongs to whichever row is there; each search
+# puts a different long description near it. German and Russian at GUI scale 4 (320x180) and 3.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/settings-tips.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+lang de_de
+sleep 15
+guiscale 4
+gui 0
+sleep 3
+search Verträumt
+sleep 2
+shot look-search-de
+search Höhlen
+sleep 2
+shot tips-de-caves
+search Verlauf
+sleep 2
+shot tips-de-history
+search Songs
+sleep 2
+shot tips-de-songs
+guiscale 3
+sleep 2
+search Höhlen
+sleep 2
+shot tips-de-caves-g3
+close
+lang ru_ru
+sleep 15
+guiscale 4
+gui 0
+sleep 3
+search Грёзы
+sleep 2
+shot look-search-ru
+search пещер
+sleep 2
+shot tips-ru-caves
+close

@@ -38,6 +38,22 @@ final class ThemePicker extends Controls.Row {
 		return 0;
 	}
 
+	/** Every look's name as {@code name} gives it, for the search. */
+	static String names(java.util.function.Function<Theme, String> name) {
+		return String.join(" ", Themes.ALL.stream().map(name).toList());
+	}
+
+	/** The search finds the picker by any look's name too ("Dreamy", "Verträumt"), like the choices of other pickers. */
+	@Override
+	String searchText() {
+		return super.searchText() + " " + names(theme -> theme.name().get());
+	}
+
+	@Override
+	String englishSearchText() {
+		return super.englishSearchText() + " " + names(theme -> Tr.english(theme.name().get()));
+	}
+
 	@Override
 	String narration() {
 		@Nullable Theme active = Themes.active(cfg);
