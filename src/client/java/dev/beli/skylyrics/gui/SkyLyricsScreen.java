@@ -220,6 +220,8 @@ public final class SkyLyricsScreen extends Screen {
 					: List.of("Spotify", "Firefox", "Chrome", "mpv", "VLC", "Spotify Web");
 
 	private static final int SIDEBAR_W = 96;
+	/** Width of the Lyrics switch under the tabs. */
+	static final int MASTER_TOGGLE_W = SIDEBAR_W - 8;
 	private static final int TAB_H = 20;
 	private static final int SEARCH_Y = 35;
 	private static final int SEARCH_H = 15;
@@ -903,7 +905,7 @@ public final class SkyLyricsScreen extends Screen {
 			scrollToEnd = false;
 		}
 		masterToggle.x = px + 4;
-		masterToggle.w = SIDEBAR_W - 8;
+		masterToggle.w = MASTER_TOGGLE_W;
 		masterToggle.y = py + ph - 30;
 	}
 

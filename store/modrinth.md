@@ -57,7 +57,7 @@ It's free and open source, and it always will be.
 - **Music controls**: play, pause, skip and see the song's progress from the settings screen or with keys you choose.
 - **Pinning and more**: **View lock** keeps the lyrics where you looked, **Show underground too** keeps them visible in caves, an optional **Record card** shows the song with the lines around the one being sung, and a **Recently heard** list in the song library works without Spotify.
 - **Settings with the keyboard** and the Narrator: Tab or the arrow keys, Enter or Space, Page Up and Page Down, Ctrl+Tab, Ctrl+F.
-- **English, Spanish, Brazilian Portuguese and Hebrew** settings screen, following your Minecraft language.
+- **English, Spanish, Portuguese, German, French and Hebrew** settings screen, following your Minecraft language.
 - **Spotify Web** follows your Spotify account, even when the song plays on your phone. It needs Spotify Premium and a free developer app, set up once on the **Music** tab. The song library (press **N**) shows your liked songs and playlists.
 - **Demo song** with made-up lyrics, for trying the settings without music.
 - Works with Sodium, Iris and shader packs. Client side only, so it works in single player and on any server.

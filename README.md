@@ -40,7 +40,7 @@ Download it from the [Releases page](https://github.com/arbelonson-source/belis-
 - Smooth letters for Latin, Cyrillic (Russian, Ukrainian and more), Greek, Vietnamese, Hebrew and Arabic lyrics. Chinese, Japanese, Korean, Thai and emoji are drawn with Minecraft's own font.
 - A short welcome tour the first time you start the game lets you pick a look and a layout, and tells you how your music is found.
 - Updates itself: a new version downloads in the background and a pop-up tells you to restart Minecraft. An update that needs a newer Minecraft or Fabric API than yours isn't installed: the pop-up tells you what to update, and your working version stays. On the **About** tab you can set **Updates** to **Tell me** for just a notice, or turn it off.
-- English, Spanish, Portuguese (Brazil and Portugal) and Hebrew. The settings follow your Minecraft language.
+- English, Spanish, Portuguese (Brazil and Portugal), German, French and Hebrew. The settings follow your Minecraft language.
 
 ## Pictures
 

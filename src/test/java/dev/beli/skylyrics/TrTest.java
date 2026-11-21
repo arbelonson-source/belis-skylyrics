@@ -107,6 +107,8 @@ class TrTest {
 		}
 		assertTrue(files.contains("he_il.json"), "he_il.json missing");
 		assertTrue(files.contains("es_es.json"), "es_es.json missing");
+		assertTrue(files.contains("de_de.json"), "de_de.json missing");
+		assertTrue(files.contains("fr_fr.json"), "fr_fr.json missing");
 		for (String file : files) {
 			Map<String, String> tr = lang(file);
 			for (String k : en.keySet()) {
@@ -125,7 +127,7 @@ class TrTest {
 
 	@Test
 	void regionalCopiesMatchTheirBaseLanguage() throws IOException {
-		// Minecraft falls back to en_us (not es_es) for es_mx etc., so the copies must be byte-identical.
+		// Minecraft falls back to en_us (not es_es) for es_mx, de_at, fr_ca etc., so the copies must be byte-identical.
 		List<String> files = new ArrayList<>();
 		try (Stream<Path> list = Files.list(LANG)) {
 			list.map(f -> f.getFileName().toString()).filter(f -> f.endsWith(".json")).sorted().forEach(files::add);
