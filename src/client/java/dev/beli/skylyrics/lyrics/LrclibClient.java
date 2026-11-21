@@ -239,11 +239,14 @@ public final class LrclibClient implements LyricsSource {
 			}
 			int score = 0;
 			boolean lengthScored = false;
-			if (hasText(o, "syncedLyrics")) {
+			// Scored by what would be shown: a synced copy of only time stamps, only tags or words without times is no
+			// synced lyrics, and must not beat a copy that has them
+			Lyrics shown = LyricsService.parse(toResult(o), Math.round(seconds * 1000));
+			if (shown.synced() && !shown.isEmpty()) {
 				score += 100;
-			} else if (hasText(o, "plainLyrics")) {
+			} else if (!shown.isEmpty()) {
 				score += 20;
-			} else if (!bool(o, "instrumental")) {
+			} else if (!shown.instrumental()) {
 				continue;
 			}
 			Double duration = duration(o);

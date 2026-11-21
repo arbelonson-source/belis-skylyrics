@@ -183,6 +183,7 @@
 - **Turning sky effects off at night.** Turning **Constellations** on or off while they are in view now fades them in or out like the rest of the sky instead of making them pop. Turning off the last sky effect (**Night sky** Off with **Constellations**, **Shooting stars** and **Twinkling stars** off, or **Constellations** off with **Night sky** already Off) now fades the sky out instead of cutting it off at once.
 - **Hide in caves and cave water.** With **Hide in caves** on, putting your head under the water of a pool or lake in a dark cave no longer brings the lyrics, the top bar and the **Record card** back until you come up again. Diving in open water still doesn't hide them, and swimming out from under cover into open water shows them again before you surface.
 - **Hide in menus and F3 + Esc.** With **Hide in menus** on, pausing a single-player game with F3 + Esc (which stops the game without opening the menu) no longer hides the lyrics, since no menu is on the screen. The pause menu (Esc, or the game losing focus) still hides them.
+- **Real lyrics over an empty copy.** When the lyrics site (LRCLIB) has several copies of a song and one of them holds only time stamps, only tags or words without times, that copy no longer wins over one with real timed words just because its length is a little closer. Before, such a song could show "instrumental" for good, or no lyrics, although its lyrics were there.
 
 ### Faster
 
