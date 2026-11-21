@@ -125,6 +125,8 @@ public final class NeteaseClient implements LyricsSource {
 		double seconds = track.lengthMs() / 1000.0;
 		long best = -1;
 		double bestDiff = Double.MAX_VALUE;
+		// With no artist tag only the length ties a song to the track: two artists that fit it means none, like on the main site
+		java.util.Set<String> fittingArtists = new java.util.HashSet<>();
 		for (JsonElement el : songs) {
 			if (!(el instanceof JsonObject song) || !TitleCleaner.sameSong(track.title(), string(song, "name"))) {
 				continue;
@@ -142,12 +144,23 @@ public final class NeteaseClient implements LyricsSource {
 			if (!key(TitleCleaner.forSearch(string(song, "name"))).equals(wantTitle)) {
 				rank += EXACT_TITLE_RANK;
 			}
+			if (ok && wantArtist.isEmpty()) {
+				fittingArtists.add(firstArtist(song));
+			}
 			if (ok && rank < bestDiff) {
 				best = songId;
 				bestDiff = rank;
 			}
 		}
-		return best;
+		return fittingArtists.size() > 1 ? -1 : best;
+	}
+
+	/** The song's first artist as a {@link #key}, or "" when it names none. */
+	private static String firstArtist(JsonObject song) {
+		if (song.get("artists") instanceof JsonArray artists && !artists.isEmpty() && artists.get(0) instanceof JsonObject o) {
+			return key(string(o, "name"));
+		}
+		return "";
 	}
 
 	private static boolean sameArtist(JsonObject song, String wantArtist) {
