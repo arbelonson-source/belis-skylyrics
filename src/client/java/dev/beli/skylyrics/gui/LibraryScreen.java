@@ -294,13 +294,18 @@ public final class LibraryScreen extends Screen {
 		return Math.min(460, screenW - 16);
 	}
 
+	/** The width the songs get in a panel this wide. */
+	static int viewWidth(int pw) {
+		return pw - 24;
+	}
+
 	private void layout() {
 		pw = panelW(width);
 		ph = Math.min(300, height - 16);
 		px = (width - pw) / 2;
 		py = (height - ph) / 2 + Math.round((1 - openAnim) * 8);
 		viewX = px + 12;
-		viewW = pw - 24;
+		viewW = viewWidth(pw);
 		viewY = py + HEADER_H + 6 + bannerH();
 		viewH = ph - HEADER_H - 12 - bannerH();
 		cols = LibraryGrid.columns(viewW);
@@ -1019,7 +1024,18 @@ public final class LibraryScreen extends Screen {
 			return new String[] {item.title(), item.artists()};
 		}
 		LibraryPlaylist list = (LibraryPlaylist) entry;
-		return new String[] {list.name(), list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs())};
+		return new String[] {list.name(), songWords(list)};
+	}
+
+	/** How many songs a playlist has, in words: "13 songs". */
+	private static String songWords(LibraryPlaylist list) {
+		return list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs());
+	}
+
+	/** A playlist's song count under its card in the grid: {@code words} ("13 songs") when that fits {@code room}, else the number after a note ("♪ 13"). */
+	static String songCount(String words, int songs, int room, java.util.function.ToIntFunction<String> width) {
+		// The note fits any count in any language, where "13 canciones" ended in "…" on a small card
+		return width.applyAsInt(words) <= room ? words : "♪ " + songs;
 	}
 
 	/** The letter drawn on a card without a cover, by title: worked out once, not every frame. */
@@ -1045,7 +1061,7 @@ public final class LibraryScreen extends Screen {
 		} else {
 			LibraryPlaylist list = (LibraryPlaylist) entry;
 			title = list.name();
-			under = list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs());
+			under = songCount(songWords(list), list.songs(), size, font::width);
 			colorKey = list.name();
 			coverUrl = list.coverUrl();
 		}
