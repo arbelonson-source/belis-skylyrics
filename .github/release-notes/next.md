@@ -185,6 +185,7 @@
 - **Hide in menus and F3 + Esc.** With **Hide in menus** on, pausing a single-player game with F3 + Esc (which stops the game without opening the menu) no longer hides the lyrics, since no menu is on the screen. The pause menu (Esc, or the game losing focus) still hides them.
 - **Real lyrics over an empty copy.** When the lyrics site (LRCLIB) has several copies of a song and one of them holds only time stamps, only tags or words without times, that copy no longer wins over one with real timed words just because its length is a little closer. Before, such a song could show "instrumental" for good, or no lyrics, although its lyrics were there.
 - **Backup lyrics for a song with no artist.** A song with no artist tag (a browser tab, an untagged file) whose title two artists share at about the same length no longer gets one of their lyrics from the backup site (NetEase). It now shows none, as the main site already did.
+- **Artists whose name starts with "&".** An artist whose name starts with "&" no longer gets another band's lyrics for a song of the same name. Cutting a credit like "A, B" down to its first artist used to leave such a name empty, and the lookup then searched by the title alone.
 
 ### Faster
 

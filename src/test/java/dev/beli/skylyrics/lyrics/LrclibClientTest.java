@@ -453,4 +453,18 @@ class LrclibClientTest {
 		// Alone, a copy of only time stamps still counts as instrumental, as before
 		assertTrue(LyricsService.parse(findWith(TRACK, hit("A Made-Up Song", BAND, 200, "[00:01.00]\\n[00:30.00]")), 200_000).instrumental());
 	}
+
+	@Test
+	void anArtistNameThatStartsWithAnAmpersandIsNeverLeftOutOfTheSearch() throws Exception {
+		List<String> queries = new CopyOnWriteArrayList<>();
+		// Like LRCLIB: a search naming the artist finds only that artist's songs, one without finds another band's song of that name
+		searchByQuery = q -> {
+			queries.add(q);
+			return q.contains("&Nova") ? "[]" : "[" + hit("Paper Lantern", "Someone Else", 200, "[00:01.00]Another band's made-up line") + "]";
+		};
+		assertFalse(client.find(song("Paper Lantern", "&Nova", 200)).found());
+		for (String q : queries) {
+			assertTrue(q.contains("&Nova"), q);
+		}
+	}
 }
