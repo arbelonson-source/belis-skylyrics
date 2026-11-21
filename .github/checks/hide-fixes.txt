@@ -1,0 +1,60 @@
+# Hide rule fixes of fix/hide99. Compare the branch with main by running it twice (the same version both times).
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch or commit> -f script=.github/checks/hide-fixes.txt
+#
+# 1 (hide-cave-*): Hide in caves on, in a sealed stone room 30 blocks up (no sky light inside), Record card on.
+#   -dry: standing on the floor, head in the air: no lyrics, no top bar, no Record card (both).
+#   -pool: the room filled with water over your head (blue underwater view): still nothing
+#   (main: the lyrics, the top bar and the Record card are back).
+#   -open: the roof taken off, head still under water: everything back (both), as open sky ends it.
+# 2 (hide-pause-*): Hide in menus on, back on the ground at night.
+#   -nomenu: the pause of F3 + Esc ("Game Paused" at the top, no buttons): the lyrics show in the sky.
+#   -menu: the pause menu with its buttons: no lyrics (both).
+#   main's test hook doesn't know "pause nomenu" and opens the full pause menu there, so on main both pictures show
+#   the menu; the unit test HideInMenusTest is the proof that main hid the lyrics for F3 + Esc.
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set recordCard true
+set cardLyrics true
+set hideInCaves true
+look 0 -20
+sleep 6
+
+# 1: a dark room, then a pool in it, then open sky over the pool
+cmd execute as @p at @p run fill ~-3 ~29 ~-3 ~3 ~34 ~3 minecraft:stone hollow
+cmd execute as @p at @p run tp @s ~ ~30 ~
+sleep 3
+seek 21
+sleep 2
+shot hide-cave-dry
+cmd execute as @p at @p run fill ~-2 ~ ~-2 ~2 ~2 ~2 minecraft:water
+sleep 3
+seek 21
+sleep 2
+shot hide-cave-pool
+cmd execute as @p at @p run fill ~-2 ~4 ~-2 ~2 ~4 ~2 minecraft:air
+sleep 3
+seek 21
+sleep 2
+shot hide-cave-open
+
+# 2: back down, F3 + Esc's pause and the pause menu
+cmd execute as @p at @p run tp @s ~ ~-30 ~
+set hideInCaves false
+set hideInMenus true
+look 0 -20
+sleep 3
+seek 21
+sleep 1
+pause nomenu
+sleep 2
+shot hide-pause-nomenu
+close
+sleep 1
+pause
+sleep 2
+shot hide-pause-menu
+close
+set hideInMenus false
