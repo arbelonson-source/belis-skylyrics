@@ -374,8 +374,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private int contentHeight(Shelf shelf) {
-		int rows = (shelf.items.size() + cols - 1) / cols;
-		return Math.max(0, rows * (cellH + LibraryGrid.GAP) - LibraryGrid.GAP) + 2 * GRID_PAD + (shelf.pending != null ? 16 : 0);
+		return LibraryGrid.contentHeight(shelf.items.size(), cols, cellH, GRID_PAD, shelf.pending != null, !shelf.error.isEmpty());
 	}
 
 	/** Room above and below the grid, so a hovered card's glow isn't cut off at the edge. */
@@ -455,7 +454,7 @@ public final class LibraryScreen extends Screen {
 			boolean nearEnd = switch (view()) {
 				case SHELF -> shelf.scrollTarget + shelfStride * 2 > maxScroll(shelf);
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
-				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
+				default -> LibraryGrid.nearEnd(shelf.scrollTarget, viewH, contentHeight(shelf), cellH, selected, shelf.items.size(), cols);
 			};
 			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt && shelf.failures < AUTO_RETRIES)) {
 				shelf.more();
