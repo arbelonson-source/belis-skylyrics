@@ -1,0 +1,64 @@
+# Lines layout fixes of fix/lines97. Compare the branch with main by running it twice.
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch or commit> -f script=.github/checks/lines-fixes.txt
+#
+# 1 (lines-intro, lines-rise_*): the demo song's first line comes at 2 s, too soon for the little notes. Before it the
+#   first line should wait dim one row BELOW the middle (main: dim in the middle), and the Rise burst should take it
+#   straight up (main: it drops about a row in the first frames, then rises back).
+# 2 (lines-closing-*): the demo song ends with an empty line at 1:14 (a closing pause). With the timing moved 5 s on,
+#   -before shows the notes and "Sing it back to me from where you are" above them; -after (about a second past the
+#   fade) should be empty sky (main: both still up).
+# 3 (lines-outro-*): test lines every 20 s, the last at 1:00. -sung shows it with the line before above it; -after
+#   (10 s later) should be empty sky (main: "Third test line" still up, faint, at the top).
+# 4 (lines-size3-*): Size 3 at the test game's FOV. Each row should fit across the screen with room at both sides
+#   (main: the rows run off the left and right edges).
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout LINES
+set animation RISE
+look 0 -22
+sleep 6
+
+# 1: the first line, before and as it starts
+seek 0
+sleep 0.5
+shot lines-intro
+burstat lines-rise 12 40
+wait burst lines-rise wrote
+
+# 2: a closing pause, while it shows and after it has been over for a while
+set syncOffsetMs 5000
+seek 70.5
+sleep 1
+where
+shot lines-closing-before
+seek 75.5
+sleep 1
+where
+shot lines-closing-after
+set syncOffsetMs 0
+
+# 3: the last line of test lyrics, and the outro after it
+fastlines 20000 First test line | Second test line | Third test line
+seek 62
+sleep 2
+where
+shot lines-outro-sung
+seek 72
+sleep 2
+where
+shot lines-outro-after
+
+# 4: Size 3, only the line being sung
+set showPrevious false
+set showNext false
+set size 3
+lines Every quiet hill is glowing tonight | Lanterns drifting over the sleepy town below us all night long
+seek 1
+sleep 2
+shot lines-size3-short
+seek 5
+sleep 2
+shot lines-size3-long

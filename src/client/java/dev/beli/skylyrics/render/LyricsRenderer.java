@@ -433,9 +433,13 @@ public final class LyricsRenderer {
 		float distance = sky
 				? Math.max(8, Math.min(cfg.distance, mc.options.getEffectiveRenderDistance() * 16 * 0.8f))
 				: floatingDistance(cfg.distance);
-		float angular = (sky ? 3.4f : 2.6f) * cfg.size;
+		float angular = rowAngle(sky, cfg.size);
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
+		if (cfg.layout != Layout.ARC || shown.instrumental()) {
+			// The stacked lines' rows have to fit across the view at this size
+			wrapWidth = rowWidth(wrapWidth, angular, tanHalfWide(mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight()));
+		}
 		wrapAt(mc, cfg, wrapWidth);
 
 		List<Spot> spots = new ArrayList<>();
@@ -480,6 +484,40 @@ public final class LyricsRenderer {
 			drawSpot(draw, spot, cfg, time, now);
 			pose.popPose();
 		}
+	}
+
+	/** How many degrees of the view one row of the lyrics is tall at this Size (in the sky a little more than floating). */
+	static float rowAngle(boolean sky, float size) {
+		return (sky ? 3.4f : 2.6f) * size;
+	}
+
+	/**
+	 * A row of the stacked lines takes at most this share of the screen's width (the rest is for the glow, a bigger
+	 * current word and the lyrics sitting above the crosshair), and is never narrower than this many text units.
+	 */
+	static final float FIT_SHARE = 0.85f, MIN_WRAP = 60;
+
+	/**
+	 * How wide a row of the stacked lines may be, in text units: {@code usual}, or less when the lyrics are so big (a row
+	 * {@code angle} degrees tall, see {@link #rowAngle}) or the view so narrow (a low FOV, a square window) that a row
+	 * that wide would run off both sides of the screen. {@code tanHalfWide} is from {@link #tanHalfWide}.
+	 */
+	static float rowWidth(float usual, float angle, double tanHalfWide) {
+		// A row u units wide spans u * tan(angle) / ROW_H of its distance; the screen there spans 2 * tanHalfWide of it
+		double fits = FIT_SHARE * 2 * tanHalfWide * ROW_H / Math.tan(angle * DEG);
+		if (Double.isNaN(fits)) {
+			return usual;
+		}
+		return (float) Math.max(MIN_WRAP, Math.min(usual, fits));
+	}
+
+	/**
+	 * Tangent of half the view's width, from the FOV slider (vertical, in degrees) and the window's size in pixels. The
+	 * slider, not the live view: sprinting, Speed or a spyglass would otherwise wrap the lines again as the view changes.
+	 */
+	static double tanHalfWide(double fovDeg, int width, int height) {
+		double aspect = width > 0 && height > 0 ? width / (double) height : 16 / 9.0;
+		return Math.tan(fovDeg * DEG / 2) * aspect;
 	}
 
 	/** Time since the last frame, in seconds, and whether the effects have to be light this frame. */
@@ -904,8 +942,26 @@ public final class LyricsRenderer {
 		if (!lyrics.synced() || index < 0 || index >= lyrics.lines().size() || lyrics.get(index).isBreak()) {
 			return 1;
 		}
+		return overFade(lyrics, index, time);
+	}
+
+	/** 1 until line {@code index} has been over for {@link #STALE_AFTER_MS}, then down to 0 over {@link #STALE_FADE_MS}. */
+	private static float overFade(Lyrics lyrics, int index, long time) {
 		long late = time - (lyrics.lineEnd(index) + STALE_AFTER_MS);
 		return late <= 0 ? 1 : Mth.clamp(1 - late / (float) STALE_FADE_MS, 0, 1);
+	}
+
+	/**
+	 * How much of line {@code i} of the Lines layout's stack around {@code center} still shows. The line being sung goes
+	 * when it has been over for a while, and the lines around it stay, as the next one is still to come. After the
+	 * song's last line (words, or the notes of a closing pause) nothing comes: the whole stack goes with it, so the line
+	 * before it doesn't stay up through the outro.
+	 */
+	static float slotFade(Lyrics lyrics, int center, int i, long time) {
+		if (lyrics.synced() && center >= 0 && center == lyrics.lines().size() - 1) {
+			return overFade(lyrics, center, time);
+		}
+		return i == center ? staleFade(lyrics, i, time) : 1;
 	}
 
 	/** HUD pass: draws what the world pass laid out, projected to where it sits in the sky. */
@@ -1038,21 +1094,20 @@ public final class LyricsRenderer {
 				continue;
 			}
 			float a = slotAlpha(cfg, r);
-			if (a <= 0.01f) {
+			if (a <= 0.01f || !hasSlot(shown, i)) {
 				continue;
 			}
 			String text;
 			float sung;
 			if (i < 0) {
-				// Before the first line: little notes that fill up until the singing starts
-				long first = shown.lines().isEmpty() ? 0 : shown.get(0).timeMs();
-				if (i < -1 || first < 2500) {
-					continue;
-				}
+				// Before the first line: little notes that fill up until the singing starts. A wait too short for them
+				// keeps its place all the same, so the first line waits below it and rises from there
+				long first = shown.get(0).timeMs();
 				text = DOTS;
-				sung = Mth.clamp(time / (float) first, 0, 1);
-			} else if (i >= shown.lines().size()) {
-				continue;
+				sung = Mth.clamp(time / (float) Math.max(1, first), 0, 1);
+				if (!introNotes(first)) {
+					a = 0;
+				}
 			} else {
 				LyricLine line = shown.get(i);
 				if (line.isBreak()) {
@@ -1092,41 +1147,77 @@ public final class LyricsRenderer {
 					flareT = cfg.animation == Animation.WORDS ? flash - 0.06f : flash;
 				}
 			}
-			// The line being sung goes when it has been over for a while; the lines around it stay as they are
-			float stale = i == center ? staleFade(shown, i, time) : 1;
+			float stale = slotFade(shown, center, i, time);
 			items.add(new Item(text, r, scale, a * alpha * stale, highlight, sung, maxChars, wordsT, flareT));
 		}
 		if (items.isEmpty()) {
 			return;
 		}
 
-		// Stack the lines top to bottom, then move the stack so the r=0 point sits at the anchor
-		float[] centers = new float[items.size()];
-		float y = 0;
+		float[] rs = new float[items.size()], heights = new float[items.size()];
 		for (int k = 0; k < items.size(); k++) {
 			Item it = items.get(k);
-			float h = draw.rows(it.text).size() * ROW_H * it.scale;
-			centers[k] = y + h / 2;
-			y += h + GAP;
+			rs[k] = it.r;
+			heights[k] = draw.rows(it.text).size() * ROW_H * it.scale;
 		}
-		float focus = centers[0] - items.getFirst().r * (items.size() > 1 ? centers[1] - centers[0] : 0);
-		for (int k = 0; k + 1 < items.size(); k++) {
-			float r0 = items.get(k).r, r1 = items.get(k + 1).r;
+		float[] ys = stack(rs, heights);
+		for (int k = 0; k < items.size(); k++) {
+			Item it = items.get(k);
+			draw.line(it.text, ys[k], it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT, it.flareT);
+		}
+	}
+
+	/** The wait before the first line shows its little notes only when it is at least this long. */
+	static final long INTRO_NOTES_MS = 2500;
+
+	/** Whether the wait before a first line at {@code firstMs} shows the little notes that fill up until the singing starts. */
+	static boolean introNotes(long firstMs) {
+		return firstMs >= INTRO_NOTES_MS;
+	}
+
+	/**
+	 * Whether line {@code i} has a place in the Lines layout's stack: a line of the song, or the wait before the first
+	 * line (-1). The wait keeps its place even when it is too short for the notes, so the first line waits below it in
+	 * the next line's place, not where the line being sung goes (Rise took it from there down a slot and back up).
+	 */
+	static boolean hasSlot(Lyrics lyrics, int i) {
+		if (i >= 0) {
+			return i < lyrics.lines().size();
+		}
+		return i == -1 && !lyrics.isEmpty();
+	}
+
+	/**
+	 * Where the middle of each line of the stack sits, relative to the anchor: the lines {@code r} slots from the line
+	 * being sung (top to bottom, in order) and {@code heights} tall are stacked with a gap between them, and the stack is
+	 * moved so the point r = 0 sits at the anchor.
+	 */
+	static float[] stack(float[] r, float[] heights) {
+		int n = r.length;
+		float[] centers = new float[n];
+		float y = 0;
+		for (int k = 0; k < n; k++) {
+			centers[k] = y + heights[k] / 2;
+			y += heights[k] + GAP;
+		}
+		float focus = centers[0] - r[0] * (n > 1 ? centers[1] - centers[0] : 0);
+		for (int k = 0; k + 1 < n; k++) {
+			float r0 = r[k], r1 = r[k + 1];
 			if (r0 <= 0 && r1 >= 0) {
 				focus = Mth.lerp(-r0 / (r1 - r0), centers[k], centers[k + 1]);
 				break;
 			}
-			if (k + 2 == items.size()) {
+			if (k + 2 == n) {
 				focus = centers[k + 1] - r1 * (centers[k + 1] - centers[k]);
 			}
 		}
-		for (int k = 0; k < items.size(); k++) {
-			Item it = items.get(k);
-			draw.line(it.text, centers[k] - focus, it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT, it.flareT);
+		for (int k = 0; k < n; k++) {
+			centers[k] -= focus;
 		}
+		return centers;
 	}
 
-	private static float slotAlpha(SkyLyricsConfig cfg, float r) {
+	static float slotAlpha(SkyLyricsConfig cfg, float r) {
 		float prev = cfg.showPrevious ? 0.5f : 0;
 		float next = cfg.showNext ? 0.42f : 0;
 		if (r <= -1) return prev * (2 + r);
