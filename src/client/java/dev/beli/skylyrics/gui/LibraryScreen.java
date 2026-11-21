@@ -454,7 +454,7 @@ public final class LibraryScreen extends Screen {
 			boolean nearEnd = switch (view()) {
 				case SHELF -> shelf.scrollTarget + shelfStride * 2 > maxScroll(shelf);
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
-				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
+				default -> LibraryGrid.nearEnd(shelf.scrollTarget, viewH, contentHeight(shelf), cellH, selected, shelf.items.size(), cols);
 			};
 			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt && shelf.failures < AUTO_RETRIES)) {
 				shelf.more();

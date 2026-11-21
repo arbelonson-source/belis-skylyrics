@@ -46,6 +46,14 @@ final class LibraryGrid {
 		return Math.max(0, rows * (cellH + GAP) - GAP) + 2 * pad + (loading || failed ? FOOTER : 0);
 	}
 
+	/**
+	 * Whether the next page should load: the view is scrolled close to the end of the {@code contentH} tall grid, or the
+	 * chosen card has nothing below it (Down stays put there, so the keyboard alone would never scroll to the end).
+	 */
+	static boolean nearEnd(float scrollTarget, int viewH, int contentH, int cellH, int selected, int count, int cols) {
+		return scrollTarget + viewH > contentH - cellH || selected >= 0 && selected + cols >= count;
+	}
+
 	/** Covers of one page pop in one after another, but only the first few; a long page must not keep its tail hidden for seconds. */
 	static final int STAGGER_COVERS = 12;
 

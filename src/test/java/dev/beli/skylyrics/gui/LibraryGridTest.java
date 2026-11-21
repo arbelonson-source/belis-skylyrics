@@ -97,4 +97,18 @@ class LibraryGridTest {
 				"a failed page's message needs the room under the last row, or it sits below the bottom of the scroll");
 		assertEquals(6, LibraryGrid.contentHeight(0, 6, 88, 3, false, false));
 	}
+
+	@Test
+	void downWithNothingBelowLoadsTheNextPage() {
+		// 50 songs in rows of 6: the last row holds 2, so from song 46 (row 7, column 3) Down has nowhere to go
+		int cellH = 88, viewH = 236, content = LibraryGrid.contentHeight(50, 6, cellH, 3, false, false);
+		assertEquals(45, LibraryGrid.move(45, 6, 50));
+		float scroll = 7 * (cellH + LibraryGrid.GAP) + cellH - viewH; // row 7 scrolled into view at the bottom
+		assertTrue(LibraryGrid.nearEnd(scroll, viewH, content, cellH, 45, 50, 6),
+				"Down is stuck on song 46 of 50, so the next page must load or the list seems to end there");
+		// the middle of the list loads nothing yet
+		assertFalse(LibraryGrid.nearEnd(0, viewH, content, cellH, 10, 50, 6));
+		// scrolled to the bottom by the mouse still loads, with nothing chosen too
+		assertTrue(LibraryGrid.nearEnd(content - viewH, viewH, content, cellH, -1, 50, 6));
+	}
 }
