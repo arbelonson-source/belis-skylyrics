@@ -112,7 +112,7 @@ class ArcMixedOrderTest {
 	}
 
 	/** The placement from before: groups laid left to right in sung order, then every x mirrored for a right-to-left line. */
-	private static List<ArcLayout.Group> oldPlace(float[] widths, int[] rowStarts, float space, long seed, boolean rtl, boolean[] tight) {
+	static List<ArcLayout.Group> oldPlace(float[] widths, int[] rowStarts, float space, long seed, boolean rtl, boolean[] tight) {
 		int n = widths.length;
 		List<ArcLayout.Group> out = new ArrayList<>();
 		float flip = ArcLayout.unit(seed, 0, 6) < 0.5f ? 1 : -1;

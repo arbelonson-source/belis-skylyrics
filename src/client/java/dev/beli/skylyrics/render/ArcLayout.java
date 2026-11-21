@@ -46,7 +46,7 @@ final class ArcLayout {
 	/** Half the height of a lower-case word, for centring the block. */
 	private static final float HALF_HEIGHT = 4f;
 	/** Air kept between a row's groups and the row above's, once the row is pushed down to clear them. */
-	private static final float ROW_MARGIN = 1f;
+	static final float ROW_MARGIN = 1f;
 
 	/** Above this many steps (rows x words squared) the exact search is skipped for a plain fill; about 15 ms of work. */
 	private static final long MAX_DP_STEPS = 5_000_000L;
@@ -343,7 +343,8 @@ final class ArcLayout {
 		int groupNo = 0;
 		float rowY = 0, above = 0;
 		List<Float> reach = new ArrayList<>(); // each placed group's half width on screen, same order as out
-		int prevStart = 0;
+		int[] rowFrom = new int[rows]; // where each row's groups start in out
+		float[] deepest = new float[rows]; // the lowest any group of rows 0..r reaches
 		for (int r = 0; r < rows; r++) {
 			int rowStart = out.size();
 			int from = rowStarts[r], to = r + 1 < rows ? rowStarts[r + 1] : n;
@@ -426,19 +427,32 @@ final class ArcLayout {
 				out.add(new Group(s[0], s[1], cx, y, angle, scale[g], wordX));
 				reach.add(inner * scale[g] / 2);
 			}
-			// The step, the tilt and the bend can bring a group of this row up into the row above: push the row down
-			// by just what it takes, so a common line keeps its spacing
+			// The step, the tilt and the bend can bring a group of this row up into the row above, or past a short row
+			// above into one higher up: push the row down by just what it takes, so a common line keeps its spacing
+			rowFrom[r] = rowStart;
+			float rowTop = Float.MAX_VALUE, rowBottom = -Float.MAX_VALUE;
+			for (int i = rowStart; i < out.size(); i++) {
+				float y = out.get(i).y(), v = upDown(out.get(i), reach.get(i));
+				rowTop = Math.min(rowTop, y - v);
+				rowBottom = Math.max(rowBottom, y + v);
+			}
 			if (r > 0) {
-				float down = clearance(out, reach, prevStart, rowStart);
+				// The row above, and higher ones as long as one of them reaches down past this row's top
+				int first = r - 1;
+				while (first > 0 && deepest[first - 1] + ROW_MARGIN > rowTop) {
+					first--;
+				}
+				float down = clearance(out, reach, rowFrom[first], rowStart);
 				if (down > 0) {
 					for (int i = rowStart; i < out.size(); i++) {
 						Group g = out.get(i);
 						out.set(i, new Group(g.from(), g.to(), g.x(), g.y() + down, g.angle(), g.scale(), g.wordX()));
 					}
 					rowY += down;
+					rowBottom += down;
 				}
 			}
-			prevStart = rowStart;
+			deepest[r] = r > 0 ? Math.max(deepest[r - 1], rowBottom) : rowBottom;
 		}
 		// Centre the block vertically: the raised ends would otherwise push it up
 		float top = Float.MAX_VALUE, bottom = -Float.MAX_VALUE;
@@ -476,6 +490,14 @@ final class ArcLayout {
 			}
 		}
 		return down;
+	}
+
+	/** How far above and below its centre a group reaches on screen, at the higher or lower of its two ends. */
+	private static float upDown(Group g, float halfWidth) {
+		double a = Math.toRadians(g.angle());
+		float half = HALF_HEIGHT * g.scale();
+		float across = halfWidth * (float) Math.cos(a) + half * (float) Math.abs(Math.sin(a));
+		return across * (float) Math.abs(Math.tan(a)) + half / (float) Math.cos(a);
 	}
 
 	/** A group's left and right end on screen, the slope of its edges, and how far they are above and below its centre line. */
