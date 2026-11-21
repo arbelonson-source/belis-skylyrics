@@ -262,4 +262,35 @@ class TranslationFitTest {
 		Map<String, String> de = all.get("de_de.json");
 		assertTrue(SettingsSearch.matches(ThemePicker.names(t -> de.get(key(t.name().get()))), "vertraumt"), "Verträumt");
 	}
+
+	@Test
+	void aHoveredDescriptionStaysOnScreenAtBothEdges() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> ADVANCE.getOrDefault(cp, 0).floatValue());
+		List<String> off = new ArrayList<>();
+		int measured = 0;
+		for (int screenW : new int[] {SMALLEST_SCREEN, 427, 480}) {
+			for (String lang : all.keySet()) {
+				for (String text : all.get(lang).values()) {
+					if (width(text) < 0) {
+						continue;
+					}
+					measured++;
+					List<String> lines = SkyLyricsScreen.tooltipLines(splitter, text, screenW);
+					assertEquals(text.replaceAll("\\s", ""), String.join("", lines).replaceAll("\\s", ""), lang + ": every word is shown");
+					int w = lines.stream().mapToInt(TranslationFitTest::width).max().orElse(0);
+					for (int mx : new int[] {0, screenW / 3, screenW / 2, screenW - 1}) {
+						int[] at = SkyLyricsScreen.tooltipPos(screenW, 240, mx, 120, w, 10 * lines.size());
+						// the tooltip's box reaches 4 past its text on each side
+						if (at[0] - 4 < 0 || at[0] + w + 4 > screenW) {
+							off.add(screenW + " wide, mouse at " + mx + ": " + lang + " \"" + Ui.clipBy(text, 120, TranslationFitTest::width) + "\" "
+									+ (at[0] - 4) + " to " + (at[0] + w + 4));
+						}
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 1000, "only " + measured + " texts measured");
+		assertTrue(off.isEmpty(), off.size() + " tooltips run off the screen, like: " + off.subList(0, Math.min(6, off.size())));
+	}
 }
