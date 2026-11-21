@@ -1,0 +1,29 @@
+# A 1280x720 window at GUI scale 3 (426x240), with the made-up songs: all six made-up playlists in French and Spanish
+# show their count after a note ("♪ 7", "♪ 13"...) under their covers, where "7 chansons", "13 chansons",
+# "7 canciones", "13 canciones" and the others ended in "…".
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/fit-fixes2-426.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+guiscale 3
+set demoMode true
+set libraryView GRID
+
+lang fr_fr
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+# The library opens on the liked songs; Tab goes on to the playlists
+key tab
+sleep 3
+shot fit2-playlists-fr-426
+close
+
+# It opens again where it was left: on the playlists
+lang es_es
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot fit2-playlists-es-426
+close

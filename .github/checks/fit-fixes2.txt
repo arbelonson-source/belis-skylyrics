@@ -1,0 +1,43 @@
+# The smallest window any GUI scale gives (a 640x480 window at GUI scale 2 = 320x240):
+# - the made-up playlists in Spanish: "7 canciones" and "9 canciones" whole, "♪ 10", "♪ 13" and "♪ 14" where
+#   "10 canciones", "13 canciones" and "14 canciones" ended in "…";
+# - without the made-up songs and without Spotify (the songs heard lately), the sign-in strip above the songs on two
+#   lines that end in a word, not "…": Russian "Войдите в Spotify, чтобы видеть здесь свои песни", Ukrainian
+#   "Увійдіть у Spotify, щоб бачити тут свої пісні".
+# Why the songs didn't load (now on up to three lines) needs a Spotify account whose loading fails, so it isn't here.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f size=640x480 -f script=.github/checks/fit-fixes2.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+guiscale 2
+set demoMode true
+set libraryView GRID
+
+lang es_es
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+# The library opens on the liked songs; Tab goes on to the playlists
+key tab
+sleep 3
+shot fit2-playlists-es
+close
+
+# The songs heard lately always open on their only list, with the sign-in strip above them
+set demoMode false
+set recentSongs true
+lang ru_ru
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot fit2-signin-strip-ru
+close
+
+lang uk_ua
+sleep 15
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot fit2-signin-strip-uk
+close
+set demoMode true

@@ -41,7 +41,7 @@ class LibraryFitTest {
 		for (int screenW : new int[] {SMALLEST, SMALL}) {
 			int cell = LibraryGrid.cellWidth(LibraryScreen.viewWidth(LibraryScreen.panelW(screenW)));
 			for (String lang : all.keySet()) {
-				// The demo playlists have 7 and 13 songs; Spotify ones can have thousands
+				// The made-up playlists have 7 to 14 songs; Spotify ones can have thousands
 				for (int songs : new int[] {1, 2, 7, 13, 100, 1000, 10000}) {
 					String words = songs == 1 ? shown(all, lang, "1 song") : shown(all, lang, "%s songs", songs);
 					if (width(words) < 0) {
