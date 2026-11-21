@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Texts that sit in a spot of a fixed size, in every language, measured with Minecraft's own letter widths: the
  * bitmap fonts of the game's default font, read from the game jar and measured the way the game measures them. A text
- * with a letter those fonts don't have (Hebrew or Arabic, drawn with the Unicode font) is left out, as its width
+ * with a letter those fonts don't have (Arabic or Chinese, drawn with the Unicode font) is left out, as its width
  * can't be told here.
  */
 class TranslationFitTest {
@@ -130,7 +130,8 @@ class TranslationFitTest {
 		assertEquals(4, width(" "));
 		assertEquals(9, width("ilt"), "the narrow letters");
 		assertEquals(6, width("é"), "accented letters come from their own font");
-		assertEquals(-1, width("מ"), "Hebrew is drawn with the Unicode font");
+		assertEquals(6, width("מ"), "Hebrew has bitmap letters too");
+		assertEquals(-1, width("歌"), "Chinese is drawn with the Unicode font");
 	}
 
 	@Test

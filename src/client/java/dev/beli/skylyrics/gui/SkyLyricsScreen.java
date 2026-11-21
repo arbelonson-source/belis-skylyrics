@@ -220,8 +220,8 @@ public final class SkyLyricsScreen extends Screen {
 					: List.of("Spotify", "Firefox", "Chrome", "mpv", "VLC", "Spotify Web");
 
 	private static final int SIDEBAR_W = 96;
-	/** Width of the Lyrics switch under the tabs. */
-	static final int MASTER_TOGGLE_W = SIDEBAR_W - 8;
+	/** Width of the Lyrics switch under the tabs: room for a 40px name (the French "Paroles" is 39) beside the switch. */
+	static final int MASTER_TOGGLE_W = SIDEBAR_W - 6;
 	private static final int TAB_H = 20;
 	private static final int SEARCH_Y = 35;
 	private static final int SEARCH_H = 15;
