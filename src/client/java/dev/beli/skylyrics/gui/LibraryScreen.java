@@ -183,6 +183,9 @@ public final class LibraryScreen extends Screen {
 			shelves.values().forEach(Shelf::cancel);
 			shelves.clear();
 			closeOpened();
+			// The chosen card and header button were places in the old list and header: the new list starts at its top
+			selected = -1;
+			stop = -1;
 		}
 		if (library instanceof HeardLibrary && section == Section.PLAYLISTS) {
 			section = Section.LIKED;
@@ -374,8 +377,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private int contentHeight(Shelf shelf) {
-		int rows = (shelf.items.size() + cols - 1) / cols;
-		return Math.max(0, rows * (cellH + LibraryGrid.GAP) - LibraryGrid.GAP) + 2 * GRID_PAD + (shelf.pending != null ? 16 : 0);
+		return LibraryGrid.contentHeight(shelf.items.size(), cols, cellH, GRID_PAD, shelf.pending != null, !shelf.error.isEmpty());
 	}
 
 	/** Room above and below the grid, so a hovered card's glow isn't cut off at the edge. */
@@ -383,8 +385,7 @@ public final class LibraryScreen extends Screen {
 
 	private float maxScroll(Shelf shelf) {
 		if (view() == SkyLyricsConfig.LibraryView.SHELF) {
-			return Math.max(0, LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP)
-					+ (shelf.pending != null ? 16 : 0) - viewW);
+			return LibraryViews.shelfMaxScroll(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP, shelfTailW(shelf), viewW);
 		}
 		if (view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
 			return 0;
@@ -455,7 +456,7 @@ public final class LibraryScreen extends Screen {
 			boolean nearEnd = switch (view()) {
 				case SHELF -> shelf.scrollTarget + shelfStride * 2 > maxScroll(shelf);
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
-				default -> shelf.scrollTarget + viewH > contentHeight(shelf) - cellH;
+				default -> LibraryGrid.nearEnd(shelf.scrollTarget, viewH, contentHeight(shelf), cellH, selected, shelf.items.size(), cols);
 			};
 			if (nearEnd && (shelf.error.isEmpty() || !shelf.items.isEmpty() && clock >= shelf.retryAt && shelf.failures < AUTO_RETRIES)) {
 				shelf.more();
@@ -766,7 +767,8 @@ public final class LibraryScreen extends Screen {
 				int y = top + contentHeight(shelf) - 12;
 				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
 			} else if (!shelf.error.isEmpty()) {
-				g.drawCenteredString(font, Ui.visual(shelf.error), px + pw / 2, top + contentHeight(shelf) + 4, Ui.MUTED);
+				// In the Loading line's place, which the scroll reaches
+				g.drawCenteredString(font, Ui.visual(Ui.clip(font, shelf.error, viewW - 20)), px + pw / 2, top + contentHeight(shelf) - 12, Ui.MUTED);
 			}
 		} finally {
 			g.disableScissor();
@@ -778,6 +780,17 @@ public final class LibraryScreen extends Screen {
 			int barY = viewY + Math.round((viewH - barH) * (shelf.scroll / max));
 			Ui.rect(g, px + pw - 7, barY, 2, barH, 1, Ui.TRACK);
 		}
+	}
+
+	/** The line after the shelf's last column as drawn: "Loading" with {@code dots}, or why the next page failed, cut to fit the view. */
+	private String shelfTail(Shelf shelf, int dots) {
+		String line = LibraryViews.tailText(shelf.pending != null, shelf.error, Tr.t("Loading") + ".".repeat(dots));
+		return line.isEmpty() ? "" : Ui.clip(font, line, viewW - 20);
+	}
+
+	/** Width of that line (with all three dots, so the room doesn't change as they move), or 0 when there is none. */
+	private int shelfTailW(Shelf shelf) {
+		return font.width(shelfTail(shelf, 3));
 	}
 
 	private int shelfTop() {
@@ -819,9 +832,11 @@ public final class LibraryScreen extends Screen {
 				renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == selected,
 						current, moving);
 			}
-			if (shelf.pending != null) {
-				g.drawString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), viewX - left + width + 8,
-						top + SHELF_COVER / 2, Ui.DIM, false);
+			// "Loading…", or why the next page failed (a click on it tries again), after the last column where the scroll reaches
+			String tail = shelfTail(shelf, 1 + (int) (clock * 3) % 3);
+			if (!tail.isEmpty()) {
+				g.drawString(font, Ui.visual(tail), LibraryViews.tailX(viewX, left, width), top + SHELF_COVER / 2,
+						shelf.pending != null ? Ui.DIM : Ui.MUTED, false);
 			}
 		} finally {
 			g.disableScissor();
@@ -1330,12 +1345,18 @@ public final class LibraryScreen extends Screen {
 				return true;
 			}
 			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
-					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) + 8)) <= 8) {
+					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) - 8)) <= 8) {
 				// The error line under the last card is a button too
 				shelf.more();
 				return true;
 			}
 			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+				if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && LibraryViews.tailHit(mx, my, viewX, Math.round(shelf.scroll),
+						LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP), shelfTailW(shelf), shelfTop() + SHELF_COVER / 2)) {
+					// The error line after the last column is a button too, like the grid's
+					shelf.more();
+					return true;
+				}
 				int hit = shelfHitAt(shelf, mx, my);
 				if (hit >= 0) {
 					selected = hit;

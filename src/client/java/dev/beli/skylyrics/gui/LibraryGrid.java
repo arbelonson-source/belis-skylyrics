@@ -32,8 +32,30 @@ final class LibraryGrid {
 		if (selected < 0) {
 			return 0;
 		}
+		if (selected >= count) {
+			// Left over from a longer list that was swapped for this one: come back to its end instead of staying out of reach
+			return count - 1;
+		}
 		int next = selected + step;
 		return next < 0 || next >= count ? selected : next;
+	}
+
+	/** Room under the last row for one line: "Loading…" while the next page comes, or why it failed (a click on it tries again). */
+	static final int FOOTER = 16;
+
+	/** Height of {@code count} cards in rows of {@code cols} with {@code pad} above and below, plus the line under them while a page loads or after one failed. */
+	static int contentHeight(int count, int cols, int cellH, int pad, boolean loading, boolean failed) {
+		int rows = (count + cols - 1) / cols;
+		// A failed page's message takes the Loading line's place: without its room it would sit below the bottom of the scroll
+		return Math.max(0, rows * (cellH + GAP) - GAP) + 2 * pad + (loading || failed ? FOOTER : 0);
+	}
+
+	/**
+	 * Whether the next page should load: the view is scrolled close to the end of the {@code contentH} tall grid, or the
+	 * chosen card has nothing below it (Down stays put there, so the keyboard alone would never scroll to the end).
+	 */
+	static boolean nearEnd(float scrollTarget, int viewH, int contentH, int cellH, int selected, int count, int cols) {
+		return scrollTarget + viewH > contentH - cellH || selected >= 0 && selected + cols >= count;
 	}
 
 	/** Covers of one page pop in one after another, but only the first few; a long page must not keep its tail hidden for seconds. */
