@@ -98,4 +98,36 @@ class LibraryFitTest {
 		assertTrue(measured >= 200, "only " + measured + " errors measured");
 		assertTrue(cut.isEmpty(), cut.size() + " library errors are cut short, like: " + cut.subList(0, Math.min(8, cut.size())));
 	}
+
+	@Test
+	void theSignInStripAboveTheSongsHeardLatelyShowsEveryWord() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> Math.max(0, width(Character.toString(cp))));
+		List<String> cut = new ArrayList<>();
+		int measured = 0;
+		for (int screenW : new int[] {SMALLEST, SMALL}) {
+			for (String lang : all.keySet()) {
+				int button = width(shown(all, lang, "Open Music tab"));
+				if (button < 0) {
+					continue;
+				}
+				int room = LibraryScreen.bannerRoom(screenW, LibraryScreen.bannerButtonW(button));
+				// Not signed in, and signed in before the song library needed more of Spotify
+				for (String text : List.of(shown(all, lang, "Sign in to Spotify on the Music tab to see your songs here"),
+						shown(all, lang, "Sign in to Spotify again so SkyLyrics can see your songs"))) {
+					if (width(text) < 0) {
+						continue;
+					}
+					measured++;
+					List<net.minecraft.network.chat.FormattedText> lines = splitter.splitLines(text, room, net.minecraft.network.chat.Style.EMPTY);
+					// The strip is two lines high at most (LibraryViews.BANNER_TWO): a third line's words would end the second in "…"
+					if (lines.size() > 2) {
+						cut.add(screenW + " wide, " + lang + " \"" + text + "\" needs " + lines.size() + " lines of " + room);
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 30, "only " + measured + " strips measured");
+		assertTrue(cut.isEmpty(), "the sign-in strip ends its second line in \"…\": " + cut);
+	}
 }

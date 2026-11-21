@@ -355,6 +355,16 @@ public final class LibraryScreen extends Screen {
 
 	private @Nullable Banner banner;
 
+	/** The sign-in strip's button, for a label this wide. */
+	static int bannerButtonW(int labelW) {
+		return labelW + 14;
+	}
+
+	/** Room for the sign-in strip's words on a screen this wide, beside its button. */
+	static int bannerRoom(int screenW, int buttonW) {
+		return panelW(screenW) - 20 - buttonW - 24;
+	}
+
 	/** The strip's layout, measured again only when its key changes: drawing, clicks and the focus outline all read this one. */
 	private Banner banner() {
 		BannerKey key = new BannerKey(mod.spotify().account(), width, font, net.minecraft.locale.Language.getInstance());
@@ -362,8 +372,8 @@ public final class LibraryScreen extends Screen {
 		if (b != null && b.key().equals(key)) {
 			return b;
 		}
-		int bw = font.width(Tr.t("Open Music tab")) + 14;
-		int room = panelW(width) - 20 - bw - 24;
+		int bw = bannerButtonW(font.width(Tr.t("Open Music tab")));
+		int room = bannerRoom(width, bw);
 		String text = signInText();
 		int sh = LibraryViews.bannerStripH(font.width(text), room);
 		net.minecraft.util.FormattedCharSequence[] lines;
