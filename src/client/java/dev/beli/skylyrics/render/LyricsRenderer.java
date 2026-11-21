@@ -433,9 +433,13 @@ public final class LyricsRenderer {
 		float distance = sky
 				? Math.max(8, Math.min(cfg.distance, mc.options.getEffectiveRenderDistance() * 16 * 0.8f))
 				: floatingDistance(cfg.distance);
-		float angular = (sky ? 3.4f : 2.6f) * cfg.size;
+		float angular = rowAngle(sky, cfg.size);
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
+		if (cfg.layout != Layout.ARC || shown.instrumental()) {
+			// The stacked lines' rows have to fit across the view at this size
+			wrapWidth = rowWidth(wrapWidth, angular, tanHalfWide(mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight()));
+		}
 		wrapAt(mc, cfg, wrapWidth);
 
 		List<Spot> spots = new ArrayList<>();
@@ -480,6 +484,40 @@ public final class LyricsRenderer {
 			drawSpot(draw, spot, cfg, time, now);
 			pose.popPose();
 		}
+	}
+
+	/** How many degrees of the view one row of the lyrics is tall at this Size (in the sky a little more than floating). */
+	static float rowAngle(boolean sky, float size) {
+		return (sky ? 3.4f : 2.6f) * size;
+	}
+
+	/**
+	 * A row of the stacked lines takes at most this share of the screen's width (the rest is for the glow, a bigger
+	 * current word and the lyrics sitting above the crosshair), and is never narrower than this many text units.
+	 */
+	static final float FIT_SHARE = 0.85f, MIN_WRAP = 60;
+
+	/**
+	 * How wide a row of the stacked lines may be, in text units: {@code usual}, or less when the lyrics are so big (a row
+	 * {@code angle} degrees tall, see {@link #rowAngle}) or the view so narrow (a low FOV, a square window) that a row
+	 * that wide would run off both sides of the screen. {@code tanHalfWide} is from {@link #tanHalfWide}.
+	 */
+	static float rowWidth(float usual, float angle, double tanHalfWide) {
+		// A row u units wide spans u * tan(angle) / ROW_H of its distance; the screen there spans 2 * tanHalfWide of it
+		double fits = FIT_SHARE * 2 * tanHalfWide * ROW_H / Math.tan(angle * DEG);
+		if (Double.isNaN(fits)) {
+			return usual;
+		}
+		return (float) Math.max(MIN_WRAP, Math.min(usual, fits));
+	}
+
+	/**
+	 * Tangent of half the view's width, from the FOV slider (vertical, in degrees) and the window's size in pixels. The
+	 * slider, not the live view: sprinting, Speed or a spyglass would otherwise wrap the lines again as the view changes.
+	 */
+	static double tanHalfWide(double fovDeg, int width, int height) {
+		double aspect = width > 0 && height > 0 ? width / (double) height : 16 / 9.0;
+		return Math.tan(fovDeg * DEG / 2) * aspect;
 	}
 
 	/** Time since the last frame, in seconds, and whether the effects have to be light this frame. */

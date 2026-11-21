@@ -176,6 +176,7 @@
 - **Record card and top bar when the music stops.** When the music stops, the **Record card** and the top bar keep showing the last song (its name, artist, times and lyric line) while they fade out, instead of showing "Unknown song" for a moment.
 - **Record card and many potion effects.** A **Record card** in the top left now moves down under the potion effect icons when there are enough of them for their row to reach it (in a small window or at a big GUI scale, from about seven effects), as a card in the top right already did, instead of overlapping them.
 - **Lines layout after the last lyric.** Once a song's last line has been over for a second and a half and fades out, the line above it (the previous line) now fades with it, instead of staying in the sky through the whole outro. The same goes for the notes of a closing pause (lyrics that end with an empty line) and the last words above them.
+- **Big lyrics stay on the screen.** From a **Size** of about 1.8 at the usual FOV (sooner with a lower FOV or a squarer window), a long line in the Lines layout could run off both sides of the screen, its first and last words out of sight. Now its rows are wrapped narrow enough to fit across the screen; at the usual sizes nothing changes.
 
 ### Faster
 
