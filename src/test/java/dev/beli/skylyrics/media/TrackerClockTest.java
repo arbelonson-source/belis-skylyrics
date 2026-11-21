@@ -156,4 +156,43 @@ class TrackerClockTest {
 			tracker.shutdown();
 		}
 	}
+
+	private static final long SEC = 1_000_000_000L;
+
+	/**
+	 * A player that never says where the song is (it reads 0 every time) is followed on the clock from when the song
+	 * appeared. Such a player reads 0 when paused too: that is not where the song stopped.
+	 */
+	@Test
+	void aPlayerThatNeverSaysWhereItIsPausesWhereTheClockGotTo() throws InterruptedException {
+		long now = System.nanoTime();
+		Snapshot zero = new Snapshot(song(0), 0, true, now - 12 * SEC);
+		MediaTracker tracker = feed(new Snapshot(song(0), 0, true, now - 20 * SEC), zero, zero, zero, zero,
+				new Snapshot(song(0), 0, false, now - 10 * SEC));
+		try {
+			assertFalse(tracker.playing());
+			assertEquals(10_000, tracker.positionMs(), "paused 10 s after the song appeared, not back at the top");
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	@Test
+	void aPlayerThatNeverSaysWhereItIsGoesOnFromThePauseWhenPlayedAgain() throws InterruptedException {
+		long now = System.nanoTime();
+		Snapshot zero = new Snapshot(song(0), 0, true, now - 25 * SEC);
+		Snapshot paused = new Snapshot(song(0), 0, false, now - 20 * SEC); // 10 s into the song
+		Snapshot again = new Snapshot(song(0), 0, true, now - 5 * SEC); // played again 15 s later
+		MediaTracker tracker = feed(new Snapshot(song(0), 0, true, now - 30 * SEC), zero, zero, zero, zero,
+				paused, paused, again, again, again, again, again);
+		try {
+			long pos = tracker.positionMs();
+			// 10 s before the pause and 5 s since, plus however long this machine took since now
+			long hi = 15_000 + (System.nanoTime() - now) / 1_000_000 + 50;
+			assertTrue(tracker.playing());
+			assertTrue(pos >= 14_950 && pos <= hi, "position " + pos + " not in 14950.." + hi);
+		} finally {
+			tracker.shutdown();
+		}
+	}
 }

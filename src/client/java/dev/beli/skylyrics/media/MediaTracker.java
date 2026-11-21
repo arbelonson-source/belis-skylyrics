@@ -65,6 +65,11 @@ public final class MediaTracker {
 	private int emptyPolls;
 	private int zeroPolls;
 	private @Nullable Snapshot zeroRunBase;
+	/**
+	 * This song has read 0 while playing for more than {@link #ZERO_POLLS_TRUSTED} polls: the player never says where it
+	 * is, so a 0 says nothing (not even when paused) until the song changes or something else is read.
+	 */
+	private boolean noPosition;
 	private @Nullable MediaSource lastSource;
 	private @Nullable Track pending;
 	private int pendingCount;
@@ -260,6 +265,9 @@ public final class MediaTracker {
 			snapshot = fresh;
 			zeroPolls = 0;
 			zeroRunBase = null;
+			if (newSong) {
+				noPosition = false;
+			}
 			noteZero(fresh);
 			sourceName = source.displayName();
 			onTrackChange.accept(freshTrack);
@@ -273,7 +281,15 @@ public final class MediaTracker {
 		// Same song: only accept the new position if it really moved (seek), to avoid jitter
 		long predicted = positionAt(old, fresh.readAtNanos());
 		boolean jumped = Math.abs(predicted - fresh.positionMs()) > SEEK_THRESHOLD_MS;
-		if (jumped || fresh.playing() != old.playing() || fresh.rate() != old.rate()) {
+		if (fresh.positionMs() != 0) {
+			noPosition = false;
+		}
+		boolean changed = fresh.playing() != old.playing() || fresh.rate() != old.rate();
+		if (noPosition) {
+			// Its 0 on a pause or a resume is not where the song is: it stops, and later goes on, where the clock got to
+			snapshot = changed ? new Snapshot(freshTrack, predicted, fresh.playing(), fresh.readAtNanos(), fresh.rate())
+					: new Snapshot(freshTrack, old.positionMs(), old.playing(), old.readAtNanos(), old.rate());
+		} else if (jumped || changed) {
 			snapshot = fresh;
 		} else {
 			snapshot = new Snapshot(freshTrack, old.positionMs(), old.playing(), old.readAtNanos(), old.rate());
@@ -281,6 +297,7 @@ public final class MediaTracker {
 		// A player that never reports its position says 0 every time, which would hold the lyrics on the first line:
 		// after a few such polls let the clock run from where the zeros began (when the song appeared)
 		if (noteZero(fresh) > ZERO_POLLS_TRUSTED && zeroRunBase != null) {
+			noPosition = true;
 			Snapshot base = zeroRunBase;
 			snapshot = new Snapshot(freshTrack, base.positionMs(), base.playing(), base.readAtNanos(), base.rate());
 		}
