@@ -3,7 +3,8 @@
 # pictures and the game's log (.github/scripts/game-check.sh). Without a script it takes the standard pictures
 # (.github/checks/pictures.txt).
 #
-# Run a check from the command line (the workflow and the script runner come from --ref, the mod from mod_ref):
+# Run a check from the command line (the workflow and the script runner come from --ref, the mod from mod_ref, which
+# is a branch, a tag or a commit id; a branch that was merged and deleted is gone, so give its commit then):
 #   gh workflow run screenshots.yml --ref ci/game-check -f version=26.3 -f mod_ref=land/batch60 -f script=.github/checks/example.txt
 #   gh run list --workflow screenshots.yml --limit 3        (the newest run's id)
 #   gh run watch <id> --exit-status && gh run download <id> -D /tmp/claude-1000/check-<id>
@@ -23,7 +24,7 @@ on:
         default: '1.21.11'
         options: ['1.21.11', '1.21.1', '1.21.4', '1.21.5', '1.21.8', '1.21.10', '26.1.2', '26.2', '26.3']
       mod_ref:
-        description: Branch or commit of the mod to build and play (empty = the branch this runs from)
+        description: Branch, tag or commit of the mod to build and play (empty = the branch this runs from)
         default: ''
       script:
         description: Test hook commands to play, one per line (a path in mod_ref, else in this branch)
@@ -49,10 +50,20 @@ jobs:
         with:
           path: tools
           sparse-checkout: .github
+      - name: find the mod's commit
+        # A branch, a tag or a commit id, short ones too; a branch that was merged and deleted is gone, use its commit
+        id: mod
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MOD_REF: ${{ inputs.mod_ref || github.sha }}
+        run: |
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$MOD_REF" --jq .sha) \
+            || { echo "::error::No branch or commit \"$MOD_REF\" on GitHub (a merged branch may be deleted: give its commit)"; exit 1; }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - name: checkout the mod
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.mod_ref || github.sha }}
+          ref: ${{ steps.mod.outputs.sha }}
           path: mod
       - name: setup jdk
         uses: actions/setup-java@v5
