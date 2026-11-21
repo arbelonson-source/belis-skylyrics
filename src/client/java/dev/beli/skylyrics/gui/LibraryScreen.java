@@ -47,6 +47,8 @@ public final class LibraryScreen extends Screen {
 	/** Space under a shelf row for the floor line. */
 	private static final int SHELF_FLOOR = 12;
 	private static final int TOGGLE_W = 18;
+	/** The section tabs start this far in from the panel's left edge; each is its name plus this padding, this far from the next. */
+	static final int TABS_LEFT = 10, TAB_PAD = 14, TAB_GAP = 4;
 	private static final long SEARCH_WAIT_NS = 350_000_000L;
 	private static final float STAGGER = 0.03f;
 	private static final float POP = 0.35f;
@@ -287,8 +289,13 @@ public final class LibraryScreen extends Screen {
 		return SpotifyLibrary.errorText(error);
 	}
 
+	/** The panel's width on a screen this wide. */
+	static int panelW(int screenW) {
+		return Math.min(460, screenW - 16);
+	}
+
 	private void layout() {
-		pw = Math.min(460, width - 16);
+		pw = panelW(width);
 		ph = Math.min(300, height - 16);
 		px = (width - pw) / 2;
 		py = (height - ph) / 2 + Math.round((1 - openAnim) * 8);
@@ -341,7 +348,7 @@ public final class LibraryScreen extends Screen {
 			return b;
 		}
 		int bw = font.width(Tr.t("Open Music tab")) + 14;
-		int room = Math.min(460, width - 16) - 20 - bw - 24;
+		int room = panelW(width) - 20 - bw - 24;
 		String text = signInText();
 		int sh = LibraryViews.bannerStripH(font.width(text), room);
 		net.minecraft.util.FormattedCharSequence[] lines;
@@ -520,18 +527,18 @@ public final class LibraryScreen extends Screen {
 			g.drawString(font, Ui.visual(back), px + 17, y + 3, Ui.TEXT, false);
 			g.drawString(font, Ui.visual(Ui.clip(font, openedName, pw - w - 100)), px + 18 + w, y + 3, Ui.MUTED, false);
 		} else if (library != null) {
-			int x = px + 10;
+			int x = px + TABS_LEFT;
 			for (Section s : sections()) {
 				String name = sectionName(s);
-				int w = font.width(name) + 14;
+				int w = font.width(name) + TAB_PAD;
 				boolean hover = Ui.inside(f.mx(), f.my(), x, y, w, 14);
 				if (s == section) {
 					Ui.rect(g, x, y, w, 14, 7, Ui.ACCENT_SOFT);
 				} else if (hover) {
 					Ui.rect(g, x, y, w, 14, 7, 0x14FFFFFF);
 				}
-				g.drawString(font, Ui.visual(name), x + 7, y + 3, s == section ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED, false);
-				x += w + 4;
+				g.drawString(font, Ui.visual(name), x + TAB_PAD / 2, y + 3, s == section ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED, false);
+				x += w + TAB_GAP;
 			}
 		}
 		if (library != null) {
@@ -644,7 +651,12 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private int toggleX(int i) {
-		return px + pw - 10 - (3 - i) * TOGGLE_W - (2 - i) * 2;
+		return px + viewButtonsLeft(pw) + i * (TOGGLE_W + 2);
+	}
+
+	/** Where the first of the three view buttons starts, from the left edge of a panel this wide. */
+	static int viewButtonsLeft(int pw) {
+		return pw - 10 - 3 * TOGGLE_W - 2 * 2;
 	}
 
 	/** Three small buttons in the header to pick grid, shelf or carousel. */
@@ -1313,14 +1325,14 @@ public final class LibraryScreen extends Screen {
 				sayNewSection = true;
 			}
 		} else {
-			int x = px + 10;
+			int x = px + TABS_LEFT;
 			for (Section s : sections()) {
-				int w = font.width(sectionName(s)) + 14;
+				int w = font.width(sectionName(s)) + TAB_PAD;
 				if (Ui.inside(mx, my, x, y, w, 14)) {
 					showSection(s);
 					return true;
 				}
-				x += w + 4;
+				x += w + TAB_GAP;
 			}
 		}
 		if (opened == null && section == Section.SEARCH && query.isBlank()) {

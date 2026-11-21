@@ -72,4 +72,35 @@ class SmallWindowFitTest {
 		assertTrue(measured >= 20, "only " + measured + " pop-ups measured");
 		assertTrue(off.isEmpty(), "the pop-up is wider than a " + SMALLEST + " wide screen, so its left end (and some of its text) is off the screen: " + off);
 	}
+
+	@Test
+	void theLibraryTabsEndBeforeTheViewButtonsInTheSmallestWindow() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		int pw = LibraryScreen.panelW(SMALLEST);
+		int buttons = LibraryScreen.viewButtonsLeft(pw);
+		List<String> under = new ArrayList<>();
+		int measured = 0;
+		for (String lang : all.keySet()) {
+			// With Spotify (or the made-up songs) there are three sections; with only the songs heard lately, two
+			for (List<String> names : List.of(List.of(shown(all, lang, "Search"), shown(all, lang, "Liked songs"), shown(all, lang, "Playlists")),
+					List.of(shown(all, lang, "Search"), shown(all, lang, "Recently heard")))) {
+				int right = LibraryScreen.TABS_LEFT - LibraryScreen.TAB_GAP;
+				boolean known = true;
+				for (String name : names) {
+					known &= width(name) >= 0;
+					right += LibraryScreen.TAB_GAP + width(name) + LibraryScreen.TAB_PAD;
+				}
+				if (!known) {
+					continue;
+				}
+				measured++;
+				// at least the gap the tabs keep between each other
+				if (right + LibraryScreen.TAB_GAP > buttons) {
+					under.add(lang + " " + names + " end at " + right + ", the view buttons start at " + buttons);
+				}
+			}
+		}
+		assertTrue(measured >= 20, "only " + measured + " tab rows measured");
+		assertTrue(under.isEmpty(), "the library's tabs run under the Grid, Shelf and Carousel buttons: " + under);
+	}
 }
