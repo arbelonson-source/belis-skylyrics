@@ -1032,8 +1032,14 @@ public final class NowPlayingHud {
 		return (int) Math.ceil(limit);
 	}
 
-	private static String dotted(String sub) {
-		return DOTTED.get(sub, x -> "  ·  " + x);
+	/**
+	 * {@code "  ·  " + sub}, drawn right after the title. A left-to-right mark keeps the dot on the left, next to the title,
+	 * and the sub text is isolated so it keeps its own direction: a Hebrew or Arabic artist (or "112" in a Hebrew game)
+	 * would otherwise pull the dot to its far end and run straight into the title, and a cut one keeps its "…" at its own
+	 * end. The marks are never drawn and take no room.
+	 */
+	static String dotted(String sub) {
+		return DOTTED.get(sub, x -> "‎  ·  ⁨" + x + "⁩");
 	}
 
 	/** The gap between the line's words, in GUI units. */
