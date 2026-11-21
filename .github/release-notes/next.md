@@ -167,6 +167,8 @@
 - **Choices in a small window.** A choice whose names don't fit side by side even on a line of their own (only possible with long names in a very small window or at a big GUI scale) now shows the picked name between two arrows, like **Night sky**, instead of running off the row's left edge, where its first choices would be cut away and couldn't be clicked.
 - **Sliders in a small window.** In a small window or at a big GUI scale, where a slider sits on a line under its name, a click on its name or description no longer grabs the slider and changes the setting; only the slider's own line does.
 - **Status line.** The Music tab's **Status** (and the other read-only lines, like **Right now**) now uses all the room beside its name instead of stopping at a fixed width, so a long one is no longer cut short (in Spanish, "Reproduciendo la canción de prueba" showed as "Reproduciendo la canción de…").
+- **Tour arrows.** With the game in a right-to-left language, the "<" and ">" buttons on the tour's **Pick a look** page now point outwards (the previous look on the left, the next on the right) instead of both pointing in at the look's name.
+- **Tour on a Mac.** On a Mac, the tour's **Where the songs come from** page no longer cuts its text off with "…" in some languages, leaving out the line about the demo song: those texts are a little shorter, so every word fits above the **Demo song** button.
 
 ### Faster
 
