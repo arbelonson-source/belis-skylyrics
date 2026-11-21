@@ -101,6 +101,8 @@ public final class SkyEffects {
 
 	private SkyEffect effect;
 	private boolean starPatterns;
+	/** 0..1: how much the constellations show (see {@link #patternsStep}); NaN to snap to the setting next frame. */
+	private float patternShow = Float.NaN;
 	// Basis of the spot being drawn: its centre, and right and up directions across the sky there
 	private float bx, by, bz, rx, rz, ux, uy, uz;
 
@@ -165,6 +167,7 @@ public final class SkyEffects {
 		presence = 0;
 		skyStars = Float.NaN;
 		beatRest = Float.NaN;
+		patternShow = Float.NaN;
 		sparkleShow = 0;
 		meteorsAlive = 0;
 		skyUp = false;
@@ -179,6 +182,7 @@ public final class SkyEffects {
 	void hideSky() {
 		skyUp = false;
 		beatRest = Float.NaN;
+		patternShow = Float.NaN;
 		sparkleShow = 0;
 		meteorsAlive = 0;
 		for (int i = 0; i < METEORS; i++) {
@@ -259,6 +263,25 @@ public final class SkyEffects {
 		}
 		float step = dt * 2 * NIGHT_STARS;
 		return current < target ? Math.min(target, current + step) : Math.max(target, current - step);
+	}
+
+	/**
+	 * How much the constellations show next frame, 0..1, with the Constellations setting {@code on}: they fade in and out
+	 * over {@link #FADE_SECONDS} like the rest of the sky instead of popping when the setting is switched at night. NaN
+	 * {@code show} (the sky was hidden) snaps to the setting.
+	 */
+	static float patternsStep(float show, boolean on, float dt) {
+		return Float.isNaN(show) ? on ? 1 : 0 : step(show, on, dt);
+	}
+
+	/**
+	 * Whether the sky is skipped this frame: faded out, or no open sky to show it in (the Nether, the End, water,
+	 * Blindness or Darkness, a boss fog), which hides it at once like the vanilla sky. Nothing being {@code wanted} any
+	 * more (the last sky setting just turned off) is no reason on its own: presence heads down then, so what shows fades
+	 * out like after any other change instead of vanishing in one frame.
+	 */
+	static boolean skyGone(float presence, boolean wanted, boolean open) {
+		return presence <= 0 || !open;
 	}
 
 	/** Whether the sparkles have just come back from off, so their anchor must snap to where the lyrics are now. */
@@ -462,7 +485,7 @@ public final class SkyEffects {
 		if (!swapping || presence <= 0) {
 			effect = next;
 		}
-		if (presence <= 0 || !wanted || !open) {
+		if (skyGone(presence, wanted, open)) {
 			skyStars = Float.NaN;
 			hideSky();
 			return;
@@ -479,7 +502,8 @@ public final class SkyEffects {
 			return;
 		}
 		clock += dt * cfg.skySpeed.factor;
-		starPatterns = cfg.constellations;
+		patternShow = patternsStep(patternShow, cfg.constellations, dt);
+		starPatterns = patternShow > 0;
 		radius = radius(mc.options.getEffectiveRenderDistance());
 		far = farRadius(mc.options.getEffectiveRenderDistance());
 		amount = clamp01(fade / FULL_STRENGTH);
@@ -580,7 +604,7 @@ public final class SkyEffects {
 			synthwave.draw(paint, far, baseYaw, amount, clock, pixel, view);
 		}
 		if (starPatterns) {
-			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel, view);
+			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount * smooth(patternShow), clock, pixel, view);
 		}
 	}
 
@@ -782,7 +806,7 @@ public final class SkyEffects {
 			comet.draw(light, far, baseYaw, amount, clock, view);
 		}
 		if (starPatterns && !painted()) {
-			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount, clock, pixel, view);
+			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount * smooth(patternShow), clock, pixel, view);
 		}
 		//? if >=26.2 {
 		/*// 26.2 on: the added-light pipeline writes depth, so a nearer shape drawn first hides every farther one drawn
