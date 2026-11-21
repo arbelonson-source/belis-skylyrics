@@ -374,8 +374,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private int contentHeight(Shelf shelf) {
-		int rows = (shelf.items.size() + cols - 1) / cols;
-		return Math.max(0, rows * (cellH + LibraryGrid.GAP) - LibraryGrid.GAP) + 2 * GRID_PAD + (shelf.pending != null ? 16 : 0);
+		return LibraryGrid.contentHeight(shelf.items.size(), cols, cellH, GRID_PAD, shelf.pending != null, !shelf.error.isEmpty());
 	}
 
 	/** Room above and below the grid, so a hovered card's glow isn't cut off at the edge. */
@@ -766,7 +765,8 @@ public final class LibraryScreen extends Screen {
 				int y = top + contentHeight(shelf) - 12;
 				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
 			} else if (!shelf.error.isEmpty()) {
-				g.drawCenteredString(font, Ui.visual(shelf.error), px + pw / 2, top + contentHeight(shelf) + 4, Ui.MUTED);
+				// In the Loading line's place, which the scroll reaches
+				g.drawCenteredString(font, Ui.visual(Ui.clip(font, shelf.error, viewW - 20)), px + pw / 2, top + contentHeight(shelf) - 12, Ui.MUTED);
 			}
 		} finally {
 			g.disableScissor();
@@ -1330,7 +1330,7 @@ public final class LibraryScreen extends Screen {
 				return true;
 			}
 			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
-					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) + 8)) <= 8) {
+					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) - 8)) <= 8) {
 				// The error line under the last card is a button too
 				shelf.more();
 				return true;

@@ -85,4 +85,16 @@ class LibraryGridTest {
 		assertEquals(10.09f, LibraryGrid.revealAt(10f, 3, 0.03f), 1e-4);
 		assertEquals(10f + LibraryGrid.STAGGER_COVERS * 0.03f, LibraryGrid.revealAt(10f, 500, 0.03f), 1e-4);
 	}
+
+	@Test
+	void aFailedPageSaysSoWhereTheLoadingLineWas() {
+		// 50 liked songs in rows of 6 cards 88 tall, 3 px padding: the view scrolls to the bottom of this height
+		int rows = LibraryGrid.contentHeight(50, 6, 88, 3, false, false);
+		assertEquals(9 * (88 + LibraryGrid.GAP) - LibraryGrid.GAP + 6, rows);
+		assertEquals(rows + LibraryGrid.FOOTER, LibraryGrid.contentHeight(50, 6, 88, 3, true, false));
+		// the next page failed: its message (a click on it tries again) takes the Loading line's place, inside what can be scrolled to
+		assertEquals(rows + LibraryGrid.FOOTER, LibraryGrid.contentHeight(50, 6, 88, 3, false, true),
+				"a failed page's message needs the room under the last row, or it sits below the bottom of the scroll");
+		assertEquals(6, LibraryGrid.contentHeight(0, 6, 88, 3, false, false));
+	}
 }
