@@ -1887,8 +1887,9 @@ final class WorldWords {
 			if (line.rows - rows > 1) {
 				break;
 			}
-			// A stretch's first piece needs its whole room clear
-			float crowd = line.run > 0 ? crowding(line.roomMiddle(), at[1], line.run / 2, halfH, taken) : crowding(at[0], at[1], halfW, halfH, taken);
+			// A stretch's first piece needs its whole room clear, as high and as low as its words step off the row
+			float crowd = line.run > 0 ? crowding(line.roomMiddle(), (line.runHigh + line.runLow) / 2, line.run / 2, halfH + (line.runLow - line.runHigh) / 2, taken)
+					: crowding(at[0], at[1], halfW, halfH, taken);
 			if (crowd == 0) {
 				return at;
 			}
@@ -1986,6 +1987,8 @@ final class WorldWords {
 		/** The stretch's pieces' half widths as seen square on, the room between them, and the pitch its room was measured at. */
 		float[] runHalves = new float[0];
 		float runGap, runPitch;
+		/** The highest and lowest pitch the open stretch's words may sit at, stepping off its row: what its room is checked over. */
+		float runHigh, runLow;
 		/** How many of the open stretch's pieces are still to be written. */
 		int runLeft;
 		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
@@ -2101,6 +2104,11 @@ final class WorldWords {
 			}
 			// A word never reaches up into the row above, however big it is or however it bobs
 			float middle = Math.max(top - halfH + bob, above + ROW_GAP + reach);
+			if (first) {
+				// The stretch's later words step up and down off the row as every piece does, the most a step goes either way
+				runHigh = Math.max(top - halfH - SENTENCE_BOB, above + ROW_GAP + reach) - rise;
+				runLow = Math.max(top - halfH + SENTENCE_BOB, above + ROW_GAP + reach) - rise;
+			}
 			low = Math.max(low, middle + reach);
 			pieces++;
 			return new float[] {yaw, middle - rise, lean};

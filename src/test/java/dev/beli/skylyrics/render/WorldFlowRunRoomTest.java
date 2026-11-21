@@ -96,6 +96,41 @@ class WorldFlowRunRoomTest {
 		}
 	}
 
+	/** As {@link #write}, each piece stepping up or down off the row as far as the game's steps go. */
+	private static float[][] bobbing(WorldWords.Sentence s, List<float[]> taken) {
+		float[][] out = new float[RUNS.length][];
+		float[] half = new float[RUNS.length];
+		Arrays.fill(half, (float) (s.distance * Math.tan(Math.toRadians(2))));
+		for (int i = 0; i < RUNS.length; i++) {
+			WorldWords.openRun(s, RUNS, half, i, 1f, 1f);
+			float[] at = WorldWords.placeClear(s, 2, 1, 0, WorldWords.step(s.pieces, 1f), taken);
+			out[i] = new float[] {at[0], at[1]};
+			WorldWords.closeRun(s, RUNS[i]);
+		}
+		return out;
+	}
+
+	/**
+	 * The phrase's first word steps down off the row and its second steps up, as every flowing line's words do. A lit
+	 * word sits just above the first one, clear of it: the second word, a step higher, would land on it, so the phrase
+	 * moves on.
+	 */
+	@Test
+	void aPhraseWhoseLaterWordStepsUpOntoAnOlderWordMovesOn() {
+		for (boolean rtl : new boolean[] {false, true}) {
+			float[][] free = bobbing(line(rtl), List.of());
+			assertTrue(free[FIRST + 1][1] < free[FIRST][1] - 1, "the phrase's second word is not a step above its first:" + show(free));
+			// Just clear of the first word: its half height 1, the older word's 0.5, a 0.4 margin round older words, and a bit
+			List<float[]> taken = List.<float[]>of(new float[] {free[FIRST + 1][0], free[FIRST][1] - 1 - 0.5f - 0.45f, 0.5f, 0.5f});
+			assertTrue(WorldWords.clear(free[FIRST][0], free[FIRST][1], 2, 1, taken), "the older word is not clear of the phrase's first word");
+			float[][] got = bobbing(line(rtl), taken);
+			String what = (rtl ? "rtl" : "ltr") + " older word at " + Arrays.toString(taken.get(0)) + ", free" + show(free) + ", got" + show(got);
+			for (int i = FIRST; i <= LAST; i++) {
+				assertTrue(WorldWords.clear(got[i][0], got[i][1], 2, 1, taken), "phrase word " + i + " lands on the older word: " + what);
+			}
+		}
+	}
+
 	private static void movesOnAsOne(boolean rtl, float[][] free, List<float[]> taken, float[][] got) {
 		String what = (rtl ? "rtl" : "ltr") + " older word at " + taken.get(0)[0] + ", free" + show(free) + ", got" + show(got);
 		for (int i = FIRST; i <= LAST; i++) {
