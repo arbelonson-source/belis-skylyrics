@@ -1,11 +1,13 @@
 # The Record card under the open chat (needs the test hook's chat command): at 1280x720 (426x240) the chat's box
 # covers every corner, so each card fades while the chat is open; at GUI scale 2 (640x360) only the bottom left
 # card fades and a top left one stays. Before, only a bottom left card faded and chat lines were drawn over the rest.
+# (The test world starts at GUI scale 2, so the script sets 3 first.)
 # Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch> -f script=.github/checks/card-chat.txt
 
 cmd time set noon
 cmd weather clear
 look 0 -20
+guiscale 3
 set recordCard true
 set cardLyrics true
 sleep 6
