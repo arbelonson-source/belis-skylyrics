@@ -2,6 +2,8 @@ package dev.beli.skylyrics.render;
 
 import java.util.Locale;
 
+import org.jspecify.annotations.Nullable;
+
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.AttackIndicatorStatus;
 import net.minecraft.client.Minecraft;
@@ -21,6 +23,7 @@ import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
 import dev.beli.skylyrics.media.MediaTracker;
+import dev.beli.skylyrics.media.Snapshot;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.util.Guard;
 
@@ -77,6 +80,11 @@ public final class RecordCard {
 	/** The placeholder title, translated once per language. */
 	private final LangText unknownSong = new LangText(() -> Tr.t("Unknown song"));
 	private float lyricIn;
+	/** The dimmed lines above and below it, and how far through its time the line is, kept while the card fades out. */
+	private @Nullable String above, below;
+	private float through;
+	/** The music player's reading the card drew last (null while it isn't showing), kept while it fades out. */
+	private @Nullable Snapshot shown;
 	private float spin;
 	private float spinSpeed;
 	private long lastFrame;
@@ -100,7 +108,7 @@ public final class RecordCard {
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
 
-		dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
+		Snapshot reading = tracker.snapshot();
 		Track track = reading.track();
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.recordCard && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
@@ -128,8 +136,13 @@ public final class RecordCard {
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			cardY = Float.NaN;
+			shown = null;
 			return;
 		}
+		// Fading out, the card keeps the song it showed (the stopped music's empty reading would say "Unknown song")
+		reading = TopBarLayout.keptWhileFading(want, shown, reading);
+		shown = reading;
+		track = reading.track();
 		art.upload();
 		if (at == null) {
 			// Fading out: stay where the card last was
@@ -188,20 +201,27 @@ public final class RecordCard {
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
 		if (cfg.cardLyrics) {
-			drawLyric(g, font, style, cfg, x, y + H, scale, dt, lines);
+			drawLyric(g, font, style, cfg, x, y + H, scale, dt, lines, want);
 		}
 	}
 
 	/**
 	 * The line being sung, across the strip under the record. Between lines (or with no timed lyrics)
-	 * it shows a quiet note, so the card keeps its size instead of jumping.
+	 * it shows a quiet note, so the card keeps its size instead of jumping. While the card fades out ({@code showing}
+	 * false) the strip keeps the lines it shows.
 	 */
-	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt, int lines) {
-		String now = hud.singingNow(cfg);
-		String want = now == null ? "" : now;
-		if (!want.equals(lyric)) {
-			lyric = want;
-			lyricIn = 0;
+	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt, int lines,
+			boolean showing) {
+		if (showing) {
+			String now = hud.singingNow(cfg);
+			String want = now == null ? "" : now;
+			if (!want.equals(lyric)) {
+				lyric = want;
+				lyricIn = 0;
+			}
+			above = hud.singingNeighbour(cfg, -1);
+			below = hud.singingNeighbour(cfg, 1);
+			through = hud.singingThrough(cfg);
 		}
 		lyricIn = Math.min(1, lyricIn + dt * LYRIC_FADE_IN);
 		float rowTop = top + currentRowTop(lines);
@@ -212,8 +232,8 @@ public final class RecordCard {
 		float a = alpha * lyricIn;
 		if (lines >= 3) {
 			float side = scale * SIDE_SCALE;
-			dimLine(g, font, style, hud.singingNeighbour(cfg, -1), x, top + SIDE_H / 2 - 1.5f, side, left, room, a);
-			dimLine(g, font, style, hud.singingNeighbour(cfg, 1), x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
+			dimLine(g, font, style, above, x, top + SIDE_H / 2 - 1.5f, side, left, room, a);
+			dimLine(g, font, style, below, x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
 		}
 		if (lyric.isEmpty()) {
 			float noteW = LyricsFont.cachedWidth(font, style, REST) * scale;
@@ -227,7 +247,7 @@ public final class RecordCard {
 			return;
 		}
 		// Too long for the strip: the line slides along as it is sung, so its end can be read too
-		float shift = lyricShift(lineW, room, hud.singingThrough(cfg));
+		float shift = lyricShift(lineW, room, through);
 		float start = NowPlayingHud.isRtl(lyric) ? left - (lineW - room) + shift : left - shift;
 		g.enableScissor(Math.round(left), Math.round(rowTop), Math.round(left + room), Math.round(rowTop + LYRIC_H));
 		try {
@@ -406,6 +426,21 @@ public final class RecordCard {
 			}
 		}
 		return bottom;
+	}
+
+	/**
+	 * The least a top left card's top may be so it keeps clear of the potion effect icons: Minecraft draws them from the
+	 * top right corner leftwards, 25 units each (good effects in a row along the top, bad ones in a second row under
+	 * it), so seven or more good effects reach the card on a 320 wide screen and eleven on a 427 wide one. The card goes
+	 * under each row that reaches it, as the top bar does. 0 for the other corners: the top right card goes under the
+	 * icons through {@code effects} in {@link #corner}, and the bottom ones are far from them.
+	 */
+	static float effectsClear(CardCorner corner, int guiW, int good, int bad, boolean demo) {
+		if (corner != CardCorner.TOP_LEFT) {
+			return 0;
+		}
+		return TopBarLayout.effectsClear(guiW, MARGIN + W, good, bad, TopBarLayout.effectRow(GOOD_ROW, demo),
+				TopBarLayout.effectRow(BAD_ROW, demo));
 	}
 
 	static float[] corner(CardCorner corner, int guiW, int guiH) {
@@ -615,6 +650,9 @@ public final class RecordCard {
 		return new float[] {at[0], y};
 	}
 
+	/** No good and no bad effect icons, for a corner that doesn't count them. */
+	private static final int[] NO_EFFECTS = {0, 0};
+
 	/** The card with the hotbar's neighbours taken from the player's settings. */
 	private static float[] corner(Minecraft mc, CardCorner corner, int guiW, int guiH, int effects, float h) {
 		boolean rightHanded = mc.options.mainHand().get() == HumanoidArm.RIGHT;
@@ -623,7 +661,10 @@ public final class RecordCard {
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
 		float demo = TopBarLayout.demoClear(mc.isDemo(), guiW, NowPlayingHud.demoTimerWidth(mc),
 				corner == CardCorner.TOP_LEFT ? MARGIN + W : guiW - MARGIN);
-		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0),
+		int[] counts = corner == CardCorner.TOP_LEFT ? effectCounts(mc) : NO_EFFECTS;
+		float icons = effectsClear(corner, guiW, counts[0], counts[1], mc.isDemo());
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator,
+				Math.max(Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0), icons),
 				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc), NowPlayingHud.topBox());
 	}
 
