@@ -95,6 +95,29 @@ final class LibraryViews {
 		return columns * stride - gap;
 	}
 
+	/** Room between the shelf's last column and the line after it. */
+	static final int TAIL_GAP = 8;
+
+	/** The line after the shelf's last column: "Loading…" while the next page comes, or nothing. */
+	static String tailText(boolean loading, String error, String loadingText) {
+		return loading ? loadingText : "";
+	}
+
+	/** Where the line after the last column starts, for covers {@code width} wide from {@code viewX}, scrolled {@code left}. */
+	static int tailX(int viewX, int left, int width) {
+		return viewX - left + width + TAIL_GAP;
+	}
+
+	/** How far the shelf scrolls sideways: to the end of its covers, with room for a line {@code tailW} wide after them (0 for none). */
+	static int shelfMaxScroll(int count, int rows, int stride, int gap, int tailW, int viewW) {
+		return Math.max(0, shelfWidth(count, rows, stride, gap) + (tailW > 0 ? 16 : 0) - viewW);
+	}
+
+	/** Whether the mouse is on the line after the last column (drawn at {@code lineY}, {@code tailW} wide). */
+	static boolean tailHit(double mx, double my, int viewX, int left, int width, int tailW, int lineY) {
+		return false;
+	}
+
 	/** Moves the selection by whole columns and rows, staying put at an edge. */
 	static int shelfMove(int selected, int dCol, int dRow, int rows, int count) {
 		if (count <= 0) {

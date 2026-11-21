@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -94,5 +95,35 @@ class LibraryViewsTest {
 		assertEquals(2, LibraryViews.shelfMove(9, 1, 0, 2, 3), "Right");
 		assertEquals(2, LibraryViews.shelfMove(9, -1, 0, 2, 3), "Left");
 		assertEquals(2, LibraryViews.shelfMove(9, 0, -1, 2, 3), "Up");
+	}
+
+	@Test
+	void theLoadingLineFitsAtTheEndOfTheShelf() {
+		// 50 covers on 2 rows, 92 apart, in a shelf 436 wide; "Loading..." is 50 wide
+		int width = LibraryViews.shelfWidth(50, 2, 92, 8);
+		int left = LibraryViews.shelfMaxScroll(50, 2, 92, 8, 50, 436);
+		assertEquals(436, LibraryViews.tailX(0, left, width) + 50,
+				"scrolled to the end, the Loading line must end at the shelf's right edge, not run past it");
+		// no line: the scroll ends at the last cover; a short shelf doesn't scroll at all
+		assertEquals(width - 436, LibraryViews.shelfMaxScroll(50, 2, 92, 8, 0, 436));
+		assertEquals(0, LibraryViews.shelfMaxScroll(3, 2, 92, 8, 50, 436));
+	}
+
+	@Test
+	void aFailedShelfPageSaysSoAfterTheLastColumn() {
+		assertEquals("Spotify didn't answer, try again", LibraryViews.tailText(false, "Spotify didn't answer, try again", "Loading..."),
+				"a page that failed to load must say so after the last column, not show nothing");
+		assertEquals("Loading...", LibraryViews.tailText(true, "", "Loading..."));
+		assertEquals("", LibraryViews.tailText(false, "", "Loading..."));
+	}
+
+	@Test
+	void aClickOnTheFailedShelfPageLineTriesAgain() {
+		// covers 176 wide from x 10, not scrolled: the line starts at 194, is 60 wide and drawn at y 50
+		assertTrue(LibraryViews.tailHit(200, 53, 10, 0, 176, 60, 50), "a click on the message after the last column tries the page again");
+		assertTrue(LibraryViews.tailHit(200 - 100, 53, 10, 100, 176, 60, 50), "scrolled sideways");
+		assertFalse(LibraryViews.tailHit(194 + 60 + 10, 53, 10, 0, 176, 60, 50), "past its end");
+		assertFalse(LibraryViews.tailHit(200, 80, 10, 0, 176, 60, 50), "below it");
+		assertFalse(LibraryViews.tailHit(200, 53, 10, 0, 176, 0, 50), "no line");
 	}
 }
