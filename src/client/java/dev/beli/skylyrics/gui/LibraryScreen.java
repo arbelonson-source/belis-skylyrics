@@ -47,6 +47,8 @@ public final class LibraryScreen extends Screen {
 	/** Space under a shelf row for the floor line. */
 	private static final int SHELF_FLOOR = 12;
 	private static final int TOGGLE_W = 18;
+	/** The section tabs start this far in from the panel's left edge; each is its name plus this padding, this far from the next. */
+	static final int TABS_LEFT = 10, TAB_PAD = 14, TAB_GAP = 4;
 	private static final long SEARCH_WAIT_NS = 350_000_000L;
 	private static final float STAGGER = 0.03f;
 	private static final float POP = 0.35f;
@@ -287,15 +289,35 @@ public final class LibraryScreen extends Screen {
 		return SpotifyLibrary.errorText(error);
 	}
 
+	/** The panel's width on a screen this wide. */
+	static int panelW(int screenW) {
+		return Math.min(460, screenW - 16);
+	}
+
+	/** The width the songs get in a panel this wide. */
+	static int viewWidth(int pw) {
+		return pw - 24;
+	}
+
+	/** The panel's height on a screen this high. */
+	static int panelH(int screenH) {
+		return Math.min(300, screenH - 16);
+	}
+
+	/** The height the songs get on a screen this high, under a sign-in strip this tall (0 for none). */
+	static int viewHeight(int screenH, int stripH) {
+		return panelH(screenH) - HEADER_H - 12 - (stripH > 0 ? stripH + 3 : 0);
+	}
+
 	private void layout() {
-		pw = Math.min(460, width - 16);
-		ph = Math.min(300, height - 16);
+		pw = panelW(width);
+		ph = panelH(height);
 		px = (width - pw) / 2;
 		py = (height - ph) / 2 + Math.round((1 - openAnim) * 8);
 		viewX = px + 12;
-		viewW = pw - 24;
+		viewW = viewWidth(pw);
 		viewY = py + HEADER_H + 6 + bannerH();
-		viewH = ph - HEADER_H - 12 - bannerH();
+		viewH = viewHeight(height, heardMode() ? bannerStripH() : 0);
 		cols = LibraryGrid.columns(viewW);
 		cellW = LibraryGrid.cellWidth(viewW);
 		cellH = cellW + TEXT_H;
@@ -333,6 +355,16 @@ public final class LibraryScreen extends Screen {
 
 	private @Nullable Banner banner;
 
+	/** The sign-in strip's button, for a label this wide. */
+	static int bannerButtonW(int labelW) {
+		return labelW + 14;
+	}
+
+	/** Room for the sign-in strip's words on a screen this wide, beside its button. */
+	static int bannerRoom(int screenW, int buttonW) {
+		return panelW(screenW) - 20 - buttonW - 24;
+	}
+
 	/** The strip's layout, measured again only when its key changes: drawing, clicks and the focus outline all read this one. */
 	private Banner banner() {
 		BannerKey key = new BannerKey(mod.spotify().account(), width, font, net.minecraft.locale.Language.getInstance());
@@ -340,8 +372,8 @@ public final class LibraryScreen extends Screen {
 		if (b != null && b.key().equals(key)) {
 			return b;
 		}
-		int bw = font.width(Tr.t("Open Music tab")) + 14;
-		int room = Math.min(460, width - 16) - 20 - bw - 24;
+		int bw = bannerButtonW(font.width(Tr.t("Open Music tab")));
+		int room = bannerRoom(width, bw);
 		String text = signInText();
 		int sh = LibraryViews.bannerStripH(font.width(text), room);
 		net.minecraft.util.FormattedCharSequence[] lines;
@@ -377,7 +409,21 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private int contentHeight(Shelf shelf) {
-		return LibraryGrid.contentHeight(shelf.items.size(), cols, cellH, GRID_PAD, shelf.pending != null, !shelf.error.isEmpty());
+		return LibraryGrid.contentHeight(shelf.items.size(), cols, cellH, GRID_PAD, shelf.pending != null, !shelf.error.isEmpty())
+				+ 10 * (gridErrorLines(shelf) - 1);
+	}
+
+	/** How many lines why the next page failed takes under the grid (at least 1, the Loading line's room the grid always gets). */
+	private int gridErrorLines(Shelf shelf) {
+		return shelf.pending != null || shelf.error.isEmpty() ? 1 : errorLines(shelf.error).size();
+	}
+
+	/** Lines of {@code text} centred in the panel, 10 apart from {@code y}, laid out in the direction of the whole text. */
+	private void drawLines(GuiGraphics g, List<String> lines, String text, int y) {
+		boolean rtl = Ui.paragraphRtl(text);
+		for (int i = 0; i < lines.size(); i++) {
+			g.drawCenteredString(font, Ui.visual(lines.get(i), rtl), px + pw / 2, y + 10 * i, Ui.MUTED);
+		}
 	}
 
 	/** Room above and below the grid, so a hovered card's glow isn't cut off at the edge. */
@@ -520,18 +566,18 @@ public final class LibraryScreen extends Screen {
 			g.drawString(font, Ui.visual(back), px + 17, y + 3, Ui.TEXT, false);
 			g.drawString(font, Ui.visual(Ui.clip(font, openedName, pw - w - 100)), px + 18 + w, y + 3, Ui.MUTED, false);
 		} else if (library != null) {
-			int x = px + 10;
+			int x = px + TABS_LEFT;
 			for (Section s : sections()) {
 				String name = sectionName(s);
-				int w = font.width(name) + 14;
+				int w = font.width(name) + TAB_PAD;
 				boolean hover = Ui.inside(f.mx(), f.my(), x, y, w, 14);
 				if (s == section) {
 					Ui.rect(g, x, y, w, 14, 7, Ui.ACCENT_SOFT);
 				} else if (hover) {
 					Ui.rect(g, x, y, w, 14, 7, 0x14FFFFFF);
 				}
-				g.drawString(font, Ui.visual(name), x + 7, y + 3, s == section ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED, false);
-				x += w + 4;
+				g.drawString(font, Ui.visual(name), x + TAB_PAD / 2, y + 3, s == section ? 0xFFFFFFFF : hover ? Ui.TEXT : Ui.MUTED, false);
+				x += w + TAB_GAP;
 			}
 		}
 		if (library != null) {
@@ -644,7 +690,12 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private int toggleX(int i) {
-		return px + pw - 10 - (3 - i) * TOGGLE_W - (2 - i) * 2;
+		return px + viewButtonsLeft(pw) + i * (TOGGLE_W + 2);
+	}
+
+	/** Where the first of the three view buttons starts, from the left edge of a panel this wide. */
+	static int viewButtonsLeft(int pw) {
+		return pw - 10 - 3 * TOGGLE_W - 2 * 2;
 	}
 
 	/** Three small buttons in the header to pick grid, shelf or carousel. */
@@ -721,14 +772,17 @@ public final class LibraryScreen extends Screen {
 				renderRecent(g, f);
 				return;
 			}
-			String text = shelf.error.isEmpty() ? emptyText() : shelf.error;
-			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text, viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
-			if (!shelf.error.isEmpty()) {
-				int rw = Controls.buttonW(font.width(Tr.t("Try again")), 80);
-				int bx = px + pw / 2 - rw / 2, by = viewY + viewH / 2 + 4;
-				Controls.drawButton(f, bx, by, rw, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, rw, 16), true, true);
-				Ui.outline(f.g(), bx - 2, by - 2, rw + 4, 20, 6, Ui.TEXT);
+			if (shelf.error.isEmpty()) {
+				g.drawCenteredString(font, Ui.visual(Ui.clip(font, emptyText(), viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+				return;
 			}
+			// Why it failed, on as many lines as it needs, above the button that tries again
+			List<String> lines = errorLines(shelf.error);
+			drawLines(g, lines, shelf.error, errorTop(viewY + viewH / 2, lines.size()));
+			int rw = Controls.buttonW(font.width(Tr.t("Try again")), 80);
+			int bx = px + pw / 2 - rw / 2, by = viewY + viewH / 2 + 4;
+			Controls.drawButton(f, bx, by, rw, 16, Tr.t("Try again"), Ui.inside(f.mx(), f.my(), bx, by, rw, 16), true, true);
+			Ui.outline(f.g(), bx - 2, by - 2, rw + 4, 20, 6, Ui.TEXT);
 			return;
 		}
 
@@ -767,8 +821,9 @@ public final class LibraryScreen extends Screen {
 				int y = top + contentHeight(shelf) - 12;
 				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
 			} else if (!shelf.error.isEmpty()) {
-				// In the Loading line's place, which the scroll reaches
-				g.drawCenteredString(font, Ui.visual(Ui.clip(font, shelf.error, viewW - 20)), px + pw / 2, top + contentHeight(shelf) - 12, Ui.MUTED);
+				// In the Loading line's place, which the scroll reaches; the grid ends lower for each line more it takes
+				List<String> lines = errorLines(shelf.error);
+				drawLines(g, lines, shelf.error, top + contentHeight(shelf) - 12 - 10 * (lines.size() - 1));
 			}
 		} finally {
 			g.disableScissor();
@@ -782,15 +837,27 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
-	/** The line after the shelf's last column as drawn: "Loading" with {@code dots}, or why the next page failed, cut to fit the view. */
-	private String shelfTail(Shelf shelf, int dots) {
+	/** The lines after the shelf's last column as drawn: "Loading" with {@code dots}, or why the next page failed on as many lines as it needs, or none. */
+	private List<String> shelfTail(Shelf shelf, int dots) {
 		String line = LibraryViews.tailText(shelf.pending != null, shelf.error, Tr.t("Loading") + ".".repeat(dots));
-		return line.isEmpty() ? "" : Ui.clip(font, line, viewW - 20);
+		if (line.isEmpty()) {
+			return List.of();
+		}
+		return shelf.pending != null ? List.of(Ui.clip(font, line, viewW - 20)) : errorLines(line);
 	}
 
-	/** Width of that line (with all three dots, so the room doesn't change as they move), or 0 when there is none. */
+	/** Width of those lines (with all three dots, so the room doesn't change as they move), or 0 when there are none. */
 	private int shelfTailW(Shelf shelf) {
-		return font.width(shelfTail(shelf, 3));
+		int w = 0;
+		for (String line : shelfTail(shelf, 3)) {
+			w = Math.max(w, font.width(line));
+		}
+		return w;
+	}
+
+	/** Where the first of {@code lines} lines after the shelf's last column sits: together they are centred on the first row's covers. */
+	private static int shelfTailY(int top, int lines) {
+		return top + SHELF_COVER / 2 - 5 * (lines - 1);
 	}
 
 	private int shelfTop() {
@@ -833,9 +900,10 @@ public final class LibraryScreen extends Screen {
 						current, moving);
 			}
 			// "Loading…", or why the next page failed (a click on it tries again), after the last column where the scroll reaches
-			String tail = shelfTail(shelf, 1 + (int) (clock * 3) % 3);
-			if (!tail.isEmpty()) {
-				g.drawString(font, Ui.visual(tail), LibraryViews.tailX(viewX, left, width), top + SHELF_COVER / 2,
+			List<String> tail = shelfTail(shelf, 1 + (int) (clock * 3) % 3);
+			boolean rtl = Ui.paragraphRtl(String.join(" ", tail));
+			for (int i = 0; i < tail.size(); i++) {
+				g.drawString(font, Ui.visual(tail.get(i), rtl), LibraryViews.tailX(viewX, left, width), shelfTailY(top, tail.size()) + 10 * i,
 						shelf.pending != null ? Ui.DIM : Ui.MUTED, false);
 			}
 		} finally {
@@ -1007,7 +1075,18 @@ public final class LibraryScreen extends Screen {
 			return new String[] {item.title(), item.artists()};
 		}
 		LibraryPlaylist list = (LibraryPlaylist) entry;
-		return new String[] {list.name(), list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs())};
+		return new String[] {list.name(), songWords(list)};
+	}
+
+	/** How many songs a playlist has, in words: "13 songs". */
+	private static String songWords(LibraryPlaylist list) {
+		return list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs());
+	}
+
+	/** A playlist's song count under its card in the grid: {@code words} ("13 songs") when that fits {@code room}, else the number after a note ("♪ 13"). */
+	static String songCount(String words, int songs, int room, java.util.function.ToIntFunction<String> width) {
+		// The note fits any count in any language, where "13 canciones" ended in "…" on a small card
+		return width.applyAsInt(words) <= room ? words : "♪ " + songs;
 	}
 
 	/** The letter drawn on a card without a cover, by title: worked out once, not every frame. */
@@ -1033,7 +1112,7 @@ public final class LibraryScreen extends Screen {
 		} else {
 			LibraryPlaylist list = (LibraryPlaylist) entry;
 			title = list.name();
-			under = list.songs() == 1 ? Tr.t("1 song") : Tr.t("%s songs", list.songs());
+			under = songCount(songWords(list), list.songs(), size, font::width);
 			colorKey = list.name();
 			coverUrl = list.coverUrl();
 		}
@@ -1124,16 +1203,106 @@ public final class LibraryScreen extends Screen {
 		}
 	}
 
+	/** Room for the toast's words in a panel this wide. */
+	static int toastRoom(int pw) {
+		return pw - 60;
+	}
+
+	/** Room for why the songs didn't load in a view this wide. */
+	static int errorRoom(int viewW) {
+		return viewW - 20;
+	}
+
+	/** Why the songs didn't load can take this many lines (in German, French, Russian and Ukrainian, Spotify blocking the app takes three in the smallest window). */
+	static final int ERROR_LINES = 3;
+
+	/** Why the songs didn't load, in lines that fit {@code room}: as many as it needs, up to {@link #ERROR_LINES}. */
+	static List<String> errorLines(net.minecraft.client.StringSplitter splitter, String text, int room) {
+		return wrapped(splitter, text, room, ERROR_LINES);
+	}
+
+	/** Where the first of {@code lines} lines of why the songs didn't load sits: they end just above the Try again button under the view's {@code middle}. */
+	static int errorTop(int middle, int lines) {
+		return middle - 10 * lines;
+	}
+
+	/**
+	 * The toast's words in lines that fit {@code room}: one line when it fits, else two. Only a message too long even for
+	 * two keeps the end of its second line cut with "…".
+	 */
+	static List<String> toastLines(net.minecraft.client.StringSplitter splitter, String text, int room) {
+		return wrapped(splitter, text, room, 2);
+	}
+
+	/** Words in lines that fit {@code room}, as many as they need up to {@code most}; only past that the last line's end is cut with "…". */
+	static List<String> wrapped(net.minecraft.client.StringSplitter splitter, String text, int room, int most) {
+		List<String> lines = splitter.splitLines(text, room, net.minecraft.network.chat.Style.EMPTY).stream()
+				.map(line -> line.getString().strip()).toList();
+		if (lines.isEmpty()) {
+			return List.of(text);
+		}
+		if (lines.size() <= most) {
+			return lines;
+		}
+		List<String> out = new ArrayList<>(lines.subList(0, most - 1));
+		out.add(Ui.clipBy(String.join(" ", lines.subList(most - 1, lines.size())), room, t -> (int) Math.ceil(splitter.stringWidth(t))));
+		return List.copyOf(out);
+	}
+
+	/** A text's lines as last worked out, and for which text, room and font: worked out again only when one changes. */
+	private static final class Wrap {
+		private final int most;
+		private List<String> lines = List.of();
+		private String text = "";
+		private int room = -1;
+		private @Nullable Object font;
+
+		Wrap(int most) {
+			this.most = most;
+		}
+
+		List<String> lines(net.minecraft.client.gui.Font font, String text, int room) {
+			if (!text.equals(this.text) || room != this.room || font != this.font) {
+				lines = wrapped(font.getSplitter(), text, room, most);
+				this.text = text;
+				this.room = room;
+				this.font = font;
+			}
+			return lines;
+		}
+	}
+
+	private final Wrap toastWrap = new Wrap(2);
+	private final Wrap errorWrap = new Wrap(ERROR_LINES);
+
+	private List<String> toastLines() {
+		return toastWrap.lines(font, toast, toastRoom(pw));
+	}
+
+	/** Why the songs didn't load, in lines that fit the view. */
+	private List<String> errorLines(String error) {
+		return errorWrap.lines(font, error, errorRoom(viewW));
+	}
+
 	private void renderToast(GuiGraphics g) {
 		float shown = toastShown();
 		if (toast.isEmpty() || toastAge >= shown) {
 			return;
 		}
 		float a = Mth.clamp(Math.min(toastAge * 6, (shown - toastAge) * 3), 0, 1);
-		String text = Ui.clip(font, toast, pw - 60);
-		int w = font.width(text) + 20, x = px + (pw - w) / 2, y = py + ph - 24 + Math.round((1 - a) * 6);
-		Ui.rect(g, x, y, w, 16, 8, Ui.alpha(Ui.CONTROL_HOVER, a));
-		g.drawCenteredString(font, Ui.visual(text), px + pw / 2, y + 4, Ui.alpha(Ui.TEXT, a));
+		List<String> lines = toastLines();
+		int textW = 0;
+		for (String line : lines) {
+			textW = Math.max(textW, font.width(line));
+		}
+		// One line sits where it always did (16 high, its bottom 8 above the panel's); a second line grows it upward
+		int h = 6 + 10 * lines.size();
+		int w = textW + 20, x = px + (pw - w) / 2, y = py + ph - 8 - h + Math.round((1 - a) * 6);
+		Ui.rect(g, x, y, w, h, 8, Ui.alpha(Ui.CONTROL_HOVER, a));
+		boolean rtl = Ui.paragraphRtl(toast);
+		for (int i = 0; i < lines.size(); i++) {
+			g.drawCenteredString(font, Ui.visual(lines.get(i), rtl), px + pw / 2, y + 4 + 10 * i, Ui.alpha(Ui.TEXT, a));
+		}
 	}
 
 	private void say(String text) {
@@ -1313,14 +1482,14 @@ public final class LibraryScreen extends Screen {
 				sayNewSection = true;
 			}
 		} else {
-			int x = px + 10;
+			int x = px + TABS_LEFT;
 			for (Section s : sections()) {
-				int w = font.width(sectionName(s)) + 14;
+				int w = font.width(sectionName(s)) + TAB_PAD;
 				if (Ui.inside(mx, my, x, y, w, 14)) {
 					showSection(s);
 					return true;
 				}
-				x += w + 4;
+				x += w + TAB_GAP;
 			}
 		}
 		if (opened == null && section == Section.SEARCH && query.isBlank()) {
@@ -1344,15 +1513,18 @@ public final class LibraryScreen extends Screen {
 				shelf.more();
 				return true;
 			}
+			int gridEnd = viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf);
 			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
-					&& Math.abs(my - (viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf) - 8)) <= 8) {
-				// The error line under the last card is a button too
+					&& my <= gridEnd && my >= gridEnd - LibraryGrid.FOOTER - 10 * (gridErrorLines(shelf) - 1)) {
+				// The error under the last card is a button too, all its lines
 				shelf.more();
 				return true;
 			}
 			if (view() == SkyLyricsConfig.LibraryView.SHELF) {
+				int tailLines = shelfTail(shelf, 3).size();
 				if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && LibraryViews.tailHit(mx, my, viewX, Math.round(shelf.scroll),
-						LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP), shelfTailW(shelf), shelfTop() + SHELF_COVER / 2)) {
+						LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP), shelfTailW(shelf),
+						shelfTailY(shelfTop(), tailLines), tailLines)) {
 					// The error line after the last column is a button too, like the grid's
 					shelf.more();
 					return true;
