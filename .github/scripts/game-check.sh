@@ -159,6 +159,10 @@ lang:en_us
 EOF
 
 rm -f "$LOG" "$RUN/skylyrics-test.txt"
+# 26.3 opens its window with SDL and asks for an sRGB-capable OpenGL window. The virtual screen has none, so without
+# this SDL finds no window type, the game falls back to Vulkan and Iris crashes there (it calls OpenGL). The pictures
+# are read from the game's own frame, not from the window, so they don't change.
+export SDL_OPENGL_FORCE_SRGB_FRAMEBUFFER=skip
 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 ${SCREEN_W}x${SCREEN_H}x24" \
 	./gradlew --no-configuration-cache ":$VER:runProductionClient" -PquickPlay=SkyTest -PwindowSize="$SIZE" \
 	> "$OUT/game.log" 2>&1 &
@@ -170,8 +174,8 @@ new_lines() { # from line: the game log after that line
 log_lines() {
 	if [ -f "$LOG" ]; then wc -l < "$LOG"; else echo 0; fi
 }
-alive() {
-	kill -0 "$GAME" 2>/dev/null || fail "the game stopped" "$([ -f "$LOG" ] && echo "$LOG" || echo "$OUT/game.log")"
+alive() { # game.log has the game's own log too, and also what it says as it crashes
+	kill -0 "$GAME" 2>/dev/null || fail "the game stopped" "$OUT/game.log"
 }
 wait_log() { # extended regex, seconds, from line [-F for plain text]: waits for a new game log line that matches
 	local i

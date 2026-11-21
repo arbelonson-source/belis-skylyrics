@@ -13,14 +13,15 @@ sleep 8
 where
 shot example-night
 
-# The arc layout, caught as the next line starts
+# The arc layout, caught as the next line ("Neon skyline, can you hear it", at 20 s) starts
 set layout ARC
-sleep 2
+seek 18.5
+sleep 0.5
 burstat example-arc 6 400
 wait burst example-arc wrote
 
 # Jump to a known line and read where the song is
-seek 20
+seek 47
 sleep 3
 where
 shot example-seek
