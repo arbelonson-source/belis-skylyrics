@@ -744,7 +744,12 @@ public final class SpotifyWebSource implements MediaSource {
 	private void damagedLogin(String why) {
 		LOG.warn("The Spotify sign-in file is damaged ({}), so you are signed out (kept a copy as {}.bad).", why, loginFile.getFileName());
 		try {
-			dev.beli.skylyrics.util.SafeFile.keepBad(loginFile);
+			Path copy = dev.beli.skylyrics.util.SafeFile.keepBad(loginFile);
+			// The copy can hold the token too. On Windows a copy gets the folder's access list, not the file's (on a second
+			// drive that lets every account on the PC read it), so it is made private like the sign-in itself
+			if (Files.getFileAttributeView(copy, java.nio.file.attribute.PosixFileAttributeView.class) == null) {
+				dev.beli.skylyrics.util.PrivateFile.restrictToOwner(copy);
+			}
 		} catch (IOException | RuntimeException e) {
 			LOG.warn("Couldn't keep a copy of the damaged Spotify sign-in file: {}", dev.beli.skylyrics.util.LogText.of(e));
 		}

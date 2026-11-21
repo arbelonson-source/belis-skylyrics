@@ -52,6 +52,7 @@
   - Pasting a different Client ID while a sign-in waits in the browser now cancels that sign-in, instead of ending in a silent sign-out. A broken reply from Spotify (for example a network login page) no longer stops the sign-in or the polling with no message, and a failed sign-in never says "null".
   - Clicking Sign out or Sign in while SkyLyrics is saving a renewed Spotify sign-in no longer freezes the game for a moment on a slow disk.
   - Signing in to another Spotify account now opens your own playlists without restarting the game.
+  - On Windows, the copy SkyLyrics keeps of a damaged Spotify sign-in file is now private to you like the sign-in itself. Before, other accounts on the PC could read it (and the sign-in it may still hold) when the game folder is on another drive.
 - **Spotify messages and gaps.** Spotify gaps and errors no longer blink the lyrics out or show raw errors.
   - With Spotify, a moment when Spotify says nothing is playing (around an ad, a track change or a switch to another device) no longer makes the lyrics blink out and come back up to 4 seconds late: the mod asks again after a second. With Spotify signed in, an ad is no longer taken for a song. A Spotify answer without a play state no longer causes an error.
   - When one Spotify song follows another with the same title and artist (like two "Interlude"s), the mod now sees a new song: it looks up the second one's lyrics and starts them from the top instead of carrying on with the first one's. The two still share their per-song **Timing**.
