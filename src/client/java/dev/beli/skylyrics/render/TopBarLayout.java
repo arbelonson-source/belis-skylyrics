@@ -418,6 +418,15 @@ final class TopBarLayout {
 		return (spin + speed * turnsPerSecond * (float) (2 * Math.PI) * dt * motion) % (float) (2 * Math.PI);
 	}
 
+	/**
+	 * What a Record card or top bar draws this frame: {@code now} while it shows (or when it has nothing on screen yet), and
+	 * {@code shown}, what it drew last, while it fades out. Once the music has stopped the player says nothing, which would
+	 * read "Unknown song" for the third of a second the fade takes.
+	 */
+	static <T> T keptWhileFading(boolean showing, @org.jspecify.annotations.Nullable T shown, T now) {
+		return showing || shown == null ? now : shown;
+	}
+
 	/** A song longer than this is a bogus length (a player's garbage value), treated as unknown. */
 	static final long MAX_LENGTH_MS = 24L * 60 * 60 * 1000;
 

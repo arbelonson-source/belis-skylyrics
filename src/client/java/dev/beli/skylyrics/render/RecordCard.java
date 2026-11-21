@@ -2,6 +2,8 @@ package dev.beli.skylyrics.render;
 
 import java.util.Locale;
 
+import org.jspecify.annotations.Nullable;
+
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.AttackIndicatorStatus;
 import net.minecraft.client.Minecraft;
@@ -21,6 +23,7 @@ import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
 import dev.beli.skylyrics.media.MediaTracker;
+import dev.beli.skylyrics.media.Snapshot;
 import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.util.Guard;
 
@@ -77,6 +80,11 @@ public final class RecordCard {
 	/** The placeholder title, translated once per language. */
 	private final LangText unknownSong = new LangText(() -> Tr.t("Unknown song"));
 	private float lyricIn;
+	/** The dimmed lines above and below it, and how far through its time the line is, kept while the card fades out. */
+	private @Nullable String above, below;
+	private float through;
+	/** The music player's reading the card drew last (null while it isn't showing), kept while it fades out. */
+	private @Nullable Snapshot shown;
 	private float spin;
 	private float spinSpeed;
 	private long lastFrame;
@@ -100,7 +108,7 @@ public final class RecordCard {
 		float dt = lastFrame == 0 ? 0 : Math.min(0.1f, (now - lastFrame) / 1e9f);
 		lastFrame = now;
 
-		dev.beli.skylyrics.media.Snapshot reading = tracker.snapshot();
+		Snapshot reading = tracker.snapshot();
 		Track track = reading.track();
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.recordCard && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
@@ -128,8 +136,13 @@ public final class RecordCard {
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
 			cardY = Float.NaN;
+			shown = null;
 			return;
 		}
+		// Fading out, the card keeps the song it showed (the stopped music's empty reading would say "Unknown song")
+		reading = TopBarLayout.keptWhileFading(want, shown, reading);
+		shown = reading;
+		track = reading.track();
 		art.upload();
 		if (at == null) {
 			// Fading out: stay where the card last was
@@ -188,20 +201,27 @@ public final class RecordCard {
 			text(g, font, style, left, tx + lineW - leftW, lineY + 7, small, fade(SUB));
 		}
 		if (cfg.cardLyrics) {
-			drawLyric(g, font, style, cfg, x, y + H, scale, dt, lines);
+			drawLyric(g, font, style, cfg, x, y + H, scale, dt, lines, want);
 		}
 	}
 
 	/**
 	 * The line being sung, across the strip under the record. Between lines (or with no timed lyrics)
-	 * it shows a quiet note, so the card keeps its size instead of jumping.
+	 * it shows a quiet note, so the card keeps its size instead of jumping. While the card fades out ({@code showing}
+	 * false) the strip keeps the lines it shows.
 	 */
-	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt, int lines) {
-		String now = hud.singingNow(cfg);
-		String want = now == null ? "" : now;
-		if (!want.equals(lyric)) {
-			lyric = want;
-			lyricIn = 0;
+	private void drawLyric(GuiGraphics g, Font font, Style style, SkyLyricsConfig cfg, float x, float top, float scale, float dt, int lines,
+			boolean showing) {
+		if (showing) {
+			String now = hud.singingNow(cfg);
+			String want = now == null ? "" : now;
+			if (!want.equals(lyric)) {
+				lyric = want;
+				lyricIn = 0;
+			}
+			above = hud.singingNeighbour(cfg, -1);
+			below = hud.singingNeighbour(cfg, 1);
+			through = hud.singingThrough(cfg);
 		}
 		lyricIn = Math.min(1, lyricIn + dt * LYRIC_FADE_IN);
 		float rowTop = top + currentRowTop(lines);
@@ -212,8 +232,8 @@ public final class RecordCard {
 		float a = alpha * lyricIn;
 		if (lines >= 3) {
 			float side = scale * SIDE_SCALE;
-			dimLine(g, font, style, hud.singingNeighbour(cfg, -1), x, top + SIDE_H / 2 - 1.5f, side, left, room, a);
-			dimLine(g, font, style, hud.singingNeighbour(cfg, 1), x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
+			dimLine(g, font, style, above, x, top + SIDE_H / 2 - 1.5f, side, left, room, a);
+			dimLine(g, font, style, below, x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
 		}
 		if (lyric.isEmpty()) {
 			float noteW = LyricsFont.cachedWidth(font, style, REST) * scale;
@@ -227,7 +247,7 @@ public final class RecordCard {
 			return;
 		}
 		// Too long for the strip: the line slides along as it is sung, so its end can be read too
-		float shift = lyricShift(lineW, room, hud.singingThrough(cfg));
+		float shift = lyricShift(lineW, room, through);
 		float start = NowPlayingHud.isRtl(lyric) ? left - (lineW - room) + shift : left - shift;
 		g.enableScissor(Math.round(left), Math.round(rowTop), Math.round(left + room), Math.round(rowTop + LYRIC_H));
 		try {
@@ -408,6 +428,21 @@ public final class RecordCard {
 		return bottom;
 	}
 
+	/**
+	 * The least a top left card's top may be so it keeps clear of the potion effect icons: Minecraft draws them from the
+	 * top right corner leftwards, 25 units each (good effects in a row along the top, bad ones in a second row under
+	 * it), so seven or more good effects reach the card on a 320 wide screen and eleven on a 427 wide one. The card goes
+	 * under each row that reaches it, as the top bar does. 0 for the other corners: the top right card goes under the
+	 * icons through {@code effects} in {@link #corner}, and the bottom ones are far from them.
+	 */
+	static float effectsClear(CardCorner corner, int guiW, int good, int bad, boolean demo) {
+		if (corner != CardCorner.TOP_LEFT) {
+			return 0;
+		}
+		return TopBarLayout.effectsClear(guiW, MARGIN + W, good, bad, TopBarLayout.effectRow(GOOD_ROW, demo),
+				TopBarLayout.effectRow(BAD_ROW, demo));
+	}
+
 	static float[] corner(CardCorner corner, int guiW, int guiH) {
 		return corner(corner, guiW, guiH, 0);
 	}
@@ -563,45 +598,60 @@ public final class RecordCard {
 
 	/**
 	 * The card's place with everything on the right and left that the game draws over it taken into account: the scoreboard
-	 * sidebar and (bottom right) the subtitles move a right card out of their way, and the open chat screen covers a bottom
-	 * left one. Null when there is no room clear of them, which fades the card.
+	 * sidebar and (bottom right) the subtitles move a right card out of their way, and the open chat's box covers a card
+	 * wherever it reaches. Null when there is no room clear of them, which fades the card.
 	 */
 	private static float[] place(Minecraft mc, CardCorner corner, int guiW, int guiH, float h) {
-		float[] at = corner(mc, corner, guiW, guiH, effectsBottom(mc), h);
+		int effects = effectsBottom(mc);
 		boolean chatOpen = NowPlayingHud.chatOpen(mc);
-		if (corner == CardCorner.BOTTOM_LEFT) {
-			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
-			if (chatOpen) {
-				double scale = mc.options.chatScale().get();
-				float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
-				float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
-				boolean hidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
-				if (TopBarLayout.chatBoxCovers(true, hidden, guiH, chatW, chatH, at[0], at[1], W, h)) {
-					return null;
-				}
-			}
-			return at;
-		}
-		if (corner == CardCorner.TOP_LEFT) {
-			return at;
-		}
-		if (corner == CardCorner.BOTTOM_RIGHT) {
-			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
-		}
-		float[] sidebar = NowPlayingHud.sidebarBox(mc, guiW, guiH);
+		double scale = mc.options.chatScale().get();
+		float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
+		float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
+		boolean chatHidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
+		boolean right = corner == CardCorner.TOP_RIGHT || corner == CardCorner.BOTTOM_RIGHT;
+		float[] sidebar = right ? NowPlayingHud.sidebarBox(mc, guiW, guiH) : null;
 		float[] subtitles = corner == CardCorner.BOTTOM_RIGHT && mc.options.showSubtitles().get()
 				? NowPlayingHud.subtitleBox(mc, guiW, guiH) : null;
-		if (sidebar == null && subtitles == null) {
+		return place(corner, guiH, h, c -> corner(mc, c, guiW, guiH, effects, h), chatOpen, chatHidden, chatW, chatH, sidebar, subtitles);
+	}
+
+	/**
+	 * {@link #place(Minecraft, CardCorner, int, int, float)} from plain values: {@code cornerAt} gives the card's place in a
+	 * corner ({@link #corner}), the chat's box is {@code chatW} by {@code chatH}, and {@code sidebar} and {@code subtitles}
+	 * are their boxes (null when they don't show).
+	 */
+	static float[] place(CardCorner corner, int guiH, float h, java.util.function.Function<CardCorner, float[]> cornerAt,
+			boolean chatOpen, boolean chatHidden, float chatW, float chatH, float[] sidebar, float[] subtitles) {
+		float[] at = placeClear(corner, guiH, h, cornerAt, chatOpen, sidebar, subtitles);
+		// The open chat's box is drawn over the card wherever it reaches: the bottom right too on a narrow screen, and the
+		// top corners on a short one
+		return at != null && TopBarLayout.chatBoxCovers(chatOpen, chatHidden, guiH, chatW, chatH, at[0], at[1], W, h) ? null : at;
+	}
+
+	/** The card's place clear of the open chat's text field, the sidebar and the subtitles (not yet of the chat's box). */
+	private static float[] placeClear(CardCorner corner, int guiH, float h, java.util.function.Function<CardCorner, float[]> cornerAt,
+			boolean chatOpen, float[] sidebar, float[] subtitles) {
+		float[] at = cornerAt.apply(corner);
+		if (corner == CardCorner.BOTTOM_LEFT || corner == CardCorner.BOTTOM_RIGHT) {
+			at[1] = TopBarLayout.aboveChatInput(chatOpen, at[1], h, guiH);
+		}
+		if (corner == CardCorner.BOTTOM_LEFT || corner == CardCorner.TOP_LEFT || sidebar == null && subtitles == null) {
 			return at;
 		}
-		// Going up, it stops at where a card in the top right corner would start
-		float minTop = corner == CardCorner.TOP_RIGHT ? at[1] : corner(mc, CardCorner.TOP_RIGHT, guiW, guiH, effectsBottom(mc), h)[1];
-		float y = TopBarLayout.dodgeY(at[0], at[1], W, h, minTop, guiH, sidebar, subtitles);
+		// Going up, it stops at where a card in the top right corner would start, and going down at where one in the bottom
+		// right sits, which already clears the hotbar, the hunger bar, the bottom bar and the open chat's text field
+		float minTop = corner == CardCorner.TOP_RIGHT ? at[1] : cornerAt.apply(CardCorner.TOP_RIGHT)[1];
+		float lowest = corner == CardCorner.BOTTOM_RIGHT ? at[1]
+				: TopBarLayout.aboveChatInput(chatOpen, cornerAt.apply(CardCorner.BOTTOM_RIGHT)[1], h, guiH);
+		float y = TopBarLayout.dodgeY(at[0], at[1], W, h, minTop, lowest + h, sidebar, subtitles);
 		if (Float.isNaN(y)) {
 			return null;
 		}
 		return new float[] {at[0], y};
 	}
+
+	/** No good and no bad effect icons, for a corner that doesn't count them. */
+	private static final int[] NO_EFFECTS = {0, 0};
 
 	/** The card with the hotbar's neighbours taken from the player's settings. */
 	private static float[] corner(Minecraft mc, CardCorner corner, int guiW, int guiH, int effects, float h) {
@@ -611,7 +661,10 @@ public final class RecordCard {
 		boolean canHurt = mc.gameMode == null || mc.gameMode.canHurtPlayer();
 		float demo = TopBarLayout.demoClear(mc.isDemo(), guiW, NowPlayingHud.demoTimerWidth(mc),
 				corner == CardCorner.TOP_LEFT ? MARGIN + W : guiW - MARGIN);
-		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator, Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0),
+		int[] counts = corner == CardCorner.TOP_LEFT ? effectCounts(mc) : NO_EFFECTS;
+		float icons = effectsClear(corner, guiW, counts[0], counts[1], mc.isDemo());
+		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator,
+				Math.max(Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0), icons),
 				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc), NowPlayingHud.topBox());
 	}
 

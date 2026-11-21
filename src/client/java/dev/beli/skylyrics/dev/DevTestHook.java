@@ -55,9 +55,10 @@ import dev.beli.skylyrics.media.DemoSource;
  * screen, as the pause menu's "Save and Quit to Title" does (the single-player world is saved before the command returns).
  * {@code join <world folder name>} (e.g. {@code join SkyTest}) joins that single-player world from the title screen, as
  * quick play does. {@code inventory} opens the player's inventory screen (the survival one; the creative inventory shows no
- * paper doll, so run {@code cmd gamemode survival @p} first). Each only logs "Test hook: ... (not in a world)" or similar
- * when used in the wrong state: {@code pause}, {@code quit} and {@code inventory} need a world (and for the first and
- * last, no screen open), {@code join} needs the title screen or any state without a world.
+ * paper doll, so run {@code cmd gamemode survival @p} first). {@code chat} opens the chat screen with an empty line, as the
+ * T key does ({@code close} closes it). Each only logs "Test hook: ... (not in a world)" or similar when used in the wrong
+ * state: {@code pause}, {@code quit}, {@code inventory} and {@code chat} need a world ({@code pause} and {@code chat} also
+ * no screen open), {@code join} needs the title screen or any state without a world.
  * <p>
  * {@code burst <name> <count> <everyMs>} grabs the game frame {@code count} times (1 to 60), {@code everyMs} apart (0 = every
  * rendered frame), one grab per rendered frame, and saves them as {@code screenshots/<name>_00.png}, {@code _01}, ...
@@ -684,6 +685,20 @@ public final class DevTestHook {
 						SkyLyricsClient.LOG.info("Test hook: inventory ignored (not in a world)");
 					} else {
 						showScreen(client, new net.minecraft.client.gui.screens.inventory.InventoryScreen(client.player));
+					}
+				}
+				case "chat" -> {
+					if (client.level == null || client.player == null) {
+						SkyLyricsClient.LOG.info("Test hook: chat ignored (not in a world)");
+					} else if (currentScreen(client) != null) {
+						SkyLyricsClient.LOG.info("Test hook: chat ignored (a screen is already open)");
+					} else {
+						// An empty chat line, as the T key opens it; 1.21.10 added whether the text is a kept draft
+						//? if >=1.21.10 {
+						showScreen(client, new net.minecraft.client.gui.screens.ChatScreen("", false));
+						//?} else {
+						/*showScreen(client, new net.minecraft.client.gui.screens.ChatScreen(""));
+						*///?}
 					}
 				}
 				case "burst" -> startBurst(arg, false);

@@ -144,4 +144,99 @@ class HudDodgeTest {
 		assertEquals(0, TopBarLayout.demoClear(true, 480, 120, 300), 0f);
 		assertEquals(0, TopBarLayout.demoClear(false, 480, 120, 474), 0f);
 	}
+
+	/** 1280x720 at GUI scale 3, the card with its lyric line, a right-handed player with full health. */
+	private static final int NARROW_W = 427, NARROW_H = 240;
+	private static final float CARD_H = RecordCard.height(true, 1);
+
+	private static float[] cornerOn(CardCorner c, int w, int h) {
+		return RecordCard.corner(c, w, h, 0, CARD_H, true, false, 0, RecordCard.liftUp(true, 39), null);
+	}
+
+	private static float[] placed(CardCorner c, int w, int h, boolean chatOpen, boolean chatHidden, float[] sidebar) {
+		return RecordCard.place(c, h, CARD_H, k -> cornerOn(k, w, h), chatOpen, chatHidden, 320, 180, sidebar, null);
+	}
+
+	@Test
+	void aRightCardSteppingOutOfTheSidebarNeverDropsOntoTheHotbar() {
+		int w = NARROW_W, h = NARROW_H;
+		// Lifted above the hotbar's reach on this narrow screen: its bottom is the lowest it may go
+		float lowest = cornerOn(CardCorner.BOTTOM_RIGHT, w, h)[1] + CARD_H;
+		assertEquals(h - RecordCard.liftUp(true, 39), lowest, 1e-3f);
+		// A 10-line sidebar leaves no room above it, and under it the card would sit on the hunger bar: it fades
+		float[] ten = TopBarLayout.sidebarBox(w, h, 10, 80);
+		for (CardCorner c : new CardCorner[] {CardCorner.BOTTOM_RIGHT, CardCorner.TOP_RIGHT}) {
+			assertTrue(TopBarLayout.overlaps(ten, cornerOn(c, w, h)[0], cornerOn(c, w, h)[1], W, CARD_H), "control: in the sidebar's way, " + c);
+			float[] at = placed(c, w, h, false, false, ten);
+			assertTrue(at == null || at[1] + CARD_H <= lowest + 1e-3f, c + " dropped to " + (at == null ? 0 : at[1] + CARD_H) + ", lowest " + lowest);
+		}
+		// A 3-line sidebar has room above it, so the card goes up rather than down onto the held item's name
+		float[] three = TopBarLayout.sidebarBox(w, h, 3, 80);
+		float[] at = placed(CardCorner.BOTTOM_RIGHT, w, h, false, false, three);
+		assertNotNull(at);
+		assertEquals(three[1] - TopBarLayout.DODGE_GAP - CARD_H, at[1], 1e-3f);
+	}
+
+	@Test
+	void theOpenChatFadesACardItsBoxCoversInAnyCorner() {
+		int w = NARROW_W, h = NARROW_H;
+		// The default chat (320 wide, 180 tall when open) reaches x 332 and y 20 here: over every corner's card
+		for (CardCorner c : CardCorner.values()) {
+			assertNull(placed(c, w, h, true, false, null), c.name());
+			// With the chat closed, or set to Hidden (no box), the card stays
+			assertNotNull(placed(c, w, h, false, false, null), c.name());
+			assertNotNull(placed(c, w, h, true, true, null), c.name());
+		}
+		// 1920x1080 at GUI scale 3: the right cards and the top cards are clear of the box
+		for (CardCorner c : new CardCorner[] {CardCorner.BOTTOM_RIGHT, CardCorner.TOP_RIGHT, CardCorner.TOP_LEFT}) {
+			assertNotNull(placed(c, 640, 360, true, false, null), c.name());
+		}
+		assertNull(placed(CardCorner.BOTTOM_LEFT, 640, 360, true, false, null));
+	}
+
+	/**
+	 * Where Minecraft draws effect icon {@code i} (1 is the rightmost) of a row, as its Gui does on every version: 25 apart
+	 * leftwards from the screen's right edge, 24 square, from y 1, the bad effects' row 26 lower.
+	 */
+	private static float[] effectIcon(int guiW, int i, boolean bad) {
+		float x = guiW - 25 * i, y = bad ? 27 : 1;
+		return new float[] {x, y, x + 24, y + 24};
+	}
+
+	private static float topLeftTop(int w, int h, int good, int bad) {
+		float clear = RecordCard.effectsClear(CardCorner.TOP_LEFT, w, good, bad, false);
+		return RecordCard.corner(CardCorner.TOP_LEFT, w, h, 0, CARD_H, true, false, clear)[1];
+	}
+
+	@Test
+	void aTopLeftCardGoesUnderTheEffectIconsThatReachIt() {
+		for (int[] size : new int[][] {{320, 180}, {NARROW_W, NARROW_H}, {480, 270}}) {
+			int w = size[0], h = size[1];
+			for (int good = 0; good <= 14; good++) {
+				for (int bad = 0; bad <= 14; bad++) {
+					float y = topLeftTop(w, h, good, bad);
+					for (int i = 1; i <= Math.max(good, bad); i++) {
+						String what = w + " wide, " + good + " good and " + bad + " bad effects, icon " + i + ", card at " + y;
+						assertFalse(i <= good && TopBarLayout.overlaps(effectIcon(w, i, false), RecordCard.MARGIN, y, W, CARD_H), what);
+						assertFalse(i <= bad && TopBarLayout.overlaps(effectIcon(w, i, true), RecordCard.MARGIN, y, W, CARD_H), what);
+					}
+				}
+			}
+		}
+		// 320 wide: six good effects end at x 170, clear of the card's right edge (162), and it stays at the top; the
+		// seventh reaches it and the card goes 2 under the row
+		assertEquals(RecordCard.MARGIN, topLeftTop(320, 180, 6, 0), 0f);
+		assertEquals(RecordCard.GOOD_ROW + 2, topLeftTop(320, 180, 7, 0), 0f);
+		// 427 wide (1280x720 at GUI scale 3): ten leave it, eleven reach it
+		assertEquals(RecordCard.MARGIN, topLeftTop(NARROW_W, NARROW_H, 10, 0), 0f);
+		assertEquals(RecordCard.GOOD_ROW + 2, topLeftTop(NARROW_W, NARROW_H, 11, 0), 0f);
+		// Seven bad ones reach it in the second row: under that one
+		assertEquals(RecordCard.BAD_ROW + 2, topLeftTop(320, 180, 2, 7), 0f);
+		// In the demo the rows sit 15 lower, under its timer
+		assertEquals(RecordCard.GOOD_ROW + 15 + 2, RecordCard.effectsClear(CardCorner.TOP_LEFT, 320, 7, 0, true), 0f);
+		// The other corners have their own ways (the top right card goes under all the icons) or are far from them
+		for (CardCorner c : new CardCorner[] {CardCorner.TOP_RIGHT, CardCorner.BOTTOM_LEFT, CardCorner.BOTTOM_RIGHT}) {
+			assertEquals(0, RecordCard.effectsClear(c, 320, 14, 14, false), 0f, c.name());
+		}
+	}
 }
