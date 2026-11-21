@@ -1690,25 +1690,29 @@ final class WorldWords {
 			sentence.forward();
 		} else if (run == RUN_FIRST || sentence.run <= 0) {
 			// The stretch is written from its far end back: it takes room for all its pieces as one, and each sits in it.
-			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left
+			// A line that started over in the middle of a stretch has none open: its first piece opens one for what is left.
+			// One wider than a row is written a row's worth at a time, as wrapped text is, each part in its own order
+			float[] halves = new float[runs.length - placing];
 			int count = 0;
+			float span = -Sentence.GAP * halfH;
 			for (int k = placing; k < runs.length; k++) {
-				count++;
+				float h = halfAngle(half[k] * wordScale, sentence.distance);
+				span += 2 * Sentence.yawHalf(h, sentence.top) + Sentence.GAP * halfH;
+				if (count > 0 && span > sentence.width) {
+					break;
+				}
+				halves[count++] = h;
 				if (runs[k] == RUN_LAST) {
 					break;
 				}
 			}
-			float[] halves = new float[count];
-			for (int k = 0; k < count; k++) {
-				halves[k] = halfAngle(half[placing + k] * wordScale, sentence.distance);
-			}
-			sentence.reverse(halves, (count - 1) * Sentence.GAP * halfH);
+			sentence.reverse(java.util.Arrays.copyOf(halves, count), (count - 1) * Sentence.GAP * halfH);
 		}
 	}
 
-	/** After a piece of kind {@code run} is written: the end of a stretch goes back to writing along the line. */
+	/** After a piece of kind {@code run} is written: the end of a stretch, or of the part of it a row holds, goes back to writing along the line. */
 	static void closeRun(Sentence sentence, int run) {
-		if (run == RUN_LAST) {
+		if (run == RUN_LAST || run != RUN_NONE && --sentence.runLeft <= 0) {
 			sentence.forward();
 		}
 	}
@@ -1859,15 +1863,21 @@ final class WorldWords {
 	}
 
 	static float[] placeClear(Sentence line, float halfW, float halfH, float indent, float bob, List<float[]> taken) {
+		if (line.run > 0 && !Float.isNaN(line.runAt)) {
+			// The rest of a stretch against the line sit in the room its first piece found for all of it: moved on alone,
+			// each try would take the next place back, out past the edge the line's rows start from and across the middle
+			return line.place(halfW, halfH, indent, bob);
+		}
 		float[] mark = line.mark();
 		int rows = line.rows, best = 0;
 		float least = Float.MAX_VALUE;
 		for (int t = 0; t < CLEAR_TRIES; t++) {
-			float[] at = line.place(halfW, halfH, indent, bob);
+			float[] at = tryPlace(line, halfW, halfH, indent, bob);
 			if (line.rows - rows > 1) {
 				break;
 			}
-			float crowd = crowding(at[0], at[1], halfW, halfH, taken);
+			// A stretch's first piece needs its whole room clear
+			float crowd = line.run > 0 ? crowding(line.roomMiddle(), at[1], line.run / 2, halfH, taken) : crowding(at[0], at[1], halfW, halfH, taken);
 			if (crowd == 0) {
 				return at;
 			}
@@ -1880,9 +1890,20 @@ final class WorldWords {
 		line.back(mark);
 		float[] at = null;
 		for (int t = 0; t <= best; t++) {
-			at = line.place(halfW, halfH, indent, bob);
+			at = tryPlace(line, halfW, halfH, indent, bob);
 		}
 		return at;
+	}
+
+	/**
+	 * One try at placing the next piece. A stretch's first piece tries again as its first, taking room for all of it
+	 * further along the row: the whole stretch moves on as one piece does, its words still in their own order.
+	 */
+	private static float[] tryPlace(Sentence line, float halfW, float halfH, float indent, float bob) {
+		if (line.run > 0) {
+			line.runAt = Float.NaN;
+		}
+		return line.place(halfW, halfH, indent, bob);
 	}
 
 	/** Whether a card of this half size, in degrees, has room here away from the given footprints. */
@@ -1954,6 +1975,8 @@ final class WorldWords {
 		/** The stretch's pieces' half widths as seen square on, the room between them, and the pitch its room was measured at. */
 		float[] runHalves = new float[0];
 		float runGap, runPitch;
+		/** How many of the open stretch's pieces are still to be written. */
+		int runLeft;
 		/** Whether the next piece starts a new row, as the first piece of a line written under another one does. */
 		boolean newRow;
 		/** How many rows have been started after the first. */
@@ -2088,8 +2111,15 @@ final class WorldWords {
 		void reverse(float[] halves, float gap) {
 			runHalves = halves;
 			runGap = gap;
+			runLeft = halves.length;
 			run = runWidth(0);
 			runAt = Float.NaN;
+		}
+
+		/** The middle, as drawn (yaw, degrees), of the room the stretch being written took along its row. */
+		float roomMiddle() {
+			float middle = cursor - run / 2;
+			return rtl ? 2 * left + width - middle : middle;
 		}
 
 		/** How wide the stretch's pieces are together along a row at {@code pitch}, with the room between them. */
