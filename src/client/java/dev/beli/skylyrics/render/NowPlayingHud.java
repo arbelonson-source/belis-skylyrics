@@ -799,11 +799,19 @@ public final class NowPlayingHud {
 			try {
 				g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
 				g.pose().scale(0.85f, 0.85f);
-				g.drawCenteredString(font, "♪", 0, -4, ARGB.color(Math.round(a * dim * 230), 0xFFFFFF));
+				g.drawCenteredString(font, "♪", 0, -4, noteColor(a * dim));
 			} finally {
 				g.pose().popMatrix();
 			}
 		}
+	}
+
+	/**
+	 * The no-cover note's colour, {@code a} (0 to 1) visible. Its alpha never goes below 4, like {@link #fade}'s: Minecraft
+	 * 1.21.5 and older draw text with less fully opaque, so the note blinked white as the bar appeared or hid.
+	 */
+	static int noteColor(float a) {
+		return ARGB.color(Math.max(4, Math.round(a * 230)), 0xFFFFFF);
 	}
 
 	/** A number from 0 to 1 that looks random but is the same for the same seed. */
