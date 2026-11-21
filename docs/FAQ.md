@@ -155,9 +155,9 @@ Yes, and the fix is remembered for that song. See "Lyrics come early or late" in
 
 In the World layout, some settings are hidden because that layout doesn't use them: **Draw on top**, **Depth**, **Shadow**, **Pulse** and **Bigger current word** (and **Karaoke fill**, unless the top bar shows lyrics, where it still lights up the bar's words). In Arc and Lines, **Bigger current word** also needs **Karaoke fill** on. **Depth** shows only in Arc, and **Shadow** shows in Lines, and in Arc when **Depth** is off. Switch to Arc or Lines to see them again; your values are kept.
 
-## Is the mod in Hebrew, Spanish or Portuguese?
+## Is the mod in Hebrew, Spanish, Portuguese, Russian or Ukrainian?
 
-The settings screen and the top bar are in English, Spanish, Portuguese (Brazilian and European) and Hebrew. They follow your Minecraft language, so pick one of them in Minecraft's language settings to get it. Spanish comes in the Minecraft choices for Spain, Mexico, Argentina, Chile, Ecuador, Uruguay and Venezuela, and Portuguese for Brazil and Portugal (each has its own texts). Any other Minecraft language shows English. A Hebrew or Arabic lyric line with an English phrase in it (or the other way round) reads each part in its own direction in the Arc layout, and in World with **Flowing line** on. Invisible direction marks in copied lyrics no longer show as boxes, and the time left on the **Record card** reads "-2:35" with the game in Hebrew or Arabic.
+The settings screen and the top bar are in English, Spanish, Portuguese (Brazilian and European), Russian, Ukrainian and Hebrew. They follow your Minecraft language, so pick one of them in Minecraft's language settings to get it. Spanish comes in the Minecraft choices for Spain, Mexico, Argentina, Chile, Ecuador, Uruguay and Venezuela, and Portuguese for Brazil and Portugal (each has its own texts). Russian and Ukrainian each have their own texts too, with Minecraft's own names for its menus. Any other Minecraft language shows English. A Hebrew or Arabic lyric line with an English phrase in it (or the other way round) reads each part in its own direction in the Arc layout, and in World with **Flowing line** on. Invisible direction marks in copied lyrics no longer show as boxes, and the time left on the **Record card** reads "-2:35" with the game in Hebrew or Arabic.
 
 ## Can I try it without music?
 
