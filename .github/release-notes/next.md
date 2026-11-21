@@ -102,6 +102,7 @@
   - On Minecraft 26.3, a click outside the game window no longer counts as a click inside it.
   - In the settings, letting go of the right or middle mouse button while you drag a slider or the scroll bar with the left no longer drops the drag.
 - **Settings scroll.** **Open Music tab** in the song library now takes you down to the Spotify card every time. Settings tabs also keep their place after you visit a shorter tab.
+- **Reset all and Done.** In a small window or at a big GUI scale, the "Click again to reset" button of the longer languages (Russian, Ukrainian, Spanish, Portuguese and others) no longer runs under **Done**, where a click on **Done** reset every setting. Its words are cut to fit instead.
 - **World words.** World words stay put and behave better around moves, respawns and each other.
   - On Linux, a music player that answers slowly, or Spotify right after a pause or resume, no longer makes the World words vanish for a moment. Moving the **Timing** slider no longer makes them blink.
   - In the World layout the song title shows for its full time even when the lyrics take a moment to load, and a long title is shrunk to fit.

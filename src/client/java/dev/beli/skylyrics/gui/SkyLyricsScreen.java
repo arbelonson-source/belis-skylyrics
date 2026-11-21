@@ -1403,12 +1403,26 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
+	/**
+	 * Where the footer's buttons go in a panel {@code pw} wide, from its left edge: {Reset all x, Reset all width, Done x}.
+	 * Reset all is as wide as its label ({@code resetLabelW}) needs, but stops 6 short of Done ({@code doneW} wide): in a
+	 * small window the longer "Click again to reset" of some languages ran under Done, so a click on Done reset every
+	 * setting. drawButton cuts the label to the button.
+	 */
+	static int[] footerButtons(int pw, int resetLabelW, int doneW) {
+		int resetX = SIDEBAR_W + 12;
+		int doneX = pw - 12 - doneW;
+		return new int[] {resetX, Math.max(0, Math.min(resetLabelW + 16, doneX - 6 - resetX)), doneX};
+	}
+
 	private void renderFooter(GuiGraphics g, Frame f) {
 		int fy = py + ph - FOOTER_H + 8;
 		g.fill(viewX, fy - 8, px + pw - 12, fy - 7, Ui.DIVIDER);
 		boolean armed = System.nanoTime() < resetArmedUntil;
 		String reset = armed ? Tr.t("Click again to reset") : Tr.t("Reset all");
-		int rw = font.width(reset) + 16;
+		int dw = doneW();
+		int dx = px + pw - 12 - dw;
+		int rw = footerButtons(pw, font.width(reset), dw)[1];
 		resetW = rw;
 		boolean hoverReset = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), viewX, fy, rw, 16);
 		Controls.drawButton(f, viewX, fy, rw, 16, reset, hoverReset, false, true);
@@ -1416,8 +1430,6 @@ public final class SkyLyricsScreen extends Screen {
 			Ui.outline(g, viewX, fy, rw, 16, 4, 0xFFFF6B6B);
 		}
 
-		int dw = doneW();
-		int dx = px + pw - 12 - dw;
 		boolean hoverDone = f.hoverAllowed() && Ui.inside(f.mx(), f.my(), dx, fy, dw, 16);
 		Controls.drawButton(f, dx, fy, dw, 16, Tr.t("Done"), hoverDone, true, true);
 
@@ -1496,7 +1508,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		int fy = py + ph - FOOTER_H + 8;
 		boolean armed = System.nanoTime() < resetArmedUntil;
-		int rw = font.width(armed ? Tr.t("Click again to reset") : Tr.t("Reset all")) + 16;
+		int rw = footerButtons(pw, font.width(armed ? Tr.t("Click again to reset") : Tr.t("Reset all")), doneW())[1];
 		if (Ui.inside(mx, my, viewX, fy, rw, 16)) {
 			pressReset();
 			return true;

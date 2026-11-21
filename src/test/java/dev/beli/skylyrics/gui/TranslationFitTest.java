@@ -173,4 +173,38 @@ class TranslationFitTest {
 		assertTrue(measured >= 5, "only " + measured + " languages measured");
 		assertTrue(cut.isEmpty(), "the search box would show only the end of: " + cut);
 	}
+
+	/** The narrowest screen the game gives at any GUI scale (it picks a smaller scale before going under 320). */
+	private static final int SMALLEST_SCREEN = 320;
+
+	/** A text of a language, or the English one when that language doesn't have it (as the game shows it). */
+	private static String text(Map<String, Map<String, String>> all, String lang, String key) {
+		String t = all.get(lang).get(key);
+		return t != null ? t : all.get("en_us.json").get(key);
+	}
+
+	@Test
+	void resetAllNeverRunsUnderDoneInTheSmallestWindow() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		int pw = SMALLEST_SCREEN - 16; // the settings panel leaves 8 on each side
+		List<String> under = new ArrayList<>();
+		int measured = 0;
+		for (String lang : all.keySet()) {
+			int done = width(text(all, lang, "skylyrics.ui.done"));
+			for (String key : List.of("skylyrics.ui.reset_all", "skylyrics.ui.click_again_to_reset")) {
+				String reset = text(all, lang, key);
+				int w = width(reset);
+				if (w < 0 || done < 0) {
+					continue;
+				}
+				measured++;
+				int[] b = SkyLyricsScreen.footerButtons(pw, w, Controls.buttonW(done, 56));
+				if (b[0] + b[1] > b[2]) {
+					under.add(lang + " \"" + reset + "\" reaches " + (b[0] + b[1]) + ", Done starts at " + b[2]);
+				}
+			}
+		}
+		assertTrue(measured >= 10, "only " + measured + " texts measured");
+		assertTrue(under.isEmpty(), "Reset all runs under Done, so a click on Done resets every setting: " + under);
+	}
 }
