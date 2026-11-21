@@ -1,0 +1,71 @@
+# The night sky fixes of fix/sky98, each caught in a burst of frames (1280x720, GUI scale 2 as the test world starts):
+# 1. Pulse with the lyrics on: when the lyrics go (here the open chat hides them, with Hide in menus on) the aurora
+#    eases up to full brightness over about a second, and back down when they return. With the old code it is a third
+#    brighter from one frame to the next, about a third of a second into the burst. Switching the pulse off eases the
+#    same way. (A new lyric line can still lift the sky for a moment in the frames before the lyrics are gone.)
+# 2. Constellations off (with the aurora on) fade out over 1.5 s; with the old code they are gone in the first frame.
+#    Then Night sky Off with every other sky effect off fades the aurora out instead of cutting it in one frame, and
+#    Constellations on fades them in. Compare the frames of each burst, first to last.
+# Run it, and with -f mod_ref=main to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/sky98 -f version=1.21.11 -f script=.github/checks/sky-fixes.txt
+#   gh workflow run screenshots.yml --ref fix/sky98 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/sky-fixes.txt
+
+# A clear night that stays night; the lyrics pinned to the north, looking west of them where the aurora and the six-star
+# constellation show (as in pictures.txt's sky-aurora-constellations)
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set direction NORTH
+set sky AURORA
+set skyStrength 0.7
+set constellations true
+set shootingStars false
+set twinkle false
+set skyPulse true
+set hideInMenus true
+look 258 -34
+sleep 12
+shot sky98-pulse-resting
+
+# 1. The lyrics hide under the open chat: the sky eases up instead of jumping
+chat
+burst sky98-pulse-chat-open 16 100
+wait burst sky98-pulse-chat-open wrote
+sleep 2
+shot sky98-pulse-chat-settled
+close
+burst sky98-pulse-chat-closed 16 100
+wait burst sky98-pulse-chat-closed wrote
+sleep 3
+# The pulse switched off while the sky rests between lines
+set skyPulse false
+burst sky98-pulse-off 16 100
+wait burst sky98-pulse-off wrote
+set hideInMenus false
+sleep 3
+
+# 2. Constellations off with the aurora on: they fade out
+shot sky98-constellations-on
+set constellations false
+burst sky98-constellations-off 12 150
+wait burst sky98-constellations-off wrote
+# Night sky Off, nothing else on: the aurora fades out
+sleep 3
+shot sky98-aurora-before-off
+set sky OFF
+burst sky98-sky-off 12 150
+wait burst sky98-sky-off wrote
+sleep 2
+shot sky98-sky-off-settled
+# Aurora back, then Constellations on: they fade in
+set sky AURORA
+sleep 6
+set constellations true
+burst sky98-constellations-on 12 150
+wait burst sky98-constellations-on wrote
+
+# Back as the test world starts
+set direction FOLLOW
+look 0 -28
+sleep 2
