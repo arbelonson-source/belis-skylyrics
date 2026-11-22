@@ -242,11 +242,11 @@ class MacMediaSourceTest {
 		assertTrue(sp.contains("set u to spotify url of t"));
 		assertTrue(sp.contains("return {s, d, pos, n, ar, al, art, u}"));
 		String mu = MacMediaSource.MUSIC.readScript();
-		assertTrue(mu.contains("set st to current stream title"));
-		assertTrue(mu.contains("return {s, d, pos, n, ar, al, \"\", \"\", st}"));
+		assertTrue(mu.contains("set streamLine to current stream title"));
+		assertTrue(mu.contains("return {s, d, pos, n, ar, al, \"\", \"\", streamLine}"));
 		// each read sits inside its own try
 		assertTrue(sp.replace("\t", "").contains("try\nset u to spotify url of t\nend try"));
-		assertTrue(mu.replace("\t", "").contains("try\nset st to current stream title\nend try"));
+		assertTrue(mu.replace("\t", "").contains("try\nset streamLine to current stream title\nend try"));
 	}
 
 	/**
