@@ -548,5 +548,7 @@
   "skylyrics.ui.s_results": "Знайдено: %s",
   "skylyrics.ui.settings_reset": "Налаштування скинуто",
   "skylyrics.ui.search_cleared": "Пошук очищено",
-  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab змінює розділ, стрілки — перехід, Enter вмикає або відкриває, стрілка вгору з верхнього ряду — кнопки вигляду й нещодавні запити, Esc — назад, а введення тексту запускає пошук"
+  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab змінює розділ, стрілки — перехід, Enter вмикає або відкриває, стрілка вгору з верхнього ряду — кнопки вигляду й нещодавні запити, Esc — назад, а введення тексту запускає пошук",
+  "skylyrics.ui.1_playlist": "1 плейлист",
+  "skylyrics.ui.s_playlists": "Плейлистів: %s"
 }

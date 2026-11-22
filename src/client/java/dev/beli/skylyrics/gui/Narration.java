@@ -131,4 +131,13 @@ final class Narration {
 	static String tile(String card, String action) {
 		return join(card, action);
 	}
+
+	/**
+	 * What a list says while the keyboard is in it on no card: what it is doing ({@code state}: loading, empty, a search's
+	 * result count) when there is something to say, else how many cards it has ({@code one} or {@code many}, like "40
+	 * songs"), so the end of "Loading" is heard.
+	 */
+	static String listState(String state, int count, String one, String many) {
+		return !state.isEmpty() || count <= 0 ? state : count == 1 ? one : many;
+	}
 }

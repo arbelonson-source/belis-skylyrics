@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.function.DoubleSupplier;
 import java.util.function.IntFunction;
 
 import net.minecraft.client.KeyMapping;
@@ -195,10 +196,12 @@ public final class LibraryScreen extends Screen {
 	}
 
 	/** A list being loaded page by page as you scroll. */
-	private final class Shelf {
+	static final class Shelf {
 		final IntFunction<CompletableFuture<? extends Page<?>>> loader;
 		/** Liked songs and Recently heard shift while you scroll, so a song can come round again on a later page. */
 		final boolean noRepeats;
+		/** The screen's clock, in seconds: when the covers of a page that came pop in, and when a failed one is tried again. */
+		private final DoubleSupplier clock;
 		final List<Object> items = new ArrayList<>();
 		final List<Float> born = new ArrayList<>();
 		final List<Float> lift = new ArrayList<>();
@@ -214,19 +217,23 @@ public final class LibraryScreen extends Screen {
 		float scroll;
 		float scrollTarget;
 
-		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader) {
-			this(loader, false);
+		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader, DoubleSupplier clock) {
+			this(loader, false, clock);
 		}
 
-		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader, boolean noRepeats) {
+		Shelf(IntFunction<CompletableFuture<? extends Page<?>>> loader, boolean noRepeats, DoubleSupplier clock) {
 			this.loader = loader;
 			this.noRepeats = noRepeats;
+			this.clock = clock;
 		}
 
 		void more() {
 			if (pending == null && next >= 0) {
 				error = "";
 				pending = loader.apply(next);
+				// A page that is there at once (the made-up songs, Recently heard) goes in at once: the list is never said
+				// to be loading, even by the Narrator's first words as the library opens, before anything is drawn
+				poll();
 			}
 		}
 
@@ -242,6 +249,7 @@ public final class LibraryScreen extends Screen {
 			if (pending == null || !pending.isDone()) {
 				return;
 			}
+			float clock = (float) this.clock.getAsDouble();
 			try {
 				Page<?> page = pending.join();
 				List<?> fresh = noRepeats ? SpotifyLibrary.withoutRepeats(items, page.items()) : page.items();
@@ -282,7 +290,7 @@ public final class LibraryScreen extends Screen {
 				case SEARCH -> offset -> lib.search(q, offset);
 				case LIKED -> lib::liked;
 				case PLAYLISTS -> lib::playlists;
-			}, s == Section.LIKED);
+			}, s == Section.LIKED, () -> clock);
 			if (s != Section.SEARCH || !q.isEmpty()) {
 				shelf.more();
 			} else {
@@ -1362,7 +1370,7 @@ public final class LibraryScreen extends Screen {
 				return;
 			}
 			Library lib = library;
-			Shelf songs = new Shelf(offset -> lib.playlist(list, offset));
+			Shelf songs = new Shelf(offset -> lib.playlist(list, offset), () -> clock);
 			songs.more();
 			opened = songs;
 			openedAtNs = System.nanoTime();
@@ -1933,7 +1941,24 @@ public final class LibraryScreen extends Screen {
 					Tr.t("%s of %s", selected + 1, shelf.size())), action);
 			return sayResults ? Narration.join(statusWords(shelf), tile) : tile;
 		}
-		return Narration.join(Narration.card(name, shelf.error, "", "", ""), statusWords(shelf));
+		return Narration.join(Narration.card(name, shelf.error, "", "", ""), listWords(shelf));
+	}
+
+	/** What a list says with the keyboard in it on no card: what it is doing, or once it has cards how many ("40 songs"). */
+	private String listWords(Shelf shelf) {
+		int n = shelf.size();
+		String one, many;
+		if (opened == null && section == Section.SEARCH) {
+			one = Tr.t("1 result");
+			many = Tr.t("%s results", n);
+		} else if (opened == null && section == Section.PLAYLISTS) {
+			one = Tr.t("1 playlist");
+			many = Tr.t("%s playlists", n);
+		} else {
+			one = Tr.t("1 song");
+			many = Tr.t("%s songs", n);
+		}
+		return Narration.listState(statusWords(shelf), n, one, many);
 	}
 
 	/** The message in the toast while it is still showing, for the Narrator. */
