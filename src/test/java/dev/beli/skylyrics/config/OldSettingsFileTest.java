@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -90,6 +91,16 @@ class OldSettingsFileTest {
 		assertKept(old, again, "after a save");
 		assertTrue(again.keysMigrated);
 		assertEquals(900, again.songOffset(playing("שיר הלילה", "להקת הים")));
+	}
+
+	@Test
+	void aTimingForASongCreditedToManyArtistsIsFound() throws Exception {
+		// 0.8.0 keyed it by the whole credit as the player sent it (14 names, over 300 letters)
+		SkyLyricsConfig c = load(resource("skylyrics-0.8.0.json"));
+		String credit = String.join(", ", Collections.nCopies(14, "Featured Singer Name"));
+		Track song = playing("Long Song", credit);
+		assertEquals(600, c.songOffset(song));
+		assertEquals(credit, song.artist(), "the credit is shown and matched whole");
 	}
 
 	@Test
