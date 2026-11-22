@@ -34,6 +34,19 @@ public final class DemoSource implements MediaSource {
 			[01:14.00]
 			""";
 
+	/** The song the demo plays: {@link #TRACK}, or the title and artist a test check gave it (see {@link #renameForTest}). */
+	private static volatile Track playing = TRACK;
+
+	/**
+	 * Test checks only (the test hook's {@code song} command): the demo song is reported with this title and artist, so
+	 * a check can show how the bar and the Record card draw odd song details. It keeps the demo's length, lyrics and
+	 * player; both blank goes back to {@link #TRACK}. Passed through {@link Track}'s own cleaning, like a player's.
+	 */
+	public static void renameForTest(String title, String artist) {
+		playing = title.isBlank() && artist.isBlank() ? TRACK
+				: new Track(title, artist, TRACK.album(), TRACK.lengthMs(), TRACK.artUrl(), PLAYER);
+	}
+
 	private long startNanos = System.nanoTime();
 	private long pausedAtMs = -1;
 
@@ -50,7 +63,7 @@ public final class DemoSource implements MediaSource {
 
 	@Override
 	public synchronized Snapshot poll() {
-		return new Snapshot(TRACK, positionMs(), pausedAtMs < 0, System.nanoTime());
+		return new Snapshot(playing, positionMs(), pausedAtMs < 0, System.nanoTime());
 	}
 
 	@Override

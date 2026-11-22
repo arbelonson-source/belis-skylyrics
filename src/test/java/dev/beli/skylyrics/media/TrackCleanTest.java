@@ -74,4 +74,25 @@ class TrackCleanTest {
 		assertEquals("a b", of("a \u200F b", "", "").title());
 		assertTrue(of("\u200E\u200F\u061C", "x", "").isNone());
 	}
+
+	/**
+	 * An emoji's style selector (VS16 after "❤" makes a phone draw it in colour), the other variation selectors, a word
+	 * joiner, a zero-width space and a stray byte order mark are invisible, but the game draws them: none of the bundled
+	 * smooth fonts has a variation selector or a word joiner, so they come from Minecraft's Unifont, which draws each as a
+	 * dashed box with its name in it ("VS16", "WJ"), as it does the zero-width space and the byte order mark with the
+	 * pixel font. A song named "Paper Hearts ❤️" showed "Paper Hearts ❤" and a box in the top bar and on the Record card.
+	 */
+	@Test
+	void selectorsAndZeroWidthCharactersThatDrawAsBoxesAreRemoved() {
+		Track t = of("Paper Hearts \u2764\uFE0F", "Mira Vale \u2728\uFE0F", "Sun\u2600\uFE0E Days");
+		assertEquals("Paper Hearts \u2764", t.title());
+		assertEquals("Mira Vale \u2728", t.artist());
+		assertEquals("Sun\u2600 Days", t.album());
+		assertEquals("Glass Tide", of("Glass\u2060 \uFEFFTide\u200B", "x", "x").title());
+		assertEquals("a\u6F22b", of("a\u6F22\uDB40\uDD00b", "x", "x").title()); // VS17, a Han variant selector
+		assertTrue(of("\uFE0F\u200B", "x", "").isNone());
+		// The joiners are kept: Persian writing and emoji sequences need them, and the smooth fonts draw them as nothing
+		assertEquals("\u0645\u06CC\u200C\u062E\u0648", of("\u0645\u06CC\u200C\u062E\u0648", "x", "x").title());
+		assertEquals("\uD83D\uDC69\u200D\uD83C\uDFA4", of("\uD83D\uDC69\u200D\uD83C\uDFA4", "x", "x").title());
+	}
 }

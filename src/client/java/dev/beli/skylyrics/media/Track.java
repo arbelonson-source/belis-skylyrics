@@ -21,7 +21,13 @@ public record Track(String title, String artist, String album, long lengthMs, St
 
 	private static final java.util.regex.Pattern SPACES = java.util.regex.Pattern.compile("[\\s\\p{Z}]+");
 
-	/** Control characters become a space (no length limit: saved timing keys are cleaned with this and must come back whole; the fields are cut in the constructor), text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, runs of space become one, and the ends are trimmed. */
+	/**
+	 * Control characters become a space (no length limit: saved timing keys are cleaned with this and must come back whole;
+	 * the fields are cut in the constructor), text-direction marks, embeddings and overrides (LRM, RLM, ALM too) go, and so
+	 * do the invisible characters the game draws as a dashed box with their name in it: an emoji's style selector (the
+	 * VS16 after a "\u2764"), the other variation selectors, a word joiner, a zero-width space and a byte order mark. Runs of
+	 * space become one, and the ends are trimmed.
+	 */
 	public static String clean(String s) {
 		if (s == null) {
 			return "";
@@ -31,12 +37,31 @@ public record Track(String title, String artist, String album, long lengthMs, St
 		for (int i = 0; i < s.length(); i++) {
 			char c = s.charAt(i);
 			if (c >= '\u202A' && c <= '\u202E' || c >= '\u2066' && c <= '\u2069'
-					|| c == '\u200E' || c == '\u200F' || c == '\u061C') {
+					|| c == '\u200E' || c == '\u200F' || c == '\u061C' || drawnAsBox(s, i)) {
 				continue;
 			}
 			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
 		}
 		return SPACES.matcher(b).replaceAll(" ").strip();
+	}
+
+	/**
+	 * Whether the char at {@code i} is (part of) an invisible character Minecraft's Unifont draws as a dashed box with its
+	 * name in it, which no bundled smooth font covers: the variation selectors (VS1 to VS16, and the high half or the low
+	 * half of VS17 to VS256) and the word joiner; also the zero-width space and the byte order mark, boxes in the pixel font.
+	 * The joiners (ZWJ, ZWNJ) stay: Persian writing and emoji sequences need them, and the smooth fonts draw them as nothing.
+	 */
+	private static boolean drawnAsBox(String s, int i) {
+		char c = s.charAt(i);
+		if (c >= '\uFE00' && c <= '\uFE0F' || c == '\u2060' || c == '\u200B' || c == '\uFEFF') {
+			return true;
+		}
+		// VS17 to VS256: U+E0100 to U+E01EF, a high half of DB40 and a low half from DD00 to DDEF
+		if (c == '\uDB40' && i + 1 < s.length()) {
+			char low = s.charAt(i + 1);
+			return low >= '\uDD00' && low <= '\uDDEF';
+		}
+		return c >= '\uDD00' && c <= '\uDDEF' && i > 0 && s.charAt(i - 1) == '\uDB40';
 	}
 
 	/** A title, artist or album longer than this is cut: a player can send anything, and it is drawn and compared all the time. */

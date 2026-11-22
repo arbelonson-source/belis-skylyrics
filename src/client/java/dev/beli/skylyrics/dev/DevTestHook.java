@@ -87,6 +87,12 @@ import dev.beli.skylyrics.media.DemoSource;
  * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
  * highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
  * <p>
+ * {@code song <title> | <artist>} has the demo song reported with that title and artist (the artist after the last "|"),
+ * so a check can show odd song details in the bar and on the Record card; {@code \}{@code uXXXX} stands for that
+ * character (an emoji's style selector {@code \}{@code uFE0F}, Arabic letters). It keeps the demo's length, lyrics and
+ * player, and the bar treats it as a song change. {@code song} alone goes back to the demo's own name. It logs
+ * "Test hook: the demo song is now ...".
+ * <p>
  * {@code seek <seconds>} moves the demo song to that second (decimal, e.g. {@code seek 12.5}); a leading sign is relative to
  * now ({@code seek -3} three seconds back, {@code seek +3} forward). It goes through the tracker like the Now playing bar's
  * click, so the lyrics notice the jump as they would a player's seek; the position shows from the next poll. Only the demo
@@ -753,6 +759,11 @@ public final class DevTestHook {
 				case "burst" -> startBurst(arg, false);
 				case "burstat" -> startBurst(arg, true);
 				case "seek" -> seek(arg);
+				case "song" -> {
+					String[] song = SongArg.parse(arg);
+					DemoSource.renameForTest(song[0], song[1]);
+					SkyLyricsClient.LOG.info("Test hook: the demo song is now '{}' by '{}'", song[0], song[1]);
+				}
 				case "where" -> where();
 				case "meteor" -> {
 					String[] a = arg.isBlank() ? new String[0] : arg.split("\\s+");

@@ -21,10 +21,15 @@ public final class TitleCleaner {
 	private static final Pattern DASH = Pattern.compile("\\s+[-\u2013\u2014|]\\s+");
 
 	private static final Pattern TOPIC = Pattern.compile("(?i).*\\s-\\s*topic$");
-	/** "Remastered 2011", "Live at …", "Mono": the part after the dash is not a song name. */
+	/**
+	 * "Remastered 2011", "Live at …", "Mono", 'From "Film"', "Recorded at …", "Bonus Track": the part after the dash is not a
+	 * song name. "From" counts only with a quote or a film or show word after it, so a song named "From The Start" is still one.
+	 */
 	private static final Pattern VERSION_TAG = Pattern.compile(
 			"(?i)(\\d{4}\\s+)?(digital\\s+)?remaster(ed)?(\\s+(\\d{4}|version))?|(\\d{4}\\s+)?(mono|stereo)(\\s+(version|mix))?"
-					+ "|live|live (at|from|in) .+|radio edit|(single|album|live|acoustic|demo) version|demo|acoustic|instrumental");
+					+ "|live|live (at|from|in) .+|radio edit|(single|album|live|acoustic|demo) version|demo|acoustic|instrumental"
+					+ "|from\\s*[\"\u201C\u201D'\u2018\u2019\u00AB(\\[].+|from\\s.*\\b(soundtrack|motion picture|film|movie|series|musical|ost)\\b.*"
+					+ "|recorded\\s+(live\\s+)?(at|in|from|for|on)\\s.+|bonus track");
 
 	/** A version word ending the part after the dash ("Levels - Skrillex Remix"): that part is not a song name, so the dash is not "Artist - Song". */
 	private static final Pattern VERSION_END = Pattern.compile(
@@ -130,7 +135,8 @@ public final class TitleCleaner {
 	/**
 	 * Lowercase letters and digits only, so "Don't Stop" matches "Dont stop". Accents on Latin, Greek and
 	 * Cyrillic letters fold away ("Beyonc\u00e9" = "Beyonce"); Arabic and Hebrew vowel marks fold too; marks in other scripts change the word
-	 * (Hindi "\u0915\u093e" and "\u0915\u0940", Japanese "\u30d0" and "\u30cf") and stay.
+	 * (Hindi "\u0915\u093e" and "\u0915\u0940", Japanese "\u30d0" and "\u30cf") and stay. Variation selectors (an emoji's
+	 * colour style, a Han variant) never change the word, and {@link Track} drops them from a player's title.
 	 */
 	public static String key(String s) {
 		String t = Normalizer.normalize(s.toLowerCase(Locale.ROOT), Normalizer.Form.NFKD);
@@ -139,6 +145,9 @@ public final class TitleCleaner {
 		for (int i = 0; i < t.length(); ) {
 			int c = t.codePointAt(i);
 			i += Character.charCount(c);
+			if (c >= 0xFE00 && c <= 0xFE0F || c >= 0xE0100 && c <= 0xE01EF) {
+				continue;
+			}
 			if (Character.getType(c) == Character.NON_SPACING_MARK || Character.getType(c) == Character.COMBINING_SPACING_MARK
 					|| Character.getType(c) == Character.ENCLOSING_MARK) {
 				if (!foldable) {
