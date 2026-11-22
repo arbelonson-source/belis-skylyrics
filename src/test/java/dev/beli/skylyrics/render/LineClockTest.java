@@ -51,6 +51,36 @@ class LineClockTest {
 	}
 
 	@Test
+	void aSettledFirstLineLeavesNoTailOfAFlash() {
+		// The crosshair, sky and hats read the flash clock straight away: a first line must give them nothing, not the
+		// last part of a flash that never started
+		LineClock clock = new LineClock();
+		clock.frame(true, false, 0, 10_000 * MS, SETTLE);
+		for (long ms = 0; ms <= 400; ms += 20) {
+			assertEquals(0f, LyricsRenderer.pulse(clock.flashSince((10_000 + ms) * MS)), "flash " + ms + " ms after the first line");
+		}
+		assertEquals(0x3366CC, CrosshairShape.flash(0x3366CC, clock.flashSince(10_000 * MS)));
+		// New lyrics, first line again
+		clock.reset();
+		clock.frame(true, false, 4, 20_000 * MS, SETTLE);
+		assertEquals(0f, LyricsRenderer.pulse(clock.flashSince(20_000 * MS)));
+	}
+
+	@Test
+	void aLineChangeWhileTheLyricsAreHiddenLeavesNoTailOfAFlash() {
+		LineClock clock = new LineClock();
+		clock.frame(true, false, 2, 1_000 * MS, SETTLE);
+		clock.follow(3, 10_000 * MS, SETTLE);
+		for (long ms = 0; ms <= 400; ms += 20) {
+			assertEquals(0f, LyricsRenderer.pulse(clock.flashSince((10_000 + ms) * MS)), "flash " + ms + " ms after a hidden line change");
+		}
+		// Shown again: the next real change flashes in full
+		clock.frame(true, false, 3, 11_000 * MS, SETTLE);
+		clock.frame(true, false, 4, 12_000 * MS, SETTLE);
+		assertEquals(1f, LyricsRenderer.pulse(clock.flashSince(12_000 * MS) + LyricsRenderer.PULSE_RISE), 1e-4f);
+	}
+
+	@Test
 	void hiddenOrInstrumentalFramesLeaveTheClockAlone() {
 		LineClock clock = new LineClock();
 		clock.frame(true, false, 0, 1_000 * MS, SETTLE);
