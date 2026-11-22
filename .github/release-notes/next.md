@@ -200,6 +200,7 @@
 - **The lock key with Floating lyrics.** With **Placement** on **Floating** (Arc or Lines), where nothing can be pinned, the **Lock lyrics here** key no longer says "Lyrics locked here" and quietly turns on **View lock**: it says only lyrics in the sky can be locked and changes nothing. With **Direction** on N, E, S or W, unlocking now says "Lyrics unlocked" instead of "Lyrics follow again", since the lyrics go back to that side of the sky.
 - **Twinkling stars in the World layout.** In the World layout with **Direction** on N, E, S or W, the **Twinkling stars** now stay round the words on that side of the sky instead of following your view when **Placement** was left on **Floating** from another layout (Placement is hidden in World).
 - **An unbound settings or library key.** With **Open settings** or **Open song library** set to no key in Controls, the game log no longer fills with "Invalid key" errors (about 60 lines a second for each such key) on Minecraft 1.21.1 to 26.2.
+- **Big Arc lyrics stay on the screen.** In the Arc layout, from a **Size** of about 2.5 at the usual FOV (sooner with a lower FOV or a squarer window, such as one tiled to half the screen, from about 1.5), the rows of a long line could run off the left and right sides of the screen, their first and last words out of sight. Now such a line is cut into more, shorter rows that fit across the screen; at the usual sizes nothing changes.
 
 ### Faster
 

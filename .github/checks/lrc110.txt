@@ -1,0 +1,43 @@
+# Arc layout fit of fix/lrc110: a long Arc line must stay inside the screen at a big Size or in a squarer window.
+# Compare the branch with main by running it twice, both times in a square window (the half-screen tile case):
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f size=1000x1000 -f mod_ref=<branch or commit> -f script=.github/checks/lrc110.txt
+#
+# Each shot shows one long test line (about 300 text units: two full rows on main) with all its words out (they come
+# out as sung, over 12 s), a little above the crosshair and up to 6 degrees to one side. Sizes worked out from the
+# layout's geometry with the real font's widths guessed at about 5 units a letter, so take them as rough.
+# arc-fit-size1 (Size 1): the same on main and on the branch, two rows well inside the screen.
+# arc-fit-size15 (Size 1.5): main: two rows, close to the edge on the side the line leans to;
+#   branch: three shorter rows with room at both sides.
+# arc-fit-size2 (Size 2): main: the end of the rows runs off the side the line leans to (a word cut by the edge or gone);
+#   branch: three or four shorter rows, every word inside the screen.
+# arc-fit-size3 (Size 3): main: words off both sides of the screen;
+#   branch: four or five short rows of a word or two, stacked, every word inside.
+# arc-fit-short3 (Size 3, the short line "Glow on"): one row inside the screen on both.
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout ARC
+look 0 -20
+sleep 6
+fastlines 20000 Lanterns drifting over the sleepy town below us all night | Glow on
+set size 1
+seek 10.4
+sleep 1.4
+shot arc-fit-size1
+set size 1.5
+seek 10.4
+sleep 1.4
+shot arc-fit-size15
+set size 2
+seek 10.4
+sleep 1.4
+shot arc-fit-size2
+set size 3
+seek 10.4
+sleep 1.4
+shot arc-fit-size3
+seek 21
+sleep 1.4
+shot arc-fit-short3

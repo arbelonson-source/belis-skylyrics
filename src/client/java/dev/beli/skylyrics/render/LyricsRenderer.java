@@ -197,6 +197,8 @@ public final class LyricsRenderer {
 	/** The instrumental song's note line, translated once per language. */
 	private final LangText instrumentalText = new LangText(() -> Tr.t("♪  Instrumental  ♪"));
 	private float wrapCacheWidth;
+	/** How far left or right an Arc line may reach and stay on the screen (see {@link #arcRoom}); the arc lines were placed for it. */
+	private float arcFitRoom = Float.POSITIVE_INFINITY;
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
 	private float wrapCacheProbe;
@@ -438,9 +440,17 @@ public final class LyricsRenderer {
 		float angular = rowAngle(sky, cfg.size);
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
+		double tanHalf = tanHalfWide(mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight());
 		if (cfg.layout != Layout.ARC || shown.instrumental()) {
 			// The stacked lines' rows have to fit across the view at this size
-			wrapWidth = rowWidth(wrapWidth, angular, tanHalfWide(mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight()));
+			wrapWidth = rowWidth(wrapWidth, angular, tanHalf);
+		} else {
+			// And so do an Arc line's: a bigger Size or a narrower view cuts the lines into more rows again
+			float room = arcRoom(sky, cfg.size, tanHalf);
+			if (room != arcFitRoom) {
+				arcFitRoom = room;
+				arcCache.clear();
+			}
 		}
 		wrapAt(mc, cfg, wrapWidth);
 
@@ -511,6 +521,18 @@ public final class LyricsRenderer {
 			return usual;
 		}
 		return (float) Math.max(MIN_WRAP, Math.min(usual, fits));
+	}
+
+	/**
+	 * How far left or right of its middle, in its own units, an Arc line may be drawn and still be on the screen: the
+	 * line sits up to {@link #ARC_SIDE} degrees to one side of where you look, and like the stacked lines it keeps to
+	 * {@link #FIT_SHARE} of the room there. {@code tanHalfWide} is from {@link #tanHalfWide}.
+	 */
+	static float arcRoom(boolean sky, float size, double tanHalfWide) {
+		double side = Math.atan(tanHalfWide) - ARC_SIDE * DEG;
+		double unit = ARC_SIZE * Math.tan(rowAngle(sky, size) * DEG) / ROW_H;
+		double room = FIT_SHARE * Math.tan(Math.max(0, side)) / unit;
+		return Double.isNaN(room) ? Float.POSITIVE_INFINITY : (float) room;
 	}
 
 	/**
@@ -1443,8 +1465,9 @@ public final class LyricsRenderer {
 				pieces.add(new TopBarWords.Piece(word, w == 0 || split.tight() == null || !split.tight()[w - 1]));
 			}
 			float space = LyricsFont.width(font, base, " ");
-			List<ArcLayout.Group> groups = ArcLayout.place(widths, ArcLayout.rows(widths, pause, split.tight()), space,
-					ArcLayout.seed(index, text), split.tight(), TopBarWords.visualRanks(pieces));
+			// Cut into more rows when the usual ones would run off the sides of the view
+			List<ArcLayout.Group> groups = ArcLayout.fit(widths, pause, split.tight(), space, ArcLayout.seed(index, text),
+					TopBarWords.visualRanks(pieces), arcFitRoom);
 			return new ArcText(words.toArray(String[]::new), widths, firstChar, Math.max(1, cps.length), groups, rtl);
 		}
 
