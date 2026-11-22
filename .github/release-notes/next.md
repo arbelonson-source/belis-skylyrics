@@ -241,6 +241,7 @@
 - **Odd playback speeds on Linux.** On Linux, a music player that says it plays at a speed of 0 (or below) no longer makes the lyrics jump back a second or more while it is slow to answer; the lyrics run on at normal speed, as they already did while it answers.
 - **Spotify ads on a Mac.** On a Mac, while Spotify plays an ad, the lyrics no longer switch to a song paused in the Music app and back again after the ad (also with Spotify picked as the **Player**), and the play/pause key now reaches Spotify during the ad instead of doing nothing.
 - **Quitting Spotify or Music on a Mac.** On a Mac, quitting Spotify or the Music app at the very moment SkyLyrics checks it can no longer open it again by itself: the check that the app still runs now comes right before the app is asked anything.
+- **A frozen Spotify or Music on a Mac.** On a Mac with both Spotify and the Music app open, one of them freezing (the spinning beach ball) no longer stops the other one's lyrics for as long as it stays frozen, with a "Waiting for Spotify or Music" message about a permission question that wasn't there. SkyLyrics now stops waiting for the frozen app after 2 seconds, follows the other one, and tries the frozen one again every few seconds.
 
 ### Faster
 

@@ -276,6 +276,78 @@ class MacMediaSourceTest {
 		assertFalse(MacMediaSource.runningApps().contains("Music"), "Music was opened");
 	}
 
+	/** The part the main script runs for this app, from one osascript command. */
+	private static String part(List<String> command, String app) {
+		List<String> args = args(command);
+		return args.get(args.indexOf(app) + 1);
+	}
+
+	/**
+	 * One osascript run reads Spotify, then Music. A frozen Spotify used to hold Music up until the poll gave up on the
+	 * whole run (a minute), again and again: Music's song never showed. Now an app that has answered before gets a
+	 * short time limit while the other app is asked too, and one that runs out of time is left out for a moment.
+	 */
+	@Test
+	void aFrozenAppDoesNotHoldUpTheOtherOne() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_PLAYING + MUSIC_PAUSED);
+		assertEquals("Song One", source.poll().track().title());
+
+		runner.answer("Spotify\terror\t-1712\tSpotify got an error: AppleEvent timed out.\n" + MUSIC_PAUSED);
+		Snapshot s = source.poll();
+		String spotify = part(runner.commands.getLast(), "Spotify");
+		assertTrue(spotify.startsWith("with timeout of " + MacMediaSource.ANSWER_LIMIT_S + " seconds\n") && spotify.endsWith("\nend timeout"), spotify);
+		assertTrue(spotify.contains(MacMediaSource.SPOTIFY.readScript()));
+		assertTrue(part(runner.commands.getLast(), "Music").startsWith("with timeout"));
+		// Music's answer waited behind Spotify's, so when it was read is unknown: the last reading stays for now
+		assertEquals("Song One", s.track().title());
+
+		for (int i = 0; i < 3; i++) {
+			runner.answer(MUSIC_PAUSED);
+			assertEquals("Song Two", source.poll().track().title(), "Music, read on its own");
+			assertFalse(args(runner.commands.getLast()).contains("Spotify"), "the frozen app is left out for a moment");
+		}
+		source.close(); // like Reconnect: everything is asked again at once
+		runner.answer(SPOTIFY_PLAYING + MUSIC_PAUSED);
+		assertEquals("Song One", source.poll().track().title());
+	}
+
+	/**
+	 * No limit for an app that hasn't answered yet (macOS may be asking whether it may be controlled, and that waits
+	 * for the player), nor for an app asked on its own (it holds nothing else up).
+	 */
+	@Test
+	void noTimeLimitWhileMacOSMayAskOrForOneApp() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertEquals(MacMediaSource.SPOTIFY.readScript(), part(runner.commands.getLast(), "Spotify"), "nothing answered yet");
+		assertEquals(MacMediaSource.MUSIC.readScript(), part(runner.commands.getLast(), "Music"));
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertTrue(part(runner.commands.getLast(), "Spotify").startsWith("with timeout"), "Spotify answered, Music is asked too");
+		assertEquals(MacMediaSource.MUSIC.readScript(), part(runner.commands.getLast(), "Music"), "Music still hasn't answered");
+
+		runner = new FakeRunner();
+		source = new MacMediaSource(() -> "", runner, 0, app -> app == MacMediaSource.SPOTIFY);
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertEquals(MacMediaSource.SPOTIFY.readScript(), part(runner.commands.getLast(), "Spotify"), "alone, it holds nothing up");
+	}
+
+	/** On a Mac (CI): the time limit around an app part compiles and runs as the main script runs it. */
+	@Test
+	void limitedPartRunsOnAMac() throws Exception {
+		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
+		assumeTrue(!MacMediaSource.runningApps().contains("Music"), "Music is open on this Mac");
+		assertEquals("quit", runPart(MacMediaSource.limited(MacMediaSource.MUSIC.readScript())));
+		assertFalse(MacMediaSource.runningApps().contains("Music"), "Music was opened");
+	}
+
 	/** Runs an app part the way the main script does, with {@code run script}; returns what osascript printed. */
 	private static String runPart(String part) throws Exception {
 		Process p = new ProcessBuilder("/usr/bin/osascript", "-e", "on run argv", "-e", "return run script (item 1 of argv)",

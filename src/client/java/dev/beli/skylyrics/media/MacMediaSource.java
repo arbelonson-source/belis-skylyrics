@@ -65,6 +65,16 @@ public final class MacMediaSource implements MediaSource {
 	/** errAEEventNotPermitted / errAEEventWouldRequireUserConsent: Automation permission was refused. */
 	private static final int NOT_ALLOWED = -1743;
 	private static final int NEEDS_CONSENT = -1744;
+	/** errAETimeout: the app didn't answer within {@link #ANSWER_LIMIT_S}. */
+	private static final int TIMED_OUT = -1712;
+	/**
+	 * Longest one question may take an app that has answered before, while the other app is asked in the same run, so a
+	 * frozen app holds the other one up only this long instead of until the poll gives up on the whole run. Not for an
+	 * app that hasn't answered yet: macOS may be asking the player whether it may be controlled, and that waits for them.
+	 */
+	static final int ANSWER_LIMIT_S = 2;
+	/** An app that ran out of time is left out this long, so it can't keep holding the other one up. */
+	private static final long FROZEN_NS = 5_000_000_000L;
 	/** The app quit, lost its connection or had no track just as we asked: nothing worth showing. */
 	private static final List<Integer> HARMLESS = List.of(-600, -609, -1712, -1728);
 
@@ -204,6 +214,11 @@ public final class MacMediaSource implements MediaSource {
 				return {s, d, pos, n, ar, al, "", "", st}
 			end tell""";
 
+	/** An app part with {@link #ANSWER_LIMIT_S} on every question it asks (AppleScript's own limit is two minutes). */
+	static String limited(String part) {
+		return "with timeout of " + ANSWER_LIMIT_S + " seconds\n" + part + "\nend timeout";
+	}
+
 	/** An app we can ask. {@code name} is the app's own name, as AppleScript and System Settings use it. */
 	record App(String name, String key, String displayName, long msPerDurationUnit, String readScript) {
 	}
@@ -220,9 +235,12 @@ public final class MacMediaSource implements MediaSource {
 	record Failure(App app, int code, String message) {
 	}
 
-	/** @param ads apps playing something that is no song (a Spotify ad): no title, but that app is still the one playing */
-	record Answer(List<Reading> players, List<Failure> failures, List<Reading> ads) {
-		static final Answer EMPTY = new Answer(List.of(), List.of(), List.of());
+	/**
+	 * @param ads      apps playing something that is no song (a Spotify ad): no title, but that app is still the one playing
+	 * @param answered apps that said what they play (or that they are stopped)
+	 */
+	record Answer(List<Reading> players, List<Failure> failures, List<Reading> ads, Set<App> answered) {
+		static final Answer EMPTY = new Answer(List.of(), List.of(), List.of(), Set.of());
 	}
 
 	/** What osascript said when it finished. */
@@ -263,6 +281,10 @@ public final class MacMediaSource implements MediaSource {
 	private volatile long retryAt;
 	/** Apps macOS refused to let us control, and when to ask again. */
 	private final Map<App, Long> deniedUntil = new ConcurrentHashMap<>();
+	/** Apps that answered since they were last seen closed: macOS has settled whether we may control them. */
+	private final Set<App> answered = ConcurrentHashMap.newKeySet();
+	/** Apps that ran out of {@link #ANSWER_LIMIT_S}, and when to ask them again. */
+	private final Map<App, Long> frozenUntil = new ConcurrentHashMap<>();
 	private String retryError = "";
 	/** The last message put in the log, so the same one isn't repeated every retry. */
 	private String loggedError = "";
@@ -384,23 +406,32 @@ public final class MacMediaSource implements MediaSource {
 		boolean returned = lookingNow && !wasLooking; // the song may have changed while nobody looked: read at once
 		wasLooking = lookingNow;
 		if (!haveLast || returned || clock.getAsLong() - lastAt >= gapNs(lookingNow, minPollNs)) {
-			List<String> args = new ArrayList<>();
+			List<App> asked = new ArrayList<>();
 			List<Failure> denied = new ArrayList<>();
 			long now = System.nanoTime();
 			for (App app : APPS) {
 				Long until = deniedUntil.get(app);
+				Long frozen = frozenUntil.get(app);
 				if (until != null && now < until) {
 					// macOS said no a moment ago and osascript exits normally with that answer, so nothing else
 					// would slow us down: leave the app alone until the retry time
 					denied.add(new Failure(app, NOT_ALLOWED, ""));
+				} else if (frozen != null && now < frozen) {
+					// it didn't answer in time a moment ago: left out, so it can't hold the other app up
 				} else if (running.test(app)) {
-					args.add(app.name());
-					args.add(app.readScript());
+					asked.add(app);
+				} else {
+					answered.remove(app); // just opened again, it can be slow to answer at first
 				}
+			}
+			List<String> args = new ArrayList<>();
+			for (App app : asked) {
+				args.add(app.name());
+				args.add(asked.size() > 1 && answered.contains(app) ? limited(app.readScript()) : app.readScript());
 			}
 			boolean late = pending != null;
 			if (args.isEmpty() && !late) {
-				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied, List.of()); // nothing to ask, no osascript to start
+				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied, List.of(), Set.of()); // nothing to ask, no osascript to start
 				lastAt = clock.getAsLong();
 				lastReadAt = System.nanoTime();
 				haveLast = true;
@@ -408,16 +439,28 @@ public final class MacMediaSource implements MediaSource {
 				String out = osascript(args, true);
 				Answer answer = parse(out);
 				List<Failure> failures = new ArrayList<>(answer.failures());
+				boolean timedOut = false;
 				for (Failure f : answer.failures()) {
 					if (isDenied(f.code())) {
 						deniedUntil.put(f.app(), System.nanoTime() + RETRY_NS);
+						answered.remove(f.app());
+					} else if (f.code() == TIMED_OUT) {
+						frozenUntil.put(f.app(), System.nanoTime() + FROZEN_NS);
+						timedOut = true;
 					}
 				}
+				answered.addAll(answer.answered());
 				failures.addAll(denied);
-				last = new Answer(answer.players(), failures, answer.ads());
-				lastAt = clock.getAsLong();
-				lastReadAt = readStamp(ranFromNs, ranToNs);
-				haveLast = !late; // a late answer may be old: read again next time
+				if (timedOut) {
+					// The other app's answer waited behind the frozen one, so when it was read is unknown: keep the
+					// last answer for now and read again at once, without the frozen app
+					haveLast = false;
+				} else {
+					last = new Answer(answer.players(), failures, answer.ads(), answer.answered());
+					lastAt = clock.getAsLong();
+					lastReadAt = readStamp(ranFromNs, ranToNs);
+					haveLast = !late; // a late answer may be old: read again next time
+				}
 			}
 		}
 		// An ad comes after the songs: it only keeps the app it plays in followed (or picked), it never beats a playing song
@@ -457,6 +500,7 @@ public final class MacMediaSource implements MediaSource {
 		List<Reading> players = new ArrayList<>();
 		List<Failure> failures = new ArrayList<>();
 		List<Reading> ads = new ArrayList<>();
+		Set<App> answered = new java.util.HashSet<>();
 		for (String line : output.split("\n")) {
 			String[] f = line.split("\t", -1);
 			if (f.length < 2) {
@@ -472,6 +516,9 @@ public final class MacMediaSource implements MediaSource {
 				continue;
 			}
 			boolean playing = state.equals("playing");
+			if (playing || state.equals("paused") || state.equals("stopped")) {
+				answered.add(app);
+			}
 			if (!playing && !state.equals("paused")) {
 				continue; // stopped, quit just as we asked, or the answer to a button press
 			}
@@ -507,7 +554,7 @@ public final class MacMediaSource implements MediaSource {
 			Track track = new Track(title, artist, album, length, field(f, 7), app.key(), uri);
 			players.add(new Reading(app, TitleCleaner.clean(track), position, playing));
 		}
-		return new Answer(players, failures, ads);
+		return new Answer(players, failures, ads, answered);
 	}
 
 	private static @Nullable App app(String name) {
@@ -703,6 +750,7 @@ public final class MacMediaSource implements MediaSource {
 		retryAt = 0;
 		fails = 0;
 		deniedUntil.clear();
+		frozenUntil.clear();
 		haveLast = false;
 	}
 }
