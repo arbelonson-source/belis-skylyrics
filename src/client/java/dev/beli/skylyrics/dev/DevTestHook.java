@@ -92,6 +92,11 @@ import dev.beli.skylyrics.media.DemoSource;
  * click, so the lyrics notice the jump as they would a player's seek; the position shows from the next poll. Only the demo
  * song can be seeked: otherwise it logs "Test hook: seek needs the demo song". {@code where} logs the position and the line
  * the lyrics show there, e.g. "Test hook: at 23.40 s, line 5 'Six seven eight'" (line -1 before the first line).
+ * <p>
+ * {@code option <name> <value>} sets one of the game's own video options for this run, as Video Settings does, without
+ * saving options.txt: {@code option renderDistance 4} (chunks; the world and a server's view distance follow within a
+ * tick), {@code option clouds off|fast|fancy}, {@code option cloudRange 32} (Cloud Distance in chunks, 1.21.6 and newer;
+ * older versions only log that they have none). It logs "Test hook: option ... is now ...".
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -396,6 +401,31 @@ public final class DevTestHook {
 		dev.beli.skylyrics.lyrics.LyricLine line = lyrics.get(index);
 		SkyLyricsClient.LOG.info("Test hook: at {} s, line {} '{}'", String.format(java.util.Locale.ROOT, "%.2f", position / 1000.0), index,
 				line == null ? "" : line.text());
+	}
+
+	/** "option renderDistance 4" / "option clouds fancy" / "option cloudRange 32": a video option, as Video Settings sets it (not saved). */
+	private static void option(Minecraft client, String arg) {
+		VideoOption.Setting setting = VideoOption.parse(arg);
+		net.minecraft.client.Options options = client.options;
+		switch (setting.kind()) {
+			case RENDER_DISTANCE -> {
+				options.renderDistance().set(setting.chunks());
+				SkyLyricsClient.LOG.info("Test hook: option renderDistance is now {} (drawn {})", options.renderDistance().get(),
+						options.getEffectiveRenderDistance());
+			}
+			case CLOUDS -> {
+				options.cloudStatus().set(net.minecraft.client.CloudStatus.valueOf(setting.clouds()));
+				SkyLyricsClient.LOG.info("Test hook: option clouds is now {}", options.cloudStatus().get());
+			}
+			case CLOUD_RANGE -> {
+				//? if >=1.21.6 {
+				options.cloudRange().set(setting.chunks());
+				SkyLyricsClient.LOG.info("Test hook: option cloudRange is now {}", options.cloudRange().get());
+				//?} else {
+				/*SkyLyricsClient.LOG.warn("Test hook: option cloudRange is not in this version (its clouds reach a fixed distance)");
+				*///?}
+			}
+		}
 	}
 
 	/** "set field value": changes one config field for this run (not saved). */
@@ -807,6 +837,7 @@ public final class DevTestHook {
 				case "unbind" -> unbind(client, arg);
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
+				case "option" -> option(client, arg);
 				case "lines" -> lines(client, arg);
 				case "fastlines" -> fastLines(arg);
 			case "plain" -> plain(arg);

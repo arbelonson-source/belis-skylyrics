@@ -1,0 +1,75 @@
+# The painted skies (Synthwave, Moonlight) at a low render distance and with clouds, fix/sky115 (1280x720, GUI scale 2 as
+# the test world starts: render distance 6, clouds fancy). The painted sky marks itself as nearer than anything behind
+# it, at 0.74 to 0.81 of the render distance; the lyrics in the Sky sit at up to 0.8 of it, and vanilla draws its clouds
+# after the sky, out to their own reach (on 26.3 the painted sky marks nothing, so there neither happens).
+# 1. sky115-rd8 / -rd5 / -rd4 / -rd2 (See through blocks off, the Lines layout, Distance 64, lyrics to the north with the
+#    synthwave sun to their right): with the old code the lyrics show whole at render distance 8, but at 5 and 4 the
+#    sun, its halo and the ends of the rows (more than about 9 degrees off their middle) cover them, and at 2 they are
+#    gone behind the sky. On the branch the whole lines show at every render distance.
+#    sky115-rd4-seethrough (See through on) shows the whole lines on both: the lines that should be there.
+# 2. sky115-clouds-rd12-synthwave / -moonlight (render distance 12, clouds fancy, looking up to the south): with the old
+#    code the clouds end in a hard circle about 55 degrees up, with none below it; on the branch they reach down towards
+#    the horizon as on sky115-clouds-rd12-aurora (the vanilla night sky, the same on both). sky115-clouds-rd6-synthwave
+#    (render distance 6): with the old code no clouds at all; on the branch the same clouds as on the Aurora shot.
+# Run it, and with -f mod_ref=main to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/sky115 -f version=1.21.11 -f script=.github/checks/sky115.txt
+#   gh workflow run screenshots.yml --ref fix/sky115 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/sky115.txt
+
+# A clear night that stays night; the lyrics pinned to the north, the synthwave sun just to their right
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set direction NORTH
+set sky SYNTHWAVE
+set skyStrength 0.7
+set shootingStars false
+set twinkle false
+set skyPulse false
+set layout LINES
+set placement SKY
+set seeThroughBlocks false
+look 180 -22
+option renderDistance 8
+sleep 10
+shot sky115-rd8
+
+# 1. Lower render distances: the sky comes nearer than the lyrics
+option renderDistance 5
+sleep 6
+shot sky115-rd5
+option renderDistance 4
+sleep 6
+shot sky115-rd4
+set seeThroughBlocks true
+sleep 3
+shot sky115-rd4-seethrough
+set seeThroughBlocks false
+option renderDistance 2
+sleep 6
+shot sky115-rd2
+
+# 2. Clouds over the painted skies, looking up away from the lyrics
+set seeThroughBlocks true
+option clouds fancy
+option renderDistance 12
+look 0 -40
+sleep 12
+shot sky115-clouds-rd12-synthwave
+set sky AURORA
+sleep 6
+shot sky115-clouds-rd12-aurora
+set sky MOONLIGHT
+sleep 6
+shot sky115-clouds-rd12-moonlight
+set sky SYNTHWAVE
+option renderDistance 6
+sleep 6
+shot sky115-clouds-rd6-synthwave
+
+# Back as the test world starts
+set sky AURORA
+set layout WORLD
+set direction FOLLOW
+look 0 -28
+sleep 2
