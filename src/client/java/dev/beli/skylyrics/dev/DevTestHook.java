@@ -622,6 +622,27 @@ public final class DevTestHook {
 		*///?}
 	}
 
+	/**
+	 * Sets one of F3's lines ("fps", "memory", "system_specs", "player_position"...) to show always, even with F3 closed, or
+	 * back to how a new player has it (most only with F3, some never), as the debug options screen (F3 + F6) does from
+	 * 1.21.9. The game saves it in debug-profile.json.
+	 */
+	private static void pinDebugLine(Minecraft client, String name, boolean always) {
+		//? if >=1.21.9 {
+		net.minecraft.resources.Identifier id = net.minecraft.resources.Identifier.withDefaultNamespace(name);
+		if (net.minecraft.client.gui.components.debug.DebugScreenEntries.getEntry(id) == null) {
+			SkyLyricsClient.LOG.warn("Test hook: debug pin {} ignored (F3 has no such line)", name);
+			return;
+		}
+		net.minecraft.client.gui.components.debug.DebugScreenEntryStatus usual = net.minecraft.client.gui.components.debug.DebugScreenEntries.PROFILES
+				.get(net.minecraft.client.gui.components.debug.DebugScreenProfile.DEFAULT)
+				.getOrDefault(id, net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.NEVER);
+		client.debugEntries.setStatus(id, always ? net.minecraft.client.gui.components.debug.DebugScreenEntryStatus.ALWAYS_ON : usual);
+		//?} else {
+		/*SkyLyricsClient.LOG.warn("Test hook: debug pin {} ignored (F3's lines can be pinned from 1.21.9)", name);
+		*///?}
+	}
+
 	private void run(Minecraft client, String line) {
 		String[] parts = line.split("\\s+", 2);
 		String arg = parts.length > 1 ? parts[1] : "";
@@ -918,12 +939,15 @@ public final class DevTestHook {
 								.performPrefixedCommand(server.createCommandSourceStack(), arg));
 					}
 				}
-				// "debug on" or "debug off"; "debug fps", "debug net" and "debug pie" are F3+2, F3+3 and F3+1 (each opens F3 too)
+				// "debug on" or "debug off"; "debug fps", "debug net" and "debug pie" are F3+2, F3+3 and F3+1 (each opens F3 too);
+				// "debug pin fps" sets one of F3's lines to show always, "debug unpin fps" back as a new player has it (1.21.9+)
 				case "debug" -> {
-					switch (arg) {
+					String[] words = arg.split("\\s+", 2);
+					switch (words[0]) {
 						case "fps" -> client.getDebugOverlay().toggleFpsCharts();
 						case "net" -> client.getDebugOverlay().toggleNetworkCharts();
 						case "pie" -> client.getDebugOverlay().toggleProfilerChart();
+						case "pin", "unpin" -> pinDebugLine(client, words.length > 1 ? words[1] : "", words[0].equals("pin"));
 						default -> debugScreen(client, arg.equals("on"));
 					}
 				}
