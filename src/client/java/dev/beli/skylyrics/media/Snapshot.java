@@ -15,8 +15,11 @@ public record Snapshot(Track track, long positionMs, boolean playing, long readA
 	}
 
 	public Snapshot {
-		if (!(rate > 0) || Double.isInfinite(rate)) {
-			rate = 1.0;
-		}
+		rate = usableRate(rate);
+	}
+
+	/** A speed that makes no sense (0, below 0, not a number, endless) is taken as normal speed. */
+	static double usableRate(double rate) {
+		return rate > 0 && !Double.isInfinite(rate) ? rate : 1.0;
 	}
 }

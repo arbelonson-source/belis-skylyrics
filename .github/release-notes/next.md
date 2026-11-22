@@ -69,7 +69,7 @@
   - On Linux, players such as Amberol are now shown by their own name, and songs from the library open in the right player.
   - Clicking the progress bar now also moves the song on Linux music players that don't name their tracks the usual way, or don't name them at all.
   - On Linux, a player that is stopped (not just paused) but still remembers its last song (Rhythmbox, VLC) no longer keeps that song in the bar.
-  - On Linux, when your music player shows nothing for a second or two between songs, SkyLyrics no longer jumps to a browser tab and keeps showing its song.
+  - On Linux, when your music player shows nothing for a moment (about a second) between songs, SkyLyrics no longer jumps to a browser tab and keeps showing its song.
 - **Windows music player.** The Windows music player link is steadier.
   - The lyrics no longer stand still until the player's next update when Windows has only just started.
   - A player that resumes no longer makes the lyrics skip ahead and back, and one that never says when it updated no longer freezes the lyrics. An album cover that stalls no longer makes the link to your music player time out and restart, and a player that is slow to answer once no longer makes the lyrics blink away. An album cover that was still the last song's is read again a few seconds later. Pause, Skip and Seek no longer reach another app when the one you follow has closed. Changing the computer's clock, or the clock jumping after sleep, no longer makes the lyrics freeze or jump to the end of the song.
@@ -238,6 +238,7 @@
 - **Twinkling stars round an instrumental, in the World layout.** With **Lazy follow** left on from another layout, the stars round an instrumental song's note line now wait and glide over with it when you look around, instead of jumping to wherever you look and leaving the note line on its own.
 - **Twinkling stars while the World words travel with you.** With **Elytra mode** and a World **Direction** of N, E, S or W (or **View lock** on), the twinkling stars now come along with the words while you glide, ride or fly, gliding over to where you look as you take off and back when you land, instead of staying behind on the words' usual side of the sky.
 - **Timing message in Hebrew.** In Hebrew, the message above the hotbar when you press a timing key (**Lyrics are late** or **Lyrics are early**) now shows the time the right way round, "+0.10 s" or "-0.30 s", instead of "s 0.10+" with the sign and the "s" on the wrong sides of the number.
+- **Odd playback speeds on Linux.** On Linux, a music player that says it plays at a speed of 0 (or below) no longer makes the lyrics jump back a second or more while it is slow to answer; the lyrics run on at normal speed, as they already did while it answers.
 
 ### Faster
 
