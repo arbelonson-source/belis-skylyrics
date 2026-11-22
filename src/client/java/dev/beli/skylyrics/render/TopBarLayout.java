@@ -21,8 +21,6 @@ final class TopBarLayout {
 	/** From the pill's left end to the cover, and from the cover to the text. */
 	static final float ART_INSET = 17 / 3f;
 	static final float TEXT_GAP = 17 / 3f;
-	/** Text is cut off this far right of the cover, so a scrolled line never runs under it. */
-	static final float CLIP_GAP = 3;
 
 	/** A spinning cover's top speed (turns a second) and how quickly it gets there or winds down (per second). */
 	static final float SPIN_TURNS = 0.15f, SPIN_EASE = 2.5f;
@@ -381,6 +379,23 @@ final class TopBarLayout {
 	/** Room for the line between where the text starts and where the highlight must end. */
 	static float textRoom(float pill) {
 		return pill - chrome() + HL_PAD;
+	}
+
+	/**
+	 * Where the line's text is cut off on the left, in whole GUI units (the clip box takes whole units), for a pill whose
+	 * left end is at {@code x}: rounded down from where the first word's highlight starts, so its round end is never cut
+	 * off, and still clear of the cover, so a scrolled line never runs under it.
+	 */
+	static int textClipLeft(float x) {
+		return (int) Math.floor(x + ART_INSET + ART + TEXT_GAP - HL_PAD);
+	}
+
+	/**
+	 * Where it is cut off on the right, for a pill {@code pill} wide: rounded up from the end of the room, where the last
+	 * word's highlight ends, and still short of the equaliser.
+	 */
+	static int textClipRight(float x, float pill) {
+		return (int) Math.ceil(x + ART_INSET + ART + TEXT_GAP + textRoom(pill));
 	}
 
 	/**
