@@ -883,48 +883,49 @@ public final class LibraryScreen extends Screen {
 			renderCarousel(g, shelf, now, moving);
 			return;
 		}
-		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		try {
-			int top = viewY + GRID_PAD - Math.round(shelf.scroll);
-			// The card the keyboard is on; none while it is on the line under the songs
-			int chosen = footer ? -1 : selected;
-			for (int i = 0; i < shelf.items.size(); i++) {
-				int x = viewX + (i % cols) * (cellW + LibraryGrid.GAP);
-				int y = top + (i / cols) * (cellH + LibraryGrid.GAP);
-				if (y + cellH < viewY || y > viewY + viewH) {
-					continue;
+		if (ClipBox.open(g, viewX - 4, viewY, viewX + viewW + 4, viewY + viewH)) {
+			try {
+				int top = viewY + GRID_PAD - Math.round(shelf.scroll);
+				// The card the keyboard is on; none while it is on the line under the songs
+				int chosen = footer ? -1 : selected;
+				for (int i = 0; i < shelf.items.size(); i++) {
+					int x = viewX + (i % cols) * (cellW + LibraryGrid.GAP);
+					int y = top + (i / cols) * (cellH + LibraryGrid.GAP);
+					if (y + cellH < viewY || y > viewY + viewH) {
+						continue;
+					}
+					boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, cellW, cellH);
+					float lift = Ui.approach(shelf.lift.get(i), hover || i == chosen ? 1 : 0, f.dt(), 14);
+					shelf.lift.set(i, lift);
+					float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+					if (t <= 0) {
+						continue;
+					}
+					Object entry = shelf.items.get(i);
+					boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+					renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == chosen, current, moving);
 				}
-				boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, cellW, cellH);
-				float lift = Ui.approach(shelf.lift.get(i), hover || i == chosen ? 1 : 0, f.dt(), 14);
-				shelf.lift.set(i, lift);
-				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
-				if (t <= 0) {
-					continue;
+				if (shelf.pending != null) {
+					int y = footerY(shelf, top, 1);
+					g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
+				} else if (!shelf.error.isEmpty()) {
+					// In the Loading line's place, which the scroll reaches; the grid ends lower for each line more it takes
+					List<String> lines = errorLines(shelf.error);
+					drawLines(g, lines, shelf.error, footerY(shelf, top, lines.size()));
 				}
-				Object entry = shelf.items.get(i);
-				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-				renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == chosen, current, moving);
-			}
-			if (shelf.pending != null) {
-				int y = footerY(shelf, top, 1);
-				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
-			} else if (!shelf.error.isEmpty()) {
-				// In the Loading line's place, which the scroll reaches; the grid ends lower for each line more it takes
-				List<String> lines = errorLines(shelf.error);
-				drawLines(g, lines, shelf.error, footerY(shelf, top, lines.size()));
-			}
-			if (footer && footerShown(shelf)) {
-				// The keyboard is on that line: a ring round it, like a button's
-				List<String> lines = shelf.pending != null ? List.of(Tr.t("Loading") + "...") : errorLines(shelf.error);
-				int w = 0;
-				for (String line : lines) {
-					w = Math.max(w, font.width(line));
+				if (footer && footerShown(shelf)) {
+					// The keyboard is on that line: a ring round it, like a button's
+					List<String> lines = shelf.pending != null ? List.of(Tr.t("Loading") + "...") : errorLines(shelf.error);
+					int w = 0;
+					for (String line : lines) {
+						w = Math.max(w, font.width(line));
+					}
+					int y = footerY(shelf, top, lines.size());
+					Ui.outline(g, px + pw / 2 - w / 2 - 5, y - 4, w + 10, 10 * lines.size() + 6, 6, Ui.TEXT);
 				}
-				int y = footerY(shelf, top, lines.size());
-				Ui.outline(g, px + pw / 2 - w / 2 - 5, y - 4, w + 10, 10 * lines.size() + 6, 6, Ui.TEXT);
+			} finally {
+				g.disableScissor();
 			}
-		} finally {
-			g.disableScissor();
 		}
 
 		float max = maxScroll(shelf);
@@ -970,49 +971,50 @@ public final class LibraryScreen extends Screen {
 		int width = LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP);
 		// The cover the keyboard is on; none while it is on the line after the last column
 		int chosen = footer ? -1 : selected;
-		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		try {
-			for (int r = 0; r < shelfRows; r++) {
-				int fy = top + r * rowH + SHELF_COVER + 4;
-				int end = Math.min(viewX + viewW, viewX - left + width);
-				if (end > viewX) {
-					g.fill(viewX, fy, end, fy + 1, Ui.DIVIDER);
-					g.fill(viewX + 2, fy + 1, end - 2, fy + 3, 0x18000000);
-					g.fill(viewX + 6, fy + 3, end - 6, fy + 4, 0x0C000000);
+		if (ClipBox.open(g, viewX - 4, viewY, viewX + viewW + 4, viewY + viewH)) {
+			try {
+				for (int r = 0; r < shelfRows; r++) {
+					int fy = top + r * rowH + SHELF_COVER + 4;
+					int end = Math.min(viewX + viewW, viewX - left + width);
+					if (end > viewX) {
+						g.fill(viewX, fy, end, fy + 1, Ui.DIVIDER);
+						g.fill(viewX + 2, fy + 1, end - 2, fy + 3, 0x18000000);
+						g.fill(viewX + 6, fy + 3, end - 6, fy + 4, 0x0C000000);
+					}
 				}
-			}
-			for (int i = 0; i < shelf.items.size(); i++) {
-				int x = viewX + LibraryViews.shelfCol(i, shelfRows) * shelfStride - left;
-				int y = top + LibraryViews.shelfRow(i, shelfRows) * rowH;
-				if (x + SHELF_COVER < viewX - 4 || x > viewX + viewW + 4) {
-					continue;
+				for (int i = 0; i < shelf.items.size(); i++) {
+					int x = viewX + LibraryViews.shelfCol(i, shelfRows) * shelfStride - left;
+					int y = top + LibraryViews.shelfRow(i, shelfRows) * rowH;
+					if (x + SHELF_COVER < viewX - 4 || x > viewX + viewW + 4) {
+						continue;
+					}
+					boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, SHELF_COVER, SHELF_COVER);
+					float lift = Ui.approach(shelf.lift.get(i), hover || i == chosen ? 1 : 0, f.dt(), 14);
+					shelf.lift.set(i, lift);
+					float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+					if (t <= 0) {
+						continue;
+					}
+					Object entry = shelf.items.get(i);
+					boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+					renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == chosen,
+							current, moving);
 				}
-				boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, SHELF_COVER, SHELF_COVER);
-				float lift = Ui.approach(shelf.lift.get(i), hover || i == chosen ? 1 : 0, f.dt(), 14);
-				shelf.lift.set(i, lift);
-				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
-				if (t <= 0) {
-					continue;
+				// "Loading…", or why the next page failed (a click or Enter on it tries again), after the last column where the scroll reaches
+				List<String> tail = shelfTail(shelf, 1 + (int) (clock * 3) % 3);
+				boolean rtl = Ui.paragraphRtl(String.join(" ", tail));
+				for (int i = 0; i < tail.size(); i++) {
+					g.drawString(font, Ui.visual(tail.get(i), rtl), LibraryViews.tailX(viewX, left, width), shelfTailY(top, tail.size()) + 10 * i,
+							shelf.pending != null ? Ui.DIM : Ui.MUTED, false);
 				}
-				Object entry = shelf.items.get(i);
-				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-				renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == chosen,
-						current, moving);
+				if (footer && !tail.isEmpty()) {
+					// The keyboard is on those lines: a ring round them, like a button's (the scissor leaves room for it at the right)
+					Ui.outline(g, LibraryViews.tailX(viewX, left, width) - 4, shelfTailY(top, tail.size()) - 4, shelfTailW(shelf) + 8,
+							10 * tail.size() + 6, 6, Ui.TEXT);
+				}
+			} finally {
+				g.disableScissor();
 			}
-			// "Loading…", or why the next page failed (a click or Enter on it tries again), after the last column where the scroll reaches
-			List<String> tail = shelfTail(shelf, 1 + (int) (clock * 3) % 3);
-			boolean rtl = Ui.paragraphRtl(String.join(" ", tail));
-			for (int i = 0; i < tail.size(); i++) {
-				g.drawString(font, Ui.visual(tail.get(i), rtl), LibraryViews.tailX(viewX, left, width), shelfTailY(top, tail.size()) + 10 * i,
-						shelf.pending != null ? Ui.DIM : Ui.MUTED, false);
-			}
-			if (footer && !tail.isEmpty()) {
-				// The keyboard is on those lines: a ring round them, like a button's (the scissor leaves room for it at the right)
-				Ui.outline(g, LibraryViews.tailX(viewX, left, width) - 4, shelfTailY(top, tail.size()) - 4, shelfTailW(shelf) + 8,
-						10 * tail.size() + 6, 6, Ui.TEXT);
-			}
-		} finally {
-			g.disableScissor();
 		}
 		if (chosen >= 0 && chosen < shelf.items.size()) {
 			String[] text = labels(shelf.items.get(chosen));
@@ -1047,43 +1049,44 @@ public final class LibraryScreen extends Screen {
 	private void renderCarousel(GuiGraphics g, Shelf shelf, Track now, boolean moving) {
 		int size = carSize();
 		int y = carTop(size);
-		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
-		try {
-			boolean first = true;
-			for (int i : carouselOrder(shelf)) {
-				float o = i - carPos;
-				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
-				if (t <= 0) {
-					continue;
+		if (ClipBox.open(g, viewX - 4, viewY, viewX + viewW + 4, viewY + viewH)) {
+			try {
+				boolean first = true;
+				for (int i : carouselOrder(shelf)) {
+					float o = i - carPos;
+					float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
+					if (t <= 0) {
+						continue;
+					}
+					// Each card gets its own layer, or the letters of cards further back end up on top of nearer ones
+					if (!first) {
+						g.nextStratum();
+					}
+					first = false;
+					int x = Math.round(px + pw / 2f + LibraryViews.spread(o, size) - size / 2f);
+					float squash = LibraryViews.squash(o), scale = LibraryViews.scale(o) * LibraryGrid.popIn(t);
+					// A solid panel-coloured backing so a dimmed card fades into the panel, not into the cards behind it
+					g.pose().pushMatrix();
+					try {
+						g.pose().translate(x + size / 2f, y + size / 2f);
+						g.pose().scale(scale * squash, scale);
+						g.pose().translate(-(x + size / 2f), -(y + size / 2f));
+						Ui.rect(g, x, y, size, size, 5, Ui.alpha(Ui.PANEL, t));
+					} finally {
+						g.pose().popMatrix();
+					}
+					boolean middle = i == selected;
+					Object entry = shelf.items.get(i);
+					boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
+					renderCard(g, entry, x, y, size, squash, false, scale, LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
 				}
-				// Each card gets its own layer, or the letters of cards further back end up on top of nearer ones
-				if (!first) {
-					g.nextStratum();
+				if (shelf.pending != null) {
+					g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2,
+							viewY + viewH - 10, Ui.DIM);
 				}
-				first = false;
-				int x = Math.round(px + pw / 2f + LibraryViews.spread(o, size) - size / 2f);
-				float squash = LibraryViews.squash(o), scale = LibraryViews.scale(o) * LibraryGrid.popIn(t);
-				// A solid panel-coloured backing so a dimmed card fades into the panel, not into the cards behind it
-				g.pose().pushMatrix();
-				try {
-					g.pose().translate(x + size / 2f, y + size / 2f);
-					g.pose().scale(scale * squash, scale);
-					g.pose().translate(-(x + size / 2f), -(y + size / 2f));
-					Ui.rect(g, x, y, size, size, 5, Ui.alpha(Ui.PANEL, t));
-				} finally {
-					g.pose().popMatrix();
-				}
-				boolean middle = i == selected;
-				Object entry = shelf.items.get(i);
-				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-				renderCard(g, entry, x, y, size, squash, false, scale, LibraryViews.alpha(o) * t, middle ? 1 : 0, middle, current, moving);
+			} finally {
+				g.disableScissor();
 			}
-			if (shelf.pending != null) {
-				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2,
-						viewY + viewH - 10, Ui.DIM);
-			}
-		} finally {
-			g.disableScissor();
 		}
 		if (selected >= 0 && selected < shelf.items.size()) {
 			String[] text = labels(shelf.items.get(selected));

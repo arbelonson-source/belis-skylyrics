@@ -22,6 +22,7 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
+import dev.beli.skylyrics.gui.ClipBox;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Snapshot;
 import dev.beli.skylyrics.media.Track;
@@ -252,7 +253,9 @@ public final class RecordCard {
 		// Too long for the strip: the line slides along as it is sung, so its end can be read too
 		float shift = lyricShift(lineW, room, through);
 		float start = NowPlayingHud.isRtl(lyric) ? left - (lineW - room) + shift : left - shift;
-		g.enableScissor(Math.round(left), Math.round(rowTop), Math.round(left + room), Math.round(rowTop + LYRIC_H));
+		if (!ClipBox.open(g, Math.round(left), Math.round(rowTop), Math.round(left + room), Math.round(rowTop + LYRIC_H))) {
+			return; // none of the strip is in the window
+		}
 		try {
 			text(g, font, style, lyric, start, midY, scale, color);
 		} finally {

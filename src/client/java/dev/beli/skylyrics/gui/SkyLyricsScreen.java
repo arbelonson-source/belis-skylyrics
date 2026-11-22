@@ -1496,45 +1496,46 @@ public final class SkyLyricsScreen extends Screen {
 	private void renderContent(GuiGraphics g, Frame f) {
 		boolean hoverOk = f.hoverAllowed() && inView(f.mx(), f.my());
 		Frame inner = new Frame(g, font, f.mx(), f.my(), f.dt(), hoverOk);
-		g.enableScissor(viewX - 4, viewY, px + pw - 4, viewY + viewH);
-		for (Card card : tabs.get(tab)) {
-			List<Row> rows = shownRows(card);
-			if (rows.isEmpty()) {
-				continue;
+		if (ClipBox.open(g, viewX - 4, viewY, px + pw - 4, viewY + viewH)) {
+			for (Card card : tabs.get(tab)) {
+				List<Row> rows = shownRows(card);
+				if (rows.isEmpty()) {
+					continue;
+				}
+				Row first = rows.getFirst();
+				Row last = rows.getLast();
+				int top = first.y;
+				int bottom = last.y + last.height();
+				if (bottom < viewY - 20 || top - 12 > viewY + viewH) {
+					continue;
+				}
+				g.drawString(font, Ui.visual(Ui.clip(font, card.title().toUpperCase(Locale.ROOT), first.w - 4)), first.x + 2, top - 10, Ui.DIM, false);
+				Ui.rect(g, first.x, top, first.w, bottom - top, 6, Ui.CARD);
+				for (Row row : rows) {
+					if (row != first) {
+						g.fill(row.x + 10, row.y - 1, row.x + row.w - 10, row.y, Ui.DIVIDER);
+					}
+					if (!(row instanceof Paragraph) && (row.hovered(inner) || row == active)) {
+						Ui.rect(g, row.x + 2, row.y + 1, row.w - 4, row.height() - 2, 4, Ui.CARD_HOVER);
+					}
+					row.render(inner);
+					if (ringShows() && row == focus) {
+						row.renderFocus(inner);
+					}
+					List<String> cut = row.hovered(inner) ? row.cutTexts(font) : List.of();
+					if (!cut.isEmpty()) {
+						List<net.minecraft.util.FormattedCharSequence> tip = tooltip(cut);
+						//? if >=1.21.6 {
+						g.setTooltipForNextFrame(font, tip, TOOLTIP_PLACE, f.mx(), f.my(), false);
+						//?} else {
+						/*// Drawn after render() returns, so the row clip above can't cut it (renderTooltip draws on the spot here)
+						setTooltipForNextRenderPass(tip, TOOLTIP_PLACE, true);
+						*///?}
+					}
+				}
 			}
-			Row first = rows.getFirst();
-			Row last = rows.getLast();
-			int top = first.y;
-			int bottom = last.y + last.height();
-			if (bottom < viewY - 20 || top - 12 > viewY + viewH) {
-				continue;
-			}
-			g.drawString(font, Ui.visual(Ui.clip(font, card.title().toUpperCase(Locale.ROOT), first.w - 4)), first.x + 2, top - 10, Ui.DIM, false);
-			Ui.rect(g, first.x, top, first.w, bottom - top, 6, Ui.CARD);
-			for (Row row : rows) {
-				if (row != first) {
-					g.fill(row.x + 10, row.y - 1, row.x + row.w - 10, row.y, Ui.DIVIDER);
-				}
-				if (!(row instanceof Paragraph) && (row.hovered(inner) || row == active)) {
-					Ui.rect(g, row.x + 2, row.y + 1, row.w - 4, row.height() - 2, 4, Ui.CARD_HOVER);
-				}
-				row.render(inner);
-				if (ringShows() && row == focus) {
-					row.renderFocus(inner);
-				}
-				List<String> cut = row.hovered(inner) ? row.cutTexts(font) : List.of();
-				if (!cut.isEmpty()) {
-					List<net.minecraft.util.FormattedCharSequence> tip = tooltip(cut);
-					//? if >=1.21.6 {
-					g.setTooltipForNextFrame(font, tip, TOOLTIP_PLACE, f.mx(), f.my(), false);
-					//?} else {
-					/*// Drawn after render() returns, so the row clip above can't cut it (renderTooltip draws on the spot here)
-					setTooltipForNextRenderPass(tip, TOOLTIP_PLACE, true);
-					*///?}
-				}
-			}
+			g.disableScissor();
 		}
-		g.disableScissor();
 		if (tab == SEARCH_TAB && tabs.get(tab).stream().allMatch(c -> shownRows(c).isEmpty())) {
 			String hint = query.isBlank() ? Tr.t("Type what you're looking for") : Tr.t("Nothing matches, try another word");
 			g.drawCenteredString(font, Ui.visual(hint), viewX + viewW / 2, viewY + 30, Ui.DIM);

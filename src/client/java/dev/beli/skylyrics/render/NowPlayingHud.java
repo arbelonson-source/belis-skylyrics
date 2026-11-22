@@ -55,6 +55,7 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
+import dev.beli.skylyrics.gui.ClipBox;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
 import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
@@ -991,10 +992,14 @@ public final class NowPlayingHud {
 		//? if <1.21.2 {
 		/*// 1.21.1's scissor ignores the pose, so give it the box already scaled like the bar is
 		int[] box = TopBarLayout.scaledClip(clipLeft, clipTop, clipRight, clipBottom, clipSize, clipGuiWidth, clipPivotY);
-		g.enableScissor(box[0], box[1], box[2], box[3]);
+		boolean clipped = ClipBox.open(g, box[0], box[1], box[2], box[3]);
 		*///?} else {
-		g.enableScissor(clipLeft, clipTop, clipRight, clipBottom);
+		boolean clipped = ClipBox.open(g, clipLeft, clipTop, clipRight, clipBottom);
 		//?}
+		if (!clipped) {
+			// None of the box is in the window: none of the text could show
+			return;
+		}
 		try {
 			if (old != null && p < 1) {
 				drawContent(g, font, style, scale, old, tx, midY, room, alpha * (1 - p), false, dt);
