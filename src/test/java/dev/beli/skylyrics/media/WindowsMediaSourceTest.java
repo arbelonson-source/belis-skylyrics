@@ -628,6 +628,53 @@ class WindowsMediaSourceTest {
 		}
 	}
 
+	/**
+	 * The default game folder (%APPDATA%\.minecraft) is under the Windows user name, which can be in any language; with an
+	 * instance name like a modpack's (an emoji, a curly apostrophe, brackets, &amp; and %). The helper is started from it exactly
+	 * as the game starts it.
+	 */
+	@Test
+	@Timeout(300)
+	void startsInAGameFolderWithANonEnglishName() throws Exception {
+		assumeTrue(WINDOWS, "Windows only");
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", nonEnglishReaderDir(dir), WindowsMediaSource::powershell, START_MS, REPLY_MS);
+		try {
+			source.poll(); // fails unless the helper said it was ready and then answered; nothing may be playing
+			assertEquals(0, source.failuresInARow());
+		} finally {
+			source.close();
+		}
+	}
+
+	/** In that same folder, the cover the helper saves comes back as an address the game can open (made-up player). */
+	@Test
+	@Timeout(300)
+	void savesCoversInAGameFolderWithANonEnglishName() throws Exception {
+		String shell = powershell();
+		assumeTrue(shell != null, "PowerShell isn't installed");
+		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS, nonEnglishReaderDir(dir));
+		try {
+			String art = "";
+			long end = System.currentTimeMillis() + 60_000; // the helper reads a cover once the song has played 1.5 s
+			while (System.currentTimeMillis() < end && art.isEmpty()) {
+				art = source.poll().track().artUrl();
+				Thread.sleep(400);
+			}
+			assertFalse(art.isEmpty(), "no cover was saved");
+			// A name mangled on its way through PowerShell's output would point at a file that isn't there
+			String text = Files.readString(Path.of(java.net.URI.create(art)));
+			assertTrue(text.equals("old cover") || text.equals("new cover"), text);
+		} finally {
+			source.close();
+		}
+	}
+
+	/** The reader's folder in a game folder under a Russian and Hebrew user name, in an instance with an emoji in its name. */
+	private static Path nonEnglishReaderDir(Path base) {
+		return base.toAbsolutePath().resolve("Пользователь ישראל").resolve("AppData").resolve("Roaming")
+				.resolve("Élodie’s Pack 😀 [1.21] & 100%").resolve(".minecraft").resolve(".cache").resolve("skylyrics").resolve("windows");
+	}
+
 	/** How long the helper's path is in the deep game folder: past Windows' old 260-character limit. */
 	private static final int LONG_SCRIPT_PATH = 272;
 
