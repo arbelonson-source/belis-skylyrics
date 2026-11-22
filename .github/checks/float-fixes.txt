@@ -1,0 +1,53 @@
+# The placement fixes of fix/float105 that a test game can show (1280x720, GUI scale 2 as the test world starts).
+# The lock key's new messages need the key bound, which a test game can't do; ViewLockTest covers them.
+# Run it on the branch, and with -f mod_ref=main to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/float105 -f version=1.21.11 -f script=.github/checks/float-fixes.txt
+#   gh workflow run screenshots.yml --ref fix/float105 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/float-fixes.txt
+
+# A clear night that stays night, nothing else in the sky
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set sky OFF
+set constellations false
+set shootingStars false
+set twinkle true
+
+# 1. World layout, Direction North, Placement left on Floating from another layout (Placement is hidden in World).
+#    Facing south, away from the words: fixed, no twinkling stars (they are up north with the words); old code, a
+#    cluster of twinkling stars round the crosshair, following the view. Facing north both show them round the words.
+set layout WORLD
+set placement FLOATING
+set direction NORTH
+look 0 -22
+sleep 10
+shot float-stars-south
+look 180 -22
+sleep 6
+shot float-stars-north
+
+# 2. View lock on, Lines in the sky, facing west a little up; leave the world and come back. Fixed: the lyrics sit at
+#    the crosshair again. Old code: if the game drew a frame before the server said which way you face, they are
+#    pinned somewhere along the horizon between south and north (off screen here). Single player may not hit that
+#    timing; a server is likelier to.
+set layout LINES
+set placement SKY
+set direction FOLLOW
+set twinkle false
+set viewLock true
+look 90 -20
+sleep 6
+shot float-lock-before
+quit
+sleep 5
+join SkyTest
+sleep 30
+shot float-lock-after-join
+look 180 0
+sleep 4
+shot float-lock-after-join-north
+look -90 0
+sleep 4
+shot float-lock-after-join-east
+set viewLock false

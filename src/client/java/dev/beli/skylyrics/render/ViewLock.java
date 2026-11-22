@@ -67,6 +67,27 @@ public final class ViewLock {
 		held = null;
 	}
 
+	/** Set on joining a world until the world first shows with its loading screen gone. */
+	private static boolean joining;
+
+	/**
+	 * You joined a world: a locked view pins wherever you look first there, never a stale spot from the last one. The
+	 * world is drawn behind its loading screen before the server says where you look, with the camera still on the
+	 * game's default turn (north, level), so the spot is pinned again once that screen is gone (see {@link #tick}).
+	 */
+	public static void joined() {
+		release();
+		joining = true;
+	}
+
+	/** Call every client tick with whether a screen is open: the first tick with none after {@link #joined} pins afresh. */
+	public static void tick(boolean screenOpen) {
+		if (joining && !screenOpen) {
+			joining = false;
+			release();
+		}
+	}
+
 	/**
 	 * The lock key: turns View lock on or off and returns the message to show above the hotbar. Floating Arc and Lines
 	 * can't be pinned, so there it changes nothing and says only sky lyrics lock. Unlocked lyrics follow you again only

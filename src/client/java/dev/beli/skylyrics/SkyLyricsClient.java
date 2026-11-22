@@ -260,7 +260,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
 		// A locked view pins wherever you look first in a new world, never a stale spot from the last one
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			ViewLock.release();
+			ViewLock.joined();
 			renderer.onJoinWorld();
 			sky.onJoinWorld();
 		});
@@ -434,6 +434,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			client.gui.getChat().addMessage(line);
 			//?}
 		}
+		//? if >=26.2 {
+		/*ViewLock.tick(client.gui.screen() != null);
+		*///?} else {
+		ViewLock.tick(client.screen != null);
+		//?}
 		// A fresh press of the attack key in the world may knock a World word under the crosshair
 		//? if >=26.2 {
 		/*boolean attack = client.gui.screen() == null && client.player != null && client.options.keyAttack.isDown();

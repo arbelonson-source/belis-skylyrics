@@ -199,6 +199,7 @@
 - **Closing the settings or song library with its key.** Closing the settings with J (or the song library with Ctrl+N) and holding the key a moment too long no longer opens them again right away: the key has to be let go and pressed again.
 - **The lock key with Floating lyrics.** With **Placement** on **Floating** (Arc or Lines), where nothing can be pinned, the **Lock lyrics here** key no longer says "Lyrics locked here" and quietly turns on **View lock**: it says only lyrics in the sky can be locked and changes nothing. With **Direction** on N, E, S or W, unlocking now says "Lyrics unlocked" instead of "Lyrics follow again", since the lyrics go back to that side of the sky.
 - **Twinkling stars in the World layout.** In the World layout with **Direction** on N, E, S or W, the **Twinkling stars** now stay round the words on that side of the sky instead of following your view when **Placement** was left on **Floating** from another layout (Placement is hidden in World).
+- **View lock after joining a world.** With **View lock** on, joining a world or a server pins the lyrics where you look once the world shows. Before, they could be pinned while the world was still loading, before the game knew which way you face, and then hang somewhere along the horizon instead of in front of you.
 
 ### Faster
 

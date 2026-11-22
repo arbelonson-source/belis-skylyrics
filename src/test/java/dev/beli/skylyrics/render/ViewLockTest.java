@@ -118,4 +118,36 @@ class ViewLockTest {
 			}
 		}
 	}
+
+	@Test
+	void aLockAfterJoiningPinsWhereYouLookOnceTheWorldShowsNotTheTurnTheLoadingScreenHad() {
+		SkyLyricsConfig cfg = cfg(Layout.LINES, Placement.SKY, Direction.FOLLOW, true);
+		ViewLock.joined();
+		// The world is drawn behind its loading screen before the server says where you look: the camera still has the
+		// game's default turn (north, level), and a pin made now would stick there
+		ViewLock.update(cfg, -180, 0);
+		ViewLock.tick(true);
+		ViewLock.update(cfg, 37, -20); // the server's word arrives while the loading screen is still up
+		ViewLock.tick(true);
+		ViewLock.tick(false); // the world shows
+		assertArrayEquals(new float[] {37, -20}, ViewLock.update(cfg, 37, -20));
+		// From then on it stays put as ever, screens or not
+		ViewLock.tick(false);
+		ViewLock.tick(true);
+		ViewLock.tick(false);
+		assertArrayEquals(new float[] {37, -20}, ViewLock.update(cfg, 90, 10));
+		ViewLock.release();
+	}
+
+	@Test
+	void closingAScreenOutsideAJoinLeavesThePinAlone() {
+		SkyLyricsConfig cfg = cfg(Layout.LINES, Placement.SKY, Direction.FOLLOW, true);
+		ViewLock.release();
+		ViewLock.tick(false);
+		assertArrayEquals(new float[] {10, 5}, ViewLock.update(cfg, 10, 5));
+		ViewLock.tick(true); // the pause menu
+		ViewLock.tick(false);
+		assertArrayEquals(new float[] {10, 5}, ViewLock.update(cfg, 70, -30));
+		ViewLock.release();
+	}
 }
