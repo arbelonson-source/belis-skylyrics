@@ -259,10 +259,22 @@ final class TopBarLayout {
 		return chatOpen ? Math.min(y, guiHeight - CHAT_INPUT_TOP - 2 - h) : y;
 	}
 
-	/** Whether the open chat's box covers a card: not when the chat is set to Hidden, as the game then draws no box. */
+	/**
+	 * How tall the open chat's box is drawn: the game puts its backdrop behind the lines it shows only, {@code lineH} high
+	 * each times the chat's {@code scale}, {@code lines} of them up to a page ({@code linesPerPage}). A chat with a few
+	 * lines is far lower than a full page, so it doesn't reach a top card.
+	 */
+	static float chatBoxH(int lines, int linesPerPage, int lineH, double scale) {
+		return Math.max(0, Math.min(lines, linesPerPage)) * lineH * (float) scale;
+	}
+
+	/**
+	 * Whether the open chat's box covers a card: not when the chat is set to Hidden, as the game then draws no box, nor
+	 * when it has no lines to draw one behind.
+	 */
 	static boolean chatBoxCovers(boolean chatOpen, boolean chatHidden, int guiHeight, float chatW, float chatH, float x, float y,
 			float w, float h) {
-		return chatOpen && !chatHidden && chatCovers(guiHeight, chatW, chatH, x, y, w, h);
+		return chatOpen && !chatHidden && chatH > 0 && chatCovers(guiHeight, chatW, chatH, x, y, w, h);
 	}
 
 	/** Whether a card with its top left at ({@code x}, {@code y}) and this size overlaps a box (left, top, right, bottom). */
