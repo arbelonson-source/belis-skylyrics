@@ -36,6 +36,11 @@ public final class Lyrics {
 		return lines.isEmpty();
 	}
 
+	/** The same lines at the same times, synced or not alike, and the same instrumental mark: the same lyrics read again. */
+	public boolean sameAs(Lyrics other) {
+		return this == other || synced == other.synced && instrumental == other.instrumental && lines.equals(other.lines);
+	}
+
 	/** Index of the line being sung at {@code timeMs}, or -1 before the first line. */
 	public int indexAt(long timeMs) {
 		int lo = 0;
