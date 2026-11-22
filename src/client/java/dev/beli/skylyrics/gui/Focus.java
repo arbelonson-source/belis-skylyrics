@@ -46,6 +46,19 @@ final class Focus {
 	}
 
 	/**
+	 * The row Ctrl+Tab puts the keyboard on in the tab it opens: the one it was on there ({@code remembered}, -1 for none)
+	 * while that row shows, else the next one that does, wrapping round; -1 when no row of the tab shows. A setting on
+	 * another tab, or a look, can hide the row in the meantime, and the Narrator must not name a row that isn't there.
+	 * {@code rows} tells which stops are rows that show.
+	 */
+	static int backOnTab(boolean[] rows, int remembered) {
+		if (remembered < 0) {
+			return -1;
+		}
+		return rows[remembered] ? remembered : next(rows, remembered, 1);
+	}
+
+	/**
 	 * The scroll that shows a row spanning {@code top} to {@code bottom} (measured from the top of the content) in a view
 	 * {@code viewH} tall, with {@code margin} of room around it. Stays put when it is already in view; a row taller than
 	 * the view shows its top.

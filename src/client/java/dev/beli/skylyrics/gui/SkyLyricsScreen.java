@@ -1029,7 +1029,7 @@ public final class SkyLyricsScreen extends Screen {
 		int to = Math.floorMod((tab == SEARCH_TAB ? searchFrom : tab) + dir, TAB_COUNT);
 		selectTab(to);
 		if (focus == null) {
-			focus = tabFocus[to];
+			focus = rowBackOnTab(tabFocus[to]);
 		}
 		focusVisible = true;
 		// A new tab starts from the keyboard: the mouse has to move again before it picks a row
@@ -1038,6 +1038,17 @@ public final class SkyLyricsScreen extends Screen {
 		announcement = Narration.tab(tabName(to), Tr.t("tab"), Tr.t("%s of %s", to + 1, TAB_COUNT),
 				focus instanceof Row row ? Narration.hinted(rowNarration(row), row.hint()) : "");
 		afterKeyboardAction();
+	}
+
+	/** The row the keyboard goes back to on this tab: {@code remembered} while it shows, else the next row that does (see {@link Focus#backOnTab}). */
+	private @Nullable Row rowBackOnTab(@Nullable Row remembered) {
+		Ring ring = ring();
+		boolean[] rows = new boolean[ring.stops().size()];
+		for (int i = 0; i < rows.length; i++) {
+			rows[i] = ring.available()[i] && ring.stops().get(i) instanceof Row row && row != masterToggle;
+		}
+		int at = Focus.backOnTab(rows, ring.stops().indexOf(remembered));
+		return at < 0 ? null : (Row) ring.stops().get(at);
 	}
 
 	private void press(Chrome button) {

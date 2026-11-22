@@ -205,6 +205,7 @@
 - **Attack meter under a picked crosshair (1.21.1).** On Minecraft 1.21.1, with a crosshair style picked, the attack meter under it is see-through and inverted like the game's own again, instead of a solid grey and white bar.
 - **Spotify after the computer sleeps.** With Spotify signed in, when Spotify asks for a renewed sign-in in the middle of a song (as it can after the computer wakes from sleep), the lyrics no longer run ahead of the song by up to half the time the renewal took. Before, when that was under about a third of a second, they stayed that far ahead until the next pause, skip or seek.
 - **Leaving the settings search with the keyboard.** In the settings, Enter, Tab or Down in the search box now go to the first setting found. Before, they carried on from wherever the keyboard was before the search: from **Done** round to the **Lyrics** switch (so Space then turned the lyrics off), from **Reset all** to **Done**, and from a setting that was also found to the one after it, skipping the first results.
+- **Ctrl+Tab back to a tab with the Narrator.** In the settings, when Ctrl+Tab brings you back to a tab where the setting you were on has been hidden in the meantime (like **Depth** after you switch the layout away from Arc, or after picking a look), the keyboard goes to the next setting that shows and the Narrator names that one. Before, the Narrator read out the hidden setting, while Left, Right and Space then changed the setting after it.
 
 ### Faster
 

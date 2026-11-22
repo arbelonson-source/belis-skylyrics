@@ -121,4 +121,21 @@ class FocusTest {
 		// nothing typed (the tab's own rows still show): Tab carries on from where the keyboard was
 		assertEquals(4, Focus.step(ring, Focus.fromSearchBox(3, false), 1, 2));
 	}
+
+	@Test
+	void backOnATabTheKeyboardSkipsARowHiddenMeanwhile() {
+		// the Look tab's stops: the Lyrics switch, Preview, Pick a look, Depth (hidden since the layout left Arc), Glow,
+		// Reset all, Done; true marks the rows that show
+		boolean[] rows = {false, false, true, false, true, false, false};
+		// the keyboard was on Depth when Ctrl+Tab left the tab: coming back it is on Glow, not on the hidden Depth
+		assertEquals(4, Focus.backOnTab(rows, 3));
+		// a row that still shows keeps it
+		assertEquals(4, Focus.backOnTab(rows, 4));
+		assertEquals(2, Focus.backOnTab(rows, 2));
+		// the last rows hidden: round to the first row that shows, never Reset all or Done
+		assertEquals(2, Focus.backOnTab(new boolean[] {false, false, true, true, false, false, false}, 4));
+		// no row remembered, or none of the tab's rows shows: nowhere
+		assertEquals(-1, Focus.backOnTab(rows, -1));
+		assertEquals(-1, Focus.backOnTab(new boolean[] {false, false, false, false, false}, 2));
+	}
 }
