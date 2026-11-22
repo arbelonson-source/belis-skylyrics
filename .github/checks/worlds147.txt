@@ -1,0 +1,43 @@
+# Hide in caves high above the world, fix/worlds147. Compare the branch with main (the same version both times):
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/worlds147 -f script=.github/checks/worlds147.txt
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=main -f script=.github/checks/worlds147.txt
+#
+# Hide in caves on, Record card on, Lines in the sky, the Aurora night sky, a clear midnight. Spectator mode, so
+# nothing falls: the Overworld's blocks end at y 319, and nothing is over you up there.
+#   worlds-ground: on the ground, looking a little up: lyrics, top bar, Record card and aurora (both).
+#   worlds-y1500:  teleported to y 1500: all four (both).
+#   worlds-y3000:  teleported to y 3000: all four on the branch. main: no lyrics, no top bar, no Record card and no
+#                  aurora, as if underground (the game's light lookup keeps 12 bits of the height, so at y 3000 it read
+#                  the sky light at y -1096, under the bedrock).
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set recordCard true
+set cardLyrics true
+set layout LINES
+set placement SKY
+set sky AURORA
+set hideInCaves true
+cmd gamemode spectator @p
+look 0 -20
+sleep 6
+seek 21
+sleep 3
+shot worlds-ground
+
+cmd execute as @p at @s run tp @s ~ 1500 ~
+sleep 5
+seek 21
+sleep 3
+shot worlds-y1500
+
+cmd execute as @p at @s run tp @s ~ 3000 ~
+sleep 5
+seek 21
+sleep 3
+shot worlds-y3000
+
+set hideInCaves false
+cmd gamemode creative @p
