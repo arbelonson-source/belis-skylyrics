@@ -1380,6 +1380,21 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
+	/**
+	 * Esc in the search box or its results: clears the search, then says so and where the keyboard is now (see
+	 * {@link Narration#searchCleared}), so it is clear the settings are still open before a second Esc closes them.
+	 */
+	private void escapeSearch() {
+		boolean typed = !query.isEmpty();
+		clearSearch();
+		layout();
+		validateFocus(); // a result from another tab lets go of the keyboard, one hidden on this tab hands it on
+		String where = focus instanceof Row row ? landing(row) : focusedNarration();
+		announcement = Narration.searchCleared(typed, Tr.t("Search cleared"), where,
+				Narration.tab(tabName(tab), Tr.t("tab"), Tr.t("%s of %s", tab + 1, TAB_COUNT), ""));
+		afterKeyboardAction();
+	}
+
 	private void renderHeader(GuiGraphics g, Frame f) {
 		int bw = font.width(Tr.t("Preview")) + 16;
 		int bx = px + pw - 12 - bw;
@@ -1790,7 +1805,7 @@ public final class SkyLyricsScreen extends Screen {
 		}
 		if (typing) {
 			if (event.isEscape()) {
-				clearSearch();
+				escapeSearch();
 			} else if (event.isConfirmation()) {
 				typing = false;
 				if (!tabs.get(SEARCH_TAB).isEmpty()) {
@@ -1819,7 +1834,7 @@ public final class SkyLyricsScreen extends Screen {
 			return true;
 		}
 		if (tab == SEARCH_TAB && event.isEscape()) {
-			clearSearch();
+			escapeSearch();
 			return true;
 		}
 		KeyMapping open = mod.openSettingsKey();

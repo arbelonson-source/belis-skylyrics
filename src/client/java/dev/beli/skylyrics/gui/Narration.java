@@ -113,6 +113,15 @@ final class Narration {
 		return join(words, place, hint);
 	}
 
+	/**
+	 * What Esc in the search box (or in the search results) says: that the search is cleared when something was typed,
+	 * then where the keyboard is now, the row or button it is on ({@code focused}), else the tab. Without it Esc said
+	 * nothing, and a second Esc closed the settings.
+	 */
+	static String searchCleared(boolean typed, String cleared, String focused, String tab) {
+		return join(typed ? cleared : "", focused.isBlank() ? tab : focused);
+	}
+
 	/** Whether the search's result count is spoken: while typing, or just after a recent search was picked. */
 	static boolean countsResults(boolean typing, boolean afterChip) {
 		return typing || afterChip;

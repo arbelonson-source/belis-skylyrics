@@ -185,4 +185,16 @@ class NarrationTest {
 		// a lone row (or the Lyrics switch in the sidebar) has no place
 		assertEquals("Lyrics, switch, on", Narration.landed("Lyrics, switch, on", "", ""));
 	}
+
+	@Test
+	void escInTheSearchSaysItClearedAndWhereTheKeyboardIs() {
+		// on a row: the row
+		assertEquals("Search cleared, Glow, switch, on, Selected list row 2 out of 3",
+				Narration.searchCleared(true, "Search cleared", "Glow, switch, on, Selected list row 2 out of 3", "Look, tab, 2 of 5"));
+		// on nothing (the row it was on is on another tab): the tab, so it is clear the settings are still open
+		assertEquals("Search cleared, Look, tab, 2 of 5", Narration.searchCleared(true, "Search cleared", "", "Look, tab, 2 of 5"));
+		// Esc in an empty box cleared nothing: only where the keyboard is
+		assertEquals("Lyrics, tab, 1 of 5", Narration.searchCleared(false, "Search cleared", "", "Lyrics, tab, 1 of 5"));
+		assertEquals("Done, button", Narration.searchCleared(false, "Search cleared", "Done, button", "Lyrics, tab, 1 of 5"));
+	}
 }

@@ -547,5 +547,6 @@
   "skylyrics.ui.1_result": "1 result",
   "skylyrics.ui.s_results": "%s results",
   "skylyrics.ui.settings_reset": "Settings reset",
+  "skylyrics.ui.search_cleared": "Search cleared",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab changes the section, arrow keys move, Enter plays or opens, Up from the top row reaches the view buttons and recent searches, Esc goes back, and typing searches"
 }
