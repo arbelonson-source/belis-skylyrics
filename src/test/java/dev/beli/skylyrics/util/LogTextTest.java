@@ -77,4 +77,14 @@ class LogTextTest {
 		assertTrue(gate.shouldLog());
 		assertFalse(gate.shouldLog());
 	}
+
+	@Test
+	void theLogKeepsTheTechnicalWordsBehindAPlainSentence() {
+		String home = System.getProperty("user.home");
+		Exception e = new java.io.IOException("Can't reach the internet or Spotify",
+				new java.net.SocketException("Connection reset", new java.io.IOException(home + "/x")));
+		assertEquals("java.io.IOException: Can't reach the internet or Spotify, caused by java.net.SocketException: Connection reset,"
+				+ " caused by java.io.IOException: ~/x", LogText.chain(e));
+		assertEquals("java.io.IOException", LogText.chain(new java.io.IOException()));
+	}
 }

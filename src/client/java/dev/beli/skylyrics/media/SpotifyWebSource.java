@@ -98,6 +98,16 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
+	/**
+	 * No answer came back at all: no internet, or a connection that was refused, broke off, timed out or couldn't be made
+	 * safe. The player is told that in words; Java's own ("Connection reset", a handshake text) stays the cause, for the log.
+	 */
+	static final class Unreachable extends IOException {
+		Unreachable(IOException cause) {
+			super(Tr.t("Can't reach the internet or Spotify"), cause);
+		}
+	}
+
 	/** What to tell a player whose Spotify source can't ask yet: the first missing step. */
 	static NotSetUp notSetUp(String clientId) {
 		return new NotSetUp(validClientId(clientId) ? Tr.t("Sign in to Spotify below") : Tr.t("Paste your Client ID first"));
@@ -402,6 +412,7 @@ public final class SpotifyWebSource implements MediaSource {
 				}
 			} catch (IOException | InterruptedException | RuntimeException e) {
 				message = Tr.t("Sign-in failed: %s", failureText(e));
+				LOG.warn("Spotify sign-in failed: {}", dev.beli.skylyrics.util.LogText.chain(e));
 				setProblem(server, message);
 			}
 			respond(socket.getOutputStream(), "200 OK", message);
@@ -564,7 +575,7 @@ public final class SpotifyWebSource implements MediaSource {
 				.header("Content-Type", "application/x-www-form-urlencoded")
 				.POST(HttpRequest.BodyPublishers.ofString(body))
 				.build();
-		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
+		HttpResponse<String> response = send(request);
 		JsonObject json = object(response.body());
 		if (response.statusCode() == 429) {
 			holdOff(response); // the poller waits out what Spotify asked, like for the Web API
@@ -994,7 +1005,16 @@ public final class SpotifyWebSource implements MediaSource {
 		} else {
 			request.header("Content-Type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(json));
 		}
-		return http().send(request.build(), HttpResponse.BodyHandlers.ofString());
+		return send(request.build());
+	}
+
+	/** Sends one request to Spotify; when no answer comes back at all, the failure says so in words (see {@link Unreachable}). */
+	private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
+		try {
+			return http().send(request, HttpResponse.BodyHandlers.ofString());
+		} catch (IOException e) {
+			throw new Unreachable(e);
+		}
 	}
 
 	/** Calls the Web API as the signed-in user, fetching a fresh access token once if Spotify says it went stale. */

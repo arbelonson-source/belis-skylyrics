@@ -47,4 +47,21 @@ public final class LogText {
 	public static String of(Throwable e) {
 		return redact(String.valueOf(e), System.getProperty("user.home"));
 	}
+
+	/**
+	 * The exception and what caused it, each as its class and message: the technical words (Java's, a server's) a
+	 * player is shown a plain sentence for instead.
+	 */
+	public static String chain(Throwable e) {
+		StringBuilder out = new StringBuilder();
+		for (int depth = 0; e != null && depth < 6; depth++) {
+			if (depth > 0) {
+				out.append(", caused by ");
+			}
+			out.append(e);
+			Throwable cause = e.getCause();
+			e = cause == e ? null : cause;
+		}
+		return redact(out.toString(), System.getProperty("user.home"));
+	}
 }

@@ -349,6 +349,9 @@ class SpotifyWebSourceTest {
 		int tokenStatus;
 		/** A Retry-After header on the token answer, or null. */
 		String tokenRetryAfter;
+		/** When set, the token call or the Web API calls get no answer at all: the connection fails with this. */
+		volatile IOException tokenThrows;
+		volatile IOException apiThrows;
 
 		FakeHttp(int apiStatus) {
 			this.apiStatus = apiStatus;
@@ -367,9 +370,13 @@ class SpotifyWebSourceTest {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) {
+		public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) throws IOException {
 			boolean token = request.uri().getHost().startsWith("accounts");
 			calls.add(token ? "token" : "api");
+			IOException cut = token ? tokenThrows : apiThrows;
+			if (cut != null) {
+				throw cut;
+			}
 			int status = token ? 200 : apiStatus;
 			String body = token ? "{\"access_token\":\"fresh\",\"expires_in\":3600" + (newRefresh == null ? "" : ",\"refresh_token\":\"" + newRefresh + "\"") + "}" : "";
 			if (token) {
@@ -973,5 +980,60 @@ class SpotifyWebSourceTest {
 		assertEquals(net, SpotifyWebSource.failureText(new java.net.http.HttpConnectTimeoutException("HTTP connect timed out")));
 		assertEquals(net, SpotifyWebSource.failureText(new java.net.UnknownHostException("accounts.spotify.com")));
 		assertEquals(net, SpotifyWebSource.failureText(new IOException("wrapped", new java.net.ConnectException())));
+	}
+
+	/** What Java says when a connection to Spotify breaks in other ways than the ones it has a type for. */
+	private static List<IOException> brokenConnections() {
+		return List.of(new java.net.SocketException("Connection reset"),
+				new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake"),
+				new javax.net.ssl.SSLHandshakeException("PKIX path building failed: unable to find valid certification path to requested target"),
+				new IOException("HTTP/1.1 header parser received no bytes"),
+				new java.io.EOFException("EOF reached while reading"));
+	}
+
+	@Test
+	void aConnectionThatBreaksShowsTheInternetSentenceNotJavasWords(@TempDir Path dir) throws Exception {
+		String net = "Can't reach the internet or Spotify";
+		for (IOException broken : brokenConnections()) {
+			for (boolean atToken : new boolean[] {true, false}) {
+				FakeHttp http = new FakeHttp(200);
+				if (atToken) {
+					http.tokenThrows = broken;
+				} else {
+					http.apiThrows = broken;
+				}
+				SpotifyWebSource source = signedIn(dir, http);
+				IOException e = assertThrows(IOException.class, source::poll);
+				String where = broken.getMessage() + (atToken ? " (sign-in renewal)" : " (song)");
+				// The Music tab's Status line and its help paragraph
+				assertEquals(net, MediaTracker.failureText(e), where);
+				// The toast blames the internet, not the music player
+				assertTrue(MediaTracker.networkFailure(e), where);
+				assertSame(broken, rootOf(e), "Java's own words are kept for the log: " + where);
+			}
+		}
+	}
+
+	@Test
+	void aConnectionThatBreaksDuringSignInSaysSoInWords(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenThrows = new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake");
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		source.useHttp(http);
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			String page = get(server.getLocalPort(), "/callback?state=st&code=c");
+			t.join(30_000);
+			assertEquals("Sign-in failed: Can't reach the internet or Spotify", source.problem());
+			assertTrue(page.contains("Sign-in failed: Can't reach the internet or Spotify"), page);
+			assertFalse(page.contains("handshake"), page);
+		}
+	}
+
+	private static Throwable rootOf(Throwable e) {
+		while (e.getCause() != null) {
+			e = e.getCause();
+		}
+		return e;
 	}
 }

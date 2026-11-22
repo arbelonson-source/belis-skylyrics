@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
  * search never holds up Play. The screen just checks whether the answer has arrived.
  */
 public final class SpotifyLibrary implements Library {
+	private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger("SkyLyrics");
 	/** Spotify hands out at most this many search results per request. */
 	public static final int SEARCH_PAGE = 10;
 	/** Liked songs, playlists and playlist songs come this many at a time. */
@@ -222,6 +223,10 @@ public final class SpotifyLibrary implements Library {
 			try {
 				result.complete(job.run());
 			} catch (Exception e) {
+				if (e instanceof IOException && !(e instanceof SpotifyWebSource.NotSetUp)) {
+					// The song library shows a sentence; what Java or Spotify said goes here
+					LOG.info("A Spotify song library request failed: {}", dev.beli.skylyrics.util.LogText.chain(e));
+				}
 				result.completeExceptionally(e);
 			} finally {
 				running.remove();

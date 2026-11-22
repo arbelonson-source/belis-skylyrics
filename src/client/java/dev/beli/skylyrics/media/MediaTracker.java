@@ -134,7 +134,7 @@ public final class MediaTracker {
 			if (e instanceof java.net.UnknownHostException || e instanceof java.net.ConnectException
 					|| e instanceof java.net.NoRouteToHostException || e instanceof java.net.SocketTimeoutException
 					|| e instanceof java.net.http.HttpTimeoutException
-					|| e instanceof java.nio.channels.UnresolvedAddressException) {
+					|| e instanceof java.nio.channels.UnresolvedAddressException || e instanceof SpotifyWebSource.Unreachable) {
 				return true;
 			}
 			// The HTTP client's own "no connection" error has no text at all
@@ -143,6 +143,11 @@ public final class MediaTracker {
 			}
 		}
 		return false;
+	}
+
+	/** Java's or a server's own words behind a failure, for the log, when the player was shown other words; else nothing. */
+	static String rawDetail(Throwable failure, String shown) {
+		return failure.getCause() == null && shown.equals(failure.getMessage()) ? "" : " (" + dev.beli.skylyrics.util.LogText.chain(failure) + ")";
 	}
 
 	/** Whether the source only isn't set up yet (no Client ID, not signed in): the player has a step to do, nothing failed. */
@@ -218,7 +223,7 @@ public final class MediaTracker {
 				if (setupPending(failure)) {
 					LOG.debug("The music player isn't set up yet: {}", error); // waiting for the player to do a step, not a problem
 				} else {
-					LOG.warn("Couldn't read the music player: {}", error);
+					LOG.warn("Couldn't read the music player: {}{}", error, rawDetail(failure, error));
 				}
 				loggedError = true;
 				outageWarnings++;
