@@ -166,10 +166,17 @@ public final class MediaTracker {
 		return mac && !webPlayer ? Tr.t("Play a song in Spotify or the Music app") : Tr.t("Play a song in Spotify, a browser or any player");
 	}
 
-	/** What the status shows for a failed read: the internet's fault when it is, else the message. */
+	/**
+	 * What the status shows for a failed read: the internet's fault when it is, else the reader's own sentence. Every
+	 * reader puts that sentence in an IOException; anything else holds Java's or a library's own English (a bug, D-Bus
+	 * not answering), which only the log gets.
+	 */
 	static String failureText(Throwable e) {
-		return networkFailure(e) ? Tr.t("Can't reach the internet or Spotify")
-				: errorText(e.getMessage(), Tr.t("Couldn't read your music player"));
+		if (networkFailure(e)) {
+			return Tr.t("Can't reach the internet or Spotify");
+		}
+		String fallback = Tr.t("Couldn't read your music player");
+		return e instanceof java.io.IOException ? errorText(e.getMessage(), fallback) : fallback;
 	}
 
 	/** A late length, cover or artist is worth passing on (lyrics lookup, cover); a late album alone is not. */

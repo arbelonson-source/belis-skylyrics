@@ -643,7 +643,10 @@ class SpotifyWebSourceTest {
 
 	@Test
 	void anExceptionWithoutAMessageStillGetsATextWithoutNull() {
-		assertEquals("NullPointerException", SpotifyWebSource.failureText(new NullPointerException()));
+		assertEquals("Something went wrong, try again", SpotifyWebSource.failureText(new NullPointerException()));
+		assertEquals("Something went wrong, try again", SpotifyWebSource.failureText(new InterruptedException()));
+		// Java's own words about a bug are no sentence for the player either
+		assertEquals("Something went wrong, try again", SpotifyWebSource.failureText(new NumberFormatException("For input string: \"soon\"")));
 		assertEquals("boom", SpotifyWebSource.failureText(new IOException("boom")));
 	}
 
@@ -1081,6 +1084,22 @@ class SpotifyWebSourceTest {
 				assertEquals(c[2], source.problem(), c[1]);
 				assertTrue(page.contains(c[2]), page);
 			}
+		}
+	}
+
+	@Test
+	void aSignInAnswerThatCantBeReadSaysSoInWords(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenStatus = 200;
+		http.tokenStatusBody = "{\"access_token\":\"fresh\",\"expires_in\":\"soon\"}";
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		source.useHttp(http);
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			String page = get(server.getLocalPort(), "/callback?state=st&code=c");
+			t.join(30_000);
+			assertEquals("Sign-in failed: Something went wrong, try again", source.problem());
+			assertFalse(page.contains("input string"), page);
 		}
 	}
 }

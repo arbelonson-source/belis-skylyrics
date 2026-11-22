@@ -439,7 +439,10 @@ public final class SpotifyWebSource implements MediaSource {
 		return true;
 	}
 
-	/** What to show for a failure: the internet's fault when it is, else its message, or its class name when it has none (never "null"). */
+	/**
+	 * What to show for a failure: the internet's fault when it is, else our own sentence. Our failures carry one in an
+	 * IOException; anything else (a bug, an answer that can't be read) only has Java's words, so it gets a plain one (never "null").
+	 */
 	static String failureText(Throwable e) {
 		if (MediaTracker.networkFailure(e)) {
 			return Tr.t("Can't reach the internet or Spotify");
@@ -450,7 +453,7 @@ public final class SpotifyWebSource implements MediaSource {
 					: Tr.t("Something went wrong, try again");
 		}
 		String message = e.getMessage();
-		return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
+		return e instanceof IOException && message != null && !message.isBlank() ? message : Tr.t("Something went wrong, try again");
 	}
 
 	private static void closeQuietly(java.io.Closeable c) {

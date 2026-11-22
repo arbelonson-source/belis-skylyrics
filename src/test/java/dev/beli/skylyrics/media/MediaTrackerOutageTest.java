@@ -136,7 +136,82 @@ class MediaTrackerOutageTest {
 		assertEquals("Can't reach the internet or Spotify", MediaTracker.failureText(new IOException()));
 		assertEquals("Can't reach the internet or Spotify", MediaTracker.failureText(new IOException("wrapped", new UnknownHostException("api.spotify.com"))));
 		assertEquals("Spotify answered with error 500", MediaTracker.failureText(new IOException("Spotify answered with error 500")));
-		assertEquals("Allow Minecraft", MediaTracker.failureText(new IllegalStateException("Allow Minecraft")));
+		assertEquals("Allow Minecraft", MediaTracker.failureText(new IOException("Allow Minecraft")));
+	}
+
+	@Test
+	void aReaderThatTripsOverItselfShowsAPlainSentenceNotJavasWords(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+		String plain = "Couldn't read your music player";
+		// Linux: the session bus doesn't answer, and the D-Bus library says so in its own English
+		MprisSource mpris = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public java.util.List<String> names() {
+				throw new org.freedesktop.dbus.errors.NoReply("No reply within specified time");
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) {
+				return null;
+			}
+		});
+		Exception noReply = org.junit.jupiter.api.Assertions.assertThrows(Exception.class, mpris::poll);
+		assertEquals(plain, MediaTracker.failureText(noReply));
+		// Spotify Web: a sign-in answer that can't be read ends in Java's words about a number
+		java.nio.file.Path login = dir.resolve("login.json");
+		java.nio.file.Files.writeString(login, "{\"clientId\":\"0123456789abcdef0123456789abcdef\",\"refreshToken\":\"r\",\"scopes\":\"\"}");
+		SpotifyWebSource spotify = new SpotifyWebSource(() -> "0123456789abcdef0123456789abcdef", login);
+		spotify.useHttp(new OneAnswer("{\"access_token\":\"fresh\",\"expires_in\":\"soon\"}"));
+		Exception odd = org.junit.jupiter.api.Assertions.assertThrows(Exception.class, spotify::poll);
+		assertEquals(plain, MediaTracker.failureText(odd));
+		// A bug in a reader: Java's words about it
+		assertEquals(plain, MediaTracker.failureText(new NullPointerException("Cannot invoke \"String.length()\" because \"title\" is null")));
+		assertEquals(plain, MediaTracker.failureText(new IllegalStateException("Expected BEGIN_OBJECT but was STRING at line 1 column 1")));
+	}
+
+	/** A network that answers every request with 200 and this body. */
+	private static final class OneAnswer extends java.net.http.HttpClient {
+		private final String body;
+
+		OneAnswer(String body) {
+			this.body = body;
+		}
+
+		@Override
+		@SuppressWarnings("unchecked")
+		public <T> java.net.http.HttpResponse<T> send(java.net.http.HttpRequest request, java.net.http.HttpResponse.BodyHandler<T> handler) {
+			return (java.net.http.HttpResponse<T>) new java.net.http.HttpResponse<String>() {
+				public int statusCode() { return 200; }
+				public java.net.http.HttpRequest request() { return request; }
+				public java.util.Optional<java.net.http.HttpResponse<String>> previousResponse() { return java.util.Optional.empty(); }
+				public java.net.http.HttpHeaders headers() { return java.net.http.HttpHeaders.of(java.util.Map.of(), (a, b) -> true); }
+				public String body() { return body; }
+				public java.util.Optional<javax.net.ssl.SSLSession> sslSession() { return java.util.Optional.empty(); }
+				public java.net.URI uri() { return request.uri(); }
+				public Version version() { return Version.HTTP_1_1; }
+			};
+		}
+
+		@Override public java.util.Optional<java.net.CookieHandler> cookieHandler() { return java.util.Optional.empty(); }
+		@Override public java.util.Optional<java.time.Duration> connectTimeout() { return java.util.Optional.empty(); }
+		@Override public Redirect followRedirects() { return Redirect.NEVER; }
+		@Override public java.util.Optional<java.net.ProxySelector> proxy() { return java.util.Optional.empty(); }
+		@Override public javax.net.ssl.SSLContext sslContext() { throw new UnsupportedOperationException(); }
+		@Override public javax.net.ssl.SSLParameters sslParameters() { return new javax.net.ssl.SSLParameters(); }
+		@Override public java.util.Optional<java.net.Authenticator> authenticator() { return java.util.Optional.empty(); }
+		@Override public Version version() { return Version.HTTP_1_1; }
+		@Override public java.util.Optional<java.util.concurrent.Executor> executor() { return java.util.Optional.empty(); }
+
+		@Override
+		public <T> java.util.concurrent.CompletableFuture<java.net.http.HttpResponse<T>> sendAsync(java.net.http.HttpRequest request,
+				java.net.http.HttpResponse.BodyHandler<T> handler) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public <T> java.util.concurrent.CompletableFuture<java.net.http.HttpResponse<T>> sendAsync(java.net.http.HttpRequest request,
+				java.net.http.HttpResponse.BodyHandler<T> handler, java.net.http.HttpResponse.PushPromiseHandler<T> push) {
+			throw new UnsupportedOperationException();
+		}
 	}
 
 	@Test
