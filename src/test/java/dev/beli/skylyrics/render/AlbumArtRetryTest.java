@@ -55,12 +55,14 @@ class AlbumArtRetryTest {
 	private int fetches;
 
 	private AlbumArt art() {
-		return new AlbumArt(new Inline(), (task, delayMs) -> {
+		AlbumArt art = new AlbumArt(new Inline(), (task, delayMs) -> {
 			delays.add(delayMs);
 			FutureTask<Void> f = new FutureTask<>(task, null);
 			scheduled.add(f);
 			return f;
 		});
+		art.toImage = image -> BlankImages.blank(); // no native memory in unit tests
+		return art;
 	}
 
 	private static Track song(String title, String art) {

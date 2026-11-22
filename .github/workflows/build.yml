@@ -44,7 +44,7 @@ jobs:
         run: |
           py=$(command -v python3 || command -v python)
           must="talksToTheHelper coversThatHangNeverMakeAPollLate aCoverIsReadAgainAfterAFewSeconds controlsNeverReachAnotherApp"
-          if [ "$RUNNER_OS" = "Windows" ]; then must="$must readsTheRealWindowsMediaControls"; fi
+          if [ "$RUNNER_OS" = "Windows" ]; then must="$must readsTheRealWindowsMediaControls startsInAGameFolderWithALongPath savesCoversInAGameFolderWithALongPath"; fi
           for report in versions/*/build/test-results/test/TEST-dev.beli.skylyrics.media.WindowsMediaSourceTest.xml; do
             grep -o '<testsuite [^>]*>' "$report"
             "$py" - "$report" $must <<'PY'

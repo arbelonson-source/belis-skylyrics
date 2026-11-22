@@ -414,8 +414,13 @@ class WindowsMediaSourceTest {
 
 	/** A source running the real script against the made-up manager in one of its scenarios. */
 	private WindowsMediaSource fakeSource(String shell, String scenario, Path flag, long replyMs) {
+		return fakeSource(shell, scenario, flag, replyMs, dir);
+	}
+
+	/** As above, with the reader's folder somewhere else. */
+	private static WindowsMediaSource fakeSource(String shell, String scenario, Path flag, long replyMs, Path readerDir) {
 		Path fake = Path.of("src/test/resources/windows-media-fake.ps1").toAbsolutePath();
-		return new WindowsMediaSource(() -> "", dir, (script, covers) -> List.of(
+		return new WindowsMediaSource(() -> "", readerDir, (script, covers) -> List.of(
 				shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
 				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString(),
 				"-Scenario", scenario, "-Flag", flag.toString()), START_MS, replyMs);
@@ -579,6 +584,67 @@ class WindowsMediaSourceTest {
 		} finally {
 			source.close();
 		}
+	}
+
+	/**
+	 * The reader's folder is inside the game folder (.cache\skylyrics\windows), and a launcher instance (Prism, CurseForge)
+	 * inside a OneDrive Documents folder can be deep. Windows PowerShell 5.1 can't open some paths of 260 characters or more,
+	 * so the real helper is started here exactly as the game starts it, from a game folder that makes its path 270+ long.
+	 */
+	@Test
+	@Timeout(300)
+	void startsInAGameFolderWithALongPath() throws Exception {
+		assumeTrue(WINDOWS, "Windows only");
+		Path readerDir = deepReaderDir(dir, LONG_SCRIPT_PATH);
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", readerDir, WindowsMediaSource::powershell, START_MS, REPLY_MS);
+		try {
+			source.poll(); // fails unless the helper said it was ready and then answered; nothing may be playing
+			assertEquals(0, source.failuresInARow());
+		} finally {
+			source.close();
+		}
+	}
+
+	/** In that same deep game folder, the helper still saves a player's cover where the game can open it (made-up player). */
+	@Test
+	@Timeout(300)
+	void savesCoversInAGameFolderWithALongPath() throws Exception {
+		assumeTrue(WINDOWS, "Windows only");
+		String shell = powershell();
+		assumeTrue(shell != null, "PowerShell isn't installed");
+		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS, deepReaderDir(dir, LONG_SCRIPT_PATH));
+		try {
+			String art = "";
+			long end = System.currentTimeMillis() + 60_000; // the helper reads a cover once the song has played 1.5 s
+			while (System.currentTimeMillis() < end && art.isEmpty()) {
+				art = source.poll().track().artUrl();
+				Thread.sleep(400);
+			}
+			assertFalse(art.isEmpty(), "no cover was saved");
+			String cover = Files.readString(Path.of(java.net.URI.create(art)));
+			assertTrue(cover.equals("old cover") || cover.equals("new cover"), cover);
+		} finally {
+			source.close();
+		}
+	}
+
+	/** How long the helper's path is in the deep game folder: past Windows' old 260-character limit. */
+	private static final int LONG_SCRIPT_PATH = 272;
+
+	/**
+	 * The music reader's folder (game folder\.cache\skylyrics\windows, see SkyLyricsClient) for a made-up launcher instance
+	 * in a OneDrive folder, its name as long as it takes for the helper's path to be {@code scriptLength} characters.
+	 */
+	private static Path deepReaderDir(Path base, int scriptLength) {
+		Path instances = base.toAbsolutePath().resolve("OneDrive - Made Up School").resolve("Documents").resolve("PrismLauncher")
+				.resolve("instances");
+		String below = File.separator + String.join(File.separator, "minecraft", ".cache", "skylyrics", "windows", "windows-media.ps1");
+		int nameLength = Math.max(1, scriptLength - instances.toString().length() - File.separator.length() - below.length());
+		String name = "Made Up Modpack with Shaders and Extras ".repeat(10).substring(0, nameLength).strip();
+		Path readerDir = instances.resolve(name).resolve("minecraft").resolve(".cache").resolve("skylyrics").resolve("windows");
+		int length = readerDir.resolve("windows-media.ps1").toString().length();
+		assertTrue(length >= 270, "the helper's path is only " + length + " characters: " + readerDir);
+		return readerDir;
 	}
 
 	private static @Nullable String powershell() {

@@ -143,12 +143,12 @@ class AlbumArtRaceTest {
 			closed.add(image);
 			image.close();
 		};
-		NativeImage late = new NativeImage(2, 2, false);
+		NativeImage late = BlankImages.blank();
 		art.offer(late, 1); // a worker handing A's cover over after load(B)
 		assertNull(art.takeIfCurrent());
 		assertEquals(List.of(late), closed, "the stale image is closed");
 		assertFalse(art.hasTexture());
-		NativeImage mine = new NativeImage(2, 2, false);
+		NativeImage mine = BlankImages.blank();
 		art.offer(mine, 2);
 		AlbumArt.Pending taken = art.takeIfCurrent();
 		assertNotNull(taken);
