@@ -87,6 +87,7 @@ class AlbumArtReloadTest {
 	/** First cover loaded and on the GPU, colour picked. */
 	private static AlbumArt withCover(ManualExecutor executor) {
 		AlbumArt art = new AlbumArt(executor);
+		art.toImage = image -> BlankImages.blank(); // no native memory in unit tests
 		art.fetcher = url -> red();
 		art.load(song("A", "https://example.invalid/first.jpg"));
 		executor.runLast();

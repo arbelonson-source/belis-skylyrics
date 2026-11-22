@@ -130,6 +130,8 @@ public final class AlbumArt {
 	private String loadedSong = "";
 	/** Closes a cover that arrived for a song we already left; replaced in tests to see it happen. */
 	java.util.function.Consumer<NativeImage> closeStale = NativeImage::close;
+	/** Turns a decoded cover into the round image the GPU gets; tests swap in one that holds no native memory. */
+	java.util.function.Function<BufferedImage, NativeImage> toImage = image -> shrink(image, SIZE, SIZE / 2f);
 
 	/** Bright colour from the cover. Changes smoothly are handled by the caller. */
 	public int color() {
@@ -215,7 +217,7 @@ public final class AlbumArt {
 					return;
 				}
 				int picked = colorFor(image);
-				NativeImage scaled = shrink(image, SIZE, SIZE / 2f);
+				NativeImage scaled = toImage.apply(image);
 				Pending old;
 				synchronized (accept) {
 					if (generation.get() != gen) {
