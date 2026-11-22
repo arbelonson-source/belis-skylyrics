@@ -1,0 +1,40 @@
+# Esc on a header button inside a playlist (fix/lib113), with the demo's made-up library. Compare each shot with the same
+# script on main.
+# - lib113-on-grid-button: the playlist "Late-night building" is open and the white focus ring is round the Grid button
+#   at the top right (Up from the playlist's songs goes there). The same on both.
+# - lib113-esc-from-grid-button: after Esc. On the branch the playlist is closed, the Playlists grid shows with the first
+#   playlist card picked (purple outline) and there is NO white ring round the Grid button. On main the same grid and
+#   card show, but the white ring is still round the Grid button (the keyboard stayed there, and the Narrator said nothing).
+# - lib113-esc-then-right: Right after that. On the branch the picked card moves on to "Elytra runs" (the second playlist)
+#   and no ring is on the header. On main the ring moves along the header (from Grid to Shelf) and the first card stays picked.
+# The other fixes on the branch only change what the Narrator says, which no shot can show (unit tests cover them).
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/lib113 -f script=.github/checks/lib113.txt
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 6
+set libraryView GRID
+guiscale 3
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+# Liked songs -> Playlists, the first playlist, open it, then Up onto the Grid button
+key tab
+sleep 1
+key right
+sleep 0.5
+key enter
+sleep 2
+key up
+sleep 1
+shot lib113-on-grid-button
+key escape
+sleep 2
+shot lib113-esc-from-grid-button
+key right
+sleep 1
+shot lib113-esc-then-right
+close
+guiscale 0
