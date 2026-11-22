@@ -204,6 +204,7 @@
 - **Type animation and fast lines.** With the **Type** animation (Lines layout), a line sung faster than it types (a fast rap line, or a long one on two rows) now keeps up with the singing: the **Karaoke fill** no longer runs on into letters that aren't typed yet, and the end of the line shows before the next line takes over (with **Previous line** off it never showed at all). Seeking into the middle of a line shows what has been sung at once and types on from there.
 - **Attack meter under a picked crosshair (1.21.1).** On Minecraft 1.21.1, with a crosshair style picked, the attack meter under it is see-through and inverted like the game's own again, instead of a solid grey and white bar.
 - **Spotify after the computer sleeps.** With Spotify signed in, when Spotify asks for a renewed sign-in in the middle of a song (as it can after the computer wakes from sleep), the lyrics no longer run ahead of the song by up to half the time the renewal took. Before, when that was under about a third of a second, they stayed that far ahead until the next pause, skip or seek.
+- **Big Arc lyrics stay on the screen.** In the Arc layout with a big **Size** (sooner with a lower FOV or a squarer window, such as one tiled to half the screen), the rows of a long line could run off the left and right sides of the screen, their first or last words out of sight: in a square window at Size 3, for one. Now such a line is cut into more, shorter rows that fit across the screen; at the usual sizes nothing changes.
 
 ### Faster
 
