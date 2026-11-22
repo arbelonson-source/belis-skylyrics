@@ -303,6 +303,11 @@ public final class LyricsRenderer {
 		return visibility > 0.01f;
 	}
 
+	/** Whether the song on show is an instrumental, whose note line is drawn like Lines even in the World layout. */
+	public boolean instrumental() {
+		return shown.instrumental();
+	}
+
 	/**
 	 * Water, ice and stained glass are drawn after entities, so lyrics drawn before them get painted over
 	 * when see-through, or cut holes in them when not. Drawn after them instead, both look right.
@@ -2405,7 +2410,7 @@ public final class LyricsRenderer {
 		float targetPitch;
 		float speed;
 		float[] lock = ViewLock.update(cfg, camYaw, camPitch);
-		if (cfg.placement == Placement.FLOATING && lock == null) {
+		if (FollowAnchor.floating(cfg.placement, cfg.layout, shown.instrumental()) && lock == null) {
 			targetYaw = camYaw;
 			targetPitch = followPitch(true, camPitch, cfg.height);
 			speed = 5f;

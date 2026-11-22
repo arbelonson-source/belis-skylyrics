@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
+import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import org.junit.jupiter.api.Test;
 
 class FollowAnchorTest {
@@ -25,6 +27,21 @@ class FollowAnchorTest {
 		assertTrue(FollowAnchor.following(true, true, 20));
 		assertFalse(FollowAnchor.following(true, true, 2));
 		assertEquals(FollowAnchor.LAZY_SPEED, FollowAnchor.speed(true));
+	}
+
+	@Test
+	void theWorldLayoutIgnoresTheHiddenPlacementSoSparklesStayWithItsWords() {
+		assertTrue(FollowAnchor.floating(Placement.FLOATING, Layout.ARC, false));
+		assertTrue(FollowAnchor.floating(Placement.FLOATING, Layout.LINES, false));
+		assertTrue(FollowAnchor.floating(Placement.FLOATING, Layout.LINES, true));
+		assertFalse(FollowAnchor.floating(Placement.SKY, Layout.LINES, false));
+		// Placement is hidden for World words: one left on Floating from another layout must not pull the sparkles
+		// round with your view while the words stay in the north
+		assertFalse(FollowAnchor.floating(Placement.FLOATING, Layout.WORLD, false));
+		assertFalse(FollowAnchor.floating(Placement.SKY, Layout.WORLD, false));
+		// An instrumental's note line is drawn like Lines in World too, so there Placement still counts
+		assertTrue(FollowAnchor.floating(Placement.FLOATING, Layout.WORLD, true));
+		assertFalse(FollowAnchor.floating(Placement.SKY, Layout.WORLD, true));
 	}
 
 	@Test

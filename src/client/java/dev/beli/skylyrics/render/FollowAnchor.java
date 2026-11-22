@@ -21,6 +21,15 @@ final class FollowAnchor {
 		return lazyFollow && layout != SkyLyricsConfig.Layout.WORLD;
 	}
 
+	/**
+	 * Whether the lyrics float close by and follow your view. World words ignore Placement (its setting is hidden there,
+	 * and they gather by Direction), so one left on Floating must not pull the sparkles round with you; only the note
+	 * line of an instrumental song, drawn like Lines even in World, still goes by it.
+	 */
+	static boolean floating(SkyLyricsConfig.Placement placement, SkyLyricsConfig.Layout layout, boolean instrumental) {
+		return placement == SkyLyricsConfig.Placement.FLOATING && (layout != SkyLyricsConfig.Layout.WORLD || instrumental);
+	}
+
 	/** Whether the anchor is chasing the camera this frame, given whether it was and the yaw gap in degrees. */
 	static boolean following(boolean was, boolean lazy, float yawGap) {
 		if (!lazy) {
