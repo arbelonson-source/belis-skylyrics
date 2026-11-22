@@ -1,6 +1,9 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -137,5 +140,49 @@ class FocusTest {
 		// no row remembered, or none of the tab's rows shows: nowhere
 		assertEquals(-1, Focus.backOnTab(rows, -1));
 		assertEquals(-1, Focus.backOnTab(new boolean[] {false, false, false, false, false}, 2));
+	}
+
+	@Test
+	void aRowHiddenUnderTheKeyboardHandsItToTheNextRowThatShows() {
+		// The Music tab's Player card at its end: the Lyrics switch, Preview, Timing, This song (the keyboard is on it, and
+		// the song just stopped), Reset all, Done. rows marks the rows that show, available every stop the keys reach.
+		boolean[] rows = {false, false, true, false, false, false};
+		boolean[] available = {true, true, true, false, true, true};
+		// round to Timing, the next row that shows, not on to Reset all (where Enter would ask to reset)
+		assertEquals(2, Focus.afterHidden(rows, available, 3));
+		// a row that shows after it takes the keyboard: Demo song after This song
+		assertEquals(4, Focus.afterHidden(new boolean[] {false, false, true, false, true, false, false},
+				new boolean[] {true, true, true, false, true, true, true}, 3));
+		// no row of the tab shows any more: Reset all, as before
+		assertEquals(3, Focus.afterHidden(new boolean[] {false, false, false, false, false},
+				new boolean[] {true, true, false, true, true}, 2));
+	}
+
+	@Test
+	void aRowsPlaceCountsOnlyTheRowsThatShow() {
+		// the Lyrics switch, Preview, Layout, Depth (hidden), Glow, Shadow, Reset all, Done
+		boolean[] rows = {false, false, true, false, true, true, false, false};
+		assertEquals(new Focus.Place(1, 3), Focus.place(rows, 2));
+		// Glow is the second row that shows, not the third row of the tab
+		assertEquals(new Focus.Place(2, 3), Focus.place(rows, 4));
+		assertEquals(new Focus.Place(3, 3), Focus.place(rows, 5));
+		// a hidden row, the buttons, nothing: no place
+		assertNull(Focus.place(rows, 3));
+		assertNull(Focus.place(rows, 0));
+		assertNull(Focus.place(rows, 6));
+		assertNull(Focus.place(rows, -1));
+		// a lone row says no place, as a vanilla list of one doesn't
+		assertNull(Focus.place(new boolean[] {false, false, true, false, false}, 2));
+	}
+
+	@Test
+	void onlyOneThingLooksFocusedWhileTyping() {
+		// keys moved the keyboard onto a row or a button: its ring shows
+		assertTrue(Focus.ringShows(true, false));
+		// Ctrl+F or a click puts the keyboard in the search box, which has its own outline: the row's ring goes
+		assertFalse(Focus.ringShows(true, true));
+		// after the mouse, no ring either way
+		assertFalse(Focus.ringShows(false, false));
+		assertFalse(Focus.ringShows(false, true));
 	}
 }

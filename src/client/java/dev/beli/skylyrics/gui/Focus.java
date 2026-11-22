@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import net.minecraft.util.Mth;
+import org.jspecify.annotations.Nullable;
 
 /** Keyboard focus decisions of the settings screen, kept free of the screen so they can be tested. */
 final class Focus {
@@ -56,6 +57,52 @@ final class Focus {
 			return -1;
 		}
 		return rows[remembered] ? remembered : next(rows, remembered, 1);
+	}
+
+	/**
+	 * Where the keyboard goes when the row it is on ({@code at}) stops showing under it, like This song when the song
+	 * stops or a row hidden by a setting changed with the mouse: the next row that shows, wrapping round, so it stays in
+	 * the list; Reset all or Done ({@code available}, every stop the keyboard can reach) only when no row of the tab shows.
+	 * {@code rows} tells which stops are rows that show.
+	 */
+	static int afterHidden(boolean[] rows, boolean[] available, int at) {
+		int row = backOnTab(rows, at);
+		return row >= 0 ? row : next(available, at, 1);
+	}
+
+	/** Where a row sits among the rows that show: the {@code n}th of {@code of}. */
+	record Place(int n, int of) {
+	}
+
+	/**
+	 * Where the stop at {@code at} sits among the rows that show ({@code rows}), counted the way vanilla lists count their
+	 * rows: on a tab its rows that show, in the search the results. Null for a stop that is no such row, and for a lone
+	 * row (vanilla says no place in a list of one).
+	 */
+	static @Nullable Place place(boolean[] rows, int at) {
+		if (at < 0 || at >= rows.length || !rows[at]) {
+			return null;
+		}
+		int n = 0;
+		int of = 0;
+		for (int i = 0; i < rows.length; i++) {
+			if (rows[i]) {
+				of++;
+				if (i <= at) {
+					n++;
+				}
+			}
+		}
+		return of > 1 ? new Place(n, of) : null;
+	}
+
+	/**
+	 * Whether the ring is drawn on the row or button the keyboard is on: after keys, not after the mouse
+	 * ({@code keysUsed}), and not while the search box has the keyboard ({@code typing}): the box has its own outline
+	 * then, and only one thing may look focused.
+	 */
+	static boolean ringShows(boolean keysUsed, boolean typing) {
+		return keysUsed && !typing;
 	}
 
 	/**
