@@ -35,6 +35,13 @@ class LrcNegativeStampTest {
 	}
 
 	@Test
+	void aNegativeWordStampIsNotShown() {
+		// A file with word timings, shifted earlier as a whole: its first words are stamped before the start too
+		assertEquals("0=Hello world|1000=next|",
+				dump(LrcParser.parseSynced("[-00:00.50]<-00:00.50>Hello <00:00.20>world<00:00.60>\n[00:01.00]<00:01.00>next")));
+	}
+
+	@Test
 	void aNegativeStampInsideALineIsNotShown() {
 		assertEquals("0=Hello world|", dump(LrcParser.parseSynced("[00:00.00]Hello [-00:00.10]world")));
 	}
