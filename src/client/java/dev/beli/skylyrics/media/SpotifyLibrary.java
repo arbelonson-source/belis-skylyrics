@@ -267,9 +267,10 @@ public final class SpotifyLibrary implements Library {
 			response = caller.call("GET", path, null);
 		}
 		if (response.statusCode() >= 300) {
-			// With the library scopes granted a 403 is Spotify refusing this app or account (development mode), and signing in again can't change that
+			// With the library scopes granted a 403 is Spotify refusing this app or account (development mode), and signing in
+			// again can't change that; nor can it when the app's maker has no Premium
 			throw new IOException(response.statusCode() != 403 ? Tr.t("Spotify didn't answer, try again")
-					: spotify.canBrowse() ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management")
+					: spotify.canBrowse() || SpotifyWebSource.ownerNeedsPremium(response.body()) ? SpotifyWebSource.forbiddenText(response.body())
 					: Tr.t("Sign out and sign in again on the Music tab to use the song library"));
 		}
 		if (object(response.body()) == null) {

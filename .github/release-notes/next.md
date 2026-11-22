@@ -276,6 +276,7 @@
 - **World layout and seeking.** Jumping back a moment with the mod's progress bar (half a second is enough) now takes the World layout's words back too, and the line being sung places its words again from the new spot. A jump back made in the music player itself counts from 1.5 seconds as before, so a player that reports its position a little late never wipes the words in the middle of a song.
 - **Hide in caves high up.** With **Hide in caves** on, flying or teleporting higher than y 2048 no longer hides the lyrics, the top bar, the **Record card** and the night sky as if you had gone underground.
 - **The top bar's highlight at other bar sizes.** With **Bar size** set to anything but 100%, the right end of the violet highlight in the top bar is no longer cut flat (by up to a few pixels) on the last word of a line, or on the word being sung while a long line scrolls: Minecraft rounds the bar's text clip to whole GUI units after scaling it, and the clip now leaves room for that.
+- **Spotify without Premium.** When the Spotify account that created your Spotify app has no Premium (Spotify needs it for these apps), the Music tab and the song library now say so, instead of telling you to add your account under User Management, which didn't help.
 
 ### Faster
 

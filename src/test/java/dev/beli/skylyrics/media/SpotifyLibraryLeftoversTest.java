@@ -242,6 +242,15 @@ class SpotifyLibraryLeftoversTest {
 	}
 
 	@Test
+	void aSongLibraryWhoseAppMakerHasNoPremiumSaysPremium(@TempDir Path dir) throws Exception {
+		Net net = new Net(what -> new Reply(403, null, "{\"error\":{\"status\":403,\"message\":\"Active premium subscription required for the owner of the app.\"}}"));
+		String premium = Tr.t("Spotify needs Premium on the account that created your Spotify app");
+		assertEquals(premium, failure(libraryWithScopes(dir, net, SpotifyWebSource.LIBRARY_SCOPES).liked(0)).getMessage());
+		// Signing in again wouldn't help either
+		assertEquals(premium, failure(libraryWithScopes(dir, net, "user-read-playback-state").liked(0)).getMessage());
+	}
+
+	@Test
 	void onlyAMissingPremiumIsToldAsPremium() {
 		String premium = Tr.t("Spotify Premium is needed to start songs");
 		String neutral = Tr.t("Spotify didn't allow that on this device");

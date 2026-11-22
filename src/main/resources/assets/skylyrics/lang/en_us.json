@@ -559,5 +559,6 @@
   "skylyrics.ui.s_playlists": "%s playlists",
   "skylyrics.ui.spotify_is_having_problems_right_now": "Spotify is having problems right now",
   "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify is getting too many requests, wait a moment",
-  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "The Windows music reader is missing from the mod. Download SkyLyrics again"
+  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "The Windows music reader is missing from the mod. Download SkyLyrics again",
+  "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify needs Premium on the account that created your Spotify app"
 }

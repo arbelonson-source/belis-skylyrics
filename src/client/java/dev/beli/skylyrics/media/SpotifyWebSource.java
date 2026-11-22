@@ -938,14 +938,33 @@ public final class SpotifyWebSource implements MediaSource {
 		return now - askedNs >= wait;
 	}
 
+	/**
+	 * Whether Spotify's 403 says the app's maker has no Premium. Spotify: "The app owner must have a Spotify Premium account
+	 * for apps in development mode to function"; it answers "Active premium subscription required for the owner of the app."
+	 */
+	static boolean ownerNeedsPremium(@Nullable String body) {
+		JsonObject json = object(body);
+		JsonObject error = json == null ? null : child(json, "error");
+		String message = error == null ? null : string(error, "message");
+		return message != null && message.toLowerCase(java.util.Locale.ROOT).contains("premium");
+	}
+
+	/**
+	 * What a 403 from the Web API asks the player to do. Every player makes their own app, so without Premium they are an
+	 * owner without it; otherwise it is the usual one: a development-mode app only answers the accounts under User Management.
+	 */
+	static String forbiddenText(@Nullable String body) {
+		return ownerNeedsPremium(body) ? Tr.t("Spotify needs Premium on the account that created your Spotify app")
+				: Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management");
+	}
+
 	/** Spotify answered with a status that isn't an answer; the poller backs off by it. */
 	private static final class BadStatus extends IOException {
 		final int status;
 
-		BadStatus(int status) {
-			// The usual 403: a development-mode app only answers the accounts listed under User Management.
+		BadStatus(int status, @Nullable String body) {
 			// A 401 here means a token we had just refreshed was refused too, so only signing in again helps.
-			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management")
+			super(status == 403 ? forbiddenText(body)
 					: status == 401 ? Tr.t("Spotify signed you out, sign in again")
 					: status >= 500 ? Tr.t("Spotify is having problems right now")
 					: Tr.t("Spotify answered with error %s", status));
@@ -1014,7 +1033,7 @@ public final class SpotifyWebSource implements MediaSource {
 				holdOff(response);
 				return last;
 			}
-			default -> throw new BadStatus(response.statusCode());
+			default -> throw new BadStatus(response.statusCode(), response.body());
 		}
 		if (afterPress > 0) {
 			afterPress--;

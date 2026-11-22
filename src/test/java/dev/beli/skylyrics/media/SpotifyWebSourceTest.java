@@ -332,7 +332,7 @@ class SpotifyWebSourceTest {
 	private static final class FakeHttp extends HttpClient {
 		final int apiStatus;
 		final List<String> calls = new ArrayList<>();
-		/** Answers for the next Web API calls (a bare status such as "204" or "401" with no body, else a 200 body); empty means apiStatus with no body. */
+		/** Answers for the next Web API calls (a bare status such as "204" or "401" with no body, a status and its body such as "403 {...}", else a 200 body); empty means apiStatus with no body. */
 		final java.util.Deque<String> apiAnswers = new java.util.ArrayDeque<>();
 		/** Token endpoint: refresh tokens it accepts; any other one gets invalid_grant. Null accepts everything. */
 		java.util.Set<String> acceptedRefresh;
@@ -406,8 +406,9 @@ class SpotifyWebSourceTest {
 			if (!token && !apiAnswers.isEmpty()) {
 				String a = apiAnswers.poll();
 				boolean bare = a.matches("\\d{3}");
-				status = bare ? Integer.parseInt(a) : 200;
-				body = bare ? "" : a;
+				boolean withBody = a.matches("(?s)\\d{3} .*");
+				status = bare || withBody ? Integer.parseInt(a.substring(0, 3)) : 200;
+				body = bare ? "" : withBody ? a.substring(4) : a;
 			}
 			final int statusF = status;
 			final String bodyF = body;
@@ -1119,5 +1120,24 @@ class SpotifyWebSourceTest {
 			assertEquals("Sign-in failed: Something went wrong, try again", source.problem());
 			assertFalse(page.contains("input string"), page);
 		}
+	}
+
+	@Test
+	void anAppWhoseMakerHasNoPremiumSaysPremiumNotUserManagement(@TempDir Path dir) throws Exception {
+		// Spotify: "The app owner must have a Spotify Premium account for apps in development mode to function". Every
+		// player makes their own app, so a player without Premium gets this 403 on every ask, and adding their own
+		// account under User Management (what the mod said) changes nothing
+		FakeHttp http = new FakeHttp(200);
+		http.apiAnswers.add("403 {\"error\":{\"status\":403,\"message\":\"Active premium subscription required for the owner of the app.\"}}");
+		IOException e = assertThrows(IOException.class, signedIn(dir, http)::poll);
+		assertEquals("Spotify needs Premium on the account that created your Spotify app", MediaTracker.failureText(e));
+		// An account a development-mode app doesn't know still gets the User Management step
+		FakeHttp unknown = new FakeHttp(200);
+		unknown.apiAnswers.add("403 {\"error\":{\"status\":403,\"message\":\"Check settings on developer.spotify.com/dashboard, the user may not be registered.\"}}");
+		assertEquals("Spotify blocked this app. On the Spotify dashboard, add your account under User Management",
+				MediaTracker.failureText(assertThrows(IOException.class, signedIn(dir, unknown)::poll)));
+		// And so does a 403 without a readable reason
+		assertEquals("Spotify blocked this app. On the Spotify dashboard, add your account under User Management",
+				MediaTracker.failureText(assertThrows(IOException.class, signedIn(dir, new FakeHttp(403))::poll)));
 	}
 }

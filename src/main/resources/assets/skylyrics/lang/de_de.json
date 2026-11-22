@@ -559,5 +559,6 @@
   "skylyrics.ui.s_playlists": "%s Playlists",
   "skylyrics.ui.spotify_is_having_problems_right_now": "Spotify hat gerade Probleme",
   "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify bekommt gerade zu viele Anfragen, warte einen Moment",
-  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "Die Windows-Musikerkennung fehlt in der Mod. Lade SkyLyrics neu herunter"
+  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "Die Windows-Musikerkennung fehlt in der Mod. Lade SkyLyrics neu herunter",
+  "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify verlangt Premium für das Konto, das deine Spotify-App erstellt hat"
 }
