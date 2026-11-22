@@ -24,11 +24,13 @@ public final class TitleCleaner {
 	/**
 	 * "Remastered 2011", "Live at …", "Mono", 'From "Film"', "Recorded at …", "Bonus Track": the part after the dash is not a
 	 * song name. "From" counts only with a quote or a film or show word after it, so a song named "From The Start" is still one.
+	 * The film word has to come before any bracket: in "From Here On (from Film Soundtrack)" it names the song's film, and
+	 * "From Here On" is the song.
 	 */
 	private static final Pattern VERSION_TAG = Pattern.compile(
 			"(?i)(\\d{4}\\s+)?(digital\\s+)?remaster(ed)?(\\s+(\\d{4}|version))?|(\\d{4}\\s+)?(mono|stereo)(\\s+(version|mix))?"
 					+ "|live|live (at|from|in) .+|radio edit|(single|album|live|acoustic|demo) version|demo|acoustic|instrumental"
-					+ "|from\\s*[\"\u201C\u201D'\u2018\u2019\u00AB(\\[].+|from\\s.*\\b(soundtrack|motion picture|film|movie|series|musical|ost)\\b.*"
+					+ "|from\\s*[\"\u201C\u201D'\u2018\u2019\u00AB(\\[].+|from\\s[^()\\[\\]]*?\\b(soundtrack|motion picture|film|movie|series|musical|ost)\\b.*"
 					+ "|recorded\\s+(live\\s+)?(at|in|from|for|on)\\s.+|bonus track");
 
 	/** A version word ending the part after the dash ("Levels - Skrillex Remix"): that part is not a song name, so the dash is not "Artist - Song". */

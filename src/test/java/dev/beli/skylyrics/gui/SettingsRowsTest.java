@@ -20,22 +20,35 @@ class SettingsRowsTest {
 
 	@Test
 	void distanceShowsRealBlocks() {
-		assertEquals("10.7", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 64, 12));
-		assertEquals("4.0", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 8, 12));
-		assertEquals("16.00", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 160, 12));
-		assertEquals("100", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 12));
-		// capped to 80% of the render distance (8 chunks = 128 blocks -> 102)
-		assertEquals("102", SkyLyricsScreen.distanceBlocks(Placement.SKY, 160, 8));
-		// never closer than 8 blocks, even when the stored value or a tiny render distance would say less
-		assertEquals("8", SkyLyricsScreen.distanceBlocks(Placement.SKY, 2, 12));
-		assertEquals("26", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 2), "80% of 2 chunks");
+		assertEquals("10.7", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 64, 12, LINES));
+		assertEquals("4.0", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 8, 12, LINES));
+		assertEquals("16.00", SkyLyricsScreen.distanceBlocks(Placement.FLOATING, 160, 12, LINES));
+		assertEquals("64", SkyLyricsScreen.distanceBlocks(Placement.SKY, 64, 12, LINES));
+		// never closer than 8 blocks, even when the stored value would say less
+		assertEquals("8", SkyLyricsScreen.distanceBlocks(Placement.SKY, 2, 12, LINES));
+	}
+
+	/** The default lines (Size 1, the stacked lines) in the default view: FOV 70 in a 16:9 window. */
+	private static final float LINES = dev.beli.skylyrics.render.LyricsRenderer.skyReach(false, 1, 70, 1920, 1080);
+
+	@Test
+	void skyDistanceReadsWhereTheLyricsHangInFrontOfThePaintedSky() {
+		// The Sky lyrics come in to stay in front of the painted skies (88 blocks out at render distance 8, 21 at 2), the
+		// ends of a row lying farther than its middle; the slider said 80% of the render distance, 102 and 26 blocks
+		assertEquals("66", SkyLyricsScreen.distanceBlocks(Placement.SKY, 160, 8, LINES));
+		assertEquals("16", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 2, LINES));
+		// An Arc line as wide as the view allows reaches farther out, so it comes in at render distance 8 already
+		float arc = dev.beli.skylyrics.render.LyricsRenderer.skyReach(true, 1, 70, 1920, 1080);
+		assertEquals("60", SkyLyricsScreen.distanceBlocks(Placement.SKY, 64, 8, arc));
+		// And the Distance setting itself where the lines fit: 100 at render distance 16
+		assertEquals("100", SkyLyricsScreen.distanceBlocks(Placement.SKY, 100, 16, LINES));
 	}
 
 	@Test
 	void floatingDistanceReadoutChangesOnEveryStep() {
 		String previous = null;
 		for (int v = 8; v <= 160; v++) {
-			String text = SkyLyricsScreen.distanceBlocks(Placement.FLOATING, v, 12);
+			String text = SkyLyricsScreen.distanceBlocks(Placement.FLOATING, v, 12, LINES);
 			assertFalse(text.equals(previous), "step " + v + " reads the same as the one before: " + text);
 			previous = text;
 		}

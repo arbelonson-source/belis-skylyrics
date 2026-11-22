@@ -1,0 +1,62 @@
+# Glass, ice and water past the painted skies (Synthwave, Moonlight), review124 (1280x720, GUI scale 2 as the test world
+# starts: render distance 6, clouds fancy, standing at y 64). Since batch 86 the painted sky marks no depth on 1.21.1 to
+# 26.2 (PaintedSkyType), so the clouds behind it show. But vanilla draws its see-through blocks (glass, ice, water,
+# slime, honey) after the sky effects too, and the painted sky paints over every block past its own distance (0.9 of
+# where the render-distance fog starts: 155 blocks at render distance 12). Solid blocks out there stay hidden, as
+# before; see-through ones now show on top of the painted sky. On 26.3 the painted sky never marked depth, so there
+# both refs should look like the new code. Nothing is fixed for this yet: it decides whether that trade is wanted.
+# Three panels 170 blocks to the north, 20 to 60 blocks up (7 to 19 degrees above the horizon): red stained glass on
+# the left, ice in the middle, stone on the right.
+# 1. review124-panels-aurora (the vanilla night sky with the aurora): all three panels show, on both refs. The control.
+# 2. review124-panels-synthwave / -moonlight: with mod_ref=90354691 (batch 86 without PaintedSkyType, with its option
+#    test hook) no panel at all, only the painted sky. On main (and this branch) the red glass panel and the ice panel
+#    float on the painted sky, while the stone panel to their right is gone (plain purple Synthwave or blue Moonlight
+#    sky where it stands).
+#    A player sees the same with a glass build, a frozen lake or a waterfall on a far hill, or the sea's surface in the
+#    painted sky's fade just under the horizon.
+# Run it on 1.21.11 (and 26.2 or 1.21.1), and with -f mod_ref=90354691 to compare with the painted sky's old type:
+#   gh workflow run screenshots.yml --ref fix/review124 -f version=1.21.11 -f script=.github/checks/review124.txt
+#   gh workflow run screenshots.yml --ref fix/review124 -f version=1.21.11 -f mod_ref=90354691 -f script=.github/checks/review124.txt
+
+# A clear night that stays night; the lyrics to the south, out of the way, and no clouds in front of the panels
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set direction SOUTH
+set layout LINES
+set placement SKY
+set sky AURORA
+set skyStrength 0.7
+set shootingStars false
+set twinkle false
+set skyPulse false
+option clouds off
+option renderDistance 12
+sleep 15
+
+# The three panels, 170 blocks north of the player (past the painted sky at 155, short of the fog at 173)
+cmd execute at @p run fill ~-30 ~20 ~-170 ~-12 ~60 ~-170 minecraft:red_stained_glass
+cmd execute at @p run fill ~-9 ~20 ~-170 ~9 ~60 ~-170 minecraft:ice
+cmd execute at @p run fill ~12 ~20 ~-170 ~30 ~60 ~-170 minecraft:stone
+look 180 -12
+sleep 6
+shot review124-panels-aurora
+
+# 2. The painted skies
+set sky SYNTHWAVE
+sleep 6
+shot review124-panels-synthwave
+set sky MOONLIGHT
+sleep 6
+shot review124-panels-moonlight
+
+# Back as the test world starts
+cmd execute at @p run fill ~-30 ~20 ~-170 ~30 ~60 ~-170 minecraft:air
+set sky AURORA
+option renderDistance 6
+option clouds fancy
+set layout WORLD
+set direction FOLLOW
+look 0 -28
+sleep 2
