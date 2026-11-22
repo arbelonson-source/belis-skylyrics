@@ -465,23 +465,33 @@ public final class NowPlayingHud {
 		TopBarLayout.Fit fit = sizes.fit();
 		float[] box = TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), sizes.clockW(), fit.clock(), sizes.statsW(), fit.stats(),
 				bottomTopNow(mc, g.guiHeight()));
-		return f3Hides(true, true, box, DebugText.recent(now));
+		return f3Hides(true, true, box, DebugText.recent(now), DebugCharts.shown(mc, g.guiWidth(), g.guiHeight()));
+	}
+
+	/** {@link #f3Hides(boolean, boolean, float[], float[][], float[][])} with none of F3's charts showing. */
+	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines) {
+		return f3Hides(atBottom, f3Open, barBox, f3Lines, new float[0][]);
 	}
 
 	/**
 	 * Whether the open debug screen (F3) hides the bar: at the top always, as F3 fills the top corners; at the bottom when
-	 * the bar would sit on F3's text (at GUI scale 3 it does, on a taller screen F3's text can end above it). Without F3's
-	 * text measured (a mod draws F3 its own way), a bottom bar hides when it reaches as high as F3's text usually does,
-	 * as a Record card in the bottom left does.
+	 * the bar would sit on F3's text (at GUI scale 3 it does, on a taller screen F3's text can end above it) or on one of
+	 * its charts along the bottom (on a screen up to about 830 wide they reach under the bar). Without F3's text measured
+	 * (a mod draws F3 its own way), a bottom bar hides when it reaches as high as F3's text usually does, as a Record card
+	 * in the bottom left does.
 	 *
 	 * @param barBox the bar's box (left, top, right, bottom) when it sits at the bottom
 	 * @param f3Lines F3's text lines' boxes as the game drew them last, null when it didn't lately
+	 * @param f3Charts the boxes of F3's charts showing ({@link DebugCharts#shown})
 	 */
-	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines) {
+	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines, float[][] f3Charts) {
 		if (!f3Open) {
 			return false;
 		}
 		if (!atBottom || barBox == null) {
+			return true;
+		}
+		if (DebugText.covers(barBox, f3Charts)) {
 			return true;
 		}
 		return f3Lines == null ? barBox[1] < RecordCard.F3_REACH : DebugText.covers(barBox, f3Lines);
