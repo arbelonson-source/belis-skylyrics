@@ -268,10 +268,13 @@ class AuroraCullTest {
 	@Test
 	void lazyFollowDoesNothingInTheWorldLayout() {
 		for (Layout layout : Layout.values()) {
-			assertEquals(layout != Layout.WORLD, FollowAnchor.lazy(true, layout), layout.name());
-			assertFalse(FollowAnchor.lazy(false, layout), layout.name());
+			assertEquals(layout != Layout.WORLD, FollowAnchor.lazy(true, layout, false), layout.name());
+			assertFalse(FollowAnchor.lazy(false, layout, false), layout.name());
+			// An instrumental's note line is drawn like Lines in every layout, so there it counts
+			assertEquals(true, FollowAnchor.lazy(true, layout, true), layout.name());
+			assertFalse(FollowAnchor.lazy(false, layout, true), layout.name());
 		}
 		// Left on from another layout, the World sparkles snap to the view like the words do
-		assertEquals(Float.POSITIVE_INFINITY, FollowAnchor.speed(FollowAnchor.lazy(true, Layout.WORLD)));
+		assertEquals(Float.POSITIVE_INFINITY, FollowAnchor.speed(FollowAnchor.lazy(true, Layout.WORLD, false)));
 	}
 }

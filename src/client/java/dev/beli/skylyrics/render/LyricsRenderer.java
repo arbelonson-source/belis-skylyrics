@@ -306,6 +306,11 @@ public final class LyricsRenderer {
 		return visibility > 0.01f;
 	}
 
+	/** Whether Elytra mode carries the World words with you (as of the last World frame), so they gather where you look. */
+	boolean wordsTravel() {
+		return worldWords.carrying();
+	}
+
 	/** Whether the song on show is an instrumental, whose note line is drawn like Lines even in the World layout. */
 	public boolean instrumental() {
 		return shown.instrumental();
@@ -723,7 +728,8 @@ public final class LyricsRenderer {
 		worldWords.clearMiddle(cfg.worldClearMiddle);
 		worldWords.curve(cfg.worldCurve);
 		worldWords.tune(cfg.worldWords, cfg.worldFade, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
-		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
+		worldWords.travel(cfg.worldGlide);
+		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isAutoSpinAttack() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
 		if (mc.level != wordsLevel) {
 			wordsLevel = mc.level;
@@ -2524,10 +2530,11 @@ public final class LyricsRenderer {
 			speed = 3f;
 		} else if (cfg.direction == SkyLyricsConfig.Direction.FOLLOW) {
 			// Right where you look; lazy follow stays put while you look around a bit and catches up when you turn away
-			following = FollowAnchor.following(following, cfg.lazyFollow, camYaw - anchorYaw);
+			boolean lazy = FollowAnchor.lazy(cfg.lazyFollow, cfg.layout, shown.instrumental());
+			following = FollowAnchor.following(following, lazy, camYaw - anchorYaw);
 			targetYaw = following ? camYaw : anchorYaw;
 			targetPitch = -cfg.height;
-			speed = FollowAnchor.speed(cfg.lazyFollow);
+			speed = FollowAnchor.speed(lazy);
 		} else {
 			targetYaw = cfg.direction.yaw;
 			targetPitch = -cfg.height;

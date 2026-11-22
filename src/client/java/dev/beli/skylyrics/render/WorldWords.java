@@ -298,6 +298,8 @@ final class WorldWords {
 	private int fastRun;
 	/** Elytra mode is carrying the words this frame. */
 	private boolean gliding;
+	/** The Elytra mode setting: whether the words may travel with you at all. */
+	private boolean travel = true;
 	/** The lowest pitch a new row may start on to still be on screen, worked out as each word is placed. */
 	private float seenLow = Sentence.ROW_LIMIT;
 	/** Half the height of the screen in degrees, as of the last card placed. */
@@ -1081,15 +1083,26 @@ final class WorldWords {
 		return due - spawned > CATCH_UP ? due - CATCH_UP : spawned;
 	}
 
+	/** Whether Elytra mode carried the words with you last frame (see {@link #glide}). */
+	boolean carrying() {
+		return gliding;
+	}
+
+	/** The Elytra mode setting: off, the words stay where they were put however you move. */
+	void travel(boolean on) {
+		travel = on;
+	}
+
 	/**
 	 * Elytra mode: while you glide, ride or fly, every card moves and turns along with you, so the words travel with
 	 * you instead of being left behind, and steering doesn't swing them (or the rest of the line) out of sight.
-	 * Call once a frame, before {@link #update}.
+	 * {@code flying} is whether the game says you glide, ride or fly; with the setting off ({@link #travel}) nothing,
+	 * not even a very fast move, carries the words. Call once a frame, before {@link #update}.
 	 */
-	void glide(Vec3 eye, float yaw, float pitch, boolean gliding, long now) {
+	void glide(Vec3 eye, float yaw, float pitch, boolean flying, long now) {
 		float seconds = (now - lastGlide) / 1e9f;
 		fastRun = fastRun(fastRun, lastEye, eye, seconds);
-		gliding = travelling(gliding, fastRun);
+		boolean gliding = travel && travelling(flying, fastRun);
 		Vec3 moved = carry(lastEye, eye, gliding, seconds);
 		lastGlide = now;
 		this.gliding = gliding;
@@ -1115,6 +1128,11 @@ final class WorldWords {
 			c.pos = eye.add(swing(offset, turn, tilt, c.clip));
 			c.clip = clipAfter(offset, c.clip, tilt);
 			c.face += turn;
+			// Where it slid out of a neighbour's way, and a knock, turn round with it: left in the world's directions they
+			// would put it off its spot, back onto the word it moved away from
+			c.slide = turned(c.slide, turn);
+			c.slid = turned(c.slid, turn);
+			c.knock = turned(c.knock, turn);
 		}
 		if (sentence != null) {
 			sentence.swing(turn, tilt);
@@ -1122,6 +1140,11 @@ final class WorldWords {
 		if (last != null) {
 			last.swing(turn, tilt);
 		}
+	}
+
+	/** A sideways offset (a slide, a knock) turned {@code turn} degrees round, the way {@link #swing} turns a card. */
+	static Vec3 turned(Vec3 offset, float turn) {
+		return turn == 0 || offset == Vec3.ZERO ? offset : offset.yRot(-turn * DEG);
 	}
 
 	/**
