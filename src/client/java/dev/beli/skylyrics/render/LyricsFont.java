@@ -1,5 +1,8 @@
 package dev.beli.skylyrics.render;
 
+import com.ibm.icu.text.ArabicShaping;
+import com.ibm.icu.text.ArabicShapingException;
+
 import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.Font;
 import net.minecraft.util.FormattedCharSequence;
@@ -87,6 +90,38 @@ public final class LyricsFont {
 		return splitter.stringWidth(FormattedText.of(stripMarks(text), style));
 	}
 
+	/**
+	 * {@link #width} of text drawn through the game's own text path (its visual order: the top bar's song name, the Record
+	 * card), which first joins Arabic letters into the forms they take inside a word. Those are far narrower than the same
+	 * letters standing alone, so an Arabic title measured unjoined left a wide gap before what follows it.
+	 */
+	public static float drawnWidth(Font font, Style style, String text) {
+		return drawnWidth(font.getSplitter(), style, text);
+	}
+
+	/** {@link #drawnWidth(Font, Style, String)} on a splitter. */
+	static float drawnWidth(StringSplitter splitter, Style style, String text) {
+		return width(splitter, style, joined(text));
+	}
+
+	/**
+	 * The text with its Arabic letters joined the way the game joins them before drawing (the same shaping, a lam-alef
+	 * becoming one letter); the same instance when there is no Arabic letter in it.
+	 */
+	static String joined(String text) {
+		for (int i = 0; i < text.length(); i++) {
+			char c = text.charAt(i);
+			if (c >= 0x0600 && c <= 0x06FF || c >= 0x0750 && c <= 0x077F || c >= 0x08A0 && c <= 0x08FF) {
+				try {
+					return new ArabicShaping(ArabicShaping.LETTERS_SHAPE).shape(text);
+				} catch (ArabicShapingException e) {
+					return text;
+				}
+			}
+		}
+		return text;
+	}
+
 	/** An invisible direction mark: LRM, RLM, ALM, the embeddings and overrides, the isolates. Vanilla would draw each as a box. */
 	public static boolean isMark(int cp) {
 		return cp == 0x200E || cp == 0x200F || cp == 0x061C || cp >= 0x202A && cp <= 0x202E || cp >= 0x2066 && cp <= 0x2069;
@@ -140,15 +175,15 @@ public final class LyricsFont {
 	private static final WidthCache WIDTHS = new WidthCache(256);
 
 	/**
-	 * {@link #width} for text that is measured every frame: the same font, style and text give the remembered width
-	 * until a resource reload ({@link #fontsReloaded}) or a language change.
+	 * {@link #drawnWidth} for text that is measured every frame and drawn through the game's own text path: the same
+	 * font, style and text give the remembered width until a resource reload ({@link #fontsReloaded}) or a language change.
 	 */
 	public static float cachedWidth(Font font, Style style, String text) {
 		return WIDTHS.get(font, style, text, Language.getInstance(), LyricsFont::measure);
 	}
 
 	private static float measure(Object font, Object style, String text) {
-		return width((Font) font, (Style) style, text);
+		return drawnWidth((Font) font, (Style) style, text);
 	}
 
 	private static final String CANARY = "Mw0♪漢א ع";

@@ -1353,8 +1353,8 @@ public final class NowPlayingHud {
 	}
 
 	private static String cut(Font font, Style style, String text, int maxW) {
-		float room = maxW - LyricsFont.width(font, style, "…");
-		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> LyricsFont.width(font, style, t) <= room).stripTrailing() + "…";
+		float room = maxW - LyricsFont.drawnWidth(font, style, "…");
+		return dev.beli.skylyrics.util.TextCut.prefix(text, t -> LyricsFont.drawnWidth(font, style, t) <= room).stripTrailing() + "…";
 	}
 
 	/** {@link #roundRect} in GUI units, drawn in real pixels. */

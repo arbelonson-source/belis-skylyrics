@@ -1,0 +1,57 @@
+# Odd song details in the top bar and on the Record card, fix/bar119 (1280x720, GUI scale 3 = 426x240 unless said),
+# played through the demo song with the test hook's "song <title> | <artist>" (made-up names; \uXXXX is that letter).
+# The bar shows the song's name all the time here (Lyrics in the bar off, Only on song change off), and the card sits
+# in the bottom right with its lyric strip. Each shot, branch against the old code:
+# 1. bar119-english-bar: "Paper Lanterns  ·  Mira Vale  ·  Demo", the usual look (the same on both).
+#    bar119-arabic-bar: an Arabic title, then "·  Mira Vale  ·  Demo". With the old code there is a wide empty gap
+#    (about 15 GUI units, 45 pixels) between the end of the Arabic title (it starts on the left) and the "·", and the
+#    bar is that much wider. On the branch the "·" follows the title after the usual two spaces, as on the English shot.
+# 2. bar119-arabic-card: the Record card with a longer Arabic title, an Arabic artist and an Arabic lyric line. With the
+#    old code the title is cut short with "…" although it fits, and the line under it is off the strip's middle: it
+#    sits too far left, its left end (the end of the sentence) cut off for the first part of each 4-second line, then
+#    slides right until it is whole against the left side. On the branch the whole title shows, and the whole line sits
+#    still in the middle of the strip.
+# 3. bar119-emoji: "Paper Hearts" and a heart, by "Mira Vale" and sparkles, each emoji with the selector phones add for
+#    colour (VS16). With the old code a dashed box with "VS16" in it follows the heart and the sparkles, in the bar and on
+#    the card (title and artist). On the branch there are no boxes.
+# 4. bar119-long-gui4: GUI scale 4 (320x180), a long English title and artist: the bar's title ends in "…" inside the
+#    bar and the card's title and artist end in "…" inside the card; nothing runs out (the same on both: checked, fine).
+# Run it, and with -f mod_ref=<the branch's first commit, the test hook alone> to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/bar119 -f version=1.21.11 -f script=.github/checks/bar119.txt
+
+cmd time set noon
+cmd weather clear
+look 0 -20
+guiscale 3
+set barLyrics false
+set hudOnlyOnChange false
+set recordCard true
+set cardLyrics true
+set cardLines 1
+set cardCorner BOTTOM_RIGHT
+sleep 6
+
+song Paper Lanterns | Mira Vale
+sleep 3
+shot bar119-english-bar
+
+song سلام يا قطة خضراء | Mira Vale
+sleep 3
+shot bar119-arabic-bar
+
+song سلام يا قطة خضراء في الليل | فرقة الأقمار السبعة
+sleep 2
+lines نمشي معا تحت ضوء القمر الهادئ في الليل
+sleep 3
+shot bar119-arabic-card
+
+song Paper Hearts ❤️ | Mira Vale ✨️
+sleep 3
+shot bar119-emoji
+
+guiscale 4
+song A Very Long Made Up Song Title That Keeps Going Past The Bar | Mira Vale, The Glass Tide Orchestra & Friends
+sleep 3
+shot bar119-long-gui4
+
+song

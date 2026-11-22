@@ -243,6 +243,31 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void aFilmOrStudioTagAfterTheDashIsNotTheSongName() {
+		// Spotify's Web Player in a browser names a song from a film "Song - From \"Film\"", and a session "Song - Recorded at
+		// ...": the artist it gives is the real one, and the bar showed 'From "Film"' by "Song" instead
+		Track film = TitleCleaner.clean(track("Paper Lanterns - From \"The Quiet Harbor\"", "Mira Vale", "firefox"));
+		assertEquals("Mira Vale", film.artist());
+		assertEquals("Paper Lanterns - From \"The Quiet Harbor\"", film.title());
+		for (String tail : new String[] {"From \u201CThe Quiet Harbor\u201D", "From 'Glass Tide'", "From The Quiet Harbor Soundtrack",
+				"From the Motion Picture Glass Tide", "From the Netflix Series \"Glass Tide\"", "Recorded at Harbor Studios",
+				"Recorded Live at the Glass Hall", "Bonus Track"}) {
+			Track t = TitleCleaner.clean(track("Paper Lanterns - " + tail, "Mira Vale", "chromium"));
+			assertEquals("Mira Vale", t.artist(), tail);
+			assertEquals("Paper Lanterns - " + tail, t.title(), tail);
+		}
+		// The lyrics search already took it for a version of the song
+		assertEquals("Paper Lanterns", TitleCleaner.forSearch(film.title()));
+		// A video's song that only starts with "From" is still "Artist - Song"
+		Track start = TitleCleaner.clean(track("Mira Vale - From The Start Again", "MiraValeVEVO", "firefox"));
+		assertEquals("Mira Vale", start.artist());
+		assertEquals("From The Start Again", start.title());
+		Track rec = TitleCleaner.clean(track("Mira Vale - Recorded Memories", "MiraValeVEVO", "firefox"));
+		assertEquals("Mira Vale", rec.artist());
+		assertEquals("Recorded Memories", rec.title());
+	}
+
+	@Test
 	void artistDashSongStillSplitsWhenNoVersionWordEndsIt() {
 		Track a = TitleCleaner.clean(track("Avicii - Levels", "AviciiVEVO", "firefox"));
 		assertEquals("Avicii", a.artist());
@@ -325,5 +350,14 @@ class TitleCleanerTest {
 		assertEquals(TitleCleaner.key("\u0645\u062d\u0645\u062f"), TitleCleaner.key("\u0645\u064f\u062d\u064e\u0645\u0651\u064e\u062f"));
 		assertNotEquals(TitleCleaner.key("\u0915\u093e"), TitleCleaner.key("\u0915\u0940"));
 		assertEquals(TitleCleaner.key("Beyonc\u00e9"), TitleCleaner.key("beyonce"));
+	}
+
+	@Test
+	void anEmojiStyleSelectorNeverMakesItAnotherSong() {
+		// The player's title loses its selector (Track drops it, it draws as a box); a lyrics site's may still have it
+		same("Paper Hearts \u2764", "Paper Hearts \u2764\uFE0F");
+		same("Paper Hearts \u2764\uFE0E", "Paper Hearts \u2764");
+		assertEquals(TitleCleaner.key("\u6F22\u5B57"), TitleCleaner.key("\u6F22\uDB40\uDD00\u5B57"));
+		different("Paper Hearts \u2764", "Paper Hearts \u2764 Part 2");
 	}
 }
