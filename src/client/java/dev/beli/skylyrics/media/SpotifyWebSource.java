@@ -200,6 +200,27 @@ public final class SpotifyWebSource implements MediaSource {
 		return id != null && id.matches("[0-9a-fA-F]{32}");
 	}
 
+	/** 32 hex letters standing on their own, not inside a longer word. */
+	private static final java.util.regex.Pattern CLIENT_ID_IN_TEXT = java.util.regex.Pattern.compile("(?<![0-9A-Za-z])[0-9a-fA-F]{32}(?![0-9A-Za-z])");
+
+	/**
+	 * The Client ID to keep from what the player pasted. Copied from a web page it can come with quotes, a label, a no-break
+	 * space or the dashboard's own address around it; when exactly one ID is in there, that one is kept. Otherwise the
+	 * text is kept as pasted (cut at 64), and the row says it isn't a Client ID.
+	 */
+	public static String pastedClientId(String clipboard) {
+		String pasted = clipboard.strip();
+		String found = null;
+		for (java.util.regex.Matcher m = CLIENT_ID_IN_TEXT.matcher(pasted); m.find(); ) {
+			if (found != null && !found.equals(m.group())) {
+				found = null; // two different ones (the Client ID and the secret): which one is meant can't be told
+				break;
+			}
+			found = m.group();
+		}
+		return found != null ? found : pasted.length() > 64 ? pasted.substring(0, 64) : pasted;
+	}
+
 	public Account account() {
 		String id = id();
 		if (!validClientId(id)) {

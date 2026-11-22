@@ -81,6 +81,28 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void aClientIdPastedWithQuotesALabelOrTheDashboardAddressIsFoundInIt() {
+		assertEquals(ID, SpotifyWebSource.pastedClientId("  " + ID + "\n"));
+		assertEquals(ID, SpotifyWebSource.pastedClientId("\"" + ID + "\""));
+		assertEquals(ID, SpotifyWebSource.pastedClientId("'" + ID + "',"));
+		assertEquals(ID, SpotifyWebSource.pastedClientId("Client ID: " + ID));
+		// A web page's no-break space isn't whitespace to Java
+		assertEquals(ID, SpotifyWebSource.pastedClientId("\u00a0" + ID + "\u00a0"));
+		// The app's page on the dashboard, copied from the browser's address bar (longer than 64, so it was cut short too)
+		assertEquals(ID, SpotifyWebSource.pastedClientId("https://developer.spotify.com/dashboard/" + ID + "/settings"));
+		assertEquals(ID, SpotifyWebSource.pastedClientId("https://developer.spotify.com/dashboard/" + ID + "?tab=" + ID));
+		// The Client ID and the secret copied together: which one is meant can't be told, so nothing is guessed
+		String secret = "fedcba9876543210fedcba9876543210";
+		assertFalse(SpotifyWebSource.validClientId(SpotifyWebSource.pastedClientId("Client ID " + ID + "\nClient secret " + secret)));
+		// 32 hex letters inside a longer word are no Client ID
+		assertFalse(SpotifyWebSource.validClientId(SpotifyWebSource.pastedClientId(ID + "0")));
+		assertFalse(SpotifyWebSource.validClientId(SpotifyWebSource.pastedClientId("x" + ID)));
+		// Text without an ID is kept as pasted (cut at 64), so the row says "That isn't a Client ID"
+		assertEquals("nope", SpotifyWebSource.pastedClientId(" nope "));
+		assertEquals(64, SpotifyWebSource.pastedClientId("x".repeat(100)).length());
+	}
+
+	@Test
 	void readsASong() {
 		String body = """
 				{"is_playing": true, "progress_ms": 61000, "currently_playing_type": "track",

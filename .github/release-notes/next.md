@@ -278,6 +278,7 @@
 - **The top bar's highlight at other bar sizes.** With **Bar size** set to anything but 100%, the right end of the violet highlight in the top bar is no longer cut flat (by up to a few pixels) on the last word of a line, or on the word being sung while a long line scrolls: Minecraft rounds the bar's text clip to whole GUI units after scaling it, and the clip now leaves room for that.
 - **Spotify without Premium.** When the Spotify account that created your Spotify app has no Premium (Spotify needs it for these apps), the Music tab and the song library now say so, instead of telling you to add your account under User Management, which didn't help.
 - **Spotify's own sign-in errors.** While Spotify's sign-in page is open, the Music tab now says what to check if Spotify shows INVALID_CLIENT: the Client ID, and that your Spotify app has the Redirect URI exactly as shown. Before, a wrong Client ID or a missing or mistyped Redirect URI left it at "Waiting for your browser…" until the sign-in timed out five minutes later.
+- **Pasting the Client ID.** A Client ID copied with quotes, a label like "Client ID:" or a web page's spaces around it, or inside the address of its page on the Spotify dashboard, is now picked out when you press **Paste**, instead of showing "That isn't a Client ID".
 
 ### Faster
 
