@@ -4,7 +4,8 @@ import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
 
 /**
  * Points on the sky in rows and columns, with their colours; directions are for lyrics facing south.
- * Painted skies build these once and only turn them to the lyrics' direction each frame.
+ * Painted skies build these once; the quads between them are turned to the lyrics' direction and kept (see
+ * {@link KeptQuads}) until that direction or the distance changes, so a frame only adds the colours.
  */
 final class SkyMesh {
 	/** The finished, opaque sky colour in a direction (a unit vector, lyrics facing south). */
@@ -22,11 +23,10 @@ final class SkyMesh {
 	private boolean[] columnShown;
 	/** For polar meshes: a round patch (unit direction, angular radius in radians) holding each segment, so one can be skipped alone. */
 	private float[] wedgeX, wedgeY, wedgeZ, wedgeRadius;
-	/** Scratch for one draw: each corner after turning, and which rows have been turned yet. */
-	private final float[] outX, outY, outZ;
-	private final int[] outArgb;
-	private final boolean[] turned;
 	private float capX, capY, capZ, capRadius = -1;
+	/** Every quad, row by row, as last turned by {@link #keptCos} and {@link #keptSin} and pushed out to {@link #keptR}. */
+	private final KeptQuads kept;
+	private float keptCos = Float.NaN, keptSin = Float.NaN, keptR = Float.NaN;
 
 	SkyMesh(int rows, int cols) {
 		this.rows = rows;
@@ -35,11 +35,12 @@ final class SkyMesh {
 		y = new float[rows * cols];
 		z = new float[rows * cols];
 		rgb = new int[rows * cols];
-		outX = new float[rows * cols];
-		outY = new float[rows * cols];
-		outZ = new float[rows * cols];
-		outArgb = new int[rows * cols];
-		turned = new boolean[rows];
+		kept = new KeptQuads((rows - 1) * (cols - 1));
+	}
+
+	/** How many times the quads have been turned and kept; tests check that a steady frame turns none. */
+	int layouts() {
+		return kept.layouts;
 	}
 
 	void set(int i, int j, float px, float py, float pz, int color) {
@@ -60,34 +61,62 @@ final class SkyMesh {
 	 * and rows of a dome, or a whole round patch. What is drawn has exactly the same corners in the same order.
 	 */
 	void draw(SkyCanvas c, float cos, float sin, float r, float level, SkyView view) {
-		if (capRadius >= 0 && !view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius)) {
+		if (!capShown(cos, sin, view)) {
 			return;
 		}
 		boolean[] column = columnsInView(cos, sin, view);
-		// What every corner shares is worked out once; each corner is then turned once, however many quads use it
+		if (!KeptQuads.same(cos, keptCos) || !KeptQuads.same(sin, keptSin) || !KeptQuads.same(r, keptR)
+				|| !KeptQuads.same(c.horizonFade(), kept.fade())) {
+			turn(cos, sin, r, c.horizonFade());
+		}
+		// What every corner shares is worked out once a frame; the corners themselves were kept
 		int alpha = SkyColors.argb(0, level);
-		java.util.Arrays.fill(turned, false);
 		for (int i = 0; i + 1 < rows; i++) {
-			if (rowHeight != null && !view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]))) {
+			if (!rowShown(i, view)) {
 				continue;
 			}
-			turnRow(i, column, cos, sin, r, alpha);
-			turnRow(i + 1, column, cos, sin, r, alpha);
 			for (int j = 0; j + 1 < cols; j++) {
 				if (column != null && !column[j]) {
 					continue;
 				}
-				int k = i * cols + j;
-				emit(c, k);
-				emit(c, k + 1);
-				emit(c, k + cols + 1);
-				emit(c, k + cols);
+				kept.draw(c, i * (cols - 1) + j, alpha, rgb);
 			}
 		}
 	}
 
-	/** Which columns (domes) or segments (polar meshes) can be on screen; null when every one is drawn. */
-	private boolean[] columnsInView(float cos, float sin, SkyView view) {
+	/** Turns every quad's corners by the yaw (cosine and sine), pushes them out to {@code r} and keeps them, faded as a canvas with {@code horizonFade} fades them. */
+	private void turn(float cos, float sin, float r, float horizonFade) {
+		keptCos = cos;
+		keptSin = sin;
+		keptR = r;
+		kept.begin(horizonFade);
+		for (int i = 0; i + 1 < rows; i++) {
+			for (int j = 0; j + 1 < cols; j++) {
+				int k = i * cols + j;
+				turnCorner(k, cos, sin, r);
+				turnCorner(k + 1, cos, sin, r);
+				turnCorner(k + cols + 1, cos, sin, r);
+				turnCorner(k + cols, cos, sin, r);
+			}
+		}
+	}
+
+	private void turnCorner(int k, float cos, float sin, float r) {
+		kept.corner((x[k] * cos - z[k] * sin) * r, y[k] * r, (z[k] * cos + x[k] * sin) * r, k);
+	}
+
+	/** Whether the round patch holding a polar mesh can be on screen (always, for a dome). */
+	boolean capShown(float cos, float sin, SkyView view) {
+		return capRadius < 0 || view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius);
+	}
+
+	/** Whether the quads between rows {@code i} and {@code i + 1} can be on screen, by their height (always, for a polar mesh). */
+	boolean rowShown(int i, SkyView view) {
+		return rowHeight == null || view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]));
+	}
+
+	/** Which columns (domes) or segments (polar meshes) can be on screen; null when every one is drawn. Scratch, reused by the next call. */
+	boolean[] columnsInView(float cos, float sin, SkyView view) {
 		if (columnYaw != null) {
 			float turn = (float) Math.toDegrees(Math.atan2(sin, cos));
 			for (int j = 0; j + 1 < cols; j++) {
@@ -106,7 +135,7 @@ final class SkyMesh {
 
 	/** Whether {@link #draw} would hand on any quad for this view (the same tests, nothing drawn). */
 	boolean anyVisible(float cos, float sin, SkyView view) {
-		if (capRadius >= 0 && !view.capVisibleTurned(capX, capY, capZ, cos, sin, capRadius)) {
+		if (!capShown(cos, sin, view)) {
 			return false;
 		}
 		boolean[] column = columnsInView(cos, sin, view);
@@ -118,33 +147,11 @@ final class SkyMesh {
 			return false;
 		}
 		for (int i = 0; i + 1 < rows; i++) {
-			if (rowHeight == null || view.heightVisible(Math.min(rowHeight[i], rowHeight[i + 1]), Math.max(rowHeight[i], rowHeight[i + 1]))) {
+			if (rowShown(i, view)) {
 				return true;
 			}
 		}
 		return false;
-	}
-
-	/** Turns and pushes out the corners of one row that a drawn quad uses, once per draw. */
-	private void turnRow(int i, boolean[] column, float cos, float sin, float r, int alpha) {
-		if (turned[i]) {
-			return;
-		}
-		turned[i] = true;
-		for (int j = 0; j < cols; j++) {
-			if (column != null && !(j + 1 < cols && column[j]) && !(j > 0 && column[j - 1])) {
-				continue;
-			}
-			int k = i * cols + j;
-			outX[k] = (x[k] * cos - z[k] * sin) * r;
-			outY[k] = y[k] * r;
-			outZ[k] = (z[k] * cos + x[k] * sin) * r;
-			outArgb[k] = alpha | rgb[k] & 0xFFFFFF;
-		}
-	}
-
-	private void emit(SkyCanvas c, int k) {
-		c.vertex(outX[k], outY[k], outZ[k], outArgb[k]);
 	}
 
 	/** Marks this as a dome (rows of height in degrees, {@code columns} equal steps of yaw round) so the draw can skip what's out of view. */
