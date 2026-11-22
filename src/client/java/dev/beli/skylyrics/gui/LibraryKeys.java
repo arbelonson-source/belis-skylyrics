@@ -72,4 +72,12 @@ final class LibraryKeys {
 	static int afterClose(int openedFrom, int count) {
 		return openedFrom < 0 || count <= 0 ? -1 : Math.min(openedFrom, count - 1);
 	}
+
+	/**
+	 * The header stop the keyboard is on once Esc has closed a playlist, from {@code stop} (-1 for none): off the header,
+	 * so it is back on the playlist's card like Esc from the songs, and the Narrator names the playlist and the section.
+	 */
+	static int stopAfterClose(int stop) {
+		return -1;
+	}
 }

@@ -106,4 +106,13 @@ class LibraryKeysTest {
 		assertEquals(-1, LibraryKeys.afterClose(-1, 10));
 		assertEquals(-1, LibraryKeys.afterClose(2, 0));
 	}
+
+	@Test
+	void escOnAHeaderButtonInsideAPlaylistTakesTheKeyboardBackToThePlaylist() {
+		// Up from the playlist's songs onto the Grid button (stop 0) or Carousel (2), then Esc: the playlist closes and the
+		// keyboard is on its card again, not left on the button with nothing said
+		assertEquals(-1, LibraryKeys.stopAfterClose(0));
+		assertEquals(-1, LibraryKeys.stopAfterClose(2));
+		assertEquals(-1, LibraryKeys.stopAfterClose(-1));
+	}
 }
