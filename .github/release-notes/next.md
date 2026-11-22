@@ -191,6 +191,7 @@
 - **Spotify sign-in strip in Russian and Ukrainian.** In the smallest window, the strip above the songs you heard lately that asks you to sign in to Spotify no longer ends its second line in "…" in Russian and Ukrainian, and neither does the Russian one that asks you to sign in again. Those texts are a little shorter: like the German, Spanish, French and Portuguese ones, they leave the Music tab to the button beside them.
 - **Pausing a player that doesn't say where the song is.** Some music players and websites never tell where in the song they are, so the lyrics follow the clock from when the song started. Pausing one of them no longer sends the lyrics back to the first line, and playing it again goes on from where you paused instead of starting the lyrics over.
 - **Pausing on Windows.** On Windows, pausing a player that never says when it last told where the song is (some browser tabs and players) no longer sends the lyrics back to the start of the song, or to the last spot it told, and playing it again goes on from where you paused.
+- **A late cover from a player that doesn't say where the song is.** When such a player sends the song's cover, length or artist a moment after its title, as browsers often do, the lyrics no longer start counting again from that moment, so they no longer run late for the rest of the song or go back to the first line.
 
 ### Faster
 

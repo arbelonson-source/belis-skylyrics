@@ -258,17 +258,20 @@ public final class MediaTracker {
 		pending = null;
 		pendingCount = 0;
 
-		if (newSong || filledIn(old.track(), freshTrack)) {
-			if (newSong) {
-				coverChanges = 0;
-			}
+		if (newSong) {
+			coverChanges = 0;
 			snapshot = fresh;
 			zeroPolls = 0;
 			zeroRunBase = null;
-			if (newSong) {
-				noPosition = false;
-			}
+			noPosition = false;
 			noteZero(fresh);
+			sourceName = source.displayName();
+			onTrackChange.accept(freshTrack);
+			return;
+		}
+		if (filledIn(old.track(), freshTrack)) {
+			// Still the same song, so its clock goes on (a player that reads 0 keeps counting from when the song appeared)
+			followSameSong(old, fresh);
 			sourceName = source.displayName();
 			onTrackChange.accept(freshTrack);
 			return;
@@ -277,7 +280,16 @@ public final class MediaTracker {
 		// Same song with a different cover (not an empty one filled in, which is passed on above)
 		boolean coverChanged = !old.track().artUrl().isEmpty() && !freshTrack.artUrl().isEmpty()
 				&& !old.track().artUrl().equals(freshTrack.artUrl()) && ++coverChanges <= MAX_COVER_CHANGES;
+		followSameSong(old, fresh);
+		sourceName = source.displayName();
+		if (coverChanged) {
+			onCoverChange.accept(freshTrack);
+		}
+	}
 
+	/** Moves the clock on for a new reading of the song it already follows. */
+	private void followSameSong(Snapshot old, Snapshot fresh) {
+		Track freshTrack = fresh.track();
 		// Same song: only accept the new position if it really moved (seek), to avoid jitter
 		long predicted = positionAt(old, fresh.readAtNanos());
 		boolean jumped = Math.abs(predicted - fresh.positionMs()) > SEEK_THRESHOLD_MS;
@@ -300,10 +312,6 @@ public final class MediaTracker {
 			noPosition = true;
 			Snapshot base = zeroRunBase;
 			snapshot = new Snapshot(freshTrack, base.positionMs(), base.playing(), base.readAtNanos(), base.rate());
-		}
-		sourceName = source.displayName();
-		if (coverChanged) {
-			onCoverChange.accept(freshTrack);
 		}
 	}
 
