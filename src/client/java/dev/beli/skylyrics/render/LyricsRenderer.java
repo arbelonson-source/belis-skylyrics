@@ -980,7 +980,8 @@ public final class LyricsRenderer {
 	 * How far away the lyrics hang with Placement Sky: the Distance setting, within 0.8 of the render distance (a
 	 * server's view distance counts), and near enough that their farthest corner ({@code reach}, see {@link #reach}) stays
 	 * in front of the painted skies' nearest layer ({@link SkyEffects#paintedNearest}). Past it they would be hidden by
-	 * the sky's depth, or by blocks the sky paints over. The default Distance (64) is kept at render distance 9 and more
+	 * blocks the sky paints over, and with a shader pack by the sky's own depth (see {@link PaintedSkyType}). The default
+	 * Distance (64) is kept at render distance 9 and more
 	 * (8 for the stacked lines). Never nearer than 8 blocks, unless even that would reach past the sky (render distance 2
 	 * with a big Size and a wide view).
 	 */

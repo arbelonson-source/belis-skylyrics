@@ -75,6 +75,8 @@ public final class SkyEffects {
 	private static final float FULL_STRENGTH = 0.7f;
 	/** Batch the sky is drawn in; lower batches are drawn first and the world's own things use 0. */
 	private static final int SKY_ORDER = -1;
+	/** Batch the painted skies are drawn in, before the rest of the sky (the sparkles and shooting stars go over them). */
+	private static final int PAINTED_ORDER = SKY_ORDER - 1;
 	/** With the lyrics following the view, the suns sit where the real sun went down: the west. */
 	static final float FOLLOW_YAW = 90;
 	/** Constellations sit in front of the far sky shapes (and behind the aurora and the lyrics). */
@@ -562,16 +564,21 @@ public final class SkyEffects {
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
 		// The added light leaves no depth behind either: it sits inside the world (at most 110 blocks out), and
 		// glass, water and ice are drawn after it, so marking its depth would cut holes in any of them further away.
+		// Nor does the painted sky (see PaintedSkyType), or every cloud past it would be hidden. It has a batch of its
+		// own before the rest: in one batch the render types come in no set order, and drawn after the sparkles and
+		// shooting stars it would paint over them.
 		//? if >=26.1 {
 		/*OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
+		OrderedSubmitNodeCollector backdrop = context.submitNodeCollector().order(PAINTED_ORDER);
 		PoseStack pose = context.poseStack();
 		*///?} else {
 		OrderedSubmitNodeCollector sky = context.commandQueue().order(SKY_ORDER);
+		OrderedSubmitNodeCollector backdrop = context.commandQueue().order(PAINTED_ORDER);
 		PoseStack pose = context.matrices();
 		//?}
 		pose.pushPose();
 		if (painted()) {
-			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), painter);
+			backdrop.submitCustomGeometry(pose, PaintedSkyType.get(ScreenLayer.shadersOn()), painter);
 		}
 		if (!painted() || sparkles || meteorsAlive > 0) {
 			sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), drawer);
