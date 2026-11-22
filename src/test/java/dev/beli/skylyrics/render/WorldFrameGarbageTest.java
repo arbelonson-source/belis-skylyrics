@@ -44,7 +44,9 @@ class WorldFrameGarbageTest {
 		record = false;
 	}
 
+	/** A stand-in for the game's collector that keeps what it is handed; 1.21.8 and older draw at once, which needs a game. */
 	private static SubmitNodeCollector collector() {
+		//? if >=1.21.9 {
 		return (SubmitNodeCollector) Proxy.newProxyInstance(SubmitNodeCollector.class.getClassLoader(),
 				new Class<?>[] {SubmitNodeCollector.class}, (p, m, a) -> {
 					if (m.getName().equals("submitText")) {
@@ -62,6 +64,9 @@ class WorldFrameGarbageTest {
 					}
 					return null;
 				});
+		//?} else {
+		/*throw new org.opentest4j.TestAbortedException("1.21.8 and older draw the words straight into the game's buffers");
+		*///?}
 	}
 
 	/** Two lines sung, so the first one's words are fading while the second one's are lit; the usual settings. */
