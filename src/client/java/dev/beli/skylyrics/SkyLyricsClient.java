@@ -96,11 +96,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private CoverCache covers;
 	private LyricsRenderer renderer;
 	private boolean attackHeld;
-	// Held keys repeat their click; these act once per press (the timing keys keep repeating, stepping while held)
-	private final KeyPresses toggleLyricsPress = new KeyPresses();
-	private final KeyPresses playPausePress = new KeyPresses();
-	private final KeyPresses nextTrackPress = new KeyPresses();
-	private final KeyPresses previousTrackPress = new KeyPresses();
+	// Held keys repeat their click; how each of our keys takes that (see KeyPresses.of)
+	private final java.util.Map<KeyMapping, KeyPresses> presses = new java.util.HashMap<>();
+	// Our screens close on their own key's press; held on, its repeats must not open them straight back
+	private final ClosedByKey settingsClosed = new ClosedByKey();
+	private final ClosedByKey libraryClosed = new ClosedByKey();
 	private SkyEffects sky;
 	private NowPlayingHud hud;
 	private RecordCard card;
@@ -366,16 +366,23 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	//? if >=1.21.9 {
-	private static KeyMapping key(String name, int code, KeyMapping.Category category) {
+	private KeyMapping key(String name, int code, KeyMapping.Category category) {
 	//?} else {
-	/*private static KeyMapping key(String name, int code, String category) {
+	/*private KeyMapping key(String name, int code, String category) {
 	*///?}
 		//? if >=26.1 {
-		/*return KeyMappingHelper.registerKeyMapping(
+		/*KeyMapping mapping = KeyMappingHelper.registerKeyMapping(
 		*///?} else {
-		return KeyBindingHelper.registerKeyBinding(
+		KeyMapping mapping = KeyBindingHelper.registerKeyBinding(
 		//?}
 				new KeyMapping("key.skylyrics." + name, code, category));
+		presses.put(mapping, KeyPresses.of(name));
+		return mapping;
+	}
+
+	/** How many times the key acts this tick (see {@link KeyPresses#of}). */
+	private int acts(KeyMapping key) {
+		return presses.get(key).acts(drain(key), key.isDown());
 	}
 
 	/** The update news, kept for chat until a world is open. */
@@ -441,7 +448,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			keysChecked = true;
 			moveOffShaderToggle(client, openLibrary, SkyLyricsConfig.get());
 		}
-		while (openSettings.consumeClick()) {
+		if (settingsClosed.opens(drain(openSettings), heldNow(client, openSettings))) {
 			//? if >=26.2 {
 			/*if (client.gui.screen() == null) {
 				client.gui.setScreen(new SkyLyricsScreen(null));
@@ -451,7 +458,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			//?}
 			}
 		}
-		while (openLibrary.consumeClick()) {
+		if (libraryClosed.opens(drain(openLibrary), heldNow(client, openLibrary))) {
 			//? if >=26.2 {
 			/*if (client.gui.screen() == null) {
 				client.gui.setScreen(new LibraryScreen(null));
@@ -461,7 +468,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			//?}
 			}
 		}
-		if (toggleLyricsPress.fires(drain(toggleLyrics), toggleLyrics.isDown())) {
+		if (acts(toggleLyrics) > 0) {
 			SkyLyricsConfig cfg = SkyLyricsConfig.get();
 			cfg.enabled = !cfg.enabled;
 			cfg.save();
@@ -472,25 +479,25 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			client.gui.setOverlayMessage(Component.translatable(message), false);
 			//?}
 		}
-		while (showNowPlaying.consumeClick()) {
+		for (int i = acts(showNowPlaying); i > 0; i--) {
 			hud.toggleForced();
 		}
-		if (playPausePress.fires(drain(playPause), playPause.isDown())) {
+		if (acts(playPause) > 0) {
 			tracker.playPause();
 		}
-		if (nextTrackPress.fires(drain(nextTrack), nextTrack.isDown())) {
+		if (acts(nextTrack) > 0) {
 			tracker.next();
 		}
-		if (previousTrackPress.fires(drain(previousTrack), previousTrack.isDown())) {
+		if (acts(previousTrack) > 0) {
 			tracker.previous();
 		}
-		while (lyricsLate.consumeClick()) {
+		for (int i = acts(lyricsLate); i > 0; i--) {
 			nudgeTiming(client, SYNC_STEP_MS);
 		}
-		while (lyricsEarly.consumeClick()) {
+		for (int i = acts(lyricsEarly); i > 0; i--) {
 			nudgeTiming(client, -SYNC_STEP_MS);
 		}
-		while (lockView.consumeClick()) {
+		for (int i = acts(lockView); i > 0; i--) {
 			SkyLyricsConfig cfg = SkyLyricsConfig.get();
 			cfg.viewLock = !cfg.viewLock;
 			ViewLock.release(); // locking again pins the spot you look at now, even if it was toggled twice between frames
@@ -582,6 +589,31 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	public AlbumArt art() {
 		return art;
+	}
+
+	/** Our screens call this when their own key closes them, so its repeats while it is still held don't open them again. */
+	public void closedWithKey(KeyMapping key) {
+		if (key == openSettings) {
+			settingsClosed.closed();
+		} else if (key == openLibrary) {
+			libraryClosed.closed();
+		}
+	}
+
+	/** Whether the key the mapping is bound to is down on the keyboard right now (never for a mouse button). */
+	private static boolean heldNow(Minecraft client, KeyMapping mapping) {
+		//? if >=26.1 {
+		/*InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(mapping);
+		*///?} else {
+		InputConstants.Key key = KeyBindingHelper.getBoundKeyOf(mapping);
+		//?}
+		//? if >=26.3 {
+		/*return key.getType() == InputConstants.Type.KEYBOARD && InputConstants.isKeyDown(key.getValue());
+		*///?} else if >=1.21.9 {
+		return key.getType() == InputConstants.Type.KEYSYM && InputConstants.isKeyDown(client.getWindow(), key.getValue());
+		//?} else {
+		/*return key.getType() == InputConstants.Type.KEYSYM && InputConstants.isKeyDown(client.getWindow().getWindow(), key.getValue());
+		*///?}
 	}
 
 	/** The key that opens the settings, so the screen can close on it too. */
