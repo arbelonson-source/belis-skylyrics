@@ -27,6 +27,14 @@ final class Narration {
 		return join(name, kind, value, place);
 	}
 
+	/**
+	 * What the settings screen says while the preview may show: then only the preview's own words are on screen (what it
+	 * shows and how to go back), so those, not the Preview button the keyboard is still on; else {@code otherwise}.
+	 */
+	static String previewOr(boolean previewing, String preview, String otherwise) {
+		return previewing ? preview : otherwise;
+	}
+
 	/** A button the keyboard is on: "Try again, button". */
 	static String button(String label, String kind) {
 		return join(label, kind);

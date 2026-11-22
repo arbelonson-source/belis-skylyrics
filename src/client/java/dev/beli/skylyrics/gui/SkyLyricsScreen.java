@@ -1086,8 +1086,12 @@ public final class SkyLyricsScreen extends Screen {
 		};
 	}
 
-	/** What the Narrator says for what has the keyboard now. */
+	/** What the Narrator says for what has the keyboard now, or the preview's words while it shows. */
 	private String focusNarration() {
+		return Narration.previewOr(preview, previewText(), keyboardNarration());
+	}
+
+	private String keyboardNarration() {
 		if (announcement != null) {
 			return announcement;
 		}
@@ -1523,10 +1527,14 @@ public final class SkyLyricsScreen extends Screen {
 				.map(net.minecraft.network.chat.FormattedText::getString).toList();
 	}
 
-	private void renderPreviewHint(GuiGraphics g) {
-		boolean nothing = mod.tracker().track() == Track.NONE;
-		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song on the Music tab to try it.")
+	/** The words the preview shows in place of the panel. */
+	private String previewText() {
+		return mod.tracker().track() == Track.NONE ? Tr.t("Nothing is playing. Turn on the demo song on the Music tab to try it.")
 				: Tr.t("Previewing. Click or press any key to go back.");
+	}
+
+	private void renderPreviewHint(GuiGraphics g) {
+		String text = previewText();
 		List<String> lines = previewLines(font.getSplitter(), text, width);
 		boolean rtl = Ui.paragraphRtl(text);
 		int textW = 0;

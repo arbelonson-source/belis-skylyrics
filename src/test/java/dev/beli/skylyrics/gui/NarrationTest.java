@@ -166,4 +166,13 @@ class NarrationTest {
 		assertEquals("Late? Move right", row.hint());
 		assertEquals("Timing", row.narration());
 	}
+
+	@Test
+	void thePreviewSaysItsOwnWordsWhileItShows() {
+		String hint = "Previewing. Click or press any key to go back.";
+		// the keyboard is still on Preview, but the panel is gone: the Narrator reads the hint, not the button again
+		assertEquals(hint, Narration.previewOr(true, hint, "Preview, button"));
+		// back from the preview, the button is said again
+		assertEquals("Preview, button", Narration.previewOr(false, hint, "Preview, button"));
+	}
 }
