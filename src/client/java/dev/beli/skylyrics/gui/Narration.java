@@ -105,6 +105,14 @@ final class Narration {
 		return join(narration, hint);
 	}
 
+	/**
+	 * What is said once as the keyboard lands on a row: its words, its place among the rows that show ("Selected list row
+	 * 3 out of 12", the game's own words) and its hint, in the order vanilla says a list entry's title, position and hint.
+	 */
+	static String landed(String words, String place, String hint) {
+		return join(words, place, hint);
+	}
+
 	/** Whether the search's result count is spoken: while typing, or just after a recent search was picked. */
 	static boolean countsResults(boolean typing, boolean afterChip) {
 		return typing || afterChip;

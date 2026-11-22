@@ -175,4 +175,14 @@ class NarrationTest {
 		// back from the preview, the button is said again
 		assertEquals("Preview, button", Narration.previewOr(false, hint, "Preview, button"));
 	}
+
+	@Test
+	void aRowTheKeyboardLandsOnSaysItsPlaceBeforeItsHint() {
+		// vanilla says a list entry's title, then its position, then its hint
+		assertEquals("Timing, slider, +0.50 seconds, Selected list row 4 out of 7, Late? Move right",
+				Narration.landed("Timing, slider, +0.50 seconds", "Selected list row 4 out of 7", "Late? Move right"));
+		assertEquals("Glow, switch, on, Selected list row 2 out of 3", Narration.landed("Glow, switch, on", "Selected list row 2 out of 3", ""));
+		// a lone row (or the Lyrics switch in the sidebar) has no place
+		assertEquals("Lyrics, switch, on", Narration.landed("Lyrics, switch, on", "", ""));
+	}
 }

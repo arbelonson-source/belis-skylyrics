@@ -995,7 +995,7 @@ public final class SkyLyricsScreen extends Screen {
 			focus = ring.stops().get(to);
 			focusAt = to;
 			focusVisible = true;
-			announcement = focus instanceof Row landed ? hintAnnouncement(landed) : null;
+			announcement = focus instanceof Row landed ? landing(landed) : null;
 			if (focus instanceof Row row && row != masterToggle) {
 				tabFocus[tab] = row;
 				int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
@@ -1036,19 +1036,24 @@ public final class SkyLyricsScreen extends Screen {
 		mouseMovedYet = false;
 		mouseFromX = Double.NaN;
 		announcement = Narration.tab(tabName(to), Tr.t("tab"), Tr.t("%s of %s", to + 1, TAB_COUNT),
-				focus instanceof Row row ? Narration.hinted(rowNarration(row), row.hint()) : "");
+				focus instanceof Row row ? landing(row) : "");
 		afterKeyboardAction();
 	}
 
 	/** The row the keyboard goes back to on this tab: {@code remembered} while it shows, else the next row that does (see {@link Focus#backOnTab}). */
 	private @Nullable Row rowBackOnTab(@Nullable Row remembered) {
 		Ring ring = ring();
+		int at = Focus.backOnTab(rowsThatShow(ring), ring.stops().indexOf(remembered));
+		return at < 0 ? null : (Row) ring.stops().get(at);
+	}
+
+	/** Which stops of the ring are rows of the list that show (on this tab, or in the search results). */
+	private boolean[] rowsThatShow(Ring ring) {
 		boolean[] rows = new boolean[ring.stops().size()];
 		for (int i = 0; i < rows.length; i++) {
 			rows[i] = ring.available()[i] && ring.stops().get(i) instanceof Row row && row != masterToggle;
 		}
-		int at = Focus.backOnTab(rows, ring.stops().indexOf(remembered));
-		return at < 0 ? null : (Row) ring.stops().get(at);
+		return rows;
 	}
 
 	private void press(Chrome button) {
@@ -1112,9 +1117,20 @@ public final class SkyLyricsScreen extends Screen {
 		return "";
 	}
 
-	/** What is said once when the keyboard lands on a row that has a hint; nothing for the others (their words speak as usual). */
-	private @Nullable String hintAnnouncement(Row row) {
-		return row.hint().isEmpty() ? null : Narration.hinted(rowNarration(row), row.hint());
+	/**
+	 * What is said once as the keyboard lands on a row: its words, then its place among the rows that show in the game's
+	 * own words ("Selected list row 3 out of 12", as vanilla lists say it), then its hint. A change of its value after that
+	 * says just the row's words.
+	 */
+	private String landing(Row row) {
+		return Narration.landed(rowNarration(row), placeText(row), row.hint());
+	}
+
+	/** The row's place among the rows that show, as vanilla's lists say it; nothing for the Lyrics switch or a lone row. */
+	private String placeText(Row row) {
+		Ring ring = ring();
+		Focus.Place place = Focus.place(rowsThatShow(ring), ring.stops().indexOf(row));
+		return place == null ? "" : Component.translatable("narrator.position.list", place.n(), place.of()).getString();
 	}
 
 	/** A row's words; in the search results a row that its tab is hiding right now says so. */

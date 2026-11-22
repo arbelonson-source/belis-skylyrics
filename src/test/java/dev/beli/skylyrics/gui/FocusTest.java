@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 
@@ -137,5 +138,22 @@ class FocusTest {
 		// no row remembered, or none of the tab's rows shows: nowhere
 		assertEquals(-1, Focus.backOnTab(rows, -1));
 		assertEquals(-1, Focus.backOnTab(new boolean[] {false, false, false, false, false}, 2));
+	}
+
+	@Test
+	void aRowsPlaceCountsOnlyTheRowsThatShow() {
+		// the Lyrics switch, Preview, Layout, Depth (hidden), Glow, Shadow, Reset all, Done
+		boolean[] rows = {false, false, true, false, true, true, false, false};
+		assertEquals(new Focus.Place(1, 3), Focus.place(rows, 2));
+		// Glow is the second row that shows, not the third row of the tab
+		assertEquals(new Focus.Place(2, 3), Focus.place(rows, 4));
+		assertEquals(new Focus.Place(3, 3), Focus.place(rows, 5));
+		// a hidden row, the buttons, nothing: no place
+		assertNull(Focus.place(rows, 3));
+		assertNull(Focus.place(rows, 0));
+		assertNull(Focus.place(rows, 6));
+		assertNull(Focus.place(rows, -1));
+		// a lone row says no place, as a vanilla list of one doesn't
+		assertNull(Focus.place(new boolean[] {false, false, true, false, false}, 2));
 	}
 }
