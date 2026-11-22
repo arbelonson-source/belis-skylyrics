@@ -188,4 +188,32 @@ final class OldSkyDraw {
 			c.at(frame, tanR * EclipseSky.RING_COS[j], tanR * EclipseSky.RING_SIN[j], r, black);
 		}
 	}
+	/**
+	 * The comet as {@link CometSky#draw} drew it, but for its gas tail's streamers, which are taken from {@code sky} after
+	 * it drew this frame (SkyThrottleTest holds those to the clock).
+	 */
+	static void comet(CometSky sky, SkyCanvas c, float radius, float baseYaw, float level, SkyView view) {
+		SkyCanvas.SkyFrame frame = new SkyCanvas.SkyFrame().aim(baseYaw + CometSky.YAW, CometSky.ELEV);
+		if (!view.capVisible(frame.dx, frame.dy, frame.dz, CometSky.REACH)) {
+			return;
+		}
+		float[] r = CometSky.radii(radius, CometSky.LAYERED);
+		c.fadeBelowHorizon(CometSky.HORIZON_FADE);
+		cometGrid(c, frame, r[0], CometSky.DUST_A, CometSky.DUST_B, CometSky.DUST_GRID, CometSky.STEPS, CometSky.DUST_ACROSS, level);
+		cometGrid(c, frame, r[1], CometSky.ION_A, CometSky.ION_B, sky.ionGrid, CometSky.STEPS, CometSky.ION_ACROSS, level);
+		cometGrid(c, frame, r[2], CometSky.HEAD_A, CometSky.HEAD_B, CometSky.HEAD_GRID, CometSky.RINGS, CometSky.SEGMENTS, level);
+		c.fadeBelowHorizon(0);
+	}
+
+	private static void cometGrid(SkyCanvas c, SkyCanvas.SkyFrame frame, float r, float[] a, float[] b, int[] rgb, int rows, int columns,
+			float level) {
+		for (int i = 0; i < rows; i++) {
+			int row0 = i * (columns + 1), row1 = row0 + columns + 1;
+			for (int j = 0; j < columns; j++) {
+				for (int k : new int[] {row0 + j, row0 + j + 1, row1 + j + 1, row1 + j}) {
+					c.at(frame, a[k], b[k], r, SkyColors.argb(rgb[k], level));
+				}
+			}
+		}
+	}
 }

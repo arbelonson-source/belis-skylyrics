@@ -6,7 +6,8 @@ import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
  * The comet: a bright head low on the right of the lyrics with two tails sweeping up and away from it.
  * A broad warm dust tail that bends as it goes, and a narrow blue gas tail that runs straight, with
  * streamers drifting slowly out along it. Like the galaxy it is all light added to the night sky, and
- * everything but the streamers is worked out once in the comet's own flat picture.
+ * everything but the streamers is worked out once in the comet's own flat picture; the corners on the sky each time the
+ * lyrics' direction or the distance changes.
  */
 final class CometSky {
 	private static final float DEG = (float) (Math.PI / 180);
@@ -23,10 +24,20 @@ final class CometSky {
 	static final float LAYER = 0.96f;
 	/** On 26.2 and later the added light writes depth, so the gas tail and the head sit a hair nearer than the dust. */
 	static final float ION_LAYER = 0.995f, HEAD_LAYER = 0.99f;
+	/**
+	 * On 26.2 and later the added-light pipeline writes depth: shapes at one distance would z-fight, so the dust, the gas
+	 * and the head each get their own (see {@link #radii}).
+	 */
+	static final boolean LAYERED =
+			//? if >=26.2 {
+			/*true;
+			*///?} else {
+			false;
+			//?}
 	/** How fast the streamers run out along the gas tail, in tail lengths per second. */
 	static final float DRIFT = 0.03f;
 	/** Light below the horizon fades out over this many degrees, like the galaxy. */
-	private static final float HORIZON_FADE = 3;
+	static final float HORIZON_FADE = 3;
 
 	private static final int CORE_RGB = 0xF4FBFF, COMA_RGB = 0x6FE8C0, DUST_RGB = 0xFFDDB0, DUST_TIP_RGB = 0xFFB48C,
 			ION_RGB = 0x6AA4FF;
@@ -34,13 +45,13 @@ final class CometSky {
 	/** Half the width of each tail at the head and how much it adds by the tip, as shares of the length. */
 	private static final float DUST_WIDTH = 0.02f, DUST_SPREAD = 0.17f, ION_WIDTH = 0.008f, ION_SPREAD = 0.04f;
 
-	private static final int RINGS = 10, SEGMENTS = 36, STEPS = 40, DUST_ACROSS = 12, ION_ACROSS = 16;
+	static final int RINGS = 10, SEGMENTS = 36, STEPS = 40, DUST_ACROSS = 12, ION_ACROSS = 16;
 	/** Steps along the tails, closer together near the head where they change fastest. */
 	private static final float[] STEP_AT = new float[STEPS + 1];
-	private static final float[] HEAD_A = new float[(RINGS + 1) * (SEGMENTS + 1)], HEAD_B = new float[HEAD_A.length];
-	private static final float[] DUST_A = new float[(STEPS + 1) * (DUST_ACROSS + 1)], DUST_B = new float[DUST_A.length];
-	private static final float[] ION_A = new float[(STEPS + 1) * (ION_ACROSS + 1)], ION_B = new float[ION_A.length];
-	private static final int[] HEAD_GRID = new int[HEAD_A.length], DUST_GRID = new int[DUST_A.length];
+	static final float[] HEAD_A = new float[(RINGS + 1) * (SEGMENTS + 1)], HEAD_B = new float[HEAD_A.length];
+	static final float[] DUST_A = new float[(STEPS + 1) * (DUST_ACROSS + 1)], DUST_B = new float[DUST_A.length];
+	static final float[] ION_A = new float[(STEPS + 1) * (ION_ACROSS + 1)], ION_B = new float[ION_A.length];
+	static final int[] HEAD_GRID = new int[HEAD_A.length], DUST_GRID = new int[DUST_A.length];
 
 	static {
 		for (int i = 0; i <= STEPS; i++) {
@@ -71,7 +82,7 @@ final class CometSky {
 	}
 
 	/** Angular radius (radians) round the head that holds the head and both tails. */
-	private static final float REACH = (float) Math.atan(Math.max(furthest(HEAD_A, HEAD_B),
+	static final float REACH = (float) Math.atan(Math.max(furthest(HEAD_A, HEAD_B),
 			Math.max(furthest(DUST_A, DUST_B), furthest(ION_A, ION_B)))) + 0.02f;
 
 	private static float furthest(float[] a, float[] b) {
@@ -83,9 +94,15 @@ final class CometSky {
 	}
 
 	private final SkyFrame frame = new SkyFrame();
-	private final int[] ionGrid = new int[ION_A.length];
+	final int[] ionGrid = new int[ION_A.length];
 	/** The sky clock the gas tail's colours were last worked out for; NaN before the first time. */
 	private double ionTime = Double.NaN;
+	/**
+	 * The dust tail's, the gas tail's and the head's quads, placed for {@link #keptYaw} and {@link #keptRadius} and kept (see
+	 * {@link KeptQuads}): the comet stands still where the lyrics face, so only the streamers and the strength change.
+	 */
+	private final KeptQuads dust = new KeptQuads(STEPS * DUST_ACROSS), ion = new KeptQuads(STEPS * ION_ACROSS), head = new KeptQuads(RINGS * SEGMENTS);
+	private float keptYaw = Float.NaN, keptRadius = Float.NaN;
 	/** How often (seconds) the streamers are worked out again. */
 	static final float ION_INTERVAL = 1 / 30f;
 
@@ -164,39 +181,46 @@ final class CometSky {
 				}
 			}
 		}
-		boolean depth = false;
-		//? if >=26.2 {
-		/*// The added-light pipeline writes depth here: shapes at one distance would z-fight, so each gets its own
-		depth = true;
-		*///?}
-		float[] r = radii(radius, depth);
 		c.fadeBelowHorizon(HORIZON_FADE);
-		mesh(c, r[0], DUST_A, DUST_B, DUST_GRID, STEPS, DUST_ACROSS, level);
-		mesh(c, r[1], ION_A, ION_B, ionGrid, STEPS, ION_ACROSS, level);
-		mesh(c, r[2], HEAD_A, HEAD_B, HEAD_GRID, RINGS, SEGMENTS, level);
+		if (!KeptQuads.same(baseYaw, keptYaw) || !KeptQuads.same(radius, keptRadius) || !KeptQuads.same(c.horizonFade(), dust.fade())) {
+			keptYaw = baseYaw;
+			keptRadius = radius;
+			float[] r = radii(radius, LAYERED);
+			place(dust, c, r[0], DUST_A, DUST_B, STEPS, DUST_ACROSS);
+			place(ion, c, r[1], ION_A, ION_B, STEPS, ION_ACROSS);
+			place(head, c, r[2], HEAD_A, HEAD_B, RINGS, SEGMENTS);
+		}
+		// Every corner takes the same alpha
+		int alpha = SkyColors.argb(0, level);
+		draw(dust, c, alpha, DUST_GRID, STEPS * DUST_ACROSS);
+		draw(ion, c, alpha, ionGrid, STEPS * ION_ACROSS);
+		draw(head, c, alpha, HEAD_GRID, RINGS * SEGMENTS);
 		c.fadeBelowHorizon(0);
+	}
+
+	/** Places a grid of quads, {@code rows} by {@code columns}, from points laid out row by row in the comet's flat picture, and keeps them. */
+	private void place(KeptQuads quads, SkyCanvas c, float r, float[] a, float[] b, int rows, int columns) {
+		quads.begin(c.horizonFade());
+		for (int i = 0; i < rows; i++) {
+			int row0 = i * (columns + 1), row1 = row0 + columns + 1;
+			for (int j = 0; j < columns; j++) {
+				quads.at(frame, a[row0 + j], b[row0 + j], r, row0 + j);
+				quads.at(frame, a[row0 + j + 1], b[row0 + j + 1], r, row0 + j + 1);
+				quads.at(frame, a[row1 + j + 1], b[row1 + j + 1], r, row1 + j + 1);
+				quads.at(frame, a[row1 + j], b[row1 + j], r, row1 + j);
+			}
+		}
+	}
+
+	private static void draw(KeptQuads quads, SkyCanvas c, int alpha, int[] rgb, int count) {
+		for (int q = 0; q < count; q++) {
+			quads.draw(c, q, alpha, rgb);
+		}
 	}
 
 	/** The distances of the dust, the gas and the head, drawn in that order: with {@code depth} each nearer than the last. */
 	static float[] radii(float radius, boolean depth) {
 		float r = radius * LAYER;
 		return depth ? new float[] {r, r * ION_LAYER, r * HEAD_LAYER} : new float[] {r, r, r};
-	}
-
-	/** A grid of quads, {@code rows} by {@code columns}, from points and colours laid out row by row. */
-	private void mesh(SkyCanvas c, float r, float[] a, float[] b, int[] rgb, int rows, int columns, float level) {
-		for (int i = 0; i < rows; i++) {
-			int row0 = i * (columns + 1), row1 = row0 + columns + 1;
-			for (int j = 0; j < columns; j++) {
-				corner(c, r, a, b, rgb, row0 + j, level);
-				corner(c, r, a, b, rgb, row0 + j + 1, level);
-				corner(c, r, a, b, rgb, row1 + j + 1, level);
-				corner(c, r, a, b, rgb, row1 + j, level);
-			}
-		}
-	}
-
-	private void corner(SkyCanvas c, float r, float[] a, float[] b, int[] rgb, int k, float level) {
-		c.at(frame, a[k], b[k], r, SkyColors.argb(rgb[k], level));
 	}
 }
