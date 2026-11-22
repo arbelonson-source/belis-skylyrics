@@ -222,6 +222,19 @@ public final class NowPlayingHud {
 
 	/** The note in the round space for a missing cover. */
 	private static final String NOTE = "♪";
+	/** The size the note is asked for, in Minecraft's letters (see {@link #noteSize}). */
+	static final float NOTE_SCALE = 0.85f;
+
+	/**
+	 * The size the note is drawn at in a bar {@code barSize} big at this GUI scale. It is a letter of Minecraft's pixel
+	 * font: at 0.85 each of its pixels came out 2 or 3 screen pixels by turns at GUI scale 3, so it looked uneven. It gets
+	 * the nearest size with a whole number of screen pixels per letter pixel, as the Record card's small text does
+	 * ({@link RecordCard#smallSize}).
+	 */
+	static float noteSize(double guiScale, float barSize) {
+		// The bar's size scales the note too: the screen pixels per unit are the GUI scale times it
+		return RecordCard.smallSize(false, NOTE_SCALE, (float) guiScale * barSize);
+	}
 
 	private static @Nullable Language noteLanguage;
 	private static @Nullable FormattedCharSequence noteOrder;
@@ -891,7 +904,8 @@ public final class NowPlayingHud {
 			g.pose().pushMatrix();
 			try {
 				g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
-				g.pose().scale(0.85f, 0.85f);
+				float noteSize = noteSize(guiScale, cfg.barSize);
+				g.pose().scale(noteSize, noteSize);
 				// As drawCenteredString draws it, with its shadow
 				FormattedCharSequence note = note(Language.getInstance());
 				g.drawString(font, note, -font.width(note) / 2, -4, noteColor(a * dim), true);
