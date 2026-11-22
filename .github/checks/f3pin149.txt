@@ -1,0 +1,144 @@
+# F3 lines set to show always (1.21.9 and later), fix/f3pin149. Run at 1920x1080 (GUI scale 3 = 640x360, GUI scale 4 =
+# 480x270, which is the Auto GUI scale at this size) on 1.21.11 and on 26.3. The branch, then the old code:
+#   gh workflow run screenshots.yml --ref fix/f3pin149 -f version=1.21.11 -f script=.github/checks/f3pin149.txt -f size=1920x1080
+#   gh workflow run screenshots.yml --ref fix/f3pin149 -f version=1.21.11 -f mod_ref=b33df2c9 -f script=.github/checks/f3pin149.txt -f size=1920x1080
+# and the same two with -f version=26.3. b33df2c9 is main plus this branch's test hook commit alone ("debug pin"), so
+# the old pictures have the lines pinned too. With -f mod_ref=main instead, "debug pin ..." only closes F3 and pins
+# nothing: main's pictures then show the HUD with no debug lines at all, which only checks parts 0, 2 and 6.
+# "debug pin <line>" sets one of F3's lines to show always, as the debug options screen (F3 + F6) does (its Performance
+# profile does it for "fps"); "debug unpin <line>" puts it back as a new player has it. The world is creative, so a
+# bottom bar sits 50 above the bottom.
+#
+# 0. f3p-f3-bottom: nothing pinned, F3 open, bottom bar at GUI scale 3: the bar shows under F3's text, on both
+#    (unchanged; as edges144's e144-f3-text).
+# 1. f3p-card-tl-fps: the FPS line pinned, Record card top left (GUI 3): branch: the card a few pixels lower than
+#    usual, the FPS line's grey box above it, apart; old: the line's grey box drawn over the card's top edge.
+# 2. f3p-card-tl-f3: the same with F3 open: no card on both (unchanged: a top card hides for the full F3 screen).
+# 3. Top bar.
+#    f3p-bar-gui4-fps (480x270, FPS line only): the line may or may not reach the bar's clock (the game's FPS line is
+#      shorter without vsync): branch: the bar just below the line where it reaches, else at its usual place; old:
+#      always at its usual place, under the line if they meet.
+#    f3p-bar-pos (GUI 3, the position lines pinned too, down to "Facing: ..." about 55 down on the left): branch: the
+#      bar below the lines its left part reaches; old: at its usual place with those lines over its left part.
+# 4. The system lines pinned too (Java, CPU, Display, the GPU, its driver: five rows down the right side).
+#    f3p-bar-specs: branch: the bar below the lines of both sides that reach it; old: the right lines over its stats.
+#    f3p-card-tr-specs: Record card top right as well: branch: below the bar, clear of the lines; old: under them.
+# 5. Many lines pinned (about F3's whole text, with F3 closed).
+#    f3p-many-top (GUI 3, top bar and top left card): branch: no card, and no bar unless the lines its width reaches
+#      end within the top third (120 down); old: both, with the lines over them.
+#    f3p-many-bottom-gui3 (bottom bar, 640x360): the bar shows on both if the lines end above it (about 290 down).
+#    f3p-many-bottom-720 (1280x720 at GUI 3 = 426x240, the bar's top about 170 down): branch: no bar where the left
+#      column reaches it; old: the lines over the bar. If the old picture shows the lines ending above the bar, this
+#      case was not real at that size.
+# 6. f3p-unpinned: every line back as a new player has it, F3 closed: the top bar at its usual place, no lines (both).
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout LINES
+resize 1920x1080
+guiscale 3
+look 0 -20
+sleep 8
+music pause
+sleep 1
+seek 25.5
+sleep 2
+
+# 0. F3 open, bottom bar, nothing pinned
+set barPosition BOTTOM
+debug on
+sleep 3
+shot f3p-f3-bottom
+debug off
+set barPosition TOP
+sleep 2
+
+# 1. Top left card and the FPS line
+set recordCard true
+set cardCorner TOP_LEFT
+debug pin fps
+sleep 3
+shot f3p-card-tl-fps
+
+# 2. The same with F3 open
+debug on
+sleep 2
+shot f3p-card-tl-f3
+debug off
+set recordCard false
+sleep 2
+
+# 3. Top bar: the FPS line at GUI 4, then the position lines at GUI 3
+guiscale 4
+sleep 3
+shot f3p-bar-gui4-fps
+guiscale 3
+debug pin player_position
+sleep 3
+shot f3p-bar-pos
+
+# 4. The system lines on the right
+debug pin system_specs
+sleep 3
+shot f3p-bar-specs
+set recordCard true
+set cardCorner TOP_RIGHT
+sleep 3
+shot f3p-card-tr-specs
+set cardCorner TOP_LEFT
+
+# 5. Many lines
+debug pin game_version
+debug pin tps
+debug pin memory
+debug pin player_section_position
+debug pin light_levels
+debug pin heightmap
+debug pin biome
+debug pin local_difficulty
+debug pin entity_spawn_counts
+debug pin sound_mood
+debug pin chunk_render_stats
+debug pin entity_render_stats
+debug pin particle_render_stats
+debug pin chunk_source_stats
+debug pin chunk_generation_stats
+debug pin simple_performance_impactors
+sleep 3
+shot f3p-many-top
+set recordCard false
+set barPosition BOTTOM
+sleep 3
+shot f3p-many-bottom-gui3
+resize 1280x720
+sleep 3
+shot f3p-many-bottom-720
+resize 1920x1080
+set barPosition TOP
+sleep 2
+
+# 6. Every line back as a new player has it
+debug unpin fps
+debug unpin player_position
+debug unpin system_specs
+debug unpin game_version
+debug unpin tps
+debug unpin memory
+debug unpin player_section_position
+debug unpin light_levels
+debug unpin heightmap
+debug unpin biome
+debug unpin local_difficulty
+debug unpin entity_spawn_counts
+debug unpin sound_mood
+debug unpin chunk_render_stats
+debug unpin entity_render_stats
+debug unpin particle_render_stats
+debug unpin chunk_source_stats
+debug unpin chunk_generation_stats
+debug unpin simple_performance_impactors
+sleep 3
+shot f3p-unpinned
+music play
