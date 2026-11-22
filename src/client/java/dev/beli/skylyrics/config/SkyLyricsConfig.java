@@ -485,6 +485,10 @@ public final class SkyLyricsConfig {
 			SkyLyricsConfig blocked = new SkyLyricsConfig();
 			blocked.saveBlocked = true;
 			blocked.reader = reader;
+			// The file is there, so this is no first run: no tour, and the one-time library key move waits for a game that can
+			// read the file (on these defaults it would move a key the player chose). The file's own values come back when it reads.
+			blocked.introSeen = true;
+			blocked.keysMigrated = true;
 			return blocked;
 		}
 		if (text.strip().isEmpty() || text.equals("\uFEFF")) {
