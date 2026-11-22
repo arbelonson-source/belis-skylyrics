@@ -740,6 +740,15 @@ public final class MacMediaSource implements MediaSource {
 		return currentDisplayName;
 	}
 
+	/**
+	 * Spotify Web or the demo song is followed for now: an osascript still waiting (on macOS's permission question or a
+	 * frozen app) is stopped instead of being left running for nobody.
+	 */
+	@Override
+	public void standBy() {
+		close();
+	}
+
 	/** Stops a waiting osascript; the next poll asks again straight away. Safe from any thread. */
 	@Override
 	public void close() {
