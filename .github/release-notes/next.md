@@ -239,6 +239,7 @@
 - **Twinkling stars while the World words travel with you.** With **Elytra mode** and a World **Direction** of N, E, S or W (or **View lock** on), the twinkling stars now come along with the words while you glide, ride or fly, gliding over to where you look as you take off and back when you land, instead of staying behind on the words' usual side of the sky.
 - **Timing message in Hebrew.** In Hebrew, the message above the hotbar when you press a timing key (**Lyrics are late** or **Lyrics are early**) now shows the time the right way round, "+0.10 s" or "-0.30 s", instead of "s 0.10+" with the sign and the "s" on the wrong sides of the number.
 - **Odd playback speeds on Linux.** On Linux, a music player that says it plays at a speed of 0 (or below) no longer makes the lyrics jump back a second or more while it is slow to answer; the lyrics run on at normal speed, as they already did while it answers.
+- **Spotify ads on a Mac.** On a Mac, while Spotify plays an ad, the lyrics no longer switch to a song paused in the Music app and back again after the ad (also with Spotify picked as the **Player**), and the play/pause key now reaches Spotify during the ad instead of doing nothing.
 
 ### Faster
 

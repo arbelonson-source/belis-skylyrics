@@ -154,6 +154,67 @@ class MacMediaSourceTest {
 		assertEquals(1, MacMediaSource.parse("Spotify\tplaying\t30000\t1\tSong\tA\t\t\tspotify:local:a:b:c:1\n").players().size());
 	}
 
+	private static final String SPOTIFY_AD = "Spotify\tplaying\t30000\t1\tAdvertisement\tSpotify\t\t\tspotify:ad:0000\n";
+
+	/** While Spotify plays an ad, Spotify is still the app that plays: Music's paused song doesn't take over for it. */
+	@Test
+	void anAdKeepsSpotifyFollowed() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_PLAYING + MUSIC_PAUSED);
+		assertEquals("Song One", source.poll().track().title());
+
+		runner.answer(SPOTIFY_AD + MUSIC_PAUSED);
+		assertSame(Snapshot.NOTHING, source.poll(), "no song during the ad, and not Music's paused one");
+		assertEquals("Spotify", source.displayName());
+		runner.answer("Spotify\tdone\n");
+		source.playPause();
+		assertEquals("Spotify", args(runner.commands.getLast()).getFirst(), "pausing during the ad pauses Spotify, not Music");
+
+		runner.answer(SPOTIFY_PLAYING.replace("Song One", "Song Three") + MUSIC_PAUSED);
+		assertEquals("Song Three", source.poll().track().title(), "the next song after the ad");
+	}
+
+	/** With only Spotify open, the buttons still reach it during an ad (ads can be paused). */
+	@Test
+	void theButtonsReachSpotifyDuringAnAd() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_AD);
+		assertSame(Snapshot.NOTHING, source.poll());
+		runner.answer("Spotify\tdone\n");
+		source.playPause();
+		assertEquals(2, runner.commands.size(), "the button press ran");
+		assertEquals(List.of("Spotify", "tell application \"Spotify\" to playpause\nreturn {\"done\"}"), args(runner.commands.getLast()));
+	}
+
+	/** Spotify picked in the settings: during its ad, Music's paused song isn't shown instead. */
+	@Test
+	void thePickedSpotifyKeepsItsAd() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "spotify", runner, 0);
+		runner.answer(SPOTIFY_AD + MUSIC_PAUSED);
+		assertSame(Snapshot.NOTHING, source.poll());
+		assertEquals("Spotify", source.displayName());
+	}
+
+	/** An ad only keeps Spotify followed: a song playing in Music still wins when nothing was followed yet, or Music is picked. */
+	@Test
+	void aPlayingSongBeatsAnAd() throws Exception {
+		String musicPlaying = MUSIC_PAUSED.replace("paused", "playing");
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_AD + musicPlaying);
+		assertEquals("Song Two", source.poll().track().title());
+		runner.answer(SPOTIFY_AD + musicPlaying);
+		assertEquals("Song Two", source.poll().track().title(), "and stays with it");
+
+		runner = new FakeRunner();
+		source = new MacMediaSource(() -> "music", runner, 0);
+		runner.answer(SPOTIFY_AD + MUSIC_PAUSED);
+		assertEquals("Song Two", source.poll().track().title());
+	}
+
 	@Test
 	void radioStreamTitleBecomesTheSong() {
 		MacMediaSource.Reading r = MacMediaSource.parse("Music\tplaying\t\t\tKEXP 90.3\t\tKEXP\t\t\tBjork - Hyperballad - Live\n").players().getFirst();

@@ -212,8 +212,9 @@ public final class MacMediaSource implements MediaSource {
 	record Failure(App app, int code, String message) {
 	}
 
-	record Answer(List<Reading> players, List<Failure> failures) {
-		static final Answer EMPTY = new Answer(List.of(), List.of());
+	/** @param ads apps playing something that is no song (a Spotify ad): no title, but that app is still the one playing */
+	record Answer(List<Reading> players, List<Failure> failures, List<Reading> ads) {
+		static final Answer EMPTY = new Answer(List.of(), List.of(), List.of());
 	}
 
 	/** What osascript said when it finished. */
@@ -391,7 +392,7 @@ public final class MacMediaSource implements MediaSource {
 			}
 			boolean late = pending != null;
 			if (args.isEmpty() && !late) {
-				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied); // nothing to ask, no osascript to start
+				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied, List.of()); // nothing to ask, no osascript to start
 				lastAt = clock.getAsLong();
 				lastReadAt = System.nanoTime();
 				haveLast = true;
@@ -405,13 +406,16 @@ public final class MacMediaSource implements MediaSource {
 					}
 				}
 				failures.addAll(denied);
-				last = new Answer(answer.players(), failures);
+				last = new Answer(answer.players(), failures, answer.ads());
 				lastAt = clock.getAsLong();
 				lastReadAt = readStamp(ranFromNs, ranToNs);
 				haveLast = !late; // a late answer may be old: read again next time
 			}
 		}
-		Reading chosen = PlayerPicker.choose(last.players(), r -> r.app().name(), r -> r.track().player(), Reading::playing,
+		// An ad comes after the songs: it only keeps the app it plays in followed (or picked), it never beats a playing song
+		List<Reading> candidates = new ArrayList<>(last.players());
+		candidates.addAll(last.ads());
+		Reading chosen = PlayerPicker.choose(candidates, r -> r.app().name(), r -> r.track().player(), Reading::playing,
 				preferredPlayer.get(), current == null ? null : current.name());
 		if (chosen == null) {
 			current = null;
@@ -429,6 +433,9 @@ public final class MacMediaSource implements MediaSource {
 		}
 		current = chosen.app();
 		currentDisplayName = chosen.app().displayName();
+		if (chosen.track().isNone()) {
+			return Snapshot.NOTHING; // an ad: no song to show, but the buttons still reach the app that plays it
+		}
 		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), lastReadAt);
 	}
 
@@ -441,6 +448,7 @@ public final class MacMediaSource implements MediaSource {
 	static Answer parse(String output) {
 		List<Reading> players = new ArrayList<>();
 		List<Failure> failures = new ArrayList<>();
+		List<Reading> ads = new ArrayList<>();
 		for (String line : output.split("\n")) {
 			String[] f = line.split("\t", -1);
 			if (f.length < 2) {
@@ -461,7 +469,9 @@ public final class MacMediaSource implements MediaSource {
 			}
 			String uri = field(f, 8);
 			if (uri.startsWith("spotify:ad:")) {
-				continue; // an ad is not a song
+				// An ad is not a song, but Spotify still plays: kept apart, so Music's paused song doesn't take over for it
+				ads.add(new Reading(app, new Track("", "", "", 0, "", app.key(), uri), 0, playing));
+				continue;
 			}
 			String title = field(f, 4);
 			String artist = field(f, 5);
@@ -489,7 +499,7 @@ public final class MacMediaSource implements MediaSource {
 			Track track = new Track(title, artist, album, length, field(f, 7), app.key(), uri);
 			players.add(new Reading(app, TitleCleaner.clean(track), position, playing));
 		}
-		return new Answer(players, failures);
+		return new Answer(players, failures, ads);
 	}
 
 	private static @Nullable App app(String name) {
