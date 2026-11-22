@@ -23,6 +23,13 @@ public interface MediaSource extends AutoCloseable {
 		return null;
 	}
 
+	/**
+	 * Another source is followed for now (Spotify Web was picked): stop whatever this one keeps running between polls,
+	 * like the Windows reader's PowerShell. The next poll starts it again.
+	 */
+	default void standBy() {
+	}
+
 	/** Shown in the settings, e.g. "Spotify". */
 	String displayName();
 

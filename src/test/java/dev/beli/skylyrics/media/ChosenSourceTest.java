@@ -21,6 +21,7 @@ class ChosenSourceTest {
 	private static class Local implements MediaSource {
 		final List<String> calls = new ArrayList<>();
 		boolean closed;
+		int standBys;
 		boolean failOnClose;
 		Throwable failure;
 
@@ -58,6 +59,11 @@ class ChosenSourceTest {
 		@Override
 		public String displayName() {
 			return "Local";
+		}
+
+		/** No @Override: the test also builds against a MediaSource without it, to see it fail there. */
+		public void standBy() {
+			standBys++;
 		}
 
 		@Override
@@ -157,6 +163,75 @@ class ChosenSourceTest {
 			throw new AssertionError(e);
 		}
 		assertSame(local.failure, source.failing(), "the failure of the poll that just ran is the local player's");
+	}
+
+	/** Spotify Web being picked tells the computer's own reader once, so it can stop what it keeps running. */
+	@Test
+	void switchingToSpotifyWebPutsTheLocalSourceOnStandByOnce() throws Exception {
+		Local local = new Local();
+		AtomicReference<String> setting = new AtomicReference<>("");
+		ChosenSource source = new ChosenSource(local, web(), setting::get);
+		source.poll();
+		source.poll();
+		assertEquals(0, local.standBys, "the local source is the one in use");
+		setting.set(SpotifyWebSource.KEY);
+		for (int i = 0; i < 3; i++) {
+			try {
+				source.poll();
+			} catch (java.io.IOException signedOut) {
+				// the web source's own message
+			}
+		}
+		assertEquals(1, local.standBys, "once, on the switch");
+		setting.set("spotify");
+		source.poll();
+		assertEquals(1, local.standBys);
+		setting.set(SpotifyWebSource.KEY);
+		try {
+			source.poll();
+		} catch (java.io.IOException signedOut) {
+			// the web source's own message
+		}
+		assertEquals(2, local.standBys);
+		assertEquals(List.of("poll", "poll", "poll"), local.calls, "never asked while Spotify Web is picked");
+	}
+
+	/**
+	 * The Windows reader's helper (a hidden PowerShell) is stopped when Spotify Web is picked, instead of idling for the
+	 * rest of the game, and a new one starts when the computer's own player is picked again. A shell stands in for it.
+	 */
+	@Test
+	@org.junit.jupiter.api.Timeout(60)
+	void switchingToSpotifyWebStopsTheWindowsHelper() throws Exception {
+		org.junit.jupiter.api.Assumptions.assumeTrue(!System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).startsWith("windows")
+				&& java.nio.file.Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		Path pidFile = dir.resolve("helper.pid");
+		String body = "echo $$ > '" + pidFile + "'; printf '{\"ready\":true}\\n'; while read n cmd rest; do "
+				+ "printf '{\"seq\":%s,\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\",\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}\\n' \"$n\"; done";
+		int[] starts = {0};
+		WindowsMediaSource windows = new WindowsMediaSource(() -> "", dir.resolve("windows"), (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, 20_000, 5_000);
+		AtomicReference<String> setting = new AtomicReference<>("");
+		ChosenSource source = new ChosenSource(windows, web(), setting::get);
+		try {
+			assertEquals("Song", source.poll().track().title());
+			long pid = Long.parseLong(java.nio.file.Files.readString(pidFile).strip());
+			assertTrue(ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false), "the helper runs");
+			setting.set(SpotifyWebSource.KEY);
+			try {
+				source.poll();
+			} catch (java.io.IOException signedOut) {
+				// the web source's own message
+			}
+			assertTrue(ProcessHandle.of(pid).map(h -> !h.isAlive()).orElse(true), "no helper left running while Spotify Web is followed");
+			setting.set("");
+			assertEquals("Song", source.poll().track().title(), "back on the computer's own player");
+			assertEquals(2, starts[0]);
+		} finally {
+			source.close();
+		}
 	}
 
 	@Test

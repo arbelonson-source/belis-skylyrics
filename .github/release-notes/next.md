@@ -240,6 +240,7 @@
 - **Timing message in Hebrew.** In Hebrew, the message above the hotbar when you press a timing key (**Lyrics are late** or **Lyrics are early**) now shows the time the right way round, "+0.10 s" or "-0.30 s", instead of "s 0.10+" with the sign and the "s" on the wrong sides of the number.
 - **Odd playback speeds on Linux.** On Linux, a music player that says it plays at a speed of 0 (or below) no longer makes the lyrics jump back a second or more while it is slow to answer; the lyrics run on at normal speed, as they already did while it answers.
 - **Windows music reader that never answers.** On Windows, when the music reader starts but then never answers (Windows' media controls stuck), SkyLyrics now tries a fresh one once and then waits 15 seconds, then longer, between tries, instead of starting a new hidden PowerShell about every 13 seconds for as long as the game runs.
+- **Spotify Web on Windows.** On Windows, picking **Spotify Web** as the **Player** now stops the hidden PowerShell that reads Windows' media controls, instead of leaving it running idle until you close the game; picking another player starts it again.
 
 ### Faster
 

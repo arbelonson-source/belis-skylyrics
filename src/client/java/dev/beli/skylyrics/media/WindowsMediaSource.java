@@ -823,6 +823,12 @@ public final class WindowsMediaSource implements MediaSource {
 		return currentDisplayName;
 	}
 
+	/** Spotify Web is followed for now: the helper stops instead of running idle for the rest of the game. */
+	@Override
+	public void standBy() {
+		close();
+	}
+
 	/** Stops the helper; the next poll starts it again straight away. Safe from any thread. */
 	@Override
 	public void close() {
