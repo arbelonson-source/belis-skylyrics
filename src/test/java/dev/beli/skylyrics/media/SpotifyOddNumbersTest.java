@@ -1,6 +1,8 @@
 package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -66,11 +68,24 @@ class SpotifyOddNumbersTest {
 	}
 
 	@Test
-	void aTokenLifetimeThatIsNoNumberIsAFailedReadInWords(@TempDir Path dir) throws Exception {
-		// Like a sign-in answer that can't be read: an IOException with a sentence, which backs the polling off
+	void aTokenLifetimeThatIsNoNumberIsAFailedReadThatBacksOff(@TempDir Path dir) throws Exception {
+		// Like any sign-in answer that can't be read, the Music tab says "Couldn't read your music player" (see
+		// MediaTrackerOutageTest); and the polling backs off as for a failed read, instead of asking for a token every time
 		for (String odd : List.of("\"soon\"", "{}", "[]", "true")) {
-			IOException e = assertThrows(IOException.class, () -> tokenCallsFor(dir, odd), "expires_in " + odd);
-			assertEquals("Something went wrong, try again", MediaTracker.failureText(e), "expires_in " + odd);
+			Path login = dir.resolve("login.json");
+			Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"r\",\"scopes\":\"\"}");
+			SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
+			SpotifyTokenCacheTest.Net net = new SpotifyTokenCacheTest.Net(odd);
+			source.useHttp(net);
+			for (int i = 0; i < 2; i++) {
+				source.settle(System.nanoTime() - 60_000_000_000L);
+				IOException e = assertThrows(IOException.class, source::poll, "expires_in " + odd);
+				assertEquals("Couldn't read your music player", MediaTracker.failureText(e), "expires_in " + odd);
+			}
+			assertNotNull(source.failing(), "expires_in " + odd);
+			// Two failures in a row wait 8 s, longer than the 4 s an idle poll waits
+			assertFalse(source.pollDue(System.nanoTime() + 5_000_000_000L, true), "expires_in " + odd);
+			assertEquals(2, net.tokenCalls, "expires_in " + odd);
 		}
 	}
 }
