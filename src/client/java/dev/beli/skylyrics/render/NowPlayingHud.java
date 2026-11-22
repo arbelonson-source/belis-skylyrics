@@ -417,11 +417,11 @@ public final class NowPlayingHud {
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
-		bottomBox = cfg.barPosition == BarPosition.BOTTOM
-				? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top) : null;
-		topBox = cfg.barPosition == BarPosition.BOTTOM
-				? null : TopBarLayout.topBarBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top);
-		bottomBoxAt = now;
+		boxesDrawn(cfg.barPosition == BarPosition.BOTTOM
+				? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top) : null,
+				cfg.barPosition == BarPosition.BOTTOM
+						? null : TopBarLayout.topBarBox(g.guiWidth(), cfg.barSize, fit.pill(), clockW, fit.clock(), statsW, fit.stats(), top),
+				now);
 
 		float barSize = cfg.barSize;
 		g.pose().pushMatrix();
@@ -810,21 +810,38 @@ public final class NowPlayingHud {
 	/** The same for a bar at the top of the screen (else null); the Record card in a top corner keeps below it. */
 	private static volatile float[] topBox;
 
-	private static volatile long bottomBoxAt;
+	/** When the bar drew its box last and the time before, for {@link DrawnLately}. */
+	private static volatile long bottomBoxAt, bottomBoxBefore;
+
+	/** The bar's boxes as it drew them at {@code now} (one of them null: it is either at the bottom or at the top). */
+	static void boxesDrawn(float[] bottom, float[] top, long now) {
+		bottomBox = bottom;
+		topBox = top;
+		bottomBoxBefore = bottomBoxAt;
+		bottomBoxAt = now;
+	}
 
 	static float[] topBox() {
-		return System.nanoTime() - bottomBoxAt > BOX_STALE_NS ? null : topBox;
+		return topBox(System.nanoTime());
+	}
+
+	static float[] topBox(long now) {
+		return DrawnLately.drawn(now, bottomBoxAt, bottomBoxBefore) ? topBox : null;
 	}
 
 	/**
-	 * The box, or null when the bar didn't draw it in the last moment (hidden, GUI off, or the bar moved to the top). It
-	 * uses the widest the pill can be at this screen size, not its moving width, so it doesn't shift with each line.
+	 * The box, or null when the bar didn't draw it lately (hidden, GUI off, or the bar moved to the top). It uses the
+	 * widest the pill can be at this screen size, not its moving width, so it doesn't shift with each line. The Record
+	 * card is drawn before the bar in each frame, so it reads the box the bar drew in the frame before: on a slow game
+	 * (about 4 frames a second) that one still counts ({@link DrawnLately}), or the card jumped between its two places.
 	 */
 	static float[] bottomBox() {
-		return System.nanoTime() - bottomBoxAt > BOX_STALE_NS ? null : bottomBox;
+		return bottomBox(System.nanoTime());
 	}
 
-	private static final long BOX_STALE_NS = 250_000_000L;
+	static float[] bottomBox(long now) {
+		return DrawnLately.drawn(now, bottomBoxAt, bottomBoxBefore) ? bottomBox : null;
+	}
 
 	/** How far above the screen's bottom the player's hearts and armour reach, from their health, absorption and armour. */
 	static float healthTopUp(Minecraft mc) {
