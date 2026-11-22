@@ -1549,11 +1549,26 @@ final class WorldWords {
 					last = null;
 					continue;
 				}
-				// Nowhere clear on the way in (standing in a cave or by a hill): lift it out where it was meant to be
+				// Nowhere clear on the way in (standing in a cave or by a hill): lift it out where it was meant to be, but never
+				// so high that it floats off the top (or above where a flowing line's words may go), and never onto another
+				// word, its own line's too. With no such place it stays where it was brought in to, on its own spot.
 				Vec3 there = eye.add(dir.scale(meant));
+				float highest = liftLimit(flow, centre[1], seenHalf);
+				List<float[]> words = null;
 				for (int up = 1; up <= LIFT_STEPS; up++) {
-					if (!buried(level, there.add(0, up, 0), dir, w, h)) {
-						pos = there.add(0, up, 0);
+					Vec3 lifted = there.add(0, up, 0), to = lifted.subtract(eye);
+					// A flowing line's words keep under the top as they float up (as its rows do); a scattered word as it lands
+					if (floatedTop(to, h, flow ? RISE_MAX * rise : 0) < highest) {
+						break; // every step up is higher still
+					}
+					if (buried(level, lifted, dir, w, h)) {
+						continue;
+					}
+					if (words == null) {
+						words = wordsUp(firm, under, shown, sentence);
+					}
+					if (crowding(yawOf(to), pitchOf(to), halfAngle(w, Math.sqrt(to.x * to.x + to.z * to.z)), halfAngle(h, to.length()), words) == 0) {
+						pos = lifted;
 						shrink = 1;
 						break;
 					}
@@ -1867,6 +1882,36 @@ final class WorldWords {
 		float up = Math.max(0, width * (float) Math.tan(slope * Mth.DEG_TO_RAD)) + Math.max(0, bend);
 		// A line's top is the foot of its first row, so its words stand a whole row above it
 		return pitch - VIEW_UP + up + row + drift;
+	}
+
+	/**
+	 * The highest (smallest) pitch a lifted word's top may reach ({@link #floatedTop}): the top of the screen
+	 * ({@code halfView} degrees above {@code view}, where the words are laid out round) less {@link #ROW_MARGIN}, and for a
+	 * flowing line no higher than its rows go ({@link #VIEW_UP}, float up counted).
+	 */
+	static float liftLimit(boolean flow, float view, float halfView) {
+		float top = view - halfView + ROW_MARGIN;
+		return flow ? Math.max(top, view - VIEW_UP) : top;
+	}
+
+	/** The pitch the top of a card {@code halfHeight} blocks tall at {@code to} (from the eye) reaches as it floats {@code risen} blocks up. */
+	static float floatedTop(Vec3 to, float halfHeight, float risen) {
+		return Math.min(pitchOf(to), pitchOf(to.add(0, risen, 0))) - halfAngle(halfHeight, to.length());
+	}
+
+	/**
+	 * What a lifted word must keep clear of: what every new word does ({@code firm}: the words still lit, other players, the
+	 * kept-clear middle), and the lit words of the line being written ({@code current}), which a lifted word could land on.
+	 */
+	private static List<float[]> wordsUp(List<float[]> firm, List<Card> under, List<float[]> shown, @Nullable Sentence current) {
+		List<float[]> words = new ArrayList<>(firm);
+		for (int k = 0; k < under.size(); k++) {
+			Card c = under.get(k);
+			if (current != null && c.of == current && c.goneAt < 0) {
+				words.add(shown.get(k));
+			}
+		}
+		return words;
 	}
 
 	/** Degrees a row's start keeps above the bottom of the screen, so the row itself isn't cut off by it. */
