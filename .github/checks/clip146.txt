@@ -1,0 +1,129 @@
+# Clip boxes past the window's edge, fix/clip146. Minecraft 26.2 and 26.3 stop the game ("Scissor size must be >0")
+# when a clip box something is drawn into is cut to nothing at the window's right or bottom edge. Two 26.3 test games
+# did, both right after the test hook's "resize": edges144 with the song library open (1920x1080 -> 640x480, "was
+# 0x34") and main's window141-resize with no screen open, the bar at the bottom and a bottom-left Record card
+# (1920x1080 -> 1280x720, run 45045910879, "was 280x0"). The hook's resize left the GUI at its old size for a frame
+# (a frame players never get); the branch's "resize" lays the GUI out at once, as the game does after F11, and
+# "resize WxH stale" still resizes the old way, so this check can show the mod's clip boxes no longer stop the game.
+# Run at 1920x1080 (the window can't grow past the virtual screen), GUI scale 2 throughout (1920x1080 -> 960x540,
+# 1280x720 -> 640x360, 640x480 -> 320x240), on 26.3 and 26.2 (both throw), 26.1.2 (never throws, nothing may change)
+# and 1.21.11:
+#   gh workflow run screenshots.yml --ref fix/clip146 -f version=26.3 -f script=.github/checks/clip146.txt -f size=1920x1080
+#   gh workflow run screenshots.yml --ref fix/clip146 -f version=26.2 -f script=.github/checks/clip146.txt -f size=1920x1080
+#   gh workflow run screenshots.yml --ref fix/clip146 -f version=26.1.2 -f script=.github/checks/clip146.txt -f size=1920x1080
+#   gh workflow run screenshots.yml --ref fix/clip146 -f version=1.21.11 -f script=.github/checks/clip146.txt -f size=1920x1080
+# The old code needs no run: main ignores "stale" (it logs "resize ... ignored") and its plain resize is the stale one,
+# which stopped 26.3 in both runs above.
+#
+# First of all: the game plays the whole script. The last picture, c146-end, is there; latest.log has no "Scissor size"
+# and there is no crash report. Then:
+# 1. Bottom bar and a bottom-left Record card, paused on a made-up line too long for the card's strip (so the strip is
+#    clipped and slides). c146-stale-shrink-* (the old resize, 1920x1080 -> 1280x720): the first frame or two can show
+#    the GUI still laid out for 960x540 (the bar and the card below the bottom, so missing), then both glide up into
+#    place. c146-shrink-* (the branch's resize, what a player gets): from the first frame the GUI fits 640x360 and the
+#    bar and the card glide up from below the new bottom (the ease that follows boss bars and the hearts). Both
+#    -settled pictures: the bar and the card above the hotbar, the line cut at the strip's ends.
+# 2. Top bar and the song library (grid, the 15th card picked with the keys; then the shelf; then the carousel), each
+#    shrunk the old way to 640x480: c146-stale-<view>-* frames, then c146-stale-<view>-640 settled: four columns or one
+#    shelf row, laid out for 320x240, the top bar's text clipped inside its pill.
+# 3. The settings (Display tab) shrunk the old way: c146-stale-settings-* and c146-stale-settings-640 (the panel laid
+#    out for 320x240, rows clipped at the view's top and bottom).
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout LINES
+guiscale 2
+resize 1920x1080
+look 0 -20
+sleep 8
+
+# 1. Bottom bar and Record card through the old resize and the branch's
+set barPosition BOTTOM
+set recordCard true
+set cardCorner BOTTOM_LEFT
+set cardLines 3
+lines Made-up test line long enough to slide along the strip under the record | Another made-up test line, far too long for the strip as well
+music pause
+sleep 1
+seek 1
+sleep 3
+shot c146-bottom-1080
+resize 1280x720 stale
+burst c146-stale-shrink 12 50
+sleep 3
+shot c146-stale-shrink-settled
+resize 1920x1080
+sleep 3
+resize 1280x720
+burst c146-shrink 12 50
+sleep 3
+shot c146-shrink-settled
+resize 1920x1080
+sleep 2
+set recordCard false
+set barPosition TOP
+sleep 2
+
+# 2. Library views shrunk the old way
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key right
+sleep 0.5
+key right
+sleep 1.5
+shot c146-lib-1080
+resize 640x480 stale
+burst c146-stale-grid 8 50
+sleep 2
+shot c146-stale-grid-640
+resize 1920x1080
+sleep 2
+close
+sleep 1
+set libraryView SHELF
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+resize 640x480 stale
+burst c146-stale-shelf 8 50
+sleep 2
+shot c146-stale-shelf-640
+resize 1920x1080
+sleep 2
+close
+sleep 1
+set libraryView CAROUSEL
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+resize 640x480 stale
+burst c146-stale-carousel 8 50
+sleep 2
+shot c146-stale-carousel-640
+resize 1920x1080
+sleep 2
+close
+set libraryView GRID
+sleep 1
+
+# 3. Settings shrunk the old way
+gui 3
+sleep 3
+shot c146-settings-1080
+resize 640x480 stale
+burst c146-stale-settings 8 50
+sleep 2
+shot c146-stale-settings-640
+resize 1920x1080
+sleep 2
+close
+music play
+sleep 2
+shot c146-end
