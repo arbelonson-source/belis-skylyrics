@@ -322,6 +322,11 @@ public final class MprisSource implements MediaSource {
 	}
 
 	record Reading(String busName, Track track, long positionMs, boolean playing, String trackId, double rate) {
+		/** The speed as the song clock takes it, so a reading moved on by hand and a relative seek agree with the lyrics. */
+		Reading {
+			rate = Snapshot.usableRate(rate);
+		}
+
 		Reading(String busName, Track track, long positionMs, boolean playing, String trackId) {
 			this(busName, track, positionMs, playing, trackId, 1.0);
 		}
