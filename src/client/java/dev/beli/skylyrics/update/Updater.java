@@ -260,7 +260,26 @@ public final class Updater {
 		if (container == null) {
 			return null;
 		}
-		return ownJar(FabricLoader.getInstance().getGameDir().resolve("mods"), container.getOrigin().getPaths());
+		return ownJar(modsFolder(FabricLoader.getInstance().getGameDir(), System.getProperty(MODS_FOLDER)), container.getOrigin().getPaths());
+	}
+
+	/** The Java setting that moves Fabric's mods folder away from the game folder ({@code -Dfabric.modsFolder=...}). */
+	static final String MODS_FOLDER = "fabric.modsFolder";
+
+	/**
+	 * The folder Fabric loaded the mods from: the setting's folder when it is given (read the way Fabric Loader reads it, so
+	 * a relative one is taken from where the game was started, as Fabric does), else the game folder's mods. Else a jar in such
+	 * a folder counts as not in the mods folder, and Install only tells the player.
+	 */
+	static Path modsFolder(Path gameDir, String setting) {
+		if (setting != null) {
+			try {
+				return Path.of(setting);
+			} catch (java.nio.file.InvalidPathException e) {
+				// Fabric couldn't have loaded from it either
+			}
+		}
+		return gameDir.resolve("mods");
 	}
 
 	/** The first of the paths that is a real .jar inside the mods folder (links followed), or null. */

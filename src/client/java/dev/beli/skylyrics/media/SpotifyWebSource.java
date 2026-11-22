@@ -860,8 +860,10 @@ public final class SpotifyWebSource implements MediaSource {
 	private void writeFile(String text) {
 		try {
 			Files.createDirectories(loginFile.getParent());
+			// A sign-in shared through a link stays linked: else the other game folders keep a token Spotify has replaced
+			Path target = dev.beli.skylyrics.util.SafeFile.writeTarget(loginFile);
 			// A temp file of our own: a second game saving at the same moment must not write to or delete it
-			Path tmp = Files.createTempFile(loginFile.getParent(), loginFile.getFileName() + ".", ".tmp");
+			Path tmp = Files.createTempFile(target.getParent(), loginFile.getFileName() + ".", ".tmp");
 			boolean done = false;
 			try {
 				// Owner-only already on Linux and macOS; Windows: the folder may be outside the user's profile (D:\Games) and readable by other accounts
@@ -869,7 +871,7 @@ public final class SpotifyWebSource implements MediaSource {
 					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 				}
 				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, text);
-				dev.beli.skylyrics.util.SafeFile.replace(tmp, loginFile);
+				dev.beli.skylyrics.util.SafeFile.replace(tmp, target);
 				done = true;
 			} finally {
 				if (!done) {
