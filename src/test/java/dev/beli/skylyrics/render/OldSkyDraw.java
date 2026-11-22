@@ -100,4 +100,92 @@ final class OldSkyDraw {
 		}
 		c.fadeBelowHorizon(0);
 	}
+	/** The eclipse's milky way and corona as {@link EclipseSky#draw} drew them. */
+	static void eclipse(SkyCanvas c, float radius, float baseYaw, float level, double time, SkyView view) {
+		final float deg = EclipseSky.DEG;
+		c.fadeBelowHorizon(EclipseSky.HORIZON_FADE);
+		SkyCanvas.SkyFrame frame = new SkyCanvas.SkyFrame();
+		// The milky way
+		float r = radius * EclipseSky.BAND;
+		frame.aim(baseYaw + EclipseSky.BAND_YAW, EclipseSky.BAND_ELEV);
+		float cs = (float) Math.cos(EclipseSky.BAND_SLOPE * deg), sn = (float) Math.sin(EclipseSky.BAND_SLOPE * deg);
+		float[] a = {frame.dx, frame.dy, frame.dz};
+		float[] b = {cs * frame.ux + sn * frame.vx, cs * frame.uy + sn * frame.vy, cs * frame.uz + sn * frame.vz};
+		float[] pole = {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+		int segments = EclipseSky.BAND_SEGMENTS;
+		boolean[] shown = new boolean[segments];
+		boolean any = false;
+		for (int j = 0; j < segments; j++) {
+			float ca = EclipseSky.ALONG_COS[j] + EclipseSky.ALONG_COS[j + 1], sa = EclipseSky.ALONG_SIN[j] + EclipseSky.ALONG_SIN[j + 1];
+			float l = (float) Math.sqrt(ca * ca + sa * sa);
+			ca /= l;
+			sa /= l;
+			shown[j] = view.capVisible(ca * a[0] + sa * b[0], ca * a[1] + sa * b[1], ca * a[2] + sa * b[2], EclipseSky.BAND_REACH);
+			any |= shown[j];
+		}
+		for (int i = 0; any && i < EclipseSky.BAND_ROWS; i++) {
+			for (int j = 0; j < segments; j++) {
+				if (!shown[j]) {
+					continue;
+				}
+				int g0 = i * (segments + 1) + j, g1 = g0 + segments + 1;
+				int[][] at = {{j, i, g0}, {j + 1, i, g0 + 1}, {j + 1, i + 1, g1 + 1}, {j, i + 1, g1}};
+				for (int[] p : at) {
+					float ca = EclipseSky.ALONG_COS[p[0]], sa = EclipseSky.ALONG_SIN[p[0]];
+					float cp = EclipseSky.ACROSS_COS[p[1]] * r, sp = EclipseSky.ACROSS_SIN[p[1]] * r;
+					c.vertex((ca * a[0] + sa * b[0]) * cp + pole[0] * sp, (ca * a[1] + sa * b[1]) * cp + pole[1] * sp,
+							(ca * a[2] + sa * b[2]) * cp + pole[2] * sp, SkyColors.argb(EclipseSky.BAND_RGB, EclipseSky.BAND_GRID[p[2]] * level));
+				}
+			}
+		}
+		// The corona
+		r = radius * EclipseSky.CORONA;
+		frame.aim(baseYaw + EclipseSky.SUN_YAW, EclipseSky.SUN_ELEV);
+		if (view.capVisible(frame.dx, frame.dy, frame.dz, EclipseSky.CORONA_REACH)) {
+			float tanR = (float) Math.tan(EclipseSky.SUN_RADIUS * deg);
+			float alpha = level * (0.94f + 0.06f * (float) Math.sin(SkyClock.phase(time, 0.8, 0)));
+			int n = EclipseSky.SEGMENTS;
+			boolean[] wedge = new boolean[n];
+			for (int j = 0; j < n; j++) {
+				float f = EclipseSky.WEDGE_FWD[j], rt = EclipseSky.WEDGE_RIGHT[j], u = EclipseSky.WEDGE_UP[j];
+				wedge[j] = view.capVisible(f * frame.dx + rt * frame.ux + u * frame.vx, f * frame.dy + rt * frame.uy + u * frame.vy,
+						f * frame.dz + rt * frame.uz + u * frame.vz, EclipseSky.WEDGE_RADIUS[j]);
+			}
+			float[] rings = EclipseSky.RINGS;
+			float[] cos = EclipseSky.RING_COS, sin = EclipseSky.RING_SIN;
+			int[] grid = EclipseSky.CORONA_GRID;
+			for (int i = 0; i + 1 < rings.length; i++) {
+				float a0 = rings[i] * tanR, a1 = rings[i + 1] * tanR;
+				int row0 = i * (n + 1), row1 = row0 + n + 1;
+				for (int j = 0; j < n; j++) {
+					if (!wedge[j]) {
+						continue;
+					}
+					c.at(frame, a0 * cos[j], a0 * sin[j], r, SkyColors.argb(grid[row0 + j], alpha));
+					c.at(frame, a0 * cos[j + 1], a0 * sin[j + 1], r, SkyColors.argb(grid[row0 + j + 1], alpha));
+					c.at(frame, a1 * cos[j + 1], a1 * sin[j + 1], r, SkyColors.argb(grid[row1 + j + 1], alpha));
+					c.at(frame, a1 * cos[j], a1 * sin[j], r, SkyColors.argb(grid[row1 + j], alpha));
+				}
+			}
+		}
+		c.fadeBelowHorizon(0);
+	}
+
+	/** The eclipse's black disc as {@link EclipseSky#drawDisc} drew it. */
+	static void eclipseDisc(SkyCanvas c, float radius, float baseYaw, float level, SkyView view) {
+		SkyCanvas.SkyFrame frame = new SkyCanvas.SkyFrame().aim(baseYaw + EclipseSky.SUN_YAW, EclipseSky.SUN_ELEV);
+		if (!view.capVisible(frame.dx, frame.dy, frame.dz, EclipseSky.DISC_REACH)) {
+			return;
+		}
+		float tanR = (float) Math.tan(EclipseSky.SUN_RADIUS * EclipseSky.DEG);
+		int black = SkyColors.argb(EclipseSky.DISC_RGB, level);
+		float r = radius * EclipseSky.CORONA * EclipseSky.DISC_LAYER;
+		for (int j = 0; j < EclipseSky.SEGMENTS; j += EclipseSky.DISC_STEP) {
+			int k = Math.min(EclipseSky.SEGMENTS, j + EclipseSky.DISC_STEP);
+			c.at(frame, 0, 0, r, black);
+			c.at(frame, 0, 0, r, black);
+			c.at(frame, tanR * EclipseSky.RING_COS[k], tanR * EclipseSky.RING_SIN[k], r, black);
+			c.at(frame, tanR * EclipseSky.RING_COS[j], tanR * EclipseSky.RING_SIN[j], r, black);
+		}
+	}
 }

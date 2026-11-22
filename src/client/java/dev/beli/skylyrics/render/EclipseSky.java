@@ -6,10 +6,11 @@ import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
  * The eclipse: a black sun with a thin cream rim, an orange corona fading to red, a long lopsided
  * flare streak and soft rays, under a faint lavender milky way broken up by dark dust.
  * Everything is light added to the night sky (the disc itself is simply left dark), so it needs
- * only the additive pipeline the aurora uses. The colours are worked out once.
+ * only the additive pipeline the aurora uses. The colours are worked out once, and the corners each time the
+ * lyrics' direction or the distance changes.
  */
 final class EclipseSky {
-	private static final float DEG = (float) (Math.PI / 180);
+	static final float DEG = (float) (Math.PI / 180);
 
 	/** How far each layer sits, as a share of the sky radius; farther ones are drawn first. */
 	static final float BAND = 1f, CORONA = 0.95f;
@@ -17,11 +18,11 @@ final class EclipseSky {
 	/** Sun position: just right of where the lyrics face and below them. */
 	static final float SUN_YAW = 3, SUN_ELEV = 13;
 	/** Light below the horizon fades out over this many degrees, so distant land seen from up high stays clear. */
-	private static final float HORIZON_FADE = 3;
+	static final float HORIZON_FADE = 3;
 	/** The disc: near black (measured), a hair in front of the corona, every few ring segments. */
-	private static final int DISC_RGB = 0x030306;
-	private static final float DISC_LAYER = 0.995f;
-	private static final int DISC_STEP = 3;
+	static final int DISC_RGB = 0x030306;
+	static final float DISC_LAYER = 0.995f;
+	static final int DISC_STEP = 3;
 	/** Angular radius of the black disc. */
 	static final float SUN_RADIUS = 2.5f;
 
@@ -49,26 +50,26 @@ final class EclipseSky {
 	private static final int RAY_RGB = 0xF08C46;
 	private static final float RAY_WIDTH = 13;
 
-	private static final float[] RINGS = {1, 1.04f, 1.08f, 1.14f, 1.25f, 1.4f, 1.6f, 1.8f, 2.05f, 2.35f, 2.7f, 3.1f,
+	static final float[] RINGS = {1, 1.04f, 1.08f, 1.14f, 1.25f, 1.4f, 1.6f, 1.8f, 2.05f, 2.35f, 2.7f, 3.1f,
 		3.6f, 4.2f, 4.9f, 5.6f, 6.4f, 7.2f};
-	private static final int SEGMENTS = 144;
+	static final int SEGMENTS = 144;
 
 	/** Milky way: a great circle crossing above the sun, sloping gently down to the right. */
-	private static final float BAND_YAW = 3, BAND_ELEV = 33, BAND_SLOPE = -8;
-	private static final int BAND_RGB = 0xC8BEE6;
+	static final float BAND_YAW = 3, BAND_ELEV = 33, BAND_SLOPE = -8;
+	static final int BAND_RGB = 0xC8BEE6;
 	/** Peak strength (about +30 on a dark sky) and width (sigma, degrees; full width at half height about 14). */
 	private static final float BAND_PEAK = 0.16f, BAND_SIGMA = 6;
-	private static final int BAND_SEGMENTS = 144, BAND_ROWS = 12;
+	static final int BAND_SEGMENTS = 144, BAND_ROWS = 12;
 	private static final float BAND_HALF = 16;
 
 	/** For each corona segment, a round patch round the sun that holds all its corners: the direction in the sun's frame (forward, right, up) and the angular radius. */
-	private static final float[] WEDGE_FWD = new float[SEGMENTS], WEDGE_RIGHT = new float[SEGMENTS], WEDGE_UP = new float[SEGMENTS],
+	static final float[] WEDGE_FWD = new float[SEGMENTS], WEDGE_RIGHT = new float[SEGMENTS], WEDGE_UP = new float[SEGMENTS],
 			WEDGE_RADIUS = new float[SEGMENTS];
-	private static final int[] CORONA_GRID = new int[RINGS.length * (SEGMENTS + 1)];
-	private static final float[] RING_COS = new float[SEGMENTS + 1], RING_SIN = new float[SEGMENTS + 1];
-	private static final float[] BAND_GRID = new float[(BAND_ROWS + 1) * (BAND_SEGMENTS + 1)];
-	private static final float[] ALONG_COS = new float[BAND_SEGMENTS + 1], ALONG_SIN = new float[BAND_SEGMENTS + 1];
-	private static final float[] ACROSS_COS = new float[BAND_ROWS + 1], ACROSS_SIN = new float[BAND_ROWS + 1];
+	static final int[] CORONA_GRID = new int[RINGS.length * (SEGMENTS + 1)];
+	static final float[] RING_COS = new float[SEGMENTS + 1], RING_SIN = new float[SEGMENTS + 1];
+	static final float[] BAND_GRID = new float[(BAND_ROWS + 1) * (BAND_SEGMENTS + 1)];
+	static final float[] ALONG_COS = new float[BAND_SEGMENTS + 1], ALONG_SIN = new float[BAND_SEGMENTS + 1];
+	static final float[] ACROSS_COS = new float[BAND_ROWS + 1], ACROSS_SIN = new float[BAND_ROWS + 1];
 
 	static {
 		for (int j = 0; j <= SEGMENTS; j++) {
@@ -143,16 +144,30 @@ final class EclipseSky {
 	}
 
 	/** Angular radius (radians) round the sun that holds the corona, flare and rays: the outermost ring, a little wide. */
-	private static final float CORONA_REACH = (float) Math.atan(RINGS[RINGS.length - 1] * Math.tan(SUN_RADIUS * DEG)) + 0.02f;
+	static final float CORONA_REACH = (float) Math.atan(RINGS[RINGS.length - 1] * Math.tan(SUN_RADIUS * DEG)) + 0.02f;
 	/** The black disc, with a little to spare. */
-	private static final float DISC_REACH = SUN_RADIUS * DEG * 1.05f;
+	static final float DISC_REACH = SUN_RADIUS * DEG * 1.05f;
 	/** Angular radius (radians) that holds a piece of the milky way: its half width plus one step along, with a little to spare. */
-	private static final float BAND_REACH = (BAND_HALF + 360f / BAND_SEGMENTS) * DEG * 1.05f;
+	static final float BAND_REACH = (BAND_HALF + 360f / BAND_SEGMENTS) * DEG * 1.05f;
 
 	private final SkyFrame frame = new SkyFrame();
 	private final boolean[] wedgeShown = new boolean[SEGMENTS];
 	private final boolean[] bandShown = new boolean[BAND_SEGMENTS];
 	private final float[] axisA = new float[3], axisB = new float[3], pole = new float[3];
+	/**
+	 * The corona's, the milky way's and the disc's quads, placed for a direction and distance and kept (see {@link KeptQuads}):
+	 * they stand still where the lyrics face, so only the corona's breathing and the strength change from frame to frame.
+	 */
+	private final KeptQuads coronaQuads = new KeptQuads((RINGS.length - 1) * SEGMENTS), bandQuads = new KeptQuads(BAND_ROWS * BAND_SEGMENTS),
+			discQuads = new KeptQuads(SEGMENTS / DISC_STEP);
+	private float coronaYaw = Float.NaN, coronaRadius = Float.NaN, bandYaw = Float.NaN, bandRadius = Float.NaN, discYaw = Float.NaN,
+			discRadius = Float.NaN;
+	/** The milky way's colour at each grid point for {@link #bandLevel}: it only changes with the strength. */
+	private final int[] bandArgb = new int[BAND_GRID.length];
+	private float bandLevel = Float.NaN;
+	/** How many times the milky way's colours have been worked out; tests check that a steady frame works out none. */
+	int bandTints;
+	private static final int[] DISC_COLOUR = {DISC_RGB};
 
 	/** Light around the sun at {@code (x, y)} disc radii from its middle, x to the right and y up. */
 	static int light(float x, float y) {
@@ -234,15 +249,23 @@ final class EclipseSky {
 		if (!view.capVisible(frame.dx, frame.dy, frame.dz, DISC_REACH)) {
 			return;
 		}
-		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
-		int black = SkyColors.argb(DISC_RGB, level);
 		float r = radius * CORONA * DISC_LAYER;
-		for (int j = 0; j < SEGMENTS; j += DISC_STEP) {
-			int k = Math.min(SEGMENTS, j + DISC_STEP);
-			c.at(frame, 0, 0, r, black);
-			c.at(frame, 0, 0, r, black);
-			c.at(frame, tanR * RING_COS[k], tanR * RING_SIN[k], r, black);
-			c.at(frame, tanR * RING_COS[j], tanR * RING_SIN[j], r, black);
+		if (!KeptQuads.same(baseYaw, discYaw) || !KeptQuads.same(r, discRadius) || !KeptQuads.same(c.horizonFade(), discQuads.fade())) {
+			discYaw = baseYaw;
+			discRadius = r;
+			discQuads.begin(c.horizonFade());
+			float tanR = (float) Math.tan(SUN_RADIUS * DEG);
+			for (int j = 0; j < SEGMENTS; j += DISC_STEP) {
+				int k = Math.min(SEGMENTS, j + DISC_STEP);
+				discQuads.at(frame, 0, 0, r, 0);
+				discQuads.at(frame, 0, 0, r, 0);
+				discQuads.at(frame, tanR * RING_COS[k], tanR * RING_SIN[k], r, 0);
+				discQuads.at(frame, tanR * RING_COS[j], tanR * RING_SIN[j], r, 0);
+			}
+		}
+		int alpha = SkyColors.argb(0, level);
+		for (int q = 0; q < SEGMENTS / DISC_STEP; q++) {
+			discQuads.draw(c, q, alpha, DISC_COLOUR);
 		}
 	}
 
@@ -251,23 +274,37 @@ final class EclipseSky {
 		if (!view.capVisible(frame.dx, frame.dy, frame.dz, CORONA_REACH)) {
 			return;
 		}
-		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
-		// A slow, slight breathing so the corona feels alive
-		float alpha = level * (0.94f + 0.06f * (float) Math.sin(SkyClock.phase(time, 0.8, 0)));
+		if (!KeptQuads.same(baseYaw, coronaYaw) || !KeptQuads.same(r, coronaRadius) || !KeptQuads.same(c.horizonFade(), coronaQuads.fade())) {
+			placeCorona(c, r, baseYaw);
+		}
+		// A slow, slight breathing so the corona feels alive; every corner takes the same alpha
+		int alpha = SkyColors.argb(0, level * (0.94f + 0.06f * (float) Math.sin(SkyClock.phase(time, 0.8, 0))));
 		for (int j = 0; j < SEGMENTS; j++) {
 			wedgeShown[j] = wedgeVisible(j, view);
 		}
 		for (int i = 0; i + 1 < RINGS.length; i++) {
+			for (int j = 0; j < SEGMENTS; j++) {
+				if (wedgeShown[j]) {
+					coronaQuads.draw(c, i * SEGMENTS + j, alpha, CORONA_GRID);
+				}
+			}
+		}
+	}
+
+	/** Places the corona's quads round the sun, which {@link #frame} is aimed at, and keeps them. */
+	private void placeCorona(SkyCanvas c, float r, float baseYaw) {
+		coronaYaw = baseYaw;
+		coronaRadius = r;
+		coronaQuads.begin(c.horizonFade());
+		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
+		for (int i = 0; i + 1 < RINGS.length; i++) {
 			float a0 = RINGS[i] * tanR, a1 = RINGS[i + 1] * tanR;
 			int row0 = i * (SEGMENTS + 1), row1 = row0 + SEGMENTS + 1;
 			for (int j = 0; j < SEGMENTS; j++) {
-				if (!wedgeShown[j]) {
-					continue;
-				}
-				c.at(frame, a0 * RING_COS[j], a0 * RING_SIN[j], r, SkyColors.argb(CORONA_GRID[row0 + j], alpha));
-				c.at(frame, a0 * RING_COS[j + 1], a0 * RING_SIN[j + 1], r, SkyColors.argb(CORONA_GRID[row0 + j + 1], alpha));
-				c.at(frame, a1 * RING_COS[j + 1], a1 * RING_SIN[j + 1], r, SkyColors.argb(CORONA_GRID[row1 + j + 1], alpha));
-				c.at(frame, a1 * RING_COS[j], a1 * RING_SIN[j], r, SkyColors.argb(CORONA_GRID[row1 + j], alpha));
+				coronaQuads.at(frame, a0 * RING_COS[j], a0 * RING_SIN[j], r, row0 + j);
+				coronaQuads.at(frame, a0 * RING_COS[j + 1], a0 * RING_SIN[j + 1], r, row0 + j + 1);
+				coronaQuads.at(frame, a1 * RING_COS[j + 1], a1 * RING_SIN[j + 1], r, row1 + j + 1);
+				coronaQuads.at(frame, a1 * RING_COS[j], a1 * RING_SIN[j], r, row1 + j);
 			}
 		}
 	}
@@ -297,27 +334,42 @@ final class EclipseSky {
 		if (!any) {
 			return;
 		}
+		if (!KeptQuads.same(baseYaw, bandYaw) || !KeptQuads.same(r, bandRadius) || !KeptQuads.same(c.horizonFade(), bandQuads.fade())) {
+			bandYaw = baseYaw;
+			bandRadius = r;
+			bandQuads.begin(c.horizonFade());
+			for (int i = 0; i < BAND_ROWS; i++) {
+				for (int j = 0; j < BAND_SEGMENTS; j++) {
+					bandPoint(j, i, r);
+					bandPoint(j + 1, i, r);
+					bandPoint(j + 1, i + 1, r);
+					bandPoint(j, i + 1, r);
+				}
+			}
+		}
+		if (!KeptQuads.same(level, bandLevel)) {
+			bandLevel = level;
+			bandTints++;
+			for (int g = 0; g < BAND_GRID.length; g++) {
+				bandArgb[g] = SkyColors.argb(BAND_RGB, BAND_GRID[g] * level);
+			}
+		}
 		for (int i = 0; i < BAND_ROWS; i++) {
 			for (int j = 0; j < BAND_SEGMENTS; j++) {
-				if (!bandShown[j]) {
-					continue;
+				if (bandShown[j]) {
+					bandQuads.draw(c, i * BAND_SEGMENTS + j, bandArgb);
 				}
-				int g0 = i * (BAND_SEGMENTS + 1) + j, g1 = g0 + BAND_SEGMENTS + 1;
-				bandPoint(c, j, i, r, SkyColors.argb(BAND_RGB, BAND_GRID[g0] * level));
-				bandPoint(c, j + 1, i, r, SkyColors.argb(BAND_RGB, BAND_GRID[g0 + 1] * level));
-				bandPoint(c, j + 1, i + 1, r, SkyColors.argb(BAND_RGB, BAND_GRID[g1 + 1] * level));
-				bandPoint(c, j, i + 1, r, SkyColors.argb(BAND_RGB, BAND_GRID[g1] * level));
 			}
 		}
 	}
 
-	/** Corner {@code j} along the band and row {@code i} across it. */
-	private void bandPoint(SkyCanvas c, int j, int i, float r, int argb) {
+	/** Places corner {@code j} along the band and row {@code i} across it, taking that grid point's colour. */
+	private void bandPoint(int j, int i, float r) {
 		float ca = ALONG_COS[j], sa = ALONG_SIN[j];
 		float cp = ACROSS_COS[i] * r, sp = ACROSS_SIN[i] * r;
-		c.vertex((ca * axisA[0] + sa * axisB[0]) * cp + pole[0] * sp,
+		bandQuads.corner((ca * axisA[0] + sa * axisB[0]) * cp + pole[0] * sp,
 				(ca * axisA[1] + sa * axisB[1]) * cp + pole[1] * sp,
-				(ca * axisA[2] + sa * axisB[2]) * cp + pole[2] * sp, argb);
+				(ca * axisA[2] + sa * axisB[2]) * cp + pole[2] * sp, i * (BAND_SEGMENTS + 1) + j);
 	}
 
 	private static void cross(float[] a, float[] b, float[] out) {
