@@ -274,6 +274,7 @@
 - **Lyrics lines stamped before the start.** A line in a lyrics file stamped before the song starts (a minus in front, like `[-00:01.00]`, which some editors write after moving a whole file earlier) was left out, so the song began without its first words. It now shows from the very start.
 - **Song-part tags in untimed lyrics.** Untimed lyrics with the song part in front of the words, like "[Chorus] words" or "[Verse 1: Someone] words", now show only the words, as timed lyrics already did, instead of floating the tag in the sky with them.
 - **World layout and seeking.** Jumping back a moment with the mod's progress bar (half a second is enough) now takes the World layout's words back too, and the line being sung places its words again from the new spot. A jump back made in the music player itself counts from 1.5 seconds as before, so a player that reports its position a little late never wipes the words in the middle of a song.
+- **Hide in caves high up.** With **Hide in caves** on, flying or teleporting higher than y 2048 no longer hides the lyrics, the top bar, the **Record card** and the night sky as if you had gone underground.
 
 ### Faster
 
