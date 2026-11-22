@@ -196,13 +196,40 @@ public final class HeardLibrary implements Library {
 		save();
 	}
 
-	/** Waits until everything asked to be written has been written. For tests and shutting down. */
+	/** Waits until everything asked to be written has been written. For tests. */
 	public void flush() {
 		try {
 			writer.submit(() -> {
 			}).get();
 		} catch (Exception e) {
 			Thread.currentThread().interrupt();
+		}
+	}
+
+	/**
+	 * For shutting down: waits like {@link #flush()}, but at most {@code timeoutMs}; true when everything was written. A
+	 * write that never ends (a network drive that stopped answering) must not keep the game from closing: the writer is a
+	 * daemon thread, and a write cut short leaves the old file whole (it goes through a temporary file).
+	 */
+	public boolean flush(long timeoutMs) {
+		java.util.concurrent.Future<?> done;
+		try {
+			done = writer.submit(() -> {
+			});
+		} catch (java.util.concurrent.RejectedExecutionException e) {
+			return true; // the writer is gone: nothing more will be written
+		}
+		try {
+			done.get(Math.max(0, timeoutMs), java.util.concurrent.TimeUnit.MILLISECONDS);
+			return true;
+		} catch (java.util.concurrent.TimeoutException e) {
+			LOG.warn("The recently heard songs were still being saved after {} ms; closing without waiting longer", timeoutMs);
+			return false;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
+		} catch (java.util.concurrent.ExecutionException e) {
+			return true; // an empty task doesn't fail
 		}
 	}
 
