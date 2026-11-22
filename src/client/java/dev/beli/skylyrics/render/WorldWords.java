@@ -21,6 +21,7 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Style;
 import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.util.FormattedCharSink;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -258,6 +259,41 @@ final class WorldWords {
 		float spin;
 		/** How far along its line it comes, from 0 at the first word to 1 at the last (for the Two-tone colour). */
 		float along;
+		/** Its letters' colour and glow as last drawn, kept while they stay the same, so a steady frame builds no style. */
+		private @Nullable Style faceBase, faceStyle, haloBase, haloStyle;
+		private int faceRgb, haloRgb;
+		/** Its whole word in the style of each kind of copy ({@link #SHADOW}, {@link #HALO}, {@link #FACE}), as last drawn. */
+		private final @Nullable Run[] runs = new Run[3];
+
+		Style faceStyle(Style base, int rgb) {
+			if (faceStyle == null || base != faceBase || rgb != faceRgb) {
+				faceBase = base;
+				faceRgb = rgb;
+				faceStyle = base.withColor(rgb);
+			}
+			return faceStyle;
+		}
+
+		Style haloStyle(Style base, int rgb) {
+			if (haloStyle == null || base != haloBase || rgb != haloRgb) {
+				haloBase = base;
+				haloRgb = rgb;
+				haloStyle = base.withColor(rgb);
+			}
+			return haloStyle;
+		}
+
+		/** Letters {@code from} to {@code to} in {@code style}: the kept run when that is the whole word, else a new one. */
+		Run run(int kind, int from, int to, Style style) {
+			if (from != 0 || to != display.cps().length) {
+				return new Run(display, from, to, style); // dissolving or typing in: the word is split up
+			}
+			Run kept = runs[kind];
+			if (kept == null || kept.style() != style) {
+				runs[kind] = kept = new Run(display, from, to, style);
+			}
+			return kept;
+		}
 
 		Card(Display display, float[] at, Vec3 pos, float face, float nod, float lean, float size, long born) {
 			this.display = display;
@@ -270,6 +306,28 @@ final class WorldWords {
 			this.born = born;
 		}
 	}
+
+	/** The kinds of copy a card is drawn as, each with its own style: the shadow and dark outline, the glow, the letters. */
+	private static final int SHADOW = 0, HALO = 1, FACE = 2;
+
+	/**
+	 * Letters {@code from} to {@code to} of a card in one style, as the game draws them. The game keeps what it is given
+	 * until the frame is drawn, so these never change; a card keeps its whole word in each of its styles ({@link Card#run}).
+	 */
+	private record Run(Display d, int from, int to, Style style) implements FormattedCharSequence {
+		@Override
+		public boolean accept(FormattedCharSink sink) {
+			for (int v = from; v < to; v++) {
+				if (!sink.accept(v, style, d.cps()[v])) {
+					return false;
+				}
+			}
+			return true;
+		}
+	}
+
+	/** The shadow's style for the words' style, kept while that stays the same. */
+	private @Nullable Style shadowBase, shadowStyle;
 
 	private final List<Card> cards = new ArrayList<>();
 	/** Reused for each card's turn while drawing, which only happens on the render thread. */
@@ -2372,7 +2430,8 @@ final class WorldWords {
 		float dt = lastNudge == 0 ? 0 : Mth.clamp((now - lastNudge) / 1e9f, 0, 0.1f);
 		lastNudge = now;
 		// Players come first and never move, so a word in front of someone glides off them, even as they walk about
-		ClientLevel level = Minecraft.getInstance().level;
+		Minecraft mc = Minecraft.getInstance();
+		ClientLevel level = mc == null ? null : mc.level; // no game in the tests
 		List<float[]> people = avoidPlayers ? players(level, eye) : List.of();
 		List<float[]> seen = nudgeSeen;
 		seen.clear();
@@ -2436,7 +2495,9 @@ final class WorldWords {
 		}
 		float ease = glideEase(dt, Calm.motion());
 		for (Card c : cards) {
-			c.slid = c.slid.add(c.slide.subtract(c.slid).scale(ease));
+			if (!c.slid.equals(c.slide)) { // there already (most never move): it would come out the same
+				c.slid = c.slid.add(c.slide.subtract(c.slid).scale(ease));
+			}
 		}
 	}
 
@@ -2578,7 +2639,11 @@ final class WorldWords {
 	void render(PoseStack pose, SubmitNodeCollector out, Camera camera, Font.DisplayMode mode, Style style, int rgb, float alpha,
 			float glow, float day, float scale, boolean light, long now) {
 		int copies = light ? GLOW_LIGHT : GLOW_COPIES;
-		Style shadowStyle = style.withColor(SHADOW_RGB);
+		if (shadowStyle == null || style != shadowBase) {
+			shadowBase = style;
+			shadowStyle = style.withColor(SHADOW_RGB);
+		}
+		Style shadowStyle = this.shadowStyle;
 		Vec3 eye = camera.position();
 		if (nudge || avoidPlayers) {
 			separate(eye, now);
@@ -2672,23 +2737,23 @@ final class WorldWords {
 			if (!soft) {
 				// A fading card loses its shadow sooner, so it melts into the sky instead of leaving a dark smudge
 				float shade = a * shadowOpacity(day) * wane;
-				draw(pose, out, c, shown, melt, typed, shadowStyle, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
+				draw(pose, out, c, shown, melt, typed, SHADOW, shadowStyle, shade, x0 + SHADOW_X, y0 + SHADOW_Y, SHADOW_Z, mode);
 				float edge = a * edgeOpacity(day) * wane;
 				for (int k = 0, n4 = outlineCopies(light, edge); k < n4; k++) {
-					draw(pose, out, c, shown, melt, typed, shadowStyle, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
+					draw(pose, out, c, shown, melt, typed, SHADOW, shadowStyle, edge, x0 + (k < 2 ? -OUTLINE : OUTLINE),
 							y0 + (k % 2 == 0 ? -OUTLINE : OUTLINE), SHADOW_Z, mode);
 				}
 			}
 			// The glow comes up just behind the letters, so a new word lights up as it lands
 			float ring = a * Mth.clamp(age / fadeIn, 0, 1) * GLOW_ALPHA * glow * glowFor(c == sung || c.title, c.goneAt < 0 ? -1 : gone, replaced, light) / 2 * GLOW_COPIES / copies;
 			int halo = mix(glowRgb < 0 ? neon(colour) : glowRgb, 0x000000, HALO_DAY * day);
-			Style haloStyle = copies > 0 && ring * 255 >= 4 ? style.withColor(halo) : null;
+			Style haloStyle = copies > 0 && ring * 255 >= 4 ? c.haloStyle(style, halo) : null;
 			for (int k = 0; k < copies && ring * 255 >= 4; k++) {
 				float turn = k * Mth.TWO_PI / copies + 0.5f;
-				draw(pose, out, c, shown, melt, typed, haloStyle, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
+				draw(pose, out, c, shown, melt, typed, HALO, haloStyle, ring, x0 + Mth.cos(turn) * GLOW_RADIUS, y0 + Mth.sin(turn) * GLOW_RADIUS,
 						GLOW_Z, mode);
 			}
-			draw(pose, out, c, shown, melt, typed, style.withColor(colour), a, x0, y0, FACE_Z, mode);
+			draw(pose, out, c, shown, melt, typed, FACE, c.faceStyle(style, colour), a, x0, y0, FACE_Z, mode);
 			pose.popPose();
 		}
 	}
@@ -2795,8 +2860,8 @@ final class WorldWords {
 	 * Draws the first {@code shown} letters of card {@code c}; {@code melt} is how far it has dissolved and {@code typed} how long
 	 * ago it began typing in (below 0: neither).
 	 */
-	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, float typed, Style coloured, float alpha,
-			float x0, float y0, float z, Font.DisplayMode mode) {
+	private static void draw(PoseStack pose, SubmitNodeCollector out, Card c, int shown, float melt, float typed, int kind, Style coloured,
+			float alpha, float x0, float y0, float z, Font.DisplayMode mode) {
 		int alphaByte = Math.round(alpha * 255);
 		if (alphaByte < 4) { // text this faint would be drawn fully opaque
 			return;
@@ -2816,15 +2881,7 @@ final class WorldWords {
 			while (to < n && d.logical()[to] < shown && letterByte(c, to, melt, typed, alpha, alphaByte) == each) {
 				to++;
 			}
-			int a0 = from, a1 = to;
-			FormattedCharSequence seq = sink -> {
-				for (int v = a0; v < a1; v++) {
-					if (!sink.accept(v, coloured, d.cps()[v])) {
-						return false;
-					}
-				}
-				return true;
-			};
+			FormattedCharSequence seq = c.run(kind, from, to, coloured);
 			//? if >=26.1 {
 			/*out.submitText(pose, x0 + c.at[from], y0, seq, false, mode, LightCoordsUtil.FULL_BRIGHT, each << 24 | 0xFFFFFF, 0, 0);
 			*///?} else {

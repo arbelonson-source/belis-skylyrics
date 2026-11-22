@@ -219,6 +219,26 @@ public final class NowPlayingHud {
 
 	/** The game's visual order of short texts (the clock, the frame rate, a title), kept while they stay the same. */
 	private static final SmallCache<VisualKey, FormattedCharSequence> VISUAL = new SmallCache<>(12);
+
+	/** The note in the round space for a missing cover. */
+	private static final String NOTE = "♪";
+
+	private static @Nullable Language noteLanguage;
+	private static @Nullable FormattedCharSequence noteOrder;
+
+	/**
+	 * The note in {@code language}'s visual order, as the game lays out a string it is asked to draw. Laid out once per
+	 * language: the game would do it afresh every frame, with its right-to-left reordering and Arabic shaping.
+	 */
+	static FormattedCharSequence note(Language language) {
+		FormattedCharSequence order = noteOrder;
+		if (order == null || language != noteLanguage) {
+			noteOrder = order = language.getVisualOrder(FormattedText.of(NOTE));
+			noteLanguage = language;
+		}
+		return order;
+	}
+
 	/** Cut texts, by everything the cut depends on. */
 	private static final class ClipKey {
 		Object font;
@@ -862,7 +882,9 @@ public final class NowPlayingHud {
 			try {
 				g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
 				g.pose().scale(0.85f, 0.85f);
-				g.drawCenteredString(font, "♪", 0, -4, noteColor(a * dim));
+				// As drawCenteredString draws it, with its shadow
+				FormattedCharSequence note = note(Language.getInstance());
+				g.drawString(font, note, -font.width(note) / 2, -4, noteColor(a * dim), true);
 			} finally {
 				g.pose().popMatrix();
 			}

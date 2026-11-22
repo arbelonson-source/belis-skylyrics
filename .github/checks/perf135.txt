@@ -1,0 +1,86 @@
+# Less work each frame, fix/perf135 (1280x720; the demo song, which has no cover, so the bar shows its round space for
+# the cover with the note in it; paused on a line so the equaliser rests and the pictures hold still; noon, clear).
+# The branch draws the round shapes (the bar's pill and border, the equaliser and signal bars, the round space for the
+# cover, the progress line, the Record card's record and its round ends) from fewer pieces, the bar's note once per
+# language, and the World, Lines and Arc words with kept styles. Nothing may look different: compare each picture with
+# the old code's, pixel for pixel round the bar, the card and the words. Look hardest at the round ends of the pill and
+# its border, the four equaliser dots and the four signal bars right of the clock, the circle round the note, and the
+# record's rings on the card: no line across the middle of a round end, no missing or doubled row or column, the same
+# smooth edge.
+# Run it on the branch, and with -f mod_ref=77442fb3 (land/batch101, the code before the branch) for the old code:
+#   gh workflow run screenshots.yml --ref fix/perf135 -f version=1.21.11 -f script=.github/checks/perf135.txt
+#   gh workflow run screenshots.yml --ref fix/perf135 -f version=1.21.11 -f mod_ref=77442fb3 -f script=.github/checks/perf135.txt
+# (and the same two with -f version=1.21.1, whose GUI draws each piece at once instead of collecting them).
+#
+# 1. perf135-bar-gui3 / -gui2 / -gui4: the top bar at GUI scale 3, 2 and 4 (at 3 the pill is an even number of pixels
+#    tall, so its ends are drawn as two half discs; at 2 and 4 it is odd and drawn as before). The equaliser rests as
+#    four round dots, the signal bars stand in four heights.
+# 2. perf135-bar-progress-gui3: Song progress on, a thin round-ended line under the words.
+# 3. perf135-card-gui3 / -gui2: the Record card, bottom right, its record's rings.
+# 4. perf135-lines / perf135-arc: the Lines and the Arc layout, Glow 0.5 and Two-tone on, still paused on the line:
+#    the same letters, colours, glow and depth as the old code's.
+# 5. perf135-bar-playing: playing again, the World layout: the equaliser bars hop (their heights differ from run to
+#    run; only look that their ends are round), and the World words round the crosshair are drawn as on the old code.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+guiscale 3
+sleep 8
+
+# 1: the bar, paused on a line, at GUI scale 3, 2 and 4
+music pause
+sleep 1
+seek 25.5
+sleep 2
+where
+shot perf135-bar-gui3
+guiscale 2
+sleep 2
+shot perf135-bar-gui2
+guiscale 4
+sleep 2
+shot perf135-bar-gui4
+guiscale 3
+sleep 1
+
+# 2: with the progress line
+set barProgress true
+sleep 2
+shot perf135-bar-progress-gui3
+set barProgress false
+sleep 1
+
+# 3: the Record card
+set recordCard true
+set cardCorner BOTTOM_RIGHT
+sleep 2
+shot perf135-card-gui3
+guiscale 2
+sleep 2
+shot perf135-card-gui2
+guiscale 3
+set recordCard false
+sleep 1
+
+# 4: the Lines and the Arc layout, with glow and two tones, still paused
+set glow 0.5
+set twoTone true
+set layout LINES
+sleep 2
+shot perf135-lines
+set layout ARC
+sleep 2
+shot perf135-arc
+set layout WORLD
+set glow 0
+set twoTone false
+sleep 1
+
+# 5: playing again
+music play
+sleep 1.5
+where
+shot perf135-bar-playing
