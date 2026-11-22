@@ -1083,6 +1083,11 @@ final class WorldWords {
 		return due - spawned > CATCH_UP ? due - CATCH_UP : spawned;
 	}
 
+	/** Whether Elytra mode carried the words with you last frame (see {@link #glide}). */
+	boolean carrying() {
+		return gliding;
+	}
+
 	/** The Elytra mode setting: off, the words stay where they were put however you move. */
 	void travel(boolean on) {
 		travel = on;

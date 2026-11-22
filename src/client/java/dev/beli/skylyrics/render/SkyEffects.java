@@ -703,7 +703,12 @@ public final class SkyEffects {
 		float targetPitch = -cfg.height;
 		float speed;
 		float[] lock = ViewLock.update(cfg, camYaw, camera.xRot());
-		if (lock != null) {
+		if (cfg.layout == SkyLyricsConfig.Layout.WORLD && !lyrics.instrumental() && lyrics.wordsTravel()) {
+			// Elytra mode carries the World words: new ones come where you look, whatever the direction or lock, so the
+			// sparkles go there too, gliding over as the travel starts and back as it stops
+			targetYaw = camYaw;
+			speed = 3f;
+		} else if (lock != null) {
 			targetYaw = lock[0];
 			targetPitch = lock[1];
 			speed = 3f;

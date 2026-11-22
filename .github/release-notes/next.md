@@ -231,6 +231,7 @@
 - **Elytra mode off.** In the World layout with **Elytra mode** turned off, the words now stay where they were put however fast you go. Flying with an elytra and rockets, diving or falling a long way no longer carried them along and swung them round as you steered, and new words keep to the World **Direction** then too.
 - **Words that slid apart, while you travel.** In the World layout with **Elytra mode**, a word that had slid aside out of another word's way no longer slides off its spot when you steer, a boat turns or a mount spins: it turns round with the rest of the words and stays beside the word it moved away from, instead of landing back on it and gliding off again.
 - **Twinkling stars round an instrumental, in the World layout.** With **Lazy follow** left on from another layout, the stars round an instrumental song's note line now wait and glide over with it when you look around, instead of jumping to wherever you look and leaving the note line on its own.
+- **Twinkling stars while the World words travel with you.** With **Elytra mode** and a World **Direction** of N, E, S or W (or **View lock** on), the twinkling stars now come along with the words while you glide, ride or fly, gliding over to where you look as you take off and back when you land, instead of staying behind on the words' usual side of the sky.
 
 ### Faster
 

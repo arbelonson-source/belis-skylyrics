@@ -96,6 +96,54 @@ class FollowAnchorTest {
 		}
 	}
 
+	/**
+	 * While Elytra mode carries the World words (gliding, riding, flying), new words come where you look even with a
+	 * World direction or a locked view, and the ones up turn with you: the sparkles go round there too, gliding over
+	 * rather than jumping when the travel starts, and back to the words' side of the sky when it stops.
+	 */
+	@Test
+	void whileTheWorldWordsTravelWithYouTheSparklesComeAlong() throws Exception {
+		SkyLyricsConfig cfg = new SkyLyricsConfig();
+		cfg.layout = Layout.WORLD;
+		cfg.direction = Direction.NORTH;
+		cfg.viewLock = false;
+		ViewLock.release();
+		LyricsRenderer lyrics = new LyricsRenderer(null, null, null);
+		Object words = get(lyrics, "worldWords");
+		SkyEffects sky = new SkyEffects(lyrics, null, null, null);
+		// Standing, facing west: the sparkles keep to the north with the words
+		Camera west = looking(90);
+		for (int frame = 0; frame < 100; frame++) {
+			step(sky, cfg, west);
+		}
+		assertEquals(180, Math.abs((float) get(sky, "anchorYaw")), 0.5f, "standing: round the words in the north");
+		// Gliding west: the words come where you look, and the sparkles go over to them, not all in one frame
+		set(words, "gliding", true);
+		step(sky, cfg, west);
+		float first = (float) get(sky, "anchorYaw");
+		assertTrue(Math.abs(Math.abs(first) - 180) < 45, "no jump as the travel starts: " + first);
+		for (int frame = 0; frame < 100; frame++) {
+			step(sky, cfg, west);
+		}
+		assertEquals(90, (float) get(sky, "anchorYaw"), 0.5f, "gliding: round the words in front of you");
+		// A View lock doesn't hold them back either, as new words don't keep to it while you travel: pinned looking
+		// east, then steering south
+		cfg.viewLock = true;
+		step(sky, cfg, looking(-90));
+		for (int frame = 0; frame < 100; frame++) {
+			step(sky, cfg, looking(0));
+		}
+		assertEquals(0, (float) get(sky, "anchorYaw"), 0.5f, "gliding with a lock: still round the words in front of you");
+		// Landed: back to the words' side of the sky, the pinned view in the east
+		set(words, "gliding", false);
+		for (int frame = 0; frame < 100; frame++) {
+			step(sky, cfg, looking(0));
+		}
+		assertEquals(-90, (float) get(sky, "anchorYaw"), 0.5f, "landed: back at the pinned view");
+		cfg.viewLock = false;
+		ViewLock.release();
+	}
+
 	private static Camera looking(float yaw) {
 		return new Camera() {
 			{

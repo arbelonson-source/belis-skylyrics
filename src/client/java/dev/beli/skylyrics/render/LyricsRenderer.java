@@ -306,6 +306,11 @@ public final class LyricsRenderer {
 		return visibility > 0.01f;
 	}
 
+	/** Whether Elytra mode carries the World words with you (as of the last World frame), so they gather where you look. */
+	boolean wordsTravel() {
+		return worldWords.carrying();
+	}
+
 	/** Whether the song on show is an instrumental, whose note line is drawn like Lines even in the World layout. */
 	public boolean instrumental() {
 		return shown.instrumental();
