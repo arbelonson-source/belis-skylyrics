@@ -34,6 +34,7 @@ import org.junit.jupiter.api.io.TempDir;
  * Right after a press (Play, a seek, a song started from the library) Spotify often still reports the old state for a
  * moment: paused, the last song, or nothing. The poller must then keep asking every second for a little while instead of
  * going back to its 4 s idle pace, or the lyrics stand still (or the bar stays empty) for up to 4 s while the music plays.
+ * And play/pause must go by what plays now, not by a reading taken before the song was paused or resumed elsewhere.
  */
 class SpotifyAfterPressTest {
 	private static final String ID = "0123456789abcdef0123456789abcdef";
@@ -177,5 +178,45 @@ class SpotifyAfterPressTest {
 		assertFalse(source.pollDue(System.nanoTime(), true));
 		assertEquals("", new SpotifyLibrary(source, uri -> true).play(SONG, List.of()).get(10, TimeUnit.SECONDS));
 		assertTrue(source.pollDue(System.nanoTime(), true));
+	}
+
+	private static final String PLAYING = PAUSED.replace("\"is_playing\": false", "\"is_playing\": true");
+
+	@Test
+	void playPauseGoesByWhatPlaysNowWhenTheLastReadingIsOld(@TempDir Path dir) throws Exception {
+		// Read while playing; then paused on the phone. With the lyrics off the next reading is up to 15 s away (4 s while
+		// paused), and a press going by the old reading sent "pause" to a paused song: nothing happened
+		boolean[] paused = {false};
+		Net net = new Net(what -> what.startsWith("GET") ? new Reply(200, paused[0] ? PAUSED : PLAYING) : new Reply(204, ""));
+		SpotifyWebSource source = signedIn(dir, net);
+		assertTrue(settled(source).playing());
+		paused[0] = true;
+		source.settle(System.nanoTime() - 10 * SEC); // the reading is 10 s old
+		net.requests.clear();
+		source.playPause();
+		assertEquals(List.of("GET /v1/me/player/currently-playing", "PUT /v1/me/player/play"), net.requests);
+	}
+
+	@Test
+	void playPauseGoesByAFreshReadingWithoutAskingAgain(@TempDir Path dir) throws Exception {
+		Net net = new Net(what -> what.startsWith("GET") ? new Reply(200, PLAYING) : new Reply(204, ""));
+		SpotifyWebSource source = signedIn(dir, net);
+		assertTrue(settled(source).playing());
+		net.requests.clear();
+		source.playPause();
+		assertEquals(List.of("PUT /v1/me/player/pause"), net.requests);
+	}
+
+	@Test
+	void playPauseStillWorksWhenTheCheckFails(@TempDir Path dir) throws Exception {
+		boolean[] down = {false};
+		Net net = new Net(what -> what.startsWith("GET") ? (down[0] ? new Reply(502, "") : new Reply(200, PLAYING)) : new Reply(204, ""));
+		SpotifyWebSource source = signedIn(dir, net);
+		assertTrue(settled(source).playing());
+		down[0] = true;
+		source.settle(System.nanoTime() - 10 * SEC);
+		net.requests.clear();
+		source.playPause();
+		assertEquals("PUT /v1/me/player/pause", net.requests.getLast(), "goes by the last reading it has");
 	}
 }

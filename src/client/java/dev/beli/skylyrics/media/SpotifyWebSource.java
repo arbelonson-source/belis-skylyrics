@@ -1228,7 +1228,27 @@ public final class SpotifyWebSource implements MediaSource {
 
 	@Override
 	public void playPause() {
-		control("PUT", last.playing() ? "/me/player/pause" : "/me/player/play");
+		control("PUT", playingNow() ? "/me/player/pause" : "/me/player/play");
+	}
+
+	/**
+	 * Whether the song plays now, for play/pause. The last reading can be seconds old (4 s while paused, 15 s while nothing
+	 * on screen shows the song), and going by it after a pause or resume on the phone sends Spotify what it already does:
+	 * the press does nothing. So an older reading is renewed first; if that fails, the press goes by the last one.
+	 */
+	private boolean playingNow() {
+		long now = System.nanoTime();
+		if (now - askedNs > SpotifyPace.PLAYING_NS && now - holdUntilNs >= 0 && failures == 0) {
+			settle(now);
+			try {
+				ask();
+			} catch (IOException e) {
+				LOG.debug("Spotify play state check failed", e);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		}
+		return last.playing();
 	}
 
 	@Override
