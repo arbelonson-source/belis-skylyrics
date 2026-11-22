@@ -9,22 +9,29 @@
 #    bar133-pixel-first: "Neon skyline, can you hear it" with "Neon" on the violet highlight. Old code: the highlight's
 #      left end is cut straight up and down a pixel or so left of the "N" (0.5 to 3.5 screen pixels of its round end
 #      missing, depending on where the pill sits); its right end is round. Branch: both ends round.
-#      The log's "barprobe clip left=" (old: 1 unit right of the "box left=" of the highlight, branch: at or left of it).
-#    bar133-pixel-last: "Every word is written in the stars", "the stars" on the highlight: old code may lose up to a
-#      pixel of the right end, the branch's is round.
-#    bar133-smooth-first: the same as -first with the smooth letters (a narrower highlight margin: less or nothing cut).
-# 2. Bottom bar with the debug screen (F3) open: does the bar sit over (or under) F3's text on the left or the right?
-#    bar133-f3-bottom (creative), bar133-f3-bottom-survival (hearts: the bar sits 14 higher), bar133-f3-bottom-gui2
-#    (GUI scale 2, 640x360: the bar is lower down). The top bar hides with F3 open; a bottom one shows (both, for now).
-# 3. Record card with Minecraft's letters and three lines, bottom right: the times under the progress line (drawn at 0.85
-#    size) and the dimmed lines above and below the current one (0.8) against the title, artist and current line (whole
-#    size). bar133-card-pixel (GUI 3: 2.55 and 2.4 screen pixels per letter pixel), -gui2 (1.7, 1.6), -gui4 (3.4, 3.2):
-#    are the small letters uneven (some strokes wider than others, uneven gaps) or blurry? bar133-card-smooth: the same
-#    card with the smooth letters, for comparison.
+#      The log's "barprobe clip left=" (old: right of the highlight's "box left=", 134 against 133.5 in round 1;
+#      branch: at or left of it, 133).
+#    bar133-pixel-last: "Every word is written in the stars", "the stars" on the highlight: the old code cuts about a
+#      pixel off the right end ("clip right=302" against "box ... right=302.47"); the branch's is round (303).
+#    bar133-smooth-first: the same as -first with the smooth letters: its narrower margin was never cut (both round).
+# 2. Bottom bar with the debug screen (F3) open: bar133-f3-bottom (creative), bar133-f3-bottom-survival (hearts: the bar
+#    sits 14 higher), bar133-f3-bottom-gui2 (GUI scale 2, 640x360: the bar is lower down).
+#    Old code: the bar always shows, on F3's text at GUI scale 3 (1.21.11: its clock runs into "Off-Heap"; 1.21.1: it
+#    covers the "Local Difficulty" and "NoiseRouter" lines). Branch: no bar at GUI scale 3, creative and survival, on both
+#    versions. GUI scale 2: on 1.21.11 F3's text ends well above the bar and the bar shows; on 1.21.1 the right column
+#    (the tags of the sand block in view) runs on down past the bar and over its frame rate (round 1's old picture), so
+#    the bar hides there too. A bar showing at GUI scale 2 on 1.21.11 also proves F3's text was measured in game
+#    (unmeasured, the bar would hide there as it guesses F3 reaches 320 down).
+# 3. Record card with Minecraft's letters and three lines, bottom right: the times under the progress line (asked for at
+#    0.85 size) and the dimmed lines above and below the current one (0.8). Old code: their letters are uneven, each
+#    letter pixel 2 or 3 screen pixels wide by turns (GUI 3; 1 or 2 at GUI 2, 3 or 4 at GUI 4). Branch: every letter
+#    pixel the same width: bar133-card-pixel (GUI 3): the times as big as the artist line (3 pixels a letter pixel), the
+#    dimmed lines smaller (2); -gui2: both as big as the current line (2); -gui4: both at 3 pixels (the current line 4).
+#    bar133-card-smooth: the smooth letters, the same on both.
 # 4. Pausing, top bar, Song name only on change on (as at first):
 #    bar133-pause-line: paused during "Every word is written in the stars": the bar keeps the line (both).
 #    bar133-pause-gap: paused between lines (the break at 0:37): old code: no bar at all; branch: the song's name,
-#      "Neon Skyline  ·  SkyLyrics Demo  ·  Demo".
+#      "Neon Skyline  ·  SkyLyrics Demo  ·  Demo", with the equaliser resting.
 #    bar133-play-gap: playing again in the same break: the song's name (both), as the bar bridges a break while playing.
 
 cmd weather clear
