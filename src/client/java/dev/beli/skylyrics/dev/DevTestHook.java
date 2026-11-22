@@ -891,9 +891,22 @@ public final class DevTestHook {
 					// "resize 1920x1080": the window takes this size, as dragging its edge or leaving fullscreen does (the GUI
 					// and everything sized from it is laid out again). The test game's virtual screen is the run's size or
 					// 1920x1080, whichever is bigger, and the window can't grow past it.
-					java.util.regex.Matcher size = java.util.regex.Pattern.compile("(\\d{3,5})x(\\d{3,5})").matcher(arg.strip());
+					// setWindowed alone leaves the GUI at the old size until the window's resize event comes in, a frame later
+					// or more, while 26.x already draws into the new size: a frame no player gets (the game lays the GUI out
+					// with every size change it makes itself), which stopped 26.3 over the mod's clip boxes. So the GUI is laid
+					// out again at once, as the game does after F11. "resize 640x480 stale" leaves that out, as before.
+					java.util.regex.Matcher size = java.util.regex.Pattern.compile("(\\d{3,5})x(\\d{3,5})( stale)?").matcher(arg.strip());
 					if (size.matches()) {
 						client.getWindow().setWindowed(Integer.parseInt(size.group(1)), Integer.parseInt(size.group(2)));
+						if (size.group(3) == null) {
+							//? if >=26.2 {
+							/*client.framebufferSizeChanged();
+							*///?} else if >=26.1 {
+							/*client.resizeGui();
+							*///?} else {
+							client.resizeDisplay();
+							//?}
+						}
 					} else {
 						SkyLyricsClient.LOG.warn("Test hook: resize {} ignored (a size looks like 1280x720)", arg);
 					}
