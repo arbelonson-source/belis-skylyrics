@@ -10,7 +10,7 @@ import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
  * per direction; only the cloud band is worked out again as the clouds drift.
  */
 final class MoonlitSky {
-	private static final float DEG = (float) (Math.PI / 180);
+	static final float DEG = (float) (Math.PI / 180);
 
 	/** How far each layer sits, as a share of the sky radius. Nearer layers draw over farther ones. */
 	static final float DOME = 1f, GLOW_SKY = 0.975f, CLOUDS = 0.95f, STARS = 0.935f, DISC = 0.92f;
@@ -46,22 +46,22 @@ final class MoonlitSky {
 	static final float CLOUD_DRIFT = 0.4f;
 	/** Clouds this many degrees from the moon catch about a third of its light. */
 	private static final float CLOUD_LIT_REACH = 30;
-	private static final float[] CLOUD_ROWS = {-HORIZON_FADE, 0, 1.5f, 3, 4.5f, 6, 7.5f, 9, 10.5f, 12, 13.5f, CLOUD_TOP};
-	private static final int CLOUD_COLUMNS = 120;
+	static final float[] CLOUD_ROWS = {-HORIZON_FADE, 0, 1.5f, 3, 4.5f, 6, 7.5f, 9, 10.5f, 12, 13.5f, CLOUD_TOP};
+	static final int CLOUD_COLUMNS = 120;
 
-	private static final int STAR_COUNT = 240;
-	private static final int STAR_RGB = 0xE6EDFF;
+	static final int STAR_COUNT = 240;
+	static final int STAR_RGB = 0xE6EDFF;
 	/** No stars this close to the moon's middle, in moon radii: its light washes them out. */
 	private static final float STAR_CLEAR = 1.6f;
 
-	private static final SkyMesh DOME_MESH, GLOW_MESH, DISC_MESH;
-	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
-	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
-	private static final int[] STAR_SKY = new int[STAR_COUNT];
+	static final SkyMesh DOME_MESH, GLOW_MESH, DISC_MESH;
+	static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
+	static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
+	static final int[] STAR_SKY = new int[STAR_COUNT];
 	/** Each star's direction (lyrics facing south), to tell whether it is in view. */
-	private static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
+	static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
 	/** Wider than any star (a few pixels across), in radians. */
-	private static final float STAR_REACH = 0.02f;
+	static final float STAR_REACH = 0.02f;
 
 	static {
 		// The plain gradient: coarse triangles would smear the glow past the edge of the glow's own rings
@@ -108,33 +108,95 @@ final class MoonlitSky {
 	static final int[][] CONSTELLATIONS_BEHIND = Constellations.behind(MoonlitSky::background);
 
 	private final SkyFrame frame = new SkyFrame();
-	private final SkyMesh clouds = SkyMesh.dome(CLOUD_ROWS, CLOUD_COLUMNS, MoonlitSky::background);
+	/** Each star's square, as placed for {@link #starsYaw}, {@link #starsPixel} and {@link #starsRadius}; and its colour this frame. */
+	private final KeptQuads starQuads = new KeptQuads(STAR_COUNT);
+	private float starsYaw = Float.NaN, starsPixel = Float.NaN, starsRadius = Float.NaN;
+	private final int[] starArgb = new int[STAR_COUNT];
+	final SkyMesh clouds = SkyMesh.dome(CLOUD_ROWS, CLOUD_COLUMNS, MoonlitSky::background);
+	/**
+	 * What the clouds' drift leaves alone at each point of their band, worked out once: the sky behind the clouds, the
+	 * yaw and height, and how much moonlight a cloud there catches. A repaint then only works out the clouds' noise.
+	 */
+	private final int[] cloudClear = new int[clouds.rgb.length];
+	private final float[] cloudYaw = new float[cloudClear.length], cloudElev = new float[cloudClear.length],
+			cloudLit = new float[cloudClear.length];
 	private float drift;
 	/** The cloud band is repainted in this many bites, one a frame; a bite of clouds this far (degrees) behind is not noticeable. */
-	private static final int REPAINT_PARTS = 4;
-	private static final float REPAINT_STEP = 0.05f;
+	static final int REPAINT_PARTS = 4;
+	static final float REPAINT_STEP = 0.05f;
 	private final DriftRepaint repaint = new DriftRepaint(REPAINT_STEP, REPAINT_PARTS);
-	private final SkyMesh.Paint drifted = (x, y, z) -> background(x, y, z, drift);
+
+	MoonlitSky() {
+		for (int k = 0; k < cloudClear.length; k++) {
+			float x = clouds.x[k], y = clouds.y[k], z = clouds.z[k];
+			cloudElev[k] = elevation(y);
+			cloudYaw[k] = yawOf(x, z);
+			cloudClear[k] = clear(x, y, z, cloudElev[k]);
+			cloudLit[k] = moonlight(x, y, z);
+		}
+	}
+
+	/** Repaints the cloud band's rows {@code from} up to (not including) {@code to} with the clouds at {@link #drift}: exactly {@link #background} there. */
+	private void repaintClouds(int from, int to) {
+		int[] rgb = clouds.rgb;
+		for (int k = from * clouds.cols; k < to * clouds.cols; k++) {
+			rgb[k] = clouded(cloudClear[k], cloudYaw[k], cloudElev[k], cloudLit[k], drift);
+		}
+	}
 
 	/** The finished sky colour in a direction (unit vector, lyrics facing south), clouds not drifted. */
 	static int background(float x, float y, float z) {
 		return background(x, y, z, 0);
 	}
 
+	/**
+	 * How many times a direction's whole colour has been worked out (an arcsine, an arctangent, an arccosine, a square
+	 * root and up to three exponentials, then the clouds' noise). Render thread only; tests count a frame's work with it.
+	 */
+	static int wholeColours;
+
 	/** The gradient, lit by the moon's glow, under clouds moved {@code drift} degrees round. */
 	static int background(float x, float y, float z, float drift) {
-		float elev = (float) Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, y))));
-		int rgb = SkyColors.mix(skyColor(elev), GLOW_RGB, glow(moonDistance(x, y, z)));
-		float d = cloud((float) Math.toDegrees(Math.atan2(-x, z)), elev, drift);
-		if (d <= 0) {
-			return rgb;
-		}
+		wholeColours++;
+		float elev = elevation(y);
+		return clouded(clear(x, y, z, elev), yawOf(x, z), elev, moonlight(x, y, z), drift);
+	}
+
+	/** Height above the horizon in degrees of a direction (unit vector). */
+	private static float elevation(float y) {
+		return (float) Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, y))));
+	}
+
+	/** Compass yaw in degrees of a direction (unit vector, lyrics facing south), as the clouds are laid out. */
+	private static float yawOf(float x, float z) {
+		return (float) Math.toDegrees(Math.atan2(-x, z));
+	}
+
+	/** The sky with no cloud in front: the gradient at {@code elev} degrees, lit by the moon's glow. */
+	private static int clear(float x, float y, float z, float elev) {
+		return SkyColors.mix(skyColor(elev), GLOW_RGB, glow(moonDistance(x, y, z)));
+	}
+
+	/** How much of the moon's light a cloud in this direction (unit vector) catches, 0..1. */
+	private static float moonlight(float x, float y, float z) {
 		float toMoon = x * MOON_FRAME.dx + y * MOON_FRAME.dy + z * MOON_FRAME.dz;
-		float lit = (float) Math.exp(-Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, toMoon)))) / CLOUD_LIT_REACH);
+		return (float) Math.exp(-Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, toMoon)))) / CLOUD_LIT_REACH);
+	}
+
+	/**
+	 * The sky {@code clear} (see {@link #clear}) under the clouds moved {@code drift} degrees round, at {@code yawDeg} and
+	 * {@code elevDeg}, where a cloud catches {@code lit} (see {@link #moonlight}) of the moon's light. Only this part
+	 * changes as the clouds drift.
+	 */
+	private static int clouded(int clear, float yawDeg, float elevDeg, float lit, float drift) {
+		float d = cloud(yawDeg, elevDeg, drift);
+		if (d <= 0) {
+			return clear;
+		}
 		// Thin cloud edges near the moon shine brighter than the thick middles
 		float edge = 4 * d * (1 - d);
 		int cloud = SkyColors.mix(CLOUD_FAR_RGB, CLOUD_LIT_RGB, lit * (0.7f + 0.6f * edge));
-		return SkyColors.mix(rgb, cloud, 0.92f * d);
+		return SkyColors.mix(clear, cloud, 0.92f * d);
 	}
 
 	/** The moon's face in a direction (anywhere on or just past the disc). */
@@ -214,9 +276,9 @@ final class MoonlitSky {
 		if (part != DriftRepaint.NONE) {
 			drift = repaint.target();
 			if (part == DriftRepaint.ALL) {
-				clouds.repaint(drifted);
+				repaintClouds(0, CLOUD_ROWS.length);
 			} else {
-				clouds.repaintRows(drifted, part * CLOUD_ROWS.length / REPAINT_PARTS, (part + 1) * CLOUD_ROWS.length / REPAINT_PARTS);
+				repaintClouds(part * CLOUD_ROWS.length / REPAINT_PARTS, (part + 1) * CLOUD_ROWS.length / REPAINT_PARTS);
 			}
 		}
 		c.fadeBelowHorizon(HORIZON_FADE);
@@ -231,18 +293,36 @@ final class MoonlitSky {
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
 	private void stars(SkyCanvas c, float r, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
+		if (!KeptQuads.same(baseYaw, starsYaw) || !KeptQuads.same(pixel, starsPixel) || !KeptQuads.same(r, starsRadius)
+				|| !KeptQuads.same(c.horizonFade(), starQuads.fade())) {
+			placeStars(c, r, baseYaw, pixel);
+		}
 		for (int i = 0; i < STAR_COUNT; i++) {
 			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
 			float twinkle = 0.7f + 0.3f * (float) Math.sin(SkyClock.phase(time, 0.6 + 0.11 * (i % 9), i * 1.7f));
-			int col = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
+			starArgb[i] = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
+			starQuads.draw(c, i, starArgb);
+		}
+	}
+
+	/**
+	 * Places every star's square on the sky and keeps it: they stand still where the lyrics face, a few screen pixels
+	 * across, so they only move when the direction, the size of a pixel (the field of view, the window) or the distance does.
+	 */
+	private void placeStars(SkyCanvas c, float r, float baseYaw, float pixel) {
+		starsYaw = baseYaw;
+		starsPixel = pixel;
+		starsRadius = r;
+		starQuads.begin(c.horizonFade());
+		for (int i = 0; i < STAR_COUNT; i++) {
 			float s = STAR_SIZE[i] * pixel;
 			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);
-			c.at(frame, -s, -s, r, col);
-			c.at(frame, s, -s, r, col);
-			c.at(frame, s, s, r, col);
-			c.at(frame, -s, s, r, col);
+			starQuads.at(frame, -s, -s, r, i);
+			starQuads.at(frame, s, -s, r, i);
+			starQuads.at(frame, s, s, r, i);
+			starQuads.at(frame, -s, s, r, i);
 		}
 	}
 }

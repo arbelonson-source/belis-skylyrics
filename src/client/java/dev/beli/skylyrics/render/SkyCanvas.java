@@ -12,6 +12,12 @@ abstract class SkyCanvas {
 	private int corner;
 	/** Sine of the depth below the horizon where shapes have faded out; 0 = no fading. */
 	private float horizonFade;
+	/**
+	 * How many quads have come through {@link #vertex}, each worked out afresh: its corners faded below the horizon and
+	 * its facing found (and with {@link #at} each corner pushed out onto the sphere, a square root). Quads kept from frame
+	 * to frame ({@link KeptQuads}) don't count. Tests check what a frame redoes with it.
+	 */
+	private int freshQuads;
 
 	/** Starts a frame at a quad's first corner, dropping any corners an error left half given. */
 	final void reset() {
@@ -20,6 +26,24 @@ abstract class SkyCanvas {
 
 	/** Receives one corner of a quad that already faces the camera. */
 	protected abstract void put(float x, float y, float z, int argb);
+
+	/** Sine of the depth below the horizon where shapes fade out (see {@link #fadeBelowHorizon}); 0 = no fading. */
+	final float horizonFade() {
+		return horizonFade;
+	}
+
+	/** See {@link #freshQuads}. */
+	final int freshQuads() {
+		return freshQuads;
+	}
+
+	/**
+	 * Hands on one corner of a quad that is already faded below the horizon and wound to face the camera, as {@link #vertex}
+	 * would have handed it on (see {@link KeptQuads}). Only between whole quads, which is how every sky hands them on.
+	 */
+	final void passOn(float x, float y, float z, int argb) {
+		put(x, y, z, argb);
+	}
 
 	/**
 	 * Fades whatever is drawn next out below the horizon, over {@code degrees} (0 turns it off). Low
@@ -44,6 +68,7 @@ abstract class SkyCanvas {
 			return;
 		}
 		corner = 0;
+		freshQuads++;
 		if (facesOrigin(qx, qy, qz)) {
 			for (int i = 0; i < 4; i++) {
 				put(qx[i], qy[i], qz[i], qc[i]);

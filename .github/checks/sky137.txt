@@ -1,0 +1,119 @@
+# Less work each frame in the night skies, fix/sky137 (1280x720, GUI scale 2 as the test world starts; render distance
+# 12, no vanilla clouds, a clear midnight that stays night, the lyrics facing north and hidden with F1 (the sky stays),
+# no constellations, shooting stars, sparkles or sky pulse, sky speed Slow, the game paused with F3 + Esc for each shot).
+# The branch keeps the corners of the Moonlight, Synthwave, Eclipse and Comet skies from one frame to the next instead
+# of working them out again, and repaints the drifting Moonlight clouds from kept parts. Nothing may look different.
+#
+# Compare each picture with the old code's, pixel for pixel, in everything that stands still:
+# - sky137-moonlight-moon / -away: the blue gradient, the moon, its face and its glow, and the dark side of the sky.
+# - sky137-synthwave-sun / -swirl: the purple gradient, the pink glow and halo round the sun, the striped sun (each
+#   stripe and gap where it was), and the dark swirl with its faint rings overhead.
+# - sky137-eclipse-sun / -band: the black sun with its cream rim, and the milky way above it and where it runs down to
+#   the horizon.
+# - sky137-comet: the comet's bright head and its broad warm dust tail.
+# Look hardest at the horizon, where every shape fades out below it (the bottom of the Moonlight and Synthwave domes, the
+# Moonlight clouds' foot, the Synthwave sun's halo, the milky way in sky137-eclipse-band): that fade is now worked out
+# once and kept, so it must end exactly where it did, with no hard edge or band. Also the moon's and the black sun's
+# rims and the sun's stripes: no hairline seam, gap or doubled piece.
+#
+# Some parts move with the sky's own clock, which runs on real time (also while the game is paused) and which the old
+# code has no command to hold, so they can differ a little by when each shot fell: the Moonlight clouds drift (at Slow
+# about a fifth of a degree a second), every painted star twinkles, the Eclipse's orange glow breathes (its brightness
+# moves by up to about an eighth), and the Comet's thin blue gas tail streams. Compare those by eye: the same shapes and
+# colours, no gaps, seams or missing pieces.
+#
+# Run it on the branch, and with -f mod_ref=2187b403 (land/batch103, the code before the branch) for the old code:
+#   gh workflow run screenshots.yml --ref fix/sky137 -f version=1.21.11 -f script=.github/checks/sky137.txt
+#   gh workflow run screenshots.yml --ref fix/sky137 -f version=1.21.11 -f mod_ref=2187b403 -f script=.github/checks/sky137.txt
+# and the same two with -f version=26.3 (where the comet's tails and head sit a hair apart, as the added light marks
+# its depth there).
+
+# A clear night that stays night, nothing but the sky under test
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set direction NORTH
+set skyStrength 0.7
+set skySpeed SLOW
+set shootingStars false
+set twinkle false
+set skyPulse false
+set constellations false
+set layout LINES
+set placement SKY
+option clouds off
+option renderDistance 12
+hud off
+
+# Up on a slab at y 200, so no hill stands in front of the moon or the suns (the terrain differs between runs)
+cmd execute at @p run fill ~-2 199 ~-2 ~2 199 ~2 minecraft:stone
+cmd execute as @p at @s run tp @s ~ 200 ~
+sleep 4
+
+# 1. Moonlight: the moon left of where the lyrics face (yaw 148, 25 degrees up), the clouds low round the horizon
+set sky MOONLIGHT
+look 148 -18
+sleep 10
+pause nomenu
+sleep 1
+shot sky137-moonlight-moon
+close
+look 328 -15
+sleep 3
+pause nomenu
+sleep 1
+shot sky137-moonlight-away
+close
+
+# 2. Synthwave: the striped sun right of where the lyrics face and just above the horizon, the swirl high overhead
+set sky SYNTHWAVE
+look 206 -12
+sleep 8
+pause nomenu
+sleep 1
+shot sky137-synthwave-sun
+close
+look 180 -55
+sleep 3
+pause nomenu
+sleep 1
+shot sky137-synthwave-swirl
+close
+
+# 3. Eclipse: the black sun just right of where the lyrics face and low, the milky way above it; then where the milky
+#    way runs down to the horizon on the left
+set sky ECLIPSE
+look 183 -18
+sleep 8
+pause nomenu
+sleep 1
+shot sky137-eclipse-sun
+close
+look 100 -8
+sleep 3
+pause nomenu
+sleep 1
+shot sky137-eclipse-band
+close
+
+# 4. Comet: the head right of where the lyrics face and low, the tails climbing beside it
+set sky COMET
+look 215 -30
+sleep 8
+pause nomenu
+sleep 1
+shot sky137-comet
+close
+
+# Back as the test world starts
+hud on
+option clouds fancy
+option renderDistance 6
+set skySpeed NORMAL
+set constellations true
+set sky AURORA
+set layout WORLD
+set direction FOLLOW
+look 0 -28
+sleep 2
