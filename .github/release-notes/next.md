@@ -275,6 +275,7 @@
 - **Song-part tags in untimed lyrics.** Untimed lyrics with the song part in front of the words, like "[Chorus] words" or "[Verse 1: Someone] words", now show only the words, as timed lyrics already did, instead of floating the tag in the sky with them.
 - **World layout and seeking.** Jumping back a moment with the mod's progress bar (half a second is enough) now takes the World layout's words back too, and the line being sung places its words again from the new spot. A jump back made in the music player itself counts from 1.5 seconds as before, so a player that reports its position a little late never wipes the words in the middle of a song.
 - **Hide in caves high up.** With **Hide in caves** on, flying or teleporting higher than y 2048 no longer hides the lyrics, the top bar, the **Record card** and the night sky as if you had gone underground.
+- **Snapshots and pre-releases.** The jar for 1.21.6 to 1.21.8 no longer says it works on the 1.21.9 snapshots, pre-releases and release candidates, and the jar for 26.1 no longer says it works on the 26.2 ones. On those the game crashed while loading SkyLyrics; now Fabric says which Minecraft versions the jar is for.
 
 ### Faster
 

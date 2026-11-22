@@ -8,6 +8,8 @@ deps.dbus_java = "5.2.2"
 loomx.loom_version = "1.19-SNAPSHOT"
 
 # mc_compat goes in fabric.mod.json. modmenu is optional; sodium and iris are only for the test game.
+# A range must not end in "<1.21.9": Fabric counts the 1.21.9 snapshots and pre-releases as below 1.21.9, and the jar
+# crashes there. Use "<=1.21.8" or "~26.1" (ModManifestTest checks this).
 # fabric_api_min goes in fabric.mod.json too: the oldest Fabric API with every Fabric API class and member the jar uses
 # (checked against Fabric's maven, 2026-11-16), so an older one gets Fabric's "update Fabric API" message instead of a crash.
 # 1.21.9 isn't claimed: no Fabric API for it has the world-drawing events the 1.21.10 jar uses.
@@ -37,7 +39,7 @@ deps.sodium = "mc1.21.5-0.6.13-fabric"
 deps.iris = "1.8.11+1.21.5-fabric"
 
 ["1.21.8"]
-mod.mc_compat = ">=1.21.6 <1.21.9"
+mod.mc_compat = ">=1.21.6 <=1.21.8"
 mod.fabric_api_min = ">=0.126.0"
 deps.fabric_api = "0.136.1+1.21.8"
 deps.modmenu = "15.0.2"
@@ -61,7 +63,7 @@ deps.sodium = "mc1.21.11-0.8.4-fabric"
 deps.iris = "1.10.5+1.21.11-fabric"
 
 ["26.1.2"]
-mod.mc_compat = ">=26.1 <26.2"
+mod.mc_compat = "~26.1"
 mod.fabric_api_min = ">=0.143.12"
 mod.jar_mc = "26.1"
 deps.fabric_api = "0.155.3+26.1.2"
