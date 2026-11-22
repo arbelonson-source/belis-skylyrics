@@ -249,6 +249,70 @@ class WindowsMediaSourceTest {
 	}
 
 	/**
+	 * A helper that says it is ready and then never answers is stopped and a fresh one started at once; when that one never
+	 * answers either, the next waits out the back-off instead of a new PowerShell every third poll (about every 13 s in the
+	 * game) for as long as the game runs.
+	 */
+	@Test
+	@Timeout(60)
+	void aHelperThatNeverAnswersIsNotStartedAgainAtOnce() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String body = "printf '{\"ready\":true}\\n'; while read l; do :; done";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, START_MS, 300);
+		try {
+			for (int i = 0; i < 3; i++) {
+				assertThrows(IOException.class, source::poll); // three questions without an answer: stuck, stopped
+			}
+			assertEquals(1, starts[0]);
+			for (int i = 0; i < 3; i++) {
+				assertThrows(IOException.class, source::poll); // a fresh one at once, which hangs too
+			}
+			assertEquals(2, starts[0]);
+			for (int i = 0; i < 6; i++) {
+				IOException e = assertThrows(IOException.class, source::poll);
+				assertEquals("Windows didn't say what's playing in time", e.getMessage());
+			}
+			assertEquals(2, starts[0], "waits before starting another");
+			assertEquals(1, source.failuresInARow());
+			source.retryNow();
+			assertThrows(IOException.class, source::poll);
+			assertEquals(3, starts[0], "after the wait it tries again");
+		} finally {
+			source.close();
+		}
+	}
+
+	/** A helper that has answered and then gets stuck is started again at once: one hang is not a PC that can't run it. */
+	@Test
+	@Timeout(60)
+	void aHelperThatAnsweredAndThenGetsStuckIsStartedAgainAtOnce() throws Exception {
+		assumeTrue(!WINDOWS && Files.isExecutable(Path.of("/bin/sh")), "needs a POSIX shell for the stand-in helper");
+		int[] starts = {0};
+		String body = "printf '{\"ready\":true}\\n'; read n cmd rest; "
+				+ "printf '{\"seq\":%s,\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\",\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}\\n' \"$n\"; "
+				+ "while read l; do :; done";
+		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
+			starts[0]++;
+			return List.of("/bin/sh", "-c", body);
+		}, START_MS, 300);
+		try {
+			assertEquals("Song", source.poll().track().title());
+			for (int i = 0; i < 3; i++) {
+				assertThrows(IOException.class, source::poll);
+			}
+			assertEquals("Song", source.poll().track().title(), "a fresh helper, started straight away");
+			assertEquals(2, starts[0]);
+			assertEquals(0, source.failuresInARow());
+		} finally {
+			source.close();
+		}
+	}
+
+	/**
 	 * A helper PowerShell stopped at once says why in windows-media.log, and the error carries that last line; failed
 	 * starts are counted, and a helper that answers resets the count.
 	 */
