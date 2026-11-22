@@ -363,6 +363,17 @@ public final class SkyEffects {
 		return fogStart * 0.9f;
 	}
 
+	/**
+	 * The painted skies' nearest layer as a share of {@link #farRadius}: their constellations at {@link #CONSTELLATION_LAYER},
+	 * whose straight lines between the stars dip a little nearer still.
+	 */
+	static final float PAINTED_NEAREST = 0.85f;
+
+	/** How near the painted skies (Synthwave, Moonlight) come at this render distance: nothing they draw is nearer. */
+	static float paintedNearest(int renderDistanceChunks) {
+		return farRadius(renderDistanceChunks) * PAINTED_NEAREST;
+	}
+
 	/** The skies Random picks from. */
 	static final SkyEffect[] RANDOM_SKIES = {SkyEffect.AURORA, SkyEffect.NEBULA, SkyEffect.BOTH, SkyEffect.SYNTHWAVE,
 			SkyEffect.ECLIPSE, SkyEffect.MOONLIGHT, SkyEffect.GALAXY, SkyEffect.COMET};

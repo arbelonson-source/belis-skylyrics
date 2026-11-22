@@ -434,14 +434,11 @@ public final class LyricsRenderer {
 		}
 
 		boolean sky = cfg.placement == Placement.SKY;
-		float distance = sky
-				? Math.max(8, Math.min(cfg.distance, mc.options.getEffectiveRenderDistance() * 16 * 0.8f))
-				: floatingDistance(cfg.distance);
 		float angular = rowAngle(sky, cfg.size);
-		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		float wrapWidth = sky ? 230 : 190;
 		double tanHalf = tanHalfWide(mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight());
-		if (cfg.layout != Layout.ARC || shown.instrumental()) {
+		boolean arcRows = cfg.layout == Layout.ARC && !shown.instrumental();
+		if (!arcRows) {
 			// The stacked lines' rows have to fit across the view at this size
 			wrapWidth = rowWidth(wrapWidth, angular, tanHalf);
 		} else {
@@ -452,6 +449,10 @@ public final class LyricsRenderer {
 				arcCache.clear();
 			}
 		}
+		float distance = sky
+				? skyDistance(cfg.distance, mc.options.getEffectiveRenderDistance(), reach(halfWide(arcRows, wrapWidth, angular, tanHalf), angular))
+				: floatingDistance(cfg.distance);
+		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		wrapAt(mc, cfg, wrapWidth);
 
 		List<Spot> spots = new ArrayList<>();
@@ -946,6 +947,46 @@ public final class LyricsRenderer {
 	 */
 	static float followPitch(boolean floating, float camPitch, float height) {
 		return floating ? Mth.clamp(camPitch - Math.min(height, 30) * 0.5f, -85, 85) : -height;
+	}
+
+	/** Room round the widest row for the bigger current word, a line popping in and the glow, as a share of its half width. */
+	static final float REACH_SLACK = 1.2f;
+	/** Rows above and below the middle of a line block that its corners are counted out to (the line and its neighbours). */
+	static final float REACH_ROWS = 5;
+
+	/**
+	 * Half the width of the widest row the lyrics draw this frame, as the tangent of its angle from their middle: the
+	 * stacked lines' rows are {@code wrapWidth} text units at most, an Arc line keeps to {@link #FIT_SHARE} of the room
+	 * beside where it sits (see {@link #arcRoom}).
+	 */
+	static float halfWide(boolean arc, float wrapWidth, float angular, double tanHalfWide) {
+		double stacked = wrapWidth / 2 * Math.tan(angular * DEG) / ROW_H;
+		double arcLine = FIT_SHARE * Math.tan(Math.max(0, Math.atan(tanHalfWide) - ARC_SIDE * DEG));
+		double w = arc ? Math.min(arcLine, FIT_SHARE * tanHalfWide) : stacked;
+		return Double.isFinite(w) ? (float) w : FIT_SHARE * 4;
+	}
+
+	/**
+	 * How many times their distance the farthest corner of the lyrics is from the camera: a block {@code halfWide} (see
+	 * {@link #halfWide}) to each side with {@link #REACH_SLACK} to spare, and {@link #REACH_ROWS} rows of {@code angular}
+	 * degrees above and below. The lyrics are flat, so their corners lie farther away than their middle.
+	 */
+	static float reach(float halfWide, float angular) {
+		double w = REACH_SLACK * halfWide, h = REACH_ROWS * Math.tan(angular * DEG);
+		return (float) Math.sqrt(1 + w * w + h * h);
+	}
+
+	/**
+	 * How far away the lyrics hang with Placement Sky: the Distance setting, within 0.8 of the render distance (a
+	 * server's view distance counts), and near enough that their farthest corner ({@code reach}, see {@link #reach}) stays
+	 * in front of the painted skies' nearest layer ({@link SkyEffects#paintedNearest}). Past it they would be hidden by
+	 * the sky's depth, or by blocks the sky paints over. The default Distance (64) is kept at render distance 9 and more
+	 * (8 for the stacked lines). Never nearer than 8 blocks, unless even that would reach past the sky (render distance 2
+	 * with a big Size and a wide view).
+	 */
+	static float skyDistance(float distance, int renderDistanceChunks, float reach) {
+		float wanted = Math.max(8, Math.min(distance, renderDistanceChunks * 16 * 0.8f));
+		return Math.min(wanted, SkyEffects.paintedNearest(renderDistanceChunks) / reach);
 	}
 
 	/**
