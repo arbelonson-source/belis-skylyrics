@@ -76,6 +76,11 @@ public final class ScreenLayer {
 		return captured ? tanHalfV : 0;
 	}
 
+	/** Tangent of half the horizontal field of view the world was drawn with this frame (it follows the window's shape), or 0 before the first frame. */
+	static float tanHalfH() {
+		return captured ? tanHalfH : 0;
+	}
+
 	public static boolean ready() {
 		return captured;
 	}

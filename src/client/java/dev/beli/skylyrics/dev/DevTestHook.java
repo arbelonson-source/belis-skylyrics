@@ -874,6 +874,17 @@ public final class DevTestHook {
 					client.resizeDisplay();
 					//?}
 				}
+				case "resize" -> {
+					// "resize 1920x1080": the window takes this size, as dragging its edge or leaving fullscreen does (the GUI
+					// and everything sized from it is laid out again). The test game's virtual screen is the run's size or
+					// 1920x1080, whichever is bigger, and the window can't grow past it.
+					java.util.regex.Matcher size = java.util.regex.Pattern.compile("(\\d{3,5})x(\\d{3,5})").matcher(arg.strip());
+					if (size.matches()) {
+						client.getWindow().setWindowed(Integer.parseInt(size.group(1)), Integer.parseInt(size.group(2)));
+					} else {
+						SkyLyricsClient.LOG.warn("Test hook: resize {} ignored (a size looks like 1280x720)", arg);
+					}
+				}
 				case "cmd" -> {
 					MinecraftServer server = client.getSingleplayerServer();
 					if (server != null) {

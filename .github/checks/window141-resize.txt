@@ -1,0 +1,124 @@
+# The window resized mid-song (what dragging its edge or F11 does), fix/window141. Uses the dev hook's "resize WxH",
+# which only the branch has, so run it on the branch alone. Run it at 1920x1080 (the virtual screen is then 1920x1080,
+# and the window can't grow past it), and once at 3440x1440 for the ultrawide-to-small jump (resize 3440x1440 works
+# there, the 1920x1080 lines too):
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/window141 -f script=.github/checks/window141-resize.txt -f size=1920x1080
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/window141 -f script=.github/checks/window141-resize.txt -f size=3440x1440
+# GUI scale 2 throughout (1920x1080 -> 960x540, 1280x720 -> 640x360, 800x1000 -> 400x500, 640x480 -> 320x240), so a
+# resize moves the bottom of the GUI a long way.
+#
+# 1. Bottom bar and a bottom-left Record card, paused on a line, as the window shrinks and grows. The bursts are the
+#    frames right after each resize (12 frames, 50 ms apart): rs-shrink-* (1920x1080 -> 1280x720) and rs-grow-*
+#    (back). What to look for: the bar and the card are eased towards their place (the glide that follows boss bars and
+#    the hearts), so right after a resize they start from where they were in GUI units: after the shrink they begin
+#    below the new bottom (cut off or missing for a frame or two) and rise into place; after the grow they slide down
+#    from the middle of the screen. Each glide is over in about a quarter of a second. rs-shrink-settled and
+#    rs-grow-settled: both back in their usual place (above the hotbar), nothing left over.
+# 2. A tall window mid-song, World words (scatter), looking level: rs-tall-world-a/-b: every word inside the 800 wide
+#    window (the branch's World fix), the top bar's pill narrower and still centred, the clock and frame rate beside it.
+# 3. The settings open while the window changes: rs-settings-1080 (Display tab), rs-settings-tall (800x1000),
+#    rs-settings-640 (320x240 GUI), rs-settings-back (1920x1080 again): the panel is laid out again for each size
+#    (centred, rows within it, Corner choices fitting or shown between arrows); nothing keeps the old size.
+# 4. The song library with a card picked by the keyboard far down the grid, then the window shrunk: rs-lib-1080 (the
+#    picked card outlined), rs-lib-640 (320x240: fewer columns, so the picked card moves further down; is its outline
+#    still in view, or below the bottom until a key is pressed?), rs-lib-640-key (after one Right: scrolled to it).
+# 5. For the 3440x1440 run (on a 1920x1080 run the window asked for is bigger than the virtual screen: ignore these):
+#    rs-ultra (3440x1440, GUI scale 2 = 1720x720: the pill a short bar in the middle) and rs-ultra-to-720-* (a burst as
+#    it drops to 1280x720: the same glide as in 1, from much further), rs-ultra-720-settled.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout LINES
+guiscale 2
+resize 1920x1080
+look 0 -20
+sleep 8
+
+# 1. Bottom bar and Record card through a shrink and a grow
+set barPosition BOTTOM
+set recordCard true
+set cardCorner BOTTOM_LEFT
+set cardLines 3
+music pause
+sleep 1
+seek 26
+sleep 3
+shot rs-1080
+resize 1280x720
+burst rs-shrink 12 50
+sleep 3
+shot rs-shrink-settled
+resize 1920x1080
+burst rs-grow 12 50
+sleep 3
+shot rs-grow-settled
+set recordCard false
+set barPosition TOP
+music play
+
+# 2. Tall window, World words
+set layout WORLD
+look 0 0
+resize 800x1000
+sleep 1
+seek 20
+sleep 3
+shot rs-tall-world-a
+sleep 2.5
+shot rs-tall-world-b
+set layout LINES
+look 0 -20
+resize 1920x1080
+sleep 2
+
+# 3. Settings open through resizes
+gui 3
+sleep 3
+shot rs-settings-1080
+resize 800x1000
+sleep 2
+shot rs-settings-tall
+resize 640x480
+sleep 2
+shot rs-settings-640
+resize 1920x1080
+sleep 2
+shot rs-settings-back
+close
+sleep 1
+
+# 4. Library: a card picked far down, then the window shrunk
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key right
+sleep 0.5
+key right
+sleep 1.5
+shot rs-lib-1080
+resize 640x480
+sleep 2
+shot rs-lib-640
+key right
+sleep 1.5
+shot rs-lib-640-key
+close
+resize 1920x1080
+sleep 2
+
+# 5. Ultrawide (3440x1440 runs)
+resize 3440x1440
+sleep 3
+shot rs-ultra
+resize 1280x720
+burst rs-ultra-to-720 12 50
+sleep 3
+shot rs-ultra-720-settled
