@@ -1,17 +1,16 @@
-# The life cycle of fix/life142: changing dimension, dying, the title screen, leaving and joining the world again.
-# This branch changes nothing that shows in pictures (its fix is a log line at quitting), so the branch run and the
-# main run should match; the pictures are a look at how the code behaves around these events (1280x720, GUI scale 2
-# as the test world starts, a clear night, World layout, aurora). What to look for:
+# The life cycle of fix/life142: changing dimension, dying, the title screen, leaving and joining the world again
+# (1280x720, GUI scale 2 as the test world starts, a clear night, World layout, aurora). Only part 4 should differ
+# between the branch run and the main run; the rest is a look at how the code behaves around these events.
 #  1. life-overworld, then life-nether-arrive / life-nether: in the Nether none of the Overworld's World words hang
 #     anywhere (they start afresh round you), the song title does NOT float up again, no aurora. life-back-arrive /
 #     life-back: in the Overworld again no Nether words left over, and the aurora fades back in. The log should say
 #     "world line starts over (other: newLyrics ... a world change)" once per change.
 #  2. life-dead: on the death screen the words drop away; life-respawned: they start afresh round you.
 #  3. life-title: the title screen with the lyrics under its buttons.
-#  4. life-join-0 ... life-join-8 (seconds after the server logs the join): once the loading screen is gone the song's
-#     title should float up in front of you (facing south, a little up) and stay its few seconds (about 4 s). Suspected
-#     from the code, not seen yet: the world is drawn behind the loading screen, and the title is put up there, so it
-#     shows only for what is left of its 4 s, or not at all if loading takes longer. No words or sky from before leaving.
+#  4. life-join-0 ... life-join-8 (seconds after the server logs the join). Branch: once the loading screen is gone the
+#     song's title floats up in front of you (facing south, a little up) and stays its few seconds (about 4 s). Main:
+#     the world is drawn behind the loading screen and the title is put up there, so it shows only for what is left of
+#     its 4 s, or not at all if loading took longer. Neither should show words or sky left from before leaving.
 #  5. life-arc-synth: Arc and the synthwave sky, both picked on the title screen, show in the next world, the sky
 #     fully faded in (not left half done) and the Arc line in front of you.
 # Run it on the branch, and with -f mod_ref=main to compare with the old code:

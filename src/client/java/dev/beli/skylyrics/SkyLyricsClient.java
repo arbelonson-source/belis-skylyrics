@@ -402,6 +402,12 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private void doTick(Minecraft client) {
+		// First, so nothing failing below can leave a joined world counted as still loading (it holds the World title back)
+		//? if >=26.2 {
+		/*ViewLock.tick(client.gui.screen() != null);
+		*///?} else {
+		ViewLock.tick(client.screen != null);
+		//?}
 		art.upload();
 		// The update check runs in the background; its answer pops up straight away, and is told in chat once a world is open
 		Updater.Notice update = Updater.takeNotice();
@@ -443,11 +449,6 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			client.gui.getChat().addMessage(line);
 			//?}
 		}
-		//? if >=26.2 {
-		/*ViewLock.tick(client.gui.screen() != null);
-		*///?} else {
-		ViewLock.tick(client.screen != null);
-		//?}
 		// A fresh press of the attack key in the world may knock a World word under the crosshair
 		//? if >=26.2 {
 		/*boolean attack = client.gui.screen() == null && client.player != null && client.options.keyAttack.isDown();
