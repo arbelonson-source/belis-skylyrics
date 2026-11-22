@@ -72,9 +72,19 @@ public final class TitleCleaner {
 		return s.substring(0, end);
 	}
 
+	/**
+	 * The artist without a channel's "- Topic", "VEVO" or " Official" at its end. The pattern reads only the last
+	 * {@link #MAX_TEXT} chars, but a longer credit (a charity single's dozen names) is kept whole: it is what the player
+	 * says, and a song's saved timing is keyed by it.
+	 */
+	private static String withoutArtistNoise(String artist) {
+		int head = Math.max(0, artist.length() - MAX_TEXT);
+		return (artist.substring(0, head) + ARTIST_NOISE.matcher(artist.substring(head)).replaceAll("")).trim();
+	}
+
 	public static Track clean(Track track) {
 		String title = track.title();
-		String artist = ARTIST_NOISE.matcher(capped(track.artist())).replaceAll("").trim();
+		String artist = withoutArtistNoise(track.artist());
 
 		if (BROWSERS.contains(track.player().toLowerCase(Locale.ROOT))) {
 			title = NOISE.matcher(capped(title)).replaceAll("").trim();
