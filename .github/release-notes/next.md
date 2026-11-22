@@ -250,6 +250,7 @@
 - **"by Beli" in your language.** The small line under SkyLyrics at the top of the settings sidebar is now in the game's language too, like "von Beli" in German or "от Beli" in Russian, instead of always "by Beli".
 - **The top bar's highlight ends.** The violet highlight behind the words being sung keeps both of its round ends: before, the start of the first word's highlight was cut flat by a pixel or two (most with Minecraft's letters), and the end of a line's last word could lose a pixel.
 - **Pausing between lines.** With **Song name only on change** on, pausing the music between two lines no longer hides the top bar: it keeps showing the song's name until you play again, just as a pause during a line keeps that line on the bar. Before the first line and a few seconds after the last one it still hides.
+- **Record card in Minecraft's letters.** With **Font** on Minecraft, the times under the Record card's progress line and the dimmed lines above and below the line being sung no longer look uneven (some strokes wider than others): they are drawn at the nearest size where every letter pixel is the same width, so at some GUI scales they are a little bigger or smaller than before.
 
 ### Faster
 
