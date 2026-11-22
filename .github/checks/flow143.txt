@@ -1,0 +1,82 @@
+# World words by a wall, fix/flow143: a Flowing line (and the scatter) next to a stone wall built on purpose, and the
+# same line in open sky, with Keep the middle clear on and off. Run it at 800x1000 (the tall window where it was seen),
+# and at 1000x1000 and 1920x1080 (it was never about the window's shape: a wall did it on any screen). Once on the
+# branch, once on the code before it (batch 109, which has window141's side fix):
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/flow143 -f script=.github/checks/flow143.txt -f size=800x1000
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=30962764 -f script=.github/checks/flow143.txt -f size=800x1000
+# The player is moved onto a stone floor 40 blocks up (the same open sky whatever the desert spawn looks like), looking
+# level and south. The line is made up, one every 4 seconds; "-a" is 2.5 s into it, "-b" 4.5 s (the next line), "-c" 7.5 s.
+#
+# 1. Open sky: flow143-open-mid-a/-b/-c (Keep the middle clear on) and flow143-open-nomid-a/-b/-c (off). The same on
+#    both runs: every word whole on the screen, the highest a good way under its top, none over another. In the tall
+#    window with the middle kept clear the line sits beside the middle in a narrow column, a word or two to a row
+#    (a design question for the owner, not this fix).
+# 2. A wall on the left, 6 blocks high, its face half a block from you, running 14 blocks ahead: flow143-wall-mid-a/-b/-c
+#    and flow143-wall-nomid-a/-b/-c. Before: a line that lands on the wall's side has its words lifted up the wall one
+#    after another, on top of each other, the last ones (and the big word) cut by the top of the screen or behind the
+#    clock (the test game's "the bridges" over "hum beneath"). Branch: a lifted word only goes onto clear sky under the
+#    line's highest row (at most about two thirds of the way from the middle to the top), never on another word; the rest keep their
+#    own places in the rows, drawn through the stone (See through blocks is on).
+# 3. The scatter by the same wall: flow143-wall-scatter-a/-b. Before: words climb the wall's side, the highest cut at the
+#    top (the 3440x1440 window141 run's "hum" under the bar). Branch: none lands past the top or on another word.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout WORLD
+set worldFlow true
+set worldClearMiddle true
+guiscale 0
+cmd execute as @p at @p run fill ~-14 ~40 ~-14 ~14 ~40 ~14 minecraft:smooth_stone
+cmd execute as @p at @p run tp @s ~ ~41 ~
+sleep 3
+look 0 0
+lines lanterns drift over the harbour while the slow tide carries every little light away into the morning | quiet engines hum beneath the bridges as the city counts its windows one by one | paper boats remember every river that they never sailed upon
+sleep 2
+
+# 1. Open sky
+seek 0
+sleep 2.5
+shot flow143-open-mid-a
+sleep 2
+shot flow143-open-mid-b
+sleep 3
+shot flow143-open-mid-c
+set worldClearMiddle false
+seek 0
+sleep 2.5
+shot flow143-open-nomid-a
+sleep 2
+shot flow143-open-nomid-b
+sleep 3
+shot flow143-open-nomid-c
+
+# 2. A wall on the left (east, facing south)
+cmd execute as @p at @p run fill ~1 ~ ~-1 ~7 ~5 ~14 minecraft:stone
+look 0 0
+set worldClearMiddle true
+seek 0
+sleep 2.5
+shot flow143-wall-mid-a
+sleep 2
+shot flow143-wall-mid-b
+sleep 3
+shot flow143-wall-mid-c
+set worldClearMiddle false
+seek 0
+sleep 2.5
+shot flow143-wall-nomid-a
+sleep 2
+shot flow143-wall-nomid-b
+sleep 3
+shot flow143-wall-nomid-c
+
+# 3. The scatter by the wall
+set worldClearMiddle true
+set worldFlow false
+seek 0
+sleep 2.5
+shot flow143-wall-scatter-a
+sleep 2
+shot flow143-wall-scatter-b
