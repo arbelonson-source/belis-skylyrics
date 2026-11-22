@@ -11,8 +11,8 @@ public final class LrcParser {
 	// A minus in front is a stamp before the song's start, which some editors write after shifting a file earlier
 	private static final Pattern TIME = Pattern.compile("\\[\\s*(-)?(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
-	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
-	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:,]\\d+)?>");
+	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>; with a minus before the start, as on a line (see TIME)
+	private static final Pattern WORD_TIME = Pattern.compile("<-?(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:,]\\d+)?>");
 	// Also old Mac files that end lines with a bare \r
 	private static final Pattern LINE_BREAK = Pattern.compile("\\r\\n|\\r|\\n|\\u2028|\\u2029");
 	// A whole line like "[Chorus]" or "[Verse 2: Someone]" names a part of the song, it isn't sung
