@@ -27,7 +27,11 @@ public final class ChosenSource implements MediaSource {
 	@Override
 	public Snapshot poll() throws Exception {
 		MediaSource source = current(); // the setting is read once for this poll
+		MediaSource last = polled;
 		polled = source;
+		if (last == local && source != local) {
+			local.standBy(); // no hidden PowerShell left idling for the rest of the game on Windows
+		}
 		return source.poll();
 	}
 

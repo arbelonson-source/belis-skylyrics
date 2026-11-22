@@ -169,13 +169,28 @@ public final class LyricsService {
 				current = new Snapshot(newTrack, Lyrics.NONE, State.IDLE);
 				return;
 			}
+			// The same song with its length or album come in late (browsers, some Linux players): it is asked about again
+			// with them, and what is on show stays meanwhile instead of fading out and back in
+			boolean filledIn = moreDetails(old, newTrack);
 			if (DemoSource.PLAYER.equals(newTrack.player())) {
-				current = new Snapshot(newTrack, LrcParser.parseSynced(DemoSource.LYRICS), State.READY);
+				Lyrics demo = LrcParser.parseSynced(DemoSource.LYRICS);
+				current = new Snapshot(newTrack, filledIn && demo.sameAs(now.lyrics) ? now.lyrics : demo, State.READY);
 				return;
 			}
-			current = new Snapshot(newTrack, Lyrics.NONE, State.LOADING);
+			current = filledIn && found(now.lyrics) ? new Snapshot(newTrack, now.lyrics, now.state)
+					: new Snapshot(newTrack, Lyrics.NONE, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
 		}
+	}
+
+	/**
+	 * The same song read again with other details: the same title and artist (and no other Spotify id), with the album
+	 * the same or one side's missing, so only its length or album changed. Not a late artist: lyrics found by the title
+	 * alone may be another artist's song of that name. Not another album: that is another recording (a live one).
+	 */
+	static boolean moreDetails(Track old, Track fresh) {
+		return !old.isNone() && old.title().equals(fresh.title()) && old.artist().equals(fresh.artist()) && !old.otherUri(fresh)
+				&& (old.album().equals(fresh.album()) || old.album().isEmpty() || fresh.album().isEmpty());
 	}
 
 	/** Forget the cached answer for this song and ask again. */
@@ -407,7 +422,10 @@ public final class LyricsService {
 			if (generation.get() != gen) {
 				return false;
 			}
-			current = new Snapshot(current.track, parsed, found(parsed) ? State.READY : State.NOT_FOUND);
+			// The same lyrics again (the song asked about again with its late length, a Retry) keep the ones on show: new
+			// ones would start the line on show over and drop the World words
+			Lyrics shown = current.lyrics;
+			current = new Snapshot(current.track, parsed.sameAs(shown) ? shown : parsed, found(parsed) ? State.READY : State.NOT_FOUND);
 			return true;
 		}
 	}

@@ -67,6 +67,7 @@ class MediaTrackerTest {
 		MediaTracker tracker = new MediaTracker(source, () -> false);
 		List<Track> changes = new CopyOnWriteArrayList<>();
 		tracker.onTrackChange(changes::add);
+		tracker.onDetailsChange(changes::add); // a late length, cover or artist is passed on too (as the same song)
 		try {
 			for (Track t : steps) {
 				source.then(t);
@@ -97,6 +98,33 @@ class MediaTrackerTest {
 	}
 
 	@Test
+	void aLateLengthIsPassedOnAsTheSameSongNotANewOne() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		MediaTracker tracker = new MediaTracker(source, () -> false);
+		List<Track> songs = new CopyOnWriteArrayList<>();
+		List<Track> details = new CopyOnWriteArrayList<>();
+		tracker.onTrackChange(songs::add);
+		tracker.onDetailsChange(details::add);
+		try {
+			for (Track t : new Track[] {song(0, ""), song(0, ""), song(215_000, "")}) {
+				source.then(t);
+				tracker.refresh();
+			}
+			tracker.refresh();
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+			while (source.polls.get() < 4) {
+				assertTrue(System.nanoTime() < until, "timed out");
+				Thread.sleep(5);
+			}
+		} finally {
+			tracker.shutdown();
+		}
+		assertEquals(1, songs.size(), songs.toString());
+		assertEquals(1, details.size(), details.toString());
+		assertEquals(215_000, details.get(0).lengthMs());
+	}
+
+	@Test
 	void coverThatArrivesLateIsPassedOn() throws InterruptedException {
 		List<Track> changes = run(song(215_000, ""), song(215_000, "file:///tmp/cover.png"));
 		assertEquals(2, changes.size(), changes.toString());
@@ -110,6 +138,7 @@ class MediaTrackerTest {
 		List<Track> changes = new CopyOnWriteArrayList<>();
 		List<Track> covers = new CopyOnWriteArrayList<>();
 		tracker.onTrackChange(changes::add);
+		tracker.onDetailsChange(changes::add);
 		tracker.onCoverChange(covers::add);
 		try {
 			for (Track t : steps) {

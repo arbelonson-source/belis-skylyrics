@@ -142,6 +142,22 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		Steps.run("flash", flash, failed);
 	}
 
+	/** Sets what the tracker's news about the song sets going: the cover, the Recently heard list, the lyrics and the bar's song flash. */
+	public static void listen(MediaTracker tracker, java.util.function.Consumer<Track> cover, java.util.function.Consumer<Track> heard,
+			java.util.function.Consumer<Track> lyrics, Runnable flash) {
+		// The tracker has already stored this song and will not call again for it, so one failing step must not cost the song its lyrics or cover
+		tracker.onTrackChange(track -> trackChanged(track, () -> cover.accept(track), () -> heard.accept(track), () -> lyrics.accept(track), flash));
+		// The same song with a late length, cover or artist: looked up again and remembered with it, but its name was
+		// already shown, and showing it again would cover the line being sung
+		tracker.onDetailsChange(track -> trackChanged(track, () -> cover.accept(track), () -> heard.accept(track), () -> lyrics.accept(track), () -> { }));
+		tracker.onCoverChange(track -> {
+			java.util.function.BiConsumer<String, RuntimeException> failed =
+					(step, e) -> LOG.warn("Cover change step '{}' failed: {}", step, e.toString());
+			// The cover only: the lyrics and the song flash are already running for this song
+			Steps.run("cover", () -> cover.accept(track), failed);
+		});
+	}
+
 	@Override
 	public void onInitializeClient() {
 		instance = this;
@@ -165,14 +181,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		hud = new NowPlayingHud(tracker, lyrics, art);
 		card = new RecordCard(tracker, art, hud);
 
-		// The tracker has already stored this song and will not call again for it, so one failing step must not cost the song its lyrics or cover
-		tracker.onTrackChange(track -> trackChanged(track, () -> art.load(track), () -> heard.record(track), () -> lyrics.load(track), hud::flash));
-		tracker.onCoverChange(track -> {
-			java.util.function.BiConsumer<String, RuntimeException> failed =
-					(step, e) -> LOG.warn("Cover change step '{}' failed: {}", step, e.toString());
-			// The cover only: the lyrics and the song flash are already running for this song
-			Steps.run("cover", () -> art.load(track), failed);
-		});
+		listen(tracker, art::load, heard::record, lyrics::load, hud::flash);
 		tracker.start(500);
 
 		registerKeys();
