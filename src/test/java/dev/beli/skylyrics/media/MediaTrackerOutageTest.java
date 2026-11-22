@@ -243,7 +243,10 @@ class MediaTrackerOutageTest {
 	void theEmptyBarHintFollowsThePlatformAndTheReader() {
 		assertEquals("Play a song in Spotify, a browser or any player", MediaTracker.idleHint(true, false, false));
 		assertEquals("Play a song in Spotify or the Music app", MediaTracker.idleHint(true, true, false));
-		assertEquals("Play a song in Spotify, a browser or any player", MediaTracker.idleHint(true, true, true));
+		// Spotify Web follows only the Spotify account (on any device): another player or a browser video never shows
+		assertEquals("Play a song in Spotify on any device", MediaTracker.idleHint(true, false, true));
+		assertEquals("Play a song in Spotify on any device", MediaTracker.idleHint(true, true, true));
+		assertEquals("", MediaTracker.idleHint(false, false, true));
 		assertEquals("", MediaTracker.idleHint(false, false, false));
 		assertEquals("", MediaTracker.idleHint(false, true, false));
 	}

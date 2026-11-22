@@ -957,6 +957,24 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void aLocalFileReadsLikeASongWithItsOwnAddress() {
+		// A song from the computer's own files in Spotify: no id, nulls where Spotify has nothing, no cover
+		String body = """
+				{"timestamp": 1700000000000, "progress_ms": 12000, "is_playing": true, "currently_playing_type": "track",
+				 "item": {"id": null, "href": null, "is_local": true, "type": "track", "duration_ms": 215000, "popularity": 0,
+				  "name": "Neon Skyline", "uri": "spotify:local:Beli:Night+Drive:Neon+Skyline:215",
+				  "artists": [{"id": null, "href": null, "uri": null, "name": "Beli", "type": "artist"}],
+				  "album": {"id": null, "href": null, "uri": null, "name": "", "images": [], "release_date": null}}}
+				""";
+		Snapshot s = SpotifyWebSource.parse(body, 7);
+		assertEquals(new Track("Neon Skyline", "Beli", "", 215000, "", "Spotify", "spotify:local:Beli:Night+Drive:Neon+Skyline:215"), s.track());
+		assertEquals(12000, s.positionMs());
+		assertTrue(s.playing());
+		// Another file with the same tags is another song
+		assertTrue(s.track().otherUri(new Track("Neon Skyline", "Beli", "", 215000, "", "Spotify", "spotify:local:Beli:Night+Drive:Neon+Skyline:216")));
+	}
+
+	@Test
 	void oldTempFilesOfTheSignInAreRemovedAtStart(@TempDir Path dir) throws Exception {
 		Path login = dir.resolve("login.json");
 		Path stale = Files.writeString(dir.resolve("login.json.4411.tmp"), "token");
