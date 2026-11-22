@@ -301,7 +301,7 @@ public final class NowPlayingHud {
 		LyricsService.Snapshot snap = service.snapshot().forSong(track);
 		Content line = cfg.barLyrics ? currentLine(cfg, snap.lyrics()) : null;
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
-		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg, snap.lyrics());
+		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(snap.lyrics(), lyricsTime(cfg));
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
 		*///?} else {
@@ -1212,14 +1212,14 @@ public final class NowPlayingHud {
 	}
 
 	/**
-	 * The song is playing between its first and last line (it may be a gap between lines now). Paused, or in a
-	 * long outro after the last line, the bar goes back to hiding.
+	 * The song is between its first and last line (it may be a gap between lines now), playing or paused: the bar
+	 * bridges the gaps instead of blinking off and on, and a pause keeps it as it is, between lines as on a line (whose
+	 * line stays while paused). Before the first line, or in a long outro after the last line, the bar goes back to hiding.
 	 */
-	private boolean singing(SkyLyricsConfig cfg, Lyrics lyrics) {
-		if (!tracker.playing() || !lyrics.synced() || lyrics.isEmpty()) {
+	static boolean singing(Lyrics lyrics, long time) {
+		if (!lyrics.synced() || lyrics.isEmpty()) {
 			return false;
 		}
-		long time = lyricsTime(cfg);
 		return lyrics.indexAt(time) >= 0 && time <= lyrics.get(lyrics.lines().size() - 1).timeMs() + LAST_LINE_MS;
 	}
 
