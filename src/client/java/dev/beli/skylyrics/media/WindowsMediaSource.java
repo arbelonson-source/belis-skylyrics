@@ -91,6 +91,8 @@ public final class WindowsMediaSource implements MediaSource {
 	LongSupplier wallMillis = System::currentTimeMillis;
 	/** A clock that only runs forward, in ns; positions are counted on it, so a clock change cannot move them. */
 	LongSupplier monoNanos = System::nanoTime;
+	/** Opens the helper script inside the mod's jar (null when it isn't there); tests swap in a jar without it. */
+	Supplier<@Nullable InputStream> bundledScript = () -> WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT);
 	private final Requester requester;
 	private boolean wasLooking = true;
 	/** Counts close() calls, so a poll in flight (which holds the lock close() must not wait for) can tell. */
@@ -570,20 +572,31 @@ public final class WindowsMediaSource implements MediaSource {
 				dev.beli.skylyrics.util.SafeFile.PAUSE_MS);
 	}
 
+	/**
+	 * The helper script as the mod's jar has it. A jar without it, or with it damaged, can only be mended by getting the
+	 * mod again, so that is what the player is told; what Java said stays the cause, for the log.
+	 */
+	static byte[] scriptBytes(Supplier<@Nullable InputStream> jar) throws IOException {
+		String again = Tr.t("The Windows music reader is missing from the mod. Download SkyLyrics again");
+		InputStream in = jar.get();
+		if (in == null) {
+			throw new IOException(again, new java.io.FileNotFoundException(SCRIPT + " is not in the mod's jar"));
+		}
+		try (in) {
+			return in.readAllBytes();
+		} catch (IOException e) {
+			throw new IOException(again, e);
+		}
+	}
+
 	private void start() throws IOException, InterruptedException {
 		Path covers = dir.resolve("covers");
 		Path script = dir.resolve(SCRIPT);
+		byte[] bytes = scriptBytes(bundledScript);
 		try {
 			Files.createDirectories(covers);
 			deleteStaleCovers(covers); // left over from a game that has closed
 			dev.beli.skylyrics.util.Leftovers.cleanTemps(dir, SCRIPT, System.currentTimeMillis()); // a killed game's script temp
-			byte[] bytes;
-			try (InputStream in = WindowsMediaSource.class.getResourceAsStream("/skylyrics/" + SCRIPT)) {
-				if (in == null) {
-					throw new IOException(SCRIPT + " is missing from the mod");
-				}
-				bytes = in.readAllBytes();
-			}
 			// Rewriting an unchanged file can collide with an antivirus scanning it
 			if (!Files.isRegularFile(script) || !Arrays.equals(Files.readAllBytes(script), bytes)) {
 				writeScript(script, bytes, Files::move);
