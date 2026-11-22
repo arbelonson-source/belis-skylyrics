@@ -1,0 +1,72 @@
+# Lyric text in the sky, the top bar and on the Record card, fix/text120 (1280x720, GUI scale 2 as the test world starts).
+# Three made-up test lines, one every 6 s: an Arabic line (0-6 s), an English line with an emoji's colour selector
+# (VS16) after the sparkles and the heart (6-12 s), and a long Arabic line (12-18 s). The bar shows the line being sung
+# and the card in the bottom right its lyric strip. Each shot, the branch against origin/fix/bar119:
+# 1. text120-lines-arabic (Lines, the Arabic line sung, the heart line dim under it): with the old code the Arabic line
+#    breaks into two short rows (cut after the fifth word); on the branch it is one row (about 210 units), centred.
+#    text120-lines-heart (the heart line sung): with the old code a dashed box with "VS16" in it follows the sparkles
+#    and the heart in the sky, in the top bar and on the card; on the branch no boxes. The dim Arabic lines above
+#    and below it: one row and two rows on the branch, two and three with the old code.
+#    text120-lines-long (the long Arabic line sung): with the old code three short rows (about 155, 140 and 125 units);
+#    on the branch two fuller rows (about 430 units between them), the same words in the same order.
+# 2. text120-arc-arabic: the Arc layout's Arabic line, words joined and centred: the same on both (Arc and World
+#    already measure what they draw; this is the check that they still do). text120-arc-heart: the old code shows the
+#    "VS16" boxes after the sparkles and the heart (and in the bar and on the card); the branch none.
+# 3. text120-world-arabic / text120-world-heart: the same two lines in the World layout: the Arabic words the same on
+#    both; the "VS16" boxes after the sparkles and the heart only with the old code.
+# Run it, and with -f mod_ref=fix/bar119 to compare with the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/text120 -f version=1.21.11 -f script=.github/checks/text120.txt
+#   gh workflow run screenshots.yml --ref fix/text120 -f version=1.21.11 -f mod_ref=fix/bar119 -f script=.github/checks/text120.txt
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set barLyrics true
+set hudOnlyOnChange false
+set recordCard true
+set cardLyrics true
+set cardLines 1
+set cardCorner BOTTOM_RIGHT
+set layout LINES
+look 0 -22
+sleep 6
+fastlines 6000 نمشي معا تحت ضوء القمر الهادئ في الليل الطويل | ✨️ Paper hearts ❤️ glow in the rain | نمشي معا تحت ضوء القمر الهادئ في الليل حتى يعود الصباح إلى المدينة النائمة وتغني الطيور فوق البحر
+
+# 1. Lines
+seek 0
+sleep 3
+where
+shot text120-lines-arabic
+sleep 6
+where
+shot text120-lines-heart
+sleep 6
+where
+shot text120-lines-long
+
+# 2. Arc: the words come in as they are sung, so each shot is late in its line
+set layout ARC
+seek 0
+sleep 4.5
+where
+shot text120-arc-arabic
+sleep 6
+where
+shot text120-arc-heart
+
+# 3. World
+set layout WORLD
+seek 0
+sleep 4.5
+where
+shot text120-world-arabic
+sleep 6
+where
+shot text120-world-heart
+
+# Back as the test world starts
+set recordCard false
+set hudOnlyOnChange true
+look 0 -28
+sleep 2

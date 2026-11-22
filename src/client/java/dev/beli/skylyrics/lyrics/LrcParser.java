@@ -36,9 +36,10 @@ public final class LrcParser {
 	// Lyrics copied from websites often use thin, wide or no-break spaces between words, which the floating words
 	// would not split on; any run of them becomes one plain space
 	private static final Pattern SPACES = Pattern.compile("[\\s\\p{Zs}]+");
-	// Zero-width spaces and stray byte order marks are invisible but would sit inside words; embeddings, overrides and
-	// isolates would flip a line (RLM, LRM and ALM stay, right-to-left lyrics need them), the same as in Track.clean
-	private static final Pattern INVISIBLE = Pattern.compile("[\\u200B\\u2060\\uFEFF\\u202A-\\u202E\\u2066-\\u2069]");
+	// Embeddings, overrides and isolates would flip a line (RLM, LRM and ALM stay, right-to-left lyrics need them), the
+	// same as in Track.clean. The invisible characters that would draw as a box (an emoji's style selector, a zero-width
+	// space or word joiner inside a word, a stray byte order mark) go by Track.dropBoxes, as they do from song names
+	private static final Pattern INVISIBLE = Pattern.compile("[\\u202A-\\u202E\\u2066-\\u2069]");
 
 	// Control characters would show as boxes (tab becomes a space with the other spaces)
 	private static final Pattern CONTROL = Pattern.compile("[\\p{Cc}&&[^\\t]]");
@@ -212,7 +213,8 @@ public final class LrcParser {
 	}
 
 	static String tidy(String text) {
-		return SPACES.matcher(CONTROL.matcher(INVISIBLE.matcher(dev.beli.skylyrics.media.Track.stripCodes(text)).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
+		String visible = dev.beli.skylyrics.media.Track.dropBoxes(INVISIBLE.matcher(dev.beli.skylyrics.media.Track.stripCodes(text)).replaceAll(""));
+		return SPACES.matcher(CONTROL.matcher(visible).replaceAll("")).replaceAll(" ").strip();
 	}
 
 	/** At most this many different lines share one stamp as one line: an original, its romanization and a translation. */
