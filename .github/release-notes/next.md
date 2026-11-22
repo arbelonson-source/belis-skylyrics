@@ -282,6 +282,7 @@
 - **Spotify without Premium.** When the Spotify account that created your Spotify app has no Premium (Spotify needs it for these apps), the Music tab and the song library now say so, instead of telling you to add your account under User Management, which didn't help.
 - **Spotify's own sign-in errors.** While Spotify's sign-in page is open, the Music tab now says what to check if Spotify shows INVALID_CLIENT: the Client ID, and that your Spotify app has the Redirect URI exactly as shown. Before, a wrong Client ID or a missing or mistyped Redirect URI left it at "Waiting for your browser…" until the sign-in timed out five minutes later.
 - **Pasting the Client ID.** A Client ID copied with quotes, a label like "Client ID:" or a web page's spaces around it, or inside the address of its page on the Spotify dashboard, is now picked out when you press **Paste**, instead of showing "That isn't a Client ID".
+- **Browsing the song library for hours.** On 1.21.4 and 1.21.5, every album cover the song library showed left a little memory behind until the game closed, so browsing for an evening slowly added to the game's memory use. Covers now take over the texture names of the ones that scrolled out of the cover memory, so the number stays the same however long you browse.
 
 ### Faster
 

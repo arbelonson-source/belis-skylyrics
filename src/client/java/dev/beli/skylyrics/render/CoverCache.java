@@ -56,7 +56,8 @@ public final class CoverCache {
 	/** One cover. Only handed out once it's on the GPU. */
 	public static final class Cover {
 		private final String url;
-		private final Identifier id;
+		/** Its texture name, given when it goes on the GPU (see {@link CoverCache#upload}); render thread only. */
+		private @Nullable Identifier id;
 		private volatile @Nullable NativeImage image;
 		private volatile boolean dropped;
 		private volatile int color = AlbumArt.FALLBACK_COLOR;
@@ -67,11 +68,11 @@ public final class CoverCache {
 		private boolean uploaded;
 		private long shownAt;
 
-		private Cover(String url, Identifier id) {
+		private Cover(String url) {
 			this.url = url;
-			this.id = id;
 		}
 
+		/** Its texture name. Only for a cover {@link CoverCache#get(String)} handed out, which is on the GPU. */
 		public Identifier id() {
 			return id;
 		}
@@ -132,7 +133,16 @@ public final class CoverCache {
 	private final LinkedBlockingDeque<Cover> waiting = new LinkedBlockingDeque<>();
 	private final ConcurrentLinkedQueue<Cover> ready = new ConcurrentLinkedQueue<>();
 	private final List<Thread> threads = new ArrayList<>();
+	/** How many texture names were made; with {@link #freeIds} it stays about {@link #KEEP}. */
 	private int made;
+	/**
+	 * Texture names let go of by covers that left the cache, for the next covers put on the GPU. Minecraft 1.21.4 and 1.21.5
+	 * keep a menu render type for every texture name ever drawn until the game closes, so a new name for every cover would
+	 * add one for each cover seen in a long session of browsing. A name let go of while the library draws its covers is
+	 * only given out again by a later frame's {@link #upload}, which runs before the covers are drawn, so no cover is ever
+	 * drawn under the name another one had that frame. Render thread only.
+	 */
+	private final java.util.ArrayDeque<Identifier> freeIds = new java.util.ArrayDeque<>();
 
 	public CoverCache(Path dir) {
 		this.dir = dir;
@@ -155,7 +165,7 @@ public final class CoverCache {
 		}
 		Cover cover = covers.get(url);
 		if (cover == null) {
-			cover = new Cover(url, Identifier.fromNamespaceAndPath("skylyrics", "dynamic/cover/" + made++));
+			cover = new Cover(url);
 			covers.put(url, cover);
 			start();
 			waiting.offerFirst(cover);
@@ -191,12 +201,12 @@ public final class CoverCache {
 				image.close();
 				continue;
 			}
-			DynamicTexture texture = new DynamicTexture(() -> "SkyLyrics cover", image) {
-				{
-					sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
-				}
-			};
-			Minecraft.getInstance().getTextureManager().register(cover.id, texture);
+			Identifier id = freeIds.pollFirst();
+			if (id == null) {
+				id = Identifier.fromNamespaceAndPath("skylyrics", "dynamic/cover/" + made++);
+			}
+			textures.register(id, image);
+			cover.id = id;
 			cover.uploaded = true;
 			cover.shownAt = System.nanoTime();
 		}
@@ -215,9 +225,40 @@ public final class CoverCache {
 		cover.dropped = true;
 		if (cover.uploaded) {
 			cover.uploaded = false;
-			Minecraft.getInstance().getTextureManager().release(cover.id);
+			textures.release(cover.id);
+			freeIds.add(cover.id);
 		}
 	}
+
+	/** Puts covers on the GPU under a texture name and takes them off again; tests, which have no game, swap it. */
+	interface Textures {
+		void register(Identifier id, NativeImage image);
+
+		void release(Identifier id);
+	}
+
+	/** The game's texture manager. */
+	private static final class GameTextures implements Textures {
+		@Override
+		public void register(Identifier id, NativeImage image) {
+			DynamicTexture texture = new DynamicTexture(() -> "SkyLyrics cover", image) {
+				{
+					sampler = RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR);
+				}
+			};
+			Minecraft.getInstance().getTextureManager().register(id, texture);
+		}
+
+		@Override
+		public void release(Identifier id) {
+			Minecraft.getInstance().getTextureManager().release(id);
+		}
+	}
+
+	/** Render thread only. */
+	Textures textures = new GameTextures();
+	/** Turns a downloaded cover into the rounded square the GPU gets; tests swap in one that holds no native memory. */
+	java.util.function.Function<BufferedImage, NativeImage> toImage = image -> AlbumArt.shrink(image, SIZE, CORNER);
 
 	private void start() {
 		if (!threads.isEmpty()) {
@@ -261,7 +302,7 @@ public final class CoverCache {
 				return;
 			}
 			cover.color = AlbumArt.pickColor(image);
-			cover.image = AlbumArt.shrink(image, SIZE, CORNER);
+			cover.image = toImage.apply(image);
 			ready.add(cover);
 		} catch (InterruptedException e) {
 			// shutting down: keep the flag so work() ends
