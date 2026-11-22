@@ -555,5 +555,8 @@
   "skylyrics.ui.search_cleared": "Busca limpa",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab muda de seção, as setas movem, Enter toca ou abre, Cima na primeira linha chega aos botões de visualização e às buscas recentes, Esc volta e digitar busca",
   "skylyrics.ui.1_playlist": "1 playlist",
-  "skylyrics.ui.s_playlists": "%s playlists"
+  "skylyrics.ui.s_playlists": "%s playlists",
+  "skylyrics.ui.spotify_is_having_problems_right_now": "O Spotify está com problemas agora",
+  "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "O Spotify está recebendo pedidos demais, espere um momento",
+  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "O leitor de música do Windows está faltando no mod. Baixe o SkyLyrics de novo"
 }

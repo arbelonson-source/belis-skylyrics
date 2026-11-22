@@ -555,5 +555,8 @@
   "skylyrics.ui.search_cleared": "Пошук очищено",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab змінює розділ, стрілки — перехід, Enter вмикає або відкриває, стрілка вгору з верхнього ряду — кнопки вигляду й нещодавні запити, Esc — назад, а введення тексту запускає пошук",
   "skylyrics.ui.1_playlist": "1 плейлист",
-  "skylyrics.ui.s_playlists": "Плейлистів: %s"
+  "skylyrics.ui.s_playlists": "Плейлистів: %s",
+  "skylyrics.ui.spotify_is_having_problems_right_now": "У Spotify зараз проблеми",
+  "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify отримує забагато запитів, зачекайте трохи",
+  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "У моді немає модуля читання музики для Windows. Завантажте SkyLyrics ще раз"
 }

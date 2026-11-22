@@ -78,7 +78,9 @@ class LibraryFitTest {
 						shown(all, lang, "Spotify blocked this app. On the Spotify dashboard, add your account under User Management"),
 						shown(all, lang, "Sign out and sign in again on the Music tab to use the song library"),
 						shown(all, lang, "Spotify signed you out, sign in again"),
-						shown(all, lang, "Spotify no longer accepts your Client ID, check it and sign in again"));
+						shown(all, lang, "Spotify no longer accepts your Client ID, check it and sign in again"),
+						shown(all, lang, "Spotify is having problems right now"),
+						shown(all, lang, "Spotify is getting too many requests, wait a moment"));
 				for (String error : errors) {
 					if (width(error) < 0) {
 						continue;

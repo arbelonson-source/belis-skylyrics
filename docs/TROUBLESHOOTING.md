@@ -68,6 +68,8 @@ The mod reads the media controls that Windows shows when you press a media key o
 
 The helper writes its own error messages to `.cache\skylyrics\windows\windows-media.log` in your Minecraft folder. That file is useful to include if you [ask for help](#still-stuck). If the helper fails, or starts but never answers, the mod tries again on its own, first after 15 seconds and then less and less often, up to every 5 minutes.
 
+**"The Windows music reader is missing from the mod. Download SkyLyrics again"** means the SkyLyrics file in your `mods` folder is incomplete or damaged (a download cut short, or a copy someone repacked). Download the jar for your Minecraft version again from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases) and put it in place of the old one.
+
 **"The Windows music reader stopped right away…"** The Music tab shows this when PowerShell started and quit at once. PowerShell's own message follows in brackets, for example one about Constrained Language Mode or AppLocker. That means the computer is set up to block PowerShell, which is common on school and work PCs. The mod can't change that, and only whoever looks after the PC (your school or IT) can allow it. You can use the mod anyway: on the **Music** tab set **Player** to **Spotify Web** and sign in to Spotify there. Spotify Web asks Spotify over the internet, so it doesn't need PowerShell, and while it is picked the mod stops the PowerShell helper (see "Can it follow Spotify on my phone or another computer?" in the [FAQ](FAQ.md)).
 
 ### On Linux
@@ -200,7 +202,9 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 - **"Can't reach the internet or Spotify"**: your internet (or Spotify) isn't answering. Check that a web page opens, then try again.
 - **"Spotify no longer accepts your Client ID, check it and sign in again"**: your Spotify app was deleted or reset, so you are signed out. Check the Client ID in your app on the Spotify dashboard (or make a new app), paste it, and press **Sign in**.
 - **"Sign-in timed out"**: the Spotify page in your browser wasn't answered within 5 minutes. Press **Sign in** again.
-- **Spotify is busy**: when Spotify says there are too many requests, the mod waits as long as Spotify asks before trying again. No message shows, and there is nothing for you to do.
+- **Spotify is busy**: when Spotify says there are too many requests, the mod waits as long as Spotify asks before trying again. Usually no message shows; if it happens while you sign in or the sign-in is renewed, it says "Spotify is getting too many requests, wait a moment". There is nothing for you to do but wait.
+- **"Spotify is having problems right now"**: Spotify's own servers are failing. The mod keeps trying by itself; to sign in, press **Sign in** again a little later.
+- **"Sign-in failed: Something went wrong, try again"**: Spotify didn't take this sign-in, or sent an answer the mod couldn't read. Press **Sign in** again. What Spotify said is in the game log, which helps if you [ask for help](#still-stuck).
 
 ## The mod says a new version is out, but won't install it
 

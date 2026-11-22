@@ -134,7 +134,7 @@ public final class MediaTracker {
 			if (e instanceof java.net.UnknownHostException || e instanceof java.net.ConnectException
 					|| e instanceof java.net.NoRouteToHostException || e instanceof java.net.SocketTimeoutException
 					|| e instanceof java.net.http.HttpTimeoutException
-					|| e instanceof java.nio.channels.UnresolvedAddressException) {
+					|| e instanceof java.nio.channels.UnresolvedAddressException || e instanceof SpotifyWebSource.Unreachable) {
 				return true;
 			}
 			// The HTTP client's own "no connection" error has no text at all
@@ -143,6 +143,11 @@ public final class MediaTracker {
 			}
 		}
 		return false;
+	}
+
+	/** Java's or a server's own words behind a failure, for the log, when the player was shown other words; else nothing. */
+	static String rawDetail(Throwable failure, String shown) {
+		return failure.getCause() == null && shown.equals(failure.getMessage()) ? "" : " (" + dev.beli.skylyrics.util.LogText.chain(failure) + ")";
 	}
 
 	/** Whether the source only isn't set up yet (no Client ID, not signed in): the player has a step to do, nothing failed. */
@@ -161,10 +166,17 @@ public final class MediaTracker {
 		return mac && !webPlayer ? Tr.t("Play a song in Spotify or the Music app") : Tr.t("Play a song in Spotify, a browser or any player");
 	}
 
-	/** What the status shows for a failed read: the internet's fault when it is, else the message. */
+	/**
+	 * What the status shows for a failed read: the internet's fault when it is, else the reader's own sentence. Every
+	 * reader puts that sentence in an IOException; anything else holds Java's or a library's own English (a bug, D-Bus
+	 * not answering), which only the log gets.
+	 */
 	static String failureText(Throwable e) {
-		return networkFailure(e) ? Tr.t("Can't reach the internet or Spotify")
-				: errorText(e.getMessage(), Tr.t("Couldn't read your music player"));
+		if (networkFailure(e)) {
+			return Tr.t("Can't reach the internet or Spotify");
+		}
+		String fallback = Tr.t("Couldn't read your music player");
+		return e instanceof java.io.IOException ? errorText(e.getMessage(), fallback) : fallback;
 	}
 
 	/** A late length, cover or artist is worth passing on (lyrics lookup, cover); a late album alone is not. */
@@ -218,7 +230,7 @@ public final class MediaTracker {
 				if (setupPending(failure)) {
 					LOG.debug("The music player isn't set up yet: {}", error); // waiting for the player to do a step, not a problem
 				} else {
-					LOG.warn("Couldn't read the music player: {}", error);
+					LOG.warn("Couldn't read the music player: {}{}", error, rawDetail(failure, error));
 				}
 				loggedError = true;
 				outageWarnings++;

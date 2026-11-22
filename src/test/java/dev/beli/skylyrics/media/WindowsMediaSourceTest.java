@@ -838,4 +838,27 @@ class WindowsMediaSourceTest {
 		assertEquals("Song", source.poll().track().title());
 		assertEquals(3, asks[0], "a failure is not reused: the helper's own back-off decides how often it really starts");
 	}
+
+	/** A jar without the helper script (cut down, or damaged) can only be mended by getting the mod again: the Status line says so. */
+	@Test
+	void aModWithoutItsWindowsReaderSaysToDownloadItAgain() throws Exception {
+		String again = "The Windows music reader is missing from the mod. Download SkyLyrics again";
+		java.util.function.Supplier<java.io.InputStream> damaged = () -> new java.io.InputStream() {
+			@Override
+			public int read() throws IOException {
+				throw new java.util.zip.ZipException("invalid stored block lengths");
+			}
+		};
+		for (java.util.function.Supplier<java.io.InputStream> jar : List.<java.util.function.Supplier<java.io.InputStream>>of(() -> null, damaged)) {
+			WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> List.of("never-started"), START_MS, REPLY_MS);
+			source.bundledScript = jar;
+			try {
+				IOException e = assertThrows(IOException.class, source::poll);
+				assertEquals(again, MediaTracker.failureText(e));
+				assertFalse(Files.exists(dir.resolve("windows-media.ps1")), "no empty helper written");
+			} finally {
+				source.close();
+			}
+		}
+	}
 }
