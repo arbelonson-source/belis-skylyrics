@@ -1,0 +1,73 @@
+# World words and twinkling stars while you move fast or travel, fix/move123 (1280x720, 1.21.11, the demo song).
+# `cmd` runs as the server, not the player, so anything placed at the player goes through `execute at @p`. Boats are
+# minecraft:oak_boat since 1.21.2 (minecraft:boat on 1.21.1). Each shot, the branch against main:
+# 1. A long fall with Elytra mode off (survival, Resistance V so the landing doesn't hurt): move123-fall_00..09 are taken
+#    while you fall past 30 blocks a second from y 320. On main the words sung during the fall come down with you and
+#    stay round you in every frame, as if Elytra mode were on; on the branch each new word is left where it was put and
+#    shoots up out of the view within a few frames (most frames show only the newest word or none).
+#    move123-landed: on the ground again, the same on both (new words round you).
+# 2. Riding a boat (Elytra mode on, it counts as riding), with more and bigger words so some slide apart: before the
+#    turn (move123-boat-before) and right after a quarter turn to the west (move123-boat-turn_00..05, move123-boat-after).
+#    On the branch the words keep their places beside each other through the turn (the same arrangement, turned with
+#    you). On main a word that had slid aside out of another's way is put off its spot by the turn, onto or next to the
+#    word it moved away from, and glides apart again in the burst frames. Only words that had slid show it: compare
+#    pairs of words in move123-boat-before with move123-boat-after.
+# 3. Twinkling stars with World Direction N, still riding, looking east (move123-stars-riding-east): on the branch the
+#    stars twinkle round the words in front of you; on main the words are there but the stars stay in the north, out of
+#    this view. After getting off the boat (move123-stars-standing-east): the stars have gone back north on both, so
+#    none are round the words that came while riding; the words of the next lines go north on both.
+# Run it, and with -f mod_ref=main to compare with the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/move123 -f version=1.21.11 -f script=.github/checks/move123.txt
+#   gh workflow run screenshots.yml --ref fix/move123 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/move123.txt
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout WORLD
+look 0 -10
+sleep 8
+
+# 1. Elytra mode off, a long fall
+set worldGlide false
+cmd gamemode survival @p
+cmd effect give @p minecraft:resistance 60 4 true
+cmd execute as @p at @s run tp @s ~ 320 ~ 0 -10
+sleep 1.5
+burst move123-fall 10 300
+sleep 7
+shot move123-landed
+cmd gamemode creative @p
+set worldGlide true
+
+# 2. Riding a boat, a quarter turn
+set worldWords 14
+set size 1.6
+cmd execute at @p run summon minecraft:oak_boat ~ ~ ~
+sleep 1
+cmd ride @p mount @e[type=minecraft:oak_boat,limit=1,sort=nearest]
+look 0 -10
+sleep 10
+shot move123-boat-before
+look 90 -10
+burst move123-boat-turn 6 150
+sleep 2
+shot move123-boat-after
+
+# 3. Twinkling stars with Direction N while riding, then standing
+set worldWords 7
+set size 1
+set twinkle true
+set direction NORTH
+look -90 -20
+sleep 6
+shot move123-stars-riding-east
+cmd ride @p dismount
+sleep 5
+shot move123-stars-standing-east
+
+# Leave it as it was
+cmd kill @e[type=minecraft:oak_boat]
+set direction FOLLOW
+set twinkle false
+look 0 -10
