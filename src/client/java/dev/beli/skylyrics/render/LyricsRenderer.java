@@ -23,6 +23,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.StringSplitter;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -1983,6 +1984,15 @@ public final class LyricsRenderer {
 			return hit;
 		}
 
+		/**
+		 * The letters {@link #of(String, boolean)} draws, left to right, worked out afresh: for measuring the many trial
+		 * rows of a wrap, which would push the rows being drawn out of the caches.
+		 */
+		static String shown(String row, boolean rtl) {
+			int[] cps = compute(row, rtl).cps;
+			return new String(cps, 0, cps.length);
+		}
+
 		/** Rows drawn right to left on purpose, kept apart from the default-direction {@link #CACHE}; same size and LRU. */
 		private static final Map<String, Display> CACHE_RTL = lru();
 		/** Likewise for rows drawn left to right on purpose (the first strong letter would decide by default). */
@@ -2277,7 +2287,18 @@ public final class LyricsRenderer {
 	}
 
 	static List<String> wrap(Font font, Style style, String text, float maxWidth) {
-		return wrap(s -> LyricsFont.width(font, style, s), text, maxWidth);
+		return wrap(font.getSplitter(), style, text, maxWidth);
+	}
+
+	/**
+	 * {@link #wrap(Font, Style, String, float)} on a splitter. Each row is measured as {@link Draw#line} draws it and
+	 * centres it: its letters in the line's direction, Arabic joined, without the marks the sky leaves out
+	 * ({@link Display}). Joined Arabic letters are far narrower than the same letters standing alone: measured alone, an
+	 * Arabic line that fits broke in two, and a long one took more rows than it needs, each much shorter than the room.
+	 */
+	static List<String> wrap(StringSplitter splitter, Style style, String text, float maxWidth) {
+		boolean rtl = WorldWords.rightToLeft(text);
+		return wrap(s -> LyricsFont.width(splitter, style, Display.shown(s, rtl)), text, maxWidth);
 	}
 
 	/** {@link #wrap(Font, Style, String, float)} with the width measure passed in, so it can be tested without a game. */

@@ -50,7 +50,7 @@ class JoinedArabicWidthTest {
 	}
 
 	/** The fonts a font file lists, at the size it gives them. */
-	private static List<Font> fonts(String name) throws Exception {
+	static List<Font> fonts(String name) throws Exception {
 		JsonObject json;
 		try (var r = new InputStreamReader(open("/assets/skylyrics/font/" + name + ".json"), StandardCharsets.UTF_8)) {
 			json = JsonParser.parseReader(r).getAsJsonObject();
@@ -70,7 +70,7 @@ class JoinedArabicWidthTest {
 	}
 
 	/** Letter widths from the first font that has the letter; one the test's letters never need is a plain 6. */
-	private static StringSplitter splitter(List<Font> fonts) {
+	static StringSplitter splitter(List<Font> fonts) {
 		FontRenderContext frc = new FontRenderContext(null, false, true);
 		return new StringSplitter((cp, style) -> {
 			for (Font f : fonts) {
