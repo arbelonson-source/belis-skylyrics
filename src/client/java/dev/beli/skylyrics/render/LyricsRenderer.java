@@ -441,7 +441,7 @@ public final class LyricsRenderer {
 
 		boolean sky = cfg.placement == Placement.SKY;
 		float angular = rowAngle(sky, cfg.size);
-		float wrapWidth = sky ? 230 : 190;
+		float wrapWidth = sky ? SKY_WRAP : 190;
 		double tanHalf = tanHalfWide(mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight());
 		boolean arcRows = cfg.layout == Layout.ARC && !shown.instrumental();
 		if (!arcRows) {
@@ -456,7 +456,8 @@ public final class LyricsRenderer {
 			}
 		}
 		float distance = sky
-				? skyDistance(cfg.distance, mc.options.getEffectiveRenderDistance(), reach(halfWide(arcRows, wrapWidth, angular, tanHalf), angular))
+				? skyDistance(cfg.distance, mc.options.getEffectiveRenderDistance(),
+						skyReach(arcRows, cfg.size, mc.options.fov().get(), mc.getWindow().getWidth(), mc.getWindow().getHeight()))
 				: floatingDistance(cfg.distance);
 		float scale = distance * (float) Math.tan(angular * DEG) / ROW_H;
 		wrapAt(mc, cfg, wrapWidth);
@@ -990,11 +991,26 @@ public final class LyricsRenderer {
 	 * blocks the sky paints over, and with a shader pack by the sky's own depth (see {@link PaintedSkyType}). The default
 	 * Distance (64) is kept at render distance 9 and more
 	 * (8 for the stacked lines). Never nearer than 8 blocks, unless even that would reach past the sky (render distance 2
-	 * with a big Size and a wide view).
+	 * with a big Size and a wide view). The Distance slider reads this too.
 	 */
-	static float skyDistance(float distance, int renderDistanceChunks, float reach) {
+	public static float skyDistance(float distance, int renderDistanceChunks, float reach) {
 		float wanted = Math.max(8, Math.min(distance, renderDistanceChunks * 16 * 0.8f));
 		return Math.min(wanted, SkyEffects.paintedNearest(renderDistanceChunks) / reach);
+	}
+
+	/** How wide a row of the stacked lines in the Sky may be, in text units, before {@link #rowWidth} narrows it for the view. */
+	static final float SKY_WRAP = 230;
+
+	/**
+	 * {@link #reach} of the lyrics in the Sky: an Arc line ({@code arc}) or the stacked lines, at this Size, FOV slider
+	 * (vertical, degrees) and window size in pixels, worked out as the render loop does, which uses it to find
+	 * {@link #skyDistance}; the Distance slider reads it to show that distance.
+	 */
+	public static float skyReach(boolean arc, float size, double fovDeg, int width, int height) {
+		float angular = rowAngle(true, size);
+		double tanHalf = tanHalfWide(fovDeg, width, height);
+		float wrapWidth = arc ? SKY_WRAP : rowWidth(SKY_WRAP, angular, tanHalf);
+		return reach(halfWide(arc, wrapWidth, angular, tanHalf), angular);
 	}
 
 	/**

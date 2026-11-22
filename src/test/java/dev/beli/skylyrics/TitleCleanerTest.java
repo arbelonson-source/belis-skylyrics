@@ -268,6 +268,22 @@ class TitleCleanerTest {
 	}
 
 	@Test
+	void aSongThatStartsWithFromKeepsItsArtistWhenItsFilmIsInBrackets() {
+		// A soundtrack song's video: "Artist - From Here On (from Film Soundtrack)". The film is named in the brackets after
+		// the song's own name, so the part after the dash is still the song; taken for a 'From "Film"' tag, the bar showed
+		// the whole video title by the channel, and the lyrics were looked up as a song called "Mira Vale"
+		for (String tail : new String[] {"(from The Quiet Harbor Soundtrack)", "(Movie Version)", "[From the Netflix Series Glass Tide]",
+				"(From \"The Quiet Harbor\" Soundtrack)"}) {
+			Track t = TitleCleaner.clean(track("Mira Vale - From Here On " + tail, "MiraValeVEVO", "firefox"));
+			assertEquals("Mira Vale", t.artist(), tail);
+			assertEquals("From Here On " + tail, t.title(), tail);
+		}
+		// A tag whose film comes before any bracket is still a tag
+		Track tag = TitleCleaner.clean(track("Paper Lanterns - From The Quiet Harbor Soundtrack (Deluxe)", "Mira Vale", "firefox"));
+		assertEquals("Mira Vale", tag.artist());
+	}
+
+	@Test
 	void artistDashSongStillSplitsWhenNoVersionWordEndsIt() {
 		Track a = TitleCleaner.clean(track("Avicii - Levels", "AviciiVEVO", "firefox"));
 		assertEquals("Avicii", a.artist());
