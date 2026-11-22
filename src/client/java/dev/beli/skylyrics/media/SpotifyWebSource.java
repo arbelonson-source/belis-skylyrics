@@ -164,6 +164,8 @@ public final class SpotifyWebSource implements MediaSource {
 	private long failDelayNs;
 	/** Quick re-asks still to make after Spotify answered empty right after a song (an ad, a device hand-off, a track change). */
 	private int recheck;
+	/** Quick asks still to make after a press Spotify took (Play, a seek, a song from the library); see {@link #pressTaken}. */
+	private volatile int afterPress;
 	/** Set to ask again right away (a control was used, or the sign-in changed). */
 	private volatile boolean pollNow = true;
 	/** Whether anything on screen shows the song; when not, the poll slows right down. */
@@ -905,6 +907,18 @@ public final class SpotifyWebSource implements MediaSource {
 
 	/** How many quick asks follow an empty answer that came right after a song, before the idle pace takes over. */
 	static final int RECHECK_POLLS = 3;
+	/** How many asks after a press Spotify took keep the playing pace, whatever Spotify answers. */
+	static final int AFTER_PRESS_POLLS = 3;
+
+	/**
+	 * Spotify took a press that changes what plays: ask about the song at once, and every second for the next few asks.
+	 * Right after a press Spotify often still reports the old state for a moment (paused, the last song, nothing), and
+	 * with that the idle pace would leave the lyrics standing (or the bar empty) for up to 4 s while the music plays.
+	 */
+	void pressTaken() {
+		afterPress = AFTER_PRESS_POLLS;
+		pollNow = true;
+	}
 
 	/** Notes that Spotify is being asked at {@code now}. */
 	void settle(long now) {
@@ -920,7 +934,7 @@ public final class SpotifyWebSource implements MediaSource {
 		if (pollNow) {
 			return true;
 		}
-		long wait = failures > 0 ? failDelayNs : SpotifyPace.intervalNs(last.playing() || recheck > 0, looking);
+		long wait = failures > 0 ? failDelayNs : SpotifyPace.intervalNs(last.playing() || recheck > 0 || afterPress > 0, looking);
 		return now - askedNs >= wait;
 	}
 
@@ -1001,6 +1015,9 @@ public final class SpotifyWebSource implements MediaSource {
 				return last;
 			}
 			default -> throw new BadStatus(response.statusCode());
+		}
+		if (afterPress > 0) {
+			afterPress--;
 		}
 		if (!last.track().isNone()) {
 			recheck = 0;
@@ -1198,6 +1215,8 @@ public final class SpotifyWebSource implements MediaSource {
 			HttpResponse<String> response = call(method, path, null);
 			if (response.statusCode() >= 300) {
 				LOG.debug("Spotify control {} answered {}", path, response.statusCode());
+			} else {
+				pressTaken();
 			}
 		} catch (IOException e) {
 			LOG.debug("Spotify control failed", e);
