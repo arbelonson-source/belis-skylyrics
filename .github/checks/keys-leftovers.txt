@@ -1,0 +1,66 @@
+# Leftovers of fix/keys107. Compare the branch with main by running it twice (the same version both times).
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch or commit> -f script=.github/checks/keys-leftovers.txt
+#
+# 1 (the game log): the Open settings and Open song library keys unbound, then 10 s in the world. On the branch the
+#   game log has no "Invalid key" line and no "GL ERROR" block, and it shows "Test hook: unbound key.skylyrics.open_settings"
+#   and "... key.skylyrics.library". main's test hook doesn't know "unbind" ("unknown command unbind"), so main can't
+#   show the errors this way; ClosedByKeyTest.anUnboundKeyIsNotAskedAbout is the proof against main. 26.3 never had them.
+# 2 (keys-cave-*): Hide in caves on, in a sealed stone room 30 blocks up (no sky light inside), Record card on.
+#   -dry: head in the air of the dark room: no lyrics, no top bar, no Record card (both).
+#   -pool: the room filled with water over your head (blue underwater view): still nothing (both).
+#   -sea: the roof replaced by a 5x5 water column open to the sky, head about 13 blocks under its surface (sky light
+#   about 1 there): the lyrics, the top bar and the Record card are back on the branch; main still shows nothing (it
+#   waited for the head to rise to 6 blocks under the surface).
+# 3 (keys-tour-he-2): the tour's layout page in Hebrew. The chosen layout's button (World, on the left) reads "> name <"
+#   with both marks pointing at the name, as in English (both). The game's own reorder code already says Hebrew
+#   doesn't flip them; this is the look in a real game.
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set recordCard true
+set cardLyrics true
+look 0 -20
+sleep 6
+
+# 1: both screen keys set to no key, then 200 ticks
+unbind skylyrics.open_settings
+unbind skylyrics.library
+sleep 10
+where
+
+# 2: a dark room, then a pool in it, then the pool opened up into a deep water column under the sky
+set hideInCaves true
+cmd execute as @p at @p run fill ~-3 ~29 ~-3 ~3 ~34 ~3 minecraft:stone hollow
+cmd execute as @p at @p run tp @s ~ ~30 ~
+sleep 3
+seek 21
+sleep 2
+shot keys-cave-dry
+cmd execute as @p at @p run fill ~-2 ~ ~-2 ~2 ~2 ~2 minecraft:water
+sleep 3
+seek 21
+sleep 2
+shot keys-cave-pool
+cmd execute as @p at @p run fill ~-3 ~5 ~-3 ~3 ~14 ~3 minecraft:stone
+cmd execute as @p at @p run fill ~-2 ~3 ~-2 ~2 ~14 ~2 minecraft:water
+sleep 3
+seek 21
+sleep 2
+shot keys-cave-sea
+
+# 3: back down, the tour in Hebrew, its layout page (Show me around, then Next)
+cmd execute as @p at @p run tp @s ~ ~-30 ~
+set hideInCaves false
+lang he_il
+sleep 15
+guiscale 3
+screen dev.beli.skylyrics.gui.IntroScreen
+sleep 3
+click 290 197
+sleep 2
+click 320 197
+sleep 2
+shot keys-tour-he-2
+close
