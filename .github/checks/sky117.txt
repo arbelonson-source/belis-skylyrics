@@ -1,0 +1,112 @@
+# The night skies' depth, fix/sky117 (1280x720, GUI scale 2 as the test world starts: render distance 6, clouds fancy,
+# standing at y 64 with the clouds 128 blocks above). On 26.2 and 26.3 the added light (aurora, nebula, the eclipse's
+# glow and milky way, galaxy, comet, sparkles, shooting stars) went out through a type that marks its depth; vanilla
+# draws the lyrics and then the clouds after the sky, so whatever lay behind a shape was lost. The eclipse's black disc
+# marked its depth on 1.21.1 to 26.2 (26.3 draws it without), so the clouds in front of the sun were lost.
+# 1. sky117-clouds-aurora-rd12 / -rd6 (looking 40 degrees up to the south, into the middle curtain): on 26.2 and 26.3
+#    with the old code no clouds inside the curtain, cut off along its foot and its top (clouds above and below it); on
+#    the branch the clouds run across the curtain as on 1.21.11. On 1.21.1 to 26.1.2 the same on both.
+# 2. sky117-eclipse-north / -east / -south / -west (the black sun 13 degrees up, the milky way above it, clouds fancy,
+#    render distance 12; four directions so that some cloud passes in front of the sun): with the old code a cloud in
+#    front of the sun has the black disc on top of it while it covers the glow round the disc (1.21.8 to 26.2; on 1.21.1
+#    to 1.21.5 the clouds end before they come down that low); on the branch the cloud covers the disc too. On 26.2 and
+#    26.3 the old code also shows no clouds at all inside the glow round the sun or the 30 degree wide milky way band
+#    above it, with straight edges along the band; on the branch they show there as on 1.21.11. 26.3: only the band and
+#    the glow change, the disc was already right.
+# 3. sky117-lyrics-aurora-rd6 (See through blocks off, the Lines layout to the south at height 40, inside the middle
+#    curtain, which hangs 37 to 43 blocks away while the lyrics hang 50): on 26.2 and 26.3 with the old code the rows
+#    lose their letters wherever the curtain's band crosses them (even where the curtain is faint); on the branch whole
+#    lines. sky117-lyrics-aurora-rd6-seethrough (See through on) shows the whole lines on both: the lines that should be
+#    there. sky117-lyrics-aurora-rd12 (the curtain 74 to 86 blocks away, the lyrics 64): whole lines on both.
+#    sky117-lyrics-aurora-rd12-far (Distance 160: the lyrics 100 blocks away, behind the curtain): letters lost on
+#    26.2 and 26.3 with the old code, whole lines on the branch. sky117-lyrics-sparkles-rd6 (no sky, only the sparkles
+#    round the lyrics, 34 blocks away): on 26.2 and 26.3 with the old code small holes where a sparkle sits on a row;
+#    on the branch whole lines with the sparkles over them. On 1.21.1 to 26.1.2 all of 3 is the same on both.
+# (The eclipse's sparkles and shooting stars going under its disc in some game starts is not checked here: it needs a
+# sparkle or a shooting star right on the sun and the unlucky draw order of that game start; EclipseDiscTest has it.)
+# Run it on 26.2 and 1.21.11 (and 26.3 for 1 to 3), and with -f mod_ref=fix/sky115 (or main once batch 86 is in) to
+# compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/sky117 -f version=26.2 -f script=.github/checks/sky117.txt
+#   gh workflow run screenshots.yml --ref fix/sky117 -f version=26.2 -f mod_ref=fix/sky115 -f script=.github/checks/sky117.txt
+
+# A clear night that stays night, only the sky under test
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set sky AURORA
+set skyStrength 0.7
+set shootingStars false
+set twinkle false
+set skyPulse false
+set constellations false
+set layout LINES
+set placement SKY
+set seeThroughBlocks true
+
+# 1. Clouds behind the aurora
+option clouds fancy
+option renderDistance 12
+set direction NORTH
+look 0 -40
+sleep 12
+shot sky117-clouds-aurora-rd12
+option renderDistance 6
+sleep 6
+shot sky117-clouds-aurora-rd6
+
+# 2. Clouds in front of the eclipse, the sun just right of where the lyrics face
+option renderDistance 12
+set sky ECLIPSE
+set direction NORTH
+look 183 -20
+sleep 10
+shot sky117-eclipse-north
+set direction EAST
+look -87 -20
+sleep 3
+shot sky117-eclipse-east
+set direction SOUTH
+look 3 -20
+sleep 3
+shot sky117-eclipse-south
+set direction WEST
+look 93 -20
+sleep 3
+shot sky117-eclipse-west
+
+# 3. Lyrics behind the aurora (See through blocks off)
+set sky AURORA
+set direction SOUTH
+set height 40
+set seeThroughBlocks false
+option renderDistance 6
+look 0 -40
+sleep 10
+shot sky117-lyrics-aurora-rd6
+set seeThroughBlocks true
+sleep 3
+shot sky117-lyrics-aurora-rd6-seethrough
+set seeThroughBlocks false
+option renderDistance 12
+sleep 6
+shot sky117-lyrics-aurora-rd12
+set distance 160
+sleep 4
+shot sky117-lyrics-aurora-rd12-far
+set distance 64
+option renderDistance 6
+set sky OFF
+set twinkle true
+sleep 8
+shot sky117-lyrics-sparkles-rd6
+
+# Back as the test world starts
+set twinkle false
+set height 22
+set seeThroughBlocks true
+set sky AURORA
+set layout WORLD
+set direction FOLLOW
+look 0 -28
+sleep 2
