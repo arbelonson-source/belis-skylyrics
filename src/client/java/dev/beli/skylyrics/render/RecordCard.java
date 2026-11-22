@@ -128,9 +128,10 @@ public final class RecordCard {
 			at = place(mc, cfg.cardCorner, g.guiWidth(), g.guiHeight(), h);
 			// No room clear of the scoreboard sidebar or the chat: fade out like for the player list
 			want = at != null;
-			// A bottom card that F3's text reaches (a short screen, a card stacked up above a bottom bar) is drawn over by it
-			if (want && f3Covers(cfg.cardCorner, new float[] {at[0], at[1], at[0] + W, at[1] + h}, NowPlayingHud.f3Open(mc),
-					DebugText.recent(now))) {
+			// A bottom card that F3's text (a short screen, a card stacked up above a bottom bar) or its charts along the
+			// bottom reach is drawn over by them
+			if (want && NowPlayingHud.f3Open(mc) && f3Covers(cfg.cardCorner, new float[] {at[0], at[1], at[0] + W, at[1] + h}, true,
+					DebugText.recent(now), DebugCharts.shown(mc, g.guiWidth(), g.guiHeight()))) {
 				want = false;
 				at = null;
 			}
@@ -413,15 +414,24 @@ public final class RecordCard {
 		return f3Open && (topCorner(corner) || corner == CardCorner.BOTTOM_LEFT && top < F3_REACH);
 	}
 
+	/** {@link #f3Covers(CardCorner, float[], boolean, float[][], float[][])} with none of F3's charts showing. */
+	static boolean f3Covers(CardCorner corner, float[] box, boolean f3Open, float @Nullable [][] f3Lines) {
+		return f3Covers(corner, box, f3Open, f3Lines, new float[0][]);
+	}
+
 	/**
 	 * Whether the open debug screen (F3) would be drawn over a card at {@code box} (left, top, right, bottom): always in the
-	 * top corners, which F3's text fills, and in a bottom corner when F3's text as the game drew it last reaches the card
-	 * (its left column on a short screen, or 1.21.1's right column running down with a block's tags). Without F3's text
-	 * measured, as {@link #f3Covers(CardCorner, float, boolean)}.
+	 * top corners, which F3's text fills; in a bottom corner when one of F3's charts along the bottom reaches the card, or
+	 * F3's text as the game drew it last does (its left column on a short screen, or 1.21.1's right column running down
+	 * with a block's tags). Without F3's text measured, as {@link #f3Covers(CardCorner, float, boolean)} for the text.
 	 *
 	 * @param f3Lines F3's text lines' boxes ({@link DebugText#recent}), null when the game didn't draw them lately
+	 * @param f3Charts the boxes of F3's charts showing ({@link DebugCharts#shown})
 	 */
-	static boolean f3Covers(CardCorner corner, float[] box, boolean f3Open, float @Nullable [][] f3Lines) {
+	static boolean f3Covers(CardCorner corner, float[] box, boolean f3Open, float @Nullable [][] f3Lines, float[][] f3Charts) {
+		if (f3Open && !topCorner(corner) && DebugText.covers(box, f3Charts)) {
+			return true;
+		}
 		if (!f3Open || topCorner(corner) || f3Lines == null) {
 			return f3Covers(corner, box[1], f3Open);
 		}
