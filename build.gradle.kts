@@ -111,6 +111,9 @@ tasks.test {
 	// Each version's test JVM unpacks LWJGL's native libraries into its own folder: all 9 run at once, and on Windows
 	// two of them writing the same shared lwjgl.dll left a half-written file ("not a valid Win32 application")
 	systemProperty("org.lwjgl.system.SharedLibraryExtractPath", layout.buildDirectory.dir("lwjgl-natives").get().asFile.absolutePath)
+	// No unit test may load a native library (LWJGL's memory and image code): one that did crashed a Windows test JVM with an
+	// access violation (2026-11-22). A test that tries fails with IllegalCallerException; give it a pure-Java stand-in instead
+	jvmArgs("--illegal-native-access=deny")
 	// Name every test in the log, so CI shows that the Windows ones really ran there
 	testLogging {
 		events("passed", "skipped", "failed")
