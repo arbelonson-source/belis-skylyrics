@@ -166,6 +166,23 @@ class TitleCleanerTest {
 		same("Song (Instinct Edit)", "Song");
 	}
 
+	@Test
+	void anInstrumentalOrKaraokeTagKeepsItsWordWhenItsNoiseGoes() {
+		// "Artist - Song (Official Instrumental)" on YouTube: the whole bracket went as noise, and the sung song's lyrics
+		// were shown over the instrumental
+		Track t = TitleCleaner.clean(track("Some Band - Cool Song (Official Instrumental)", "SomeBandVEVO", "firefox"));
+		assertEquals("Some Band", t.artist());
+		assertEquals("Cool Song (Instrumental)", t.title());
+		assertFalse(TitleCleaner.sameSong(t.title(), "Cool Song"));
+		assertTrue(TitleCleaner.sameSong(t.title(), "Cool Song (Instrumental)"));
+		assertEquals("Cool Song (Karaoke)", TitleCleaner.clean(track("Some Band - Cool Song [Karaoke Video]", "x", "chromium")).title());
+		assertEquals("Song (Instrumental)", TitleCleaner.forSearch("Song (Instrumental Audio)"));
+		assertEquals("Song (Inst)", TitleCleaner.forSearch("Song (Inst. HD)"));
+		// the other noise still goes
+		assertEquals("Song", TitleCleaner.forSearch("Song (Official Audio)"));
+		assertEquals("Cool Song", TitleCleaner.clean(track("Some Band - Cool Song (Official Video)", "x", "firefox")).title());
+	}
+
 	private static void same(String a, String b) {
 		assertTrue(TitleCleaner.sameSong(a, b), a + " / " + b);
 		assertTrue(TitleCleaner.sameSong(b, a), b + " / " + a);

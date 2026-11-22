@@ -469,6 +469,18 @@ class LrclibClientTest {
 	}
 
 	@Test
+	void anInstrumentalTagNextToANoiseWordStillMeansNoSinging() throws Exception {
+		// A file saved from a video, "Song (Official Instrumental)", in a desktop player: the tag went as noise, and the sung
+		// song's lyrics were shown over the instrumental
+		Track file = new Track("A Made-Up Song (Official Instrumental)", BAND, "", 200_000, "", "mpv");
+		assertFalse(findWith(file, hit("A Made-Up Song", BAND, 200, "[00:01.00]sung")).found());
+		LrclibClient.Result own = findWith(file, hit("A Made-Up Song", BAND, 200, "[00:01.00]sung"),
+				"{\"trackName\":\"A Made-Up Song (Instrumental)\",\"artistName\":\"" + BAND + "\",\"duration\":200,\"instrumental\":true}");
+		assertTrue(own.instrumental());
+		assertEquals(null, own.synced());
+	}
+
+	@Test
 	void anArtistNameThatStartsWithAnAmpersandIsNeverLeftOutOfTheSearch() throws Exception {
 		List<String> queries = new CopyOnWriteArrayList<>();
 		// Like LRCLIB: a search naming the artist finds only that artist's songs, one without finds another band's song of that name
