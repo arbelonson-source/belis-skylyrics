@@ -264,6 +264,19 @@ class NeteaseClientTest {
 	}
 
 	@Test
+	void anInstUploadIsNotTheSungSong() throws Exception {
+		// NetEase lists a single's "(Inst.)" track next to the sung one, about as long. The closer one won, so the sung song
+		// showed as instrumental, and the "(Inst.)" track got the sung song's lyrics.
+		songs(song(41, "A Made-Up Song (Inst.)", "Made Up Band", 200_000), song(42, "A Made-Up Song", "Made Up Band", 200_900));
+		lyricAnswers.put("41", "{\"pureMusic\":true,\"lrc\":{\"version\":1,\"lyric\":\"[00:00.00]纯音乐，请欣赏\"},\"code\":200}");
+		lyric(42, LYRIC);
+		LrclibClient.Result sung = client.find(track("A Made-Up Song", "Made Up Band", 200_000));
+		assertFalse(sung.instrumental());
+		assertEquals("[00:12.50]A made-up first line\n[00:16.00]男：A made-up duet line", sung.synced());
+		assertTrue(client.find(track("A Made-Up Song (Inst.)", "Made Up Band", 200_900)).instrumental());
+	}
+
+	@Test
 	void withNoArtistTwoArtistsThatFitTheLengthMeanNone() throws Exception {
 		// Like the main site: with no artist tag nothing tells two artists' songs of one name apart
 		songs(song(31, "Intro", "Some Band", 200_300), song(32, "Intro", "Other Singer", 200_600));

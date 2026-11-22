@@ -192,8 +192,13 @@ public final class TitleCleaner {
 	/** Brackets that make it another work, so they are never ignored. */
 	private static final Pattern OTHER_WORK = Pattern.compile("(?i)\\b(remix|part|pt|reprise|interlude|intro|outro|skit|cover)\\b");
 
-	/** Brackets naming a track without the singing (or only the singing): another recording, with other lyrics or none. */
-	private static final Pattern NO_VOCALS = Pattern.compile("(?i)\\b(instrumental|karaoke|backing track|a ?cap+ella|off[ -]vocal)\\b");
+	/**
+	 * Brackets naming a track without the singing (or only the singing): another recording, with other lyrics or none. "Inst."
+	 * is how K-pop and J-pop releases name the instrumental; NetEase uploads say 伴奏 (backing track) or 纯音乐 (pure music),
+	 * Japanese ones カラオケ, オフボーカル or インスト. Those words have no word edges to look for, so they count anywhere in a bracket.
+	 */
+	private static final Pattern NO_VOCALS = Pattern.compile("(?i)\\b(instrumental|inst|karaoke|backing track|a ?cap+ella|off[ -]vocal)\\b"
+			+ "|伴奏|纯音乐|カラオケ|オフボーカル|インスト");
 
 	private static boolean noVocals(String title) {
 		Matcher m = ANY_BRACKET.matcher(capped(title));

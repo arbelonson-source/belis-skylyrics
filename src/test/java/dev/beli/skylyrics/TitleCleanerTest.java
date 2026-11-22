@@ -147,6 +147,25 @@ class TitleCleanerTest {
 		same("Song (Remastered)", "Song");
 	}
 
+	@Test
+	void shortAndNonEnglishInstrumentalTagsAreNotTheSungSong() {
+		// K-pop and J-pop releases call the instrumental "(Inst.)"; NetEase uploads say "(伴奏)" (backing track) or
+		// "(纯音乐)", Japanese ones "(カラオケ)", "(オフボーカル)" or "(インスト)"
+		different("Song (Inst.)", "Song");
+		different("Song (Inst)", "Song");
+		different("Song (Inst. Ver.)", "Song");
+		different("歌 (伴奏)", "歌");
+		different("歌 (伴奏版)", "歌");
+		different("歌 (纯音乐)", "歌");
+		different("歌 (オリジナル・カラオケ)", "歌");
+		different("歌 (オフボーカル)", "歌");
+		different("歌 (インスト)", "歌");
+		same("Song (Inst.)", "Song (Instrumental)");
+		same("Song (Inst.)", "Song (Inst.)");
+		// a word that only starts like it is no tag
+		same("Song (Instinct Edit)", "Song");
+	}
+
 	private static void same(String a, String b) {
 		assertTrue(TitleCleaner.sameSong(a, b), a + " / " + b);
 		assertTrue(TitleCleaner.sameSong(b, a), b + " / " + a);
