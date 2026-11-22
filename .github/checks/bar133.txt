@@ -1,0 +1,112 @@
+# Top bar and Record card leftovers, fix/bar133 (1280x720, GUI scale 3 = 426x240 unless said; the demo song, paused on
+# a line for most shots so the pictures hold still; the test world is creative, so a bottom bar sits 50 above the bottom).
+# Run it on the branch, and with -f mod_ref=<the branch's first commit, the test hook alone> for the old code:
+#   gh workflow run screenshots.yml --ref fix/bar133 -f version=1.21.11 -f script=.github/checks/bar133.txt
+#   gh workflow run screenshots.yml --ref fix/bar133 -f version=1.21.11 -f mod_ref=4589eed5 -f script=.github/checks/bar133.txt
+# (and the same two with -f version=1.21.1: its debug screen is the old long one, and its clip box goes another way).
+#
+# 1. The highlight's round ends, Minecraft's letters (Font: Minecraft), top bar.
+#    bar133-pixel-first: "Neon skyline, can you hear it" with "Neon" on the violet highlight. Old code: the highlight's
+#      left end is cut straight up and down a pixel or so left of the "N" (0.5 to 3.5 screen pixels of its round end
+#      missing, depending on where the pill sits); its right end is round. Branch: both ends round.
+#      The log's "barprobe clip left=" (old: 1 unit right of the "box left=" of the highlight, branch: at or left of it).
+#    bar133-pixel-last: "Every word is written in the stars", "the stars" on the highlight: old code may lose up to a
+#      pixel of the right end, the branch's is round.
+#    bar133-smooth-first: the same as -first with the smooth letters (a narrower highlight margin: less or nothing cut).
+# 2. Bottom bar with the debug screen (F3) open: does the bar sit over (or under) F3's text on the left or the right?
+#    bar133-f3-bottom (creative), bar133-f3-bottom-survival (hearts: the bar sits 14 higher), bar133-f3-bottom-gui2
+#    (GUI scale 2, 640x360: the bar is lower down). The top bar hides with F3 open; a bottom one shows (both, for now).
+# 3. Record card with Minecraft's letters and three lines, bottom right: the times under the progress line (drawn at 0.85
+#    size) and the dimmed lines above and below the current one (0.8) against the title, artist and current line (whole
+#    size). bar133-card-pixel (GUI 3: 2.55 and 2.4 screen pixels per letter pixel), -gui2 (1.7, 1.6), -gui4 (3.4, 3.2):
+#    are the small letters uneven (some strokes wider than others, uneven gaps) or blurry? bar133-card-smooth: the same
+#    card with the smooth letters, for comparison.
+# 4. Pausing, top bar, Song name only on change on (as at first):
+#    bar133-pause-line: paused during "Every word is written in the stars": the bar keeps the line (both).
+#    bar133-pause-gap: paused between lines (the break at 0:37): old code: no bar at all; branch: the song's name,
+#      "Neon Skyline  ·  SkyLyrics Demo  ·  Demo".
+#    bar133-play-gap: playing again in the same break: the song's name (both), as the bar bridges a break while playing.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+guiscale 3
+sleep 8
+
+# 1: paused on the first word, then on the last two, Minecraft's letters, then the smooth ones
+set smoothFont false
+music pause
+sleep 1
+seek 20.25
+sleep 2
+where
+shot bar133-pixel-first
+barprobe
+sleep 1
+seek 27.6
+sleep 2
+where
+shot bar133-pixel-last
+barprobe
+sleep 1
+set smoothFont true
+seek 20.25
+sleep 2
+shot bar133-smooth-first
+barprobe
+sleep 1
+
+# 2: the bar at the bottom with F3 open, still paused on a line
+set barPosition BOTTOM
+seek 25.5
+debug on
+sleep 2
+shot bar133-f3-bottom
+cmd gamemode survival @p
+sleep 2
+shot bar133-f3-bottom-survival
+cmd gamemode creative @p
+guiscale 2
+sleep 2
+shot bar133-f3-bottom-gui2
+guiscale 3
+debug off
+set barPosition TOP
+sleep 1
+
+# 3: the Record card with three lines, Minecraft's letters at GUI 3, 2 and 4, then the smooth ones
+set recordCard true
+set cardLyrics true
+set cardLines 3
+set cardCorner BOTTOM_RIGHT
+set smoothFont false
+sleep 2
+shot bar133-card-pixel
+guiscale 2
+sleep 2
+shot bar133-card-pixel-gui2
+guiscale 4
+sleep 2
+shot bar133-card-pixel-gui4
+guiscale 3
+set smoothFont true
+sleep 2
+shot bar133-card-smooth
+set recordCard false
+set cardLines 1
+sleep 1
+
+# 4: paused on a line, paused between lines, then playing between lines
+seek 25.5
+sleep 2
+shot bar133-pause-line
+seek 37
+sleep 2
+where
+shot bar133-pause-gap
+music play
+sleep 0.5
+where
+shot bar133-play-gap
