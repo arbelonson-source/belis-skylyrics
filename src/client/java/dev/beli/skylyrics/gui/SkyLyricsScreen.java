@@ -704,10 +704,23 @@ public final class SkyLyricsScreen extends Screen {
 					case SIGNED_IN -> Tr.t("Signed in");
 				})
 				.when(web);
-		Row problem = new Paragraph(() -> spotify.problem().isEmpty() ? spotifyError : spotify.problem())
-				.when(() -> web.getAsBoolean() && !(spotify.problem().isEmpty() && spotifyError.isEmpty())
-						&& spotify.account() != SpotifyWebSource.Account.SIGNED_IN);
+		Row problem = new Paragraph(() -> spotifyNote(spotify.account(), spotify.problem(), spotifyError))
+				.when(() -> web.getAsBoolean() && !spotifyNote(spotify.account(), spotify.problem(), spotifyError).isEmpty());
 		return new Card(Tr.t("Spotify account"), help, dashboard, redirect, clientId, account, problem);
+	}
+
+	/**
+	 * The line under the Spotify account: why the last sign-in didn't work ({@code problem}, else {@code error}); empty hides
+	 * it. While the browser is open it says what Spotify's own error page means: a wrong Client ID or a Redirect URI that
+	 * isn't on the app exactly ends there ("INVALID_CLIENT: Invalid redirect URI"), and Spotify never sends the browser back.
+	 */
+	static String spotifyNote(SpotifyWebSource.Account account, String problem, @Nullable String error) {
+		if (account == SpotifyWebSource.Account.SIGNED_IN) {
+			return "";
+		}
+		String note = !problem.isEmpty() ? problem : error == null ? "" : error;
+		return note.isEmpty() && account == SpotifyWebSource.Account.WAITING
+				? Tr.t("If Spotify shows INVALID_CLIENT, check the Client ID and that your app has the Redirect URI above, exactly as shown") : note;
 	}
 
 	private MediaTracker tracker() {
