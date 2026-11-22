@@ -555,5 +555,7 @@
   "skylyrics.ui.search_cleared": "Pesquisa limpa",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab muda de secção, as setas movem, Enter toca ou abre, Cima na primeira linha chega aos botões de vista e às pesquisas recentes, Esc volta atrás e escrever faz uma pesquisa",
   "skylyrics.ui.1_playlist": "1 playlist",
-  "skylyrics.ui.s_playlists": "%s playlists"
+  "skylyrics.ui.s_playlists": "%s playlists",
+  "skylyrics.ui.spotify_is_having_problems_right_now": "O Spotify está com problemas neste momento",
+  "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "O Spotify está a receber demasiados pedidos, espera um momento"
 }

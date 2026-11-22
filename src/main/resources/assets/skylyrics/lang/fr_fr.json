@@ -555,5 +555,7 @@
   "skylyrics.ui.search_cleared": "Recherche effacée",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab change de section, les flèches déplacent la sélection, Entrée lance ou ouvre, la flèche haut depuis la première rangée mène aux boutons d'affichage et aux recherches récentes, Échap revient en arrière, et taper lance une recherche",
   "skylyrics.ui.1_playlist": "1 playlist",
-  "skylyrics.ui.s_playlists": "%s playlists"
+  "skylyrics.ui.s_playlists": "%s playlists",
+  "skylyrics.ui.spotify_is_having_problems_right_now": "Spotify rencontre des problèmes en ce moment",
+  "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify reçoit trop de demandes, patientez un instant"
 }

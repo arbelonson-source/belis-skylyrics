@@ -444,6 +444,11 @@ public final class SpotifyWebSource implements MediaSource {
 		if (MediaTracker.networkFailure(e)) {
 			return Tr.t("Can't reach the internet or Spotify");
 		}
+		if (e instanceof Refused r) {
+			// Spotify's reason ("Invalid authorization code") is English and says nothing to do: it goes to the log
+			return r.appRejected ? Tr.t("Spotify no longer accepts your Client ID, check it and sign in again")
+					: Tr.t("Something went wrong, try again");
+		}
 		String message = e.getMessage();
 		return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
 	}
@@ -589,9 +594,18 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		if (response.statusCode() != 200 || json == null || string(json, "access_token") == null) {
 			String why = json == null ? null : string(json, "error_description");
-			throw new IOException(why != null ? why : "HTTP " + response.statusCode());
+			// Spotify's own English words and the bare status are kept as the cause, for the log
+			throw new IOException(answerText(response.statusCode()),
+					new IOException("HTTP " + response.statusCode() + (why != null ? ": " + why : "")));
 		}
 		return json;
+	}
+
+	/** What the player is told when Spotify's sign-in server answered {@code status} instead of a token: never the bare number. */
+	static String answerText(int status) {
+		return status == 429 ? Tr.t("Spotify is getting too many requests, wait a moment")
+				: status >= 500 ? Tr.t("Spotify is having problems right now")
+				: Tr.t("Spotify didn't answer, try again");
 	}
 
 	private synchronized void accept(String id, JsonObject json) {
@@ -914,6 +928,7 @@ public final class SpotifyWebSource implements MediaSource {
 			// A 401 here means a token we had just refreshed was refused too, so only signing in again helps.
 			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management")
 					: status == 401 ? Tr.t("Spotify signed you out, sign in again")
+					: status >= 500 ? Tr.t("Spotify is having problems right now")
 					: Tr.t("Spotify answered with error %s", status));
 			this.status = status;
 		}

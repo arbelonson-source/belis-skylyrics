@@ -555,5 +555,7 @@
   "skylyrics.ui.search_cleared": "החיפוש נוקה",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab מחליף קטע, חצים לתנועה, Enter מנגן או פותח, חץ למעלה מהשורה העליונה מגיע לכפתורי התצוגה ולחיפושים האחרונים, Esc חוזר, והקלדה מחפשת",
   "skylyrics.ui.1_playlist": "פלייליסט אחד",
-  "skylyrics.ui.s_playlists": "%s פלייליסטים"
+  "skylyrics.ui.s_playlists": "%s פלייליסטים",
+  "skylyrics.ui.spotify_is_having_problems_right_now": "לספוטיפיי יש כרגע בעיות",
+  "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "ספוטיפיי מקבל כרגע יותר מדי בקשות, חכו רגע"
 }
