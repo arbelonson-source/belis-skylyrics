@@ -141,6 +141,22 @@ class FocusTest {
 	}
 
 	@Test
+	void aRowHiddenUnderTheKeyboardHandsItToTheNextRowThatShows() {
+		// The Music tab's Player card at its end: the Lyrics switch, Preview, Timing, This song (the keyboard is on it, and
+		// the song just stopped), Reset all, Done. rows marks the rows that show, available every stop the keys reach.
+		boolean[] rows = {false, false, true, false, false, false};
+		boolean[] available = {true, true, true, false, true, true};
+		// round to Timing, the next row that shows, not on to Reset all (where Enter would ask to reset)
+		assertEquals(2, Focus.afterHidden(rows, available, 3));
+		// a row that shows after it takes the keyboard: Demo song after This song
+		assertEquals(4, Focus.afterHidden(new boolean[] {false, false, true, false, true, false, false},
+				new boolean[] {true, true, true, false, true, true, true}, 3));
+		// no row of the tab shows any more: Reset all, as before
+		assertEquals(3, Focus.afterHidden(new boolean[] {false, false, false, false, false},
+				new boolean[] {true, true, false, true, true}, 2));
+	}
+
+	@Test
 	void aRowsPlaceCountsOnlyTheRowsThatShow() {
 		// the Lyrics switch, Preview, Layout, Depth (hidden), Glow, Shadow, Reset all, Done
 		boolean[] rows = {false, false, true, false, true, true, false, false};

@@ -998,14 +998,21 @@ public final class SkyLyricsScreen extends Screen {
 			announcement = focus instanceof Row landed ? landing(landed) : null;
 			if (focus instanceof Row row && row != masterToggle) {
 				tabFocus[tab] = row;
-				int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
-				scrollTarget[tab] = Focus.scrollIntoView(scrollTarget[tab], top, top + row.height(), viewH, 14, maxScroll());
+				scrollIntoView(row);
 			}
 			afterKeyboardAction();
 		}
 	}
 
-	/** Keeps the focus on a row that can still be reached: a hidden row hands it to the next one, a row of another tab drops it. */
+	private void scrollIntoView(Row row) {
+		int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
+		scrollTarget[tab] = Focus.scrollIntoView(scrollTarget[tab], top, top + row.height(), viewH, 14, maxScroll());
+	}
+
+	/**
+	 * Keeps the focus on a row that can still be reached: a row hidden under the keyboard hands it to the next row that
+	 * shows (see {@link Focus#afterHidden}), which the Narrator names; a row of another tab drops it.
+	 */
 	private void validateFocus() {
 		if (!(focus instanceof Row row) || row == masterToggle) {
 			return;
@@ -1016,11 +1023,19 @@ public final class SkyLyricsScreen extends Screen {
 			focusAt = at;
 			return;
 		}
-		int to = at < 0 ? -1 : Focus.next(ring.available(), at, 1);
+		int to = at < 0 ? -1 : Focus.afterHidden(rowsThatShow(ring), ring.available(), at);
 		focus = to < 0 ? null : ring.stops().get(to);
 		focusAt = Math.max(to, 0);
 		if (focus instanceof Row now && now != masterToggle) {
 			tabFocus[tab] = now;
+		}
+		if (to >= 0 && focusVisible) {
+			// The ring moved by itself (a song stopped, the mouse changed a setting): keep it in view and say where it is
+			if (focus instanceof Row now && now != masterToggle) {
+				scrollIntoView(now);
+			}
+			announcement = focus instanceof Row now ? landing(now) : focusedNarration();
+			afterKeyboardAction();
 		}
 	}
 
@@ -1103,6 +1118,11 @@ public final class SkyLyricsScreen extends Screen {
 		if (typing) {
 			return Narration.join(Tr.t("Search"), Tr.t("text box"), query, searchSaid);
 		}
+		return focusedNarration();
+	}
+
+	/** The words of the row or button the keyboard is on; nothing when it is on nothing. */
+	private String focusedNarration() {
 		if (focus instanceof Row row) {
 			return rowNarration(row);
 		}

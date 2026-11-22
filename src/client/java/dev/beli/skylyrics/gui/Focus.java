@@ -59,6 +59,17 @@ final class Focus {
 		return rows[remembered] ? remembered : next(rows, remembered, 1);
 	}
 
+	/**
+	 * Where the keyboard goes when the row it is on ({@code at}) stops showing under it, like This song when the song
+	 * stops or a row hidden by a setting changed with the mouse: the next row that shows, wrapping round, so it stays in
+	 * the list; Reset all or Done ({@code available}, every stop the keyboard can reach) only when no row of the tab shows.
+	 * {@code rows} tells which stops are rows that show.
+	 */
+	static int afterHidden(boolean[] rows, boolean[] available, int at) {
+		int row = backOnTab(rows, at);
+		return row >= 0 ? row : next(available, at, 1);
+	}
+
 	/** Where a row sits among the rows that show: the {@code n}th of {@code of}. */
 	record Place(int n, int of) {
 	}
