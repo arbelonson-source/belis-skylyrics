@@ -723,7 +723,8 @@ public final class LyricsRenderer {
 		worldWords.clearMiddle(cfg.worldClearMiddle);
 		worldWords.curve(cfg.worldCurve);
 		worldWords.tune(cfg.worldWords, cfg.worldFade, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
-		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), cfg.worldGlide && mc.player != null
+		worldWords.travel(cfg.worldGlide);
+		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isAutoSpinAttack() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
 		if (mc.level != wordsLevel) {
 			wordsLevel = mc.level;

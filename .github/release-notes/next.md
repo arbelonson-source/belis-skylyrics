@@ -228,6 +228,7 @@
 - **Film and session songs in a browser.** With Spotify's Web Player (or another music site) in a browser, a song named like "Song - From "Film"", "Song - From the Film Soundtrack", "Song - Recorded at …" or "Song - Bonus Track" is no longer split into the song's name as the artist and the tag as the title: the top bar and the **Record card** show the real artist, and the lyrics are looked up for the right song.
 - **Emoji in lyrics.** A lyric line with an emoji like ❤️ or ✨️ no longer shows a dashed box with "VS16" in it after the emoji, in the sky (**Lines**, **Arc** and **World**), in the top bar's lyric line or on the **Record card**.
 - **Arabic lyrics in the Lines layout.** An Arabic or Persian lyric line that fits across the sky now stays on one row instead of breaking in two, and a long one takes only the rows it needs (two where it took three) instead of short rows with room to spare. The same goes for the lyrics on the title screen.
+- **Elytra mode off.** In the World layout with **Elytra mode** turned off, the words now stay where they were put however fast you go. Flying with an elytra and rockets, diving or falling a long way no longer carried them along and swung them round as you steered, and new words keep to the World **Direction** then too.
 
 ### Faster
 

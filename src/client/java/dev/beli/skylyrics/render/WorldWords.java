@@ -298,6 +298,8 @@ final class WorldWords {
 	private int fastRun;
 	/** Elytra mode is carrying the words this frame. */
 	private boolean gliding;
+	/** The Elytra mode setting: whether the words may travel with you at all. */
+	private boolean travel = true;
 	/** The lowest pitch a new row may start on to still be on screen, worked out as each word is placed. */
 	private float seenLow = Sentence.ROW_LIMIT;
 	/** Half the height of the screen in degrees, as of the last card placed. */
@@ -1081,15 +1083,21 @@ final class WorldWords {
 		return due - spawned > CATCH_UP ? due - CATCH_UP : spawned;
 	}
 
+	/** The Elytra mode setting: off, the words stay where they were put however you move. */
+	void travel(boolean on) {
+		travel = on;
+	}
+
 	/**
 	 * Elytra mode: while you glide, ride or fly, every card moves and turns along with you, so the words travel with
 	 * you instead of being left behind, and steering doesn't swing them (or the rest of the line) out of sight.
-	 * Call once a frame, before {@link #update}.
+	 * {@code flying} is whether the game says you glide, ride or fly; with the setting off ({@link #travel}) nothing,
+	 * not even a very fast move, carries the words. Call once a frame, before {@link #update}.
 	 */
-	void glide(Vec3 eye, float yaw, float pitch, boolean gliding, long now) {
+	void glide(Vec3 eye, float yaw, float pitch, boolean flying, long now) {
 		float seconds = (now - lastGlide) / 1e9f;
 		fastRun = fastRun(fastRun, lastEye, eye, seconds);
-		gliding = travelling(gliding, fastRun);
+		boolean gliding = travel && travelling(flying, fastRun);
 		Vec3 moved = carry(lastEye, eye, gliding, seconds);
 		lastGlide = now;
 		this.gliding = gliding;
