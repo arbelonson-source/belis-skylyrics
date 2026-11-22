@@ -35,6 +35,17 @@ class LrcNegativeStampTest {
 	}
 
 	@Test
+	void aNegativeStampInFullWidthBracketsKeepsItsLine() {
+		// Full-width brackets, colon and stop are read as plain ones; the minus in front was not, so the line was left out
+		assertEquals("0=first|5000=second|", dump(LrcParser.parseSynced("［-00:01.00］first\n［00:05.00］second")));
+		assertEquals("0=first|5000=second|", dump(LrcParser.parseSynced("［-00：01．00］first\n［00：05．00］second")));
+		// A line converted to full width throughout has a full-width minus too
+		assertEquals("0=first|5000=second|", dump(LrcParser.parseSynced("［－00：01．00］first\n［00：05．00］second")));
+		// Inside a line it is a stamp like any other, not words
+		assertEquals("0=Hello world|", dump(LrcParser.parseSynced("［00:00.00］Hello ［-00:00.10］world")));
+	}
+
+	@Test
 	void aNegativeWordStampIsNotShown() {
 		// A file with word timings, shifted earlier as a whole: its first words are stamped before the start too
 		assertEquals("0=Hello world|1000=next|",
