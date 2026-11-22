@@ -609,6 +609,19 @@ public final class DevTestHook {
 		}
 	}
 
+	/** Opens or closes the debug screen (F3). */
+	private static void debugScreen(Minecraft client, boolean on) {
+		//? if >=1.21.11 {
+		client.debugEntries.setOverlayVisible(on);
+		//?} else if >=1.21.9 {
+		/*client.debugEntries.setF3Visible(on);
+		*///?} else {
+		/*if (client.getDebugOverlay().showDebugScreen() != on) {
+			client.getDebugOverlay().toggleOverlay();
+		}
+		*///?}
+	}
+
 	private void run(Minecraft client, String line) {
 		String[] parts = line.split("\\s+", 2);
 		String arg = parts.length > 1 ? parts[1] : "";
@@ -892,17 +905,14 @@ public final class DevTestHook {
 								.performPrefixedCommand(server.createCommandSourceStack(), arg));
 					}
 				}
+				// "debug on" or "debug off"; "debug fps", "debug net" and "debug pie" are F3+2, F3+3 and F3+1 (each opens F3 too)
 				case "debug" -> {
-					boolean on = arg.equals("on");
-					//? if >=1.21.11 {
-					client.debugEntries.setOverlayVisible(on);
-					//?} else if >=1.21.9 {
-					/*client.debugEntries.setF3Visible(on);
-					*///?} else {
-					/*if (client.getDebugOverlay().showDebugScreen() != on) {
-						client.getDebugOverlay().toggleOverlay();
+					switch (arg) {
+						case "fps" -> client.getDebugOverlay().toggleFpsCharts();
+						case "net" -> client.getDebugOverlay().toggleNetworkCharts();
+						case "pie" -> client.getDebugOverlay().toggleProfilerChart();
+						default -> debugScreen(client, arg.equals("on"));
 					}
-					*///?}
 				}
 				case "use" -> net.minecraft.client.KeyMapping.click(com.mojang.blaze3d.platform.InputConstants.getKey(client.options.keyUse.saveString()));
 				case "hold" -> hold(client, arg);
