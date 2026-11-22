@@ -192,6 +192,7 @@
 - **Real lyrics over an empty copy.** When the lyrics site (LRCLIB) has several copies of a song and one of them holds only time stamps, only tags or words without times, that copy no longer wins over one with real timed words just because its length is a little closer. Before, such a song could show "instrumental" for good, or no lyrics, although its lyrics were there.
 - **Backup lyrics for a song with no artist.** A song with no artist tag (a browser tab, an untagged file) whose title two artists share at about the same length no longer gets one of their lyrics from the backup site (NetEase). It now shows none, as the main site already did.
 - **Artists whose name starts with "&".** An artist whose name starts with "&" no longer gets another band's lyrics for a song of the same name. Cutting a credit like "A, B" down to its first artist used to leave such a name empty, and the lookup then searched by the title alone.
+- **Holding the now-playing or lock key.** Holding the **Show now-playing card** or **Lock lyrics here** key a moment too long no longer flips it on and off many times a second, leaving it either way: like the show/hide lyrics and music keys, it now acts once per press. The **Lyrics are late** and **Lyrics are early** keys still keep stepping while held.
 
 ### Faster
 
