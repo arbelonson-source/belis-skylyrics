@@ -154,6 +154,67 @@ class MacMediaSourceTest {
 		assertEquals(1, MacMediaSource.parse("Spotify\tplaying\t30000\t1\tSong\tA\t\t\tspotify:local:a:b:c:1\n").players().size());
 	}
 
+	private static final String SPOTIFY_AD = "Spotify\tplaying\t30000\t1\tAdvertisement\tSpotify\t\t\tspotify:ad:0000\n";
+
+	/** While Spotify plays an ad, Spotify is still the app that plays: Music's paused song doesn't take over for it. */
+	@Test
+	void anAdKeepsSpotifyFollowed() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_PLAYING + MUSIC_PAUSED);
+		assertEquals("Song One", source.poll().track().title());
+
+		runner.answer(SPOTIFY_AD + MUSIC_PAUSED);
+		assertSame(Snapshot.NOTHING, source.poll(), "no song during the ad, and not Music's paused one");
+		assertEquals("Spotify", source.displayName());
+		runner.answer("Spotify\tdone\n");
+		source.playPause();
+		assertEquals("Spotify", args(runner.commands.getLast()).getFirst(), "pausing during the ad pauses Spotify, not Music");
+
+		runner.answer(SPOTIFY_PLAYING.replace("Song One", "Song Three") + MUSIC_PAUSED);
+		assertEquals("Song Three", source.poll().track().title(), "the next song after the ad");
+	}
+
+	/** With only Spotify open, the buttons still reach it during an ad (ads can be paused). */
+	@Test
+	void theButtonsReachSpotifyDuringAnAd() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_AD);
+		assertSame(Snapshot.NOTHING, source.poll());
+		runner.answer("Spotify\tdone\n");
+		source.playPause();
+		assertEquals(2, runner.commands.size(), "the button press ran");
+		assertEquals(List.of("Spotify", "tell application \"Spotify\" to playpause\nreturn {\"done\"}"), args(runner.commands.getLast()));
+	}
+
+	/** Spotify picked in the settings: during its ad, Music's paused song isn't shown instead. */
+	@Test
+	void thePickedSpotifyKeepsItsAd() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "spotify", runner, 0);
+		runner.answer(SPOTIFY_AD + MUSIC_PAUSED);
+		assertSame(Snapshot.NOTHING, source.poll());
+		assertEquals("Spotify", source.displayName());
+	}
+
+	/** An ad only keeps Spotify followed: a song playing in Music still wins when nothing was followed yet, or Music is picked. */
+	@Test
+	void aPlayingSongBeatsAnAd() throws Exception {
+		String musicPlaying = MUSIC_PAUSED.replace("paused", "playing");
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_AD + musicPlaying);
+		assertEquals("Song Two", source.poll().track().title());
+		runner.answer(SPOTIFY_AD + musicPlaying);
+		assertEquals("Song Two", source.poll().track().title(), "and stays with it");
+
+		runner = new FakeRunner();
+		source = new MacMediaSource(() -> "music", runner, 0);
+		runner.answer(SPOTIFY_AD + MUSIC_PAUSED);
+		assertEquals("Song Two", source.poll().track().title());
+	}
+
 	@Test
 	void radioStreamTitleBecomesTheSong() {
 		MacMediaSource.Reading r = MacMediaSource.parse("Music\tplaying\t\t\tKEXP 90.3\t\tKEXP\t\t\tBjork - Hyperballad - Live\n").players().getFirst();
@@ -181,11 +242,122 @@ class MacMediaSourceTest {
 		assertTrue(sp.contains("set u to spotify url of t"));
 		assertTrue(sp.contains("return {s, d, pos, n, ar, al, art, u}"));
 		String mu = MacMediaSource.MUSIC.readScript();
-		assertTrue(mu.contains("set st to current stream title"));
-		assertTrue(mu.contains("return {s, d, pos, n, ar, al, \"\", \"\", st}"));
+		assertTrue(mu.contains("set streamLine to current stream title"));
+		assertTrue(mu.contains("return {s, d, pos, n, ar, al, \"\", \"\", streamLine}"));
 		// each read sits inside its own try
 		assertTrue(sp.replace("\t", "").contains("try\nset u to spotify url of t\nend try"));
-		assertTrue(mu.replace("\t", "").contains("try\nset st to current stream title\nend try"));
+		assertTrue(mu.replace("\t", "").contains("try\nset streamLine to current stream title\nend try"));
+	}
+
+	/**
+	 * The main script checks that the app runs, then compiles its part; an app that quits during that compile would be
+	 * opened again by the first question ({@code tell application} launches an app that isn't running). So each part
+	 * checks again itself, right before it asks anything.
+	 */
+	@Test
+	void eachAppPartChecksTheAppStillRunsRightBeforeAsking() {
+		for (MacMediaSource.App app : List.of(MacMediaSource.SPOTIFY, MacMediaSource.MUSIC)) {
+			List<String> lines = app.readScript().lines().map(String::strip).filter(l -> !l.isEmpty()).toList();
+			assertEquals("if not (running of application \"" + app.name() + "\") then return {\"quit\"}", lines.getFirst());
+			assertEquals("tell application \"" + app.name() + "\"", lines.get(1));
+		}
+		// what it prints then is no song and no error
+		MacMediaSource.Answer a = MacMediaSource.parse("Spotify\tquit\n" + MUSIC_PAUSED);
+		assertEquals(1, a.players().size());
+		assertTrue(a.failures().isEmpty());
+	}
+
+	/** On a Mac (CI): Music's part, run while Music is closed, answers "quit" and leaves Music closed. */
+	@Test
+	void musicPartLeavesAClosedMusicClosed() throws Exception {
+		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
+		assumeTrue(!MacMediaSource.runningApps().contains("Music"), "Music is open on this Mac");
+		assertEquals("quit", runPart(MacMediaSource.MUSIC.readScript()));
+		assertFalse(MacMediaSource.runningApps().contains("Music"), "Music was opened");
+	}
+
+	/** The part the main script runs for this app, from one osascript command. */
+	private static String part(List<String> command, String app) {
+		List<String> args = args(command);
+		return args.get(args.indexOf(app) + 1);
+	}
+
+	/**
+	 * One osascript run reads Spotify, then Music. A frozen Spotify used to hold Music up until the poll gave up on the
+	 * whole run (a minute), again and again: Music's song never showed. Now an app that has answered before gets a
+	 * short time limit while the other app is asked too, and one that runs out of time is left out for a moment.
+	 */
+	@Test
+	void aFrozenAppDoesNotHoldUpTheOtherOne() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_PLAYING + MUSIC_PAUSED);
+		assertEquals("Song One", source.poll().track().title());
+
+		runner.answer("Spotify\terror\t-1712\tSpotify got an error: AppleEvent timed out.\n" + MUSIC_PAUSED);
+		Snapshot s = source.poll();
+		String spotify = part(runner.commands.getLast(), "Spotify");
+		assertTrue(spotify.startsWith("with timeout of " + MacMediaSource.ANSWER_LIMIT_S + " seconds\n") && spotify.endsWith("\nend timeout"), spotify);
+		assertTrue(spotify.contains(MacMediaSource.SPOTIFY.readScript()));
+		assertTrue(part(runner.commands.getLast(), "Music").startsWith("with timeout"));
+		// Music's answer waited behind Spotify's, so when it was read is unknown: the last reading stays for now
+		assertEquals("Song One", s.track().title());
+
+		for (int i = 0; i < 3; i++) {
+			runner.answer(MUSIC_PAUSED);
+			assertEquals("Song Two", source.poll().track().title(), "Music, read on its own");
+			assertFalse(args(runner.commands.getLast()).contains("Spotify"), "the frozen app is left out for a moment");
+		}
+		source.close(); // like Reconnect: everything is asked again at once
+		runner.answer(SPOTIFY_PLAYING + MUSIC_PAUSED);
+		assertEquals("Song One", source.poll().track().title());
+	}
+
+	/**
+	 * No limit for an app that hasn't answered yet (macOS may be asking whether it may be controlled, and that waits
+	 * for the player), nor for an app asked on its own (it holds nothing else up).
+	 */
+	@Test
+	void noTimeLimitWhileMacOSMayAskOrForOneApp() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertEquals(MacMediaSource.SPOTIFY.readScript(), part(runner.commands.getLast(), "Spotify"), "nothing answered yet");
+		assertEquals(MacMediaSource.MUSIC.readScript(), part(runner.commands.getLast(), "Music"));
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertTrue(part(runner.commands.getLast(), "Spotify").startsWith("with timeout"), "Spotify answered, Music is asked too");
+		assertEquals(MacMediaSource.MUSIC.readScript(), part(runner.commands.getLast(), "Music"), "Music still hasn't answered");
+
+		runner = new FakeRunner();
+		source = new MacMediaSource(() -> "", runner, 0, app -> app == MacMediaSource.SPOTIFY);
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		runner.answer(SPOTIFY_PLAYING);
+		source.poll();
+		assertEquals(MacMediaSource.SPOTIFY.readScript(), part(runner.commands.getLast(), "Spotify"), "alone, it holds nothing up");
+	}
+
+	/** On a Mac (CI): the time limit around an app part compiles and runs as the main script runs it. */
+	@Test
+	void limitedPartRunsOnAMac() throws Exception {
+		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
+		assumeTrue(!MacMediaSource.runningApps().contains("Music"), "Music is open on this Mac");
+		assertEquals("quit", runPart(MacMediaSource.limited(MacMediaSource.MUSIC.readScript())));
+		assertFalse(MacMediaSource.runningApps().contains("Music"), "Music was opened");
+	}
+
+	/** Runs an app part the way the main script does, with {@code run script}; returns what osascript printed. */
+	private static String runPart(String part) throws Exception {
+		Process p = new ProcessBuilder("/usr/bin/osascript", "-e", "on run argv", "-e", "return run script (item 1 of argv)",
+				"-e", "end run", part).redirectErrorStream(true).start();
+		p.getOutputStream().close();
+		if (!p.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)) {
+			p.destroyForcibly();
+			throw new AssertionError("osascript didn't finish");
+		}
+		return new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).strip();
 	}
 
 	/** Every field the read scripts return is fetched inside its own try, so one missing field can't lose the reading. */
