@@ -10,7 +10,7 @@ import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
  * per direction; only the cloud band is worked out again as the clouds drift.
  */
 final class MoonlitSky {
-	private static final float DEG = (float) (Math.PI / 180);
+	static final float DEG = (float) (Math.PI / 180);
 
 	/** How far each layer sits, as a share of the sky radius. Nearer layers draw over farther ones. */
 	static final float DOME = 1f, GLOW_SKY = 0.975f, CLOUDS = 0.95f, STARS = 0.935f, DISC = 0.92f;
@@ -49,19 +49,19 @@ final class MoonlitSky {
 	static final float[] CLOUD_ROWS = {-HORIZON_FADE, 0, 1.5f, 3, 4.5f, 6, 7.5f, 9, 10.5f, 12, 13.5f, CLOUD_TOP};
 	static final int CLOUD_COLUMNS = 120;
 
-	private static final int STAR_COUNT = 240;
-	private static final int STAR_RGB = 0xE6EDFF;
+	static final int STAR_COUNT = 240;
+	static final int STAR_RGB = 0xE6EDFF;
 	/** No stars this close to the moon's middle, in moon radii: its light washes them out. */
 	private static final float STAR_CLEAR = 1.6f;
 
-	private static final SkyMesh DOME_MESH, GLOW_MESH, DISC_MESH;
-	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
-	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
-	private static final int[] STAR_SKY = new int[STAR_COUNT];
+	static final SkyMesh DOME_MESH, GLOW_MESH, DISC_MESH;
+	static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
+	static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
+	static final int[] STAR_SKY = new int[STAR_COUNT];
 	/** Each star's direction (lyrics facing south), to tell whether it is in view. */
-	private static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
+	static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
 	/** Wider than any star (a few pixels across), in radians. */
-	private static final float STAR_REACH = 0.02f;
+	static final float STAR_REACH = 0.02f;
 
 	static {
 		// The plain gradient: coarse triangles would smear the glow past the edge of the glow's own rings
@@ -108,6 +108,10 @@ final class MoonlitSky {
 	static final int[][] CONSTELLATIONS_BEHIND = Constellations.behind(MoonlitSky::background);
 
 	private final SkyFrame frame = new SkyFrame();
+	/** Each star's square, as placed for {@link #starsYaw}, {@link #starsPixel} and {@link #starsRadius}; and its colour this frame. */
+	private final KeptQuads starQuads = new KeptQuads(STAR_COUNT);
+	private float starsYaw = Float.NaN, starsPixel = Float.NaN, starsRadius = Float.NaN;
+	private final int[] starArgb = new int[STAR_COUNT];
 	final SkyMesh clouds = SkyMesh.dome(CLOUD_ROWS, CLOUD_COLUMNS, MoonlitSky::background);
 	/**
 	 * What the clouds' drift leaves alone at each point of their band, worked out once: the sky behind the clouds, the
@@ -289,18 +293,36 @@ final class MoonlitSky {
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
 	private void stars(SkyCanvas c, float r, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
+		if (!KeptQuads.same(baseYaw, starsYaw) || !KeptQuads.same(pixel, starsPixel) || !KeptQuads.same(r, starsRadius)
+				|| !KeptQuads.same(c.horizonFade(), starQuads.fade())) {
+			placeStars(c, r, baseYaw, pixel);
+		}
 		for (int i = 0; i < STAR_COUNT; i++) {
 			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
 			float twinkle = 0.7f + 0.3f * (float) Math.sin(SkyClock.phase(time, 0.6 + 0.11 * (i % 9), i * 1.7f));
-			int col = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
+			starArgb[i] = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
+			starQuads.draw(c, i, starArgb);
+		}
+	}
+
+	/**
+	 * Places every star's square on the sky and keeps it: they stand still where the lyrics face, a few screen pixels
+	 * across, so they only move when the direction, the size of a pixel (the field of view, the window) or the distance does.
+	 */
+	private void placeStars(SkyCanvas c, float r, float baseYaw, float pixel) {
+		starsYaw = baseYaw;
+		starsPixel = pixel;
+		starsRadius = r;
+		starQuads.begin(c.horizonFade());
+		for (int i = 0; i < STAR_COUNT; i++) {
 			float s = STAR_SIZE[i] * pixel;
 			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);
-			c.at(frame, -s, -s, r, col);
-			c.at(frame, s, -s, r, col);
-			c.at(frame, s, s, r, col);
-			c.at(frame, -s, s, r, col);
+			starQuads.at(frame, -s, -s, r, i);
+			starQuads.at(frame, s, -s, r, i);
+			starQuads.at(frame, s, s, r, i);
+			starQuads.at(frame, -s, s, r, i);
 		}
 	}
 }

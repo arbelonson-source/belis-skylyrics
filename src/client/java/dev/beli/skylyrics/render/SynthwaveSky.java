@@ -15,7 +15,7 @@ import dev.beli.skylyrics.render.SkyCanvas.SkyFrame;
  * south; a frame only turns them to the lyrics' direction.
  */
 final class SynthwaveSky {
-	private static final float DEG = (float) (Math.PI / 180);
+	static final float DEG = (float) (Math.PI / 180);
 
 	/** How far each layer sits, as a share of the sky radius. Nearer layers draw over farther ones. */
 	static final float DOME = 1f, SWIRL = 0.975f, SUN_SKY = 0.95f, STARS = 0.93f, DISC = 0.91f;
@@ -47,8 +47,8 @@ final class SynthwaveSky {
 	private static final int SWIRL_RINGS = 57, SWIRL_SEGMENTS = 40;
 	private static final float SWIRL_STEP = RING_PERIOD / 4;
 
-	private static final int STAR_COUNT = 320;
-	private static final int STAR_RGB = 0xF4ECFF;
+	static final int STAR_COUNT = 320;
+	static final int STAR_RGB = 0xF4ECFF;
 	/** No stars this close to the sun's middle, in sun radii (they would show through the stripe gaps). */
 	private static final float STAR_CLEAR = 1.3f;
 
@@ -72,24 +72,24 @@ final class SynthwaveSky {
 	private static final float GLOW_STEP = 0.05f, HALO_STEP = 0.1f;
 	private static final int SUN_SEGMENTS = 48;
 
-	private static final float TAN_SUN = (float) Math.tan(SUN_RADIUS * DEG);
+	static final float TAN_SUN = (float) Math.tan(SUN_RADIUS * DEG);
 	private static final SkyFrame SUN_FRAME = new SkyFrame().aim(SUN_YAW, SUN_ELEV);
 	private static final SkyFrame SWIRL_FRAME = new SkyFrame().aim(0, SWIRL_ELEV);
 
-	private static final SkyMesh DOME_MESH, SWIRL_MESH, SUN_MESH;
-	private static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
-	private static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
-	private static final int[] STAR_SKY = new int[STAR_COUNT];
+	static final SkyMesh DOME_MESH, SWIRL_MESH, SUN_MESH;
+	static final float[] STAR_YAW = new float[STAR_COUNT], STAR_ELEV = new float[STAR_COUNT];
+	static final float[] STAR_SIZE = new float[STAR_COUNT], STAR_ALPHA = new float[STAR_COUNT];
+	static final int[] STAR_SKY = new int[STAR_COUNT];
 	/** Each star's direction (lyrics facing south), to tell whether it is in view. */
-	private static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
+	static final float[] STAR_X = new float[STAR_COUNT], STAR_Y = new float[STAR_COUNT], STAR_Z = new float[STAR_COUNT];
 	/** Wider than any star (a few pixels across), in radians. */
-	private static final float STAR_REACH = 0.02f;
+	static final float STAR_REACH = 0.02f;
 	/** The sun's disc holds the stripes: its angular radius with a little to spare, in radians. */
-	private static final float SUN_REACH = SUN_RADIUS * DEG * 1.05f;
+	static final float SUN_REACH = SUN_RADIUS * DEG * 1.05f;
 	/** Face rows from top (0) to bottom (1); a row is drawn when FACE_FILL is set, else it is a gap. */
 	static final float[] FACE_T;
 	static final boolean[] FACE_FILL;
-	private static final int[] FACE_ROW_RGB;
+	static final int[] FACE_ROW_RGB;
 
 	static {
 		DOME_MESH = new SkyMesh(DOME_ROWS.length, DOME_COLUMNS + 1).asDome(DOME_ROWS, DOME_COLUMNS);
@@ -159,6 +159,13 @@ final class SynthwaveSky {
 	static final int[][] CONSTELLATIONS_BEHIND = Constellations.behind(SynthwaveSky::background);
 
 	private final SkyFrame frame = new SkyFrame();
+	/** Each star's square, as placed for {@link #starsYaw}, {@link #starsPixel} and {@link #starsRadius}; and its colour this frame. */
+	private final KeptQuads starQuads = new KeptQuads(STAR_COUNT);
+	private float starsYaw = Float.NaN, starsPixel = Float.NaN, starsRadius = Float.NaN;
+	private final int[] starArgb = new int[STAR_COUNT];
+	/** The sun's stripes, one quad per row drawn, as placed for {@link #faceYaw} and {@link #faceRadius}. */
+	private final KeptQuads faceQuads = new KeptQuads(FACE_STRIPES);
+	private float faceYaw = Float.NaN, faceRadius = Float.NaN;
 
 	/** Rings round the sun as tangents: its middle, then finely through the glow and coarser through the halo. */
 	private static float[] sunRings() {
@@ -262,7 +269,7 @@ final class SynthwaveSky {
 		stars(c, radius * STARS, baseYaw, level, time, pixel, view);
 		frame.aim(baseYaw + SUN_YAW, SUN_ELEV);
 		if (view.capVisible(frame.dx, frame.dy, frame.dz, SUN_REACH)) {
-			face(c, radius * DISC, level);
+			face(c, radius * DISC, baseYaw, level);
 		}
 		c.fadeBelowHorizon(0);
 	}
@@ -270,34 +277,71 @@ final class SynthwaveSky {
 	/** Small square stars, mixed into the sky colour behind them (so they stay opaque), twinkling. */
 	private void stars(SkyCanvas c, float r, float baseYaw, float level, double time, float pixel, SkyView view) {
 		float cos = (float) Math.cos(baseYaw * DEG), sin = (float) Math.sin(baseYaw * DEG);
+		if (!KeptQuads.same(baseYaw, starsYaw) || !KeptQuads.same(pixel, starsPixel) || !KeptQuads.same(r, starsRadius)
+				|| !KeptQuads.same(c.horizonFade(), starQuads.fade())) {
+			placeStars(c, r, baseYaw, pixel);
+		}
 		for (int i = 0; i < STAR_COUNT; i++) {
 			if (STAR_ALPHA[i] == 0 || !view.capVisibleTurned(STAR_X[i], STAR_Y[i], STAR_Z[i], cos, sin, STAR_REACH)) {
 				continue;
 			}
 			float twinkle = 0.75f + 0.25f * (float) Math.sin(SkyClock.phase(time, 0.7 + 0.13 * (i % 7), i * 2.3f));
-			int col = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
-			float s = STAR_SIZE[i] * pixel;
-			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);
-			c.at(frame, -s, -s, r, col);
-			c.at(frame, s, -s, r, col);
-			c.at(frame, s, s, r, col);
-			c.at(frame, -s, s, r, col);
+			starArgb[i] = SkyColors.argb(SkyColors.mix(STAR_SKY[i], STAR_RGB, STAR_ALPHA[i] * twinkle), level);
+			starQuads.draw(c, i, starArgb);
 		}
 	}
 
-	/** The striped face: one trapezoid per row, gaps left open so the glow behind shows through. */
-	private void face(SkyCanvas c, float r, float level) {
-		for (int i = 0; i < FACE_FILL.length; i++) {
-			if (!FACE_FILL[i]) {
-				continue;
+	/**
+	 * Places every star's square on the sky and keeps it: they stand still where the lyrics face, a few screen pixels
+	 * across, so they only move when the direction, the size of a pixel (the field of view, the window) or the distance does.
+	 */
+	private void placeStars(SkyCanvas c, float r, float baseYaw, float pixel) {
+		starsYaw = baseYaw;
+		starsPixel = pixel;
+		starsRadius = r;
+		starQuads.begin(c.horizonFade());
+		for (int i = 0; i < STAR_COUNT; i++) {
+			float s = STAR_SIZE[i] * pixel;
+			frame.aim(baseYaw + STAR_YAW[i], STAR_ELEV[i]);
+			starQuads.at(frame, -s, -s, r, i);
+			starQuads.at(frame, s, -s, r, i);
+			starQuads.at(frame, s, s, r, i);
+			starQuads.at(frame, -s, s, r, i);
+		}
+	}
+
+	/** How many face rows are drawn (the rest are gaps). */
+	private static final int FACE_STRIPES = stripes();
+
+	private static int stripes() {
+		int n = 0;
+		for (boolean fill : FACE_FILL) {
+			n += fill ? 1 : 0;
+		}
+		return n;
+	}
+
+	/** The striped face: one trapezoid per row, gaps left open so the glow behind shows through. {@link #frame} is on the sun. */
+	private void face(SkyCanvas c, float r, float baseYaw, float level) {
+		if (!KeptQuads.same(baseYaw, faceYaw) || !KeptQuads.same(r, faceRadius) || !KeptQuads.same(c.horizonFade(), faceQuads.fade())) {
+			faceYaw = baseYaw;
+			faceRadius = r;
+			faceQuads.begin(c.horizonFade());
+			for (int i = 0; i < FACE_FILL.length; i++) {
+				if (!FACE_FILL[i]) {
+					continue;
+				}
+				float b0 = 1 - 2 * FACE_T[i], b1 = 1 - 2 * FACE_T[i + 1];
+				float w0 = (float) Math.sqrt(Math.max(0, 1 - b0 * b0)), w1 = (float) Math.sqrt(Math.max(0, 1 - b1 * b1));
+				faceQuads.at(frame, -w0 * TAN_SUN, b0 * TAN_SUN, r, i);
+				faceQuads.at(frame, w0 * TAN_SUN, b0 * TAN_SUN, r, i);
+				faceQuads.at(frame, w1 * TAN_SUN, b1 * TAN_SUN, r, i + 1);
+				faceQuads.at(frame, -w1 * TAN_SUN, b1 * TAN_SUN, r, i + 1);
 			}
-			float b0 = 1 - 2 * FACE_T[i], b1 = 1 - 2 * FACE_T[i + 1];
-			float w0 = (float) Math.sqrt(Math.max(0, 1 - b0 * b0)), w1 = (float) Math.sqrt(Math.max(0, 1 - b1 * b1));
-			int c0 = SkyColors.argb(FACE_ROW_RGB[i], level), c1 = SkyColors.argb(FACE_ROW_RGB[i + 1], level);
-			c.at(frame, -w0 * TAN_SUN, b0 * TAN_SUN, r, c0);
-			c.at(frame, w0 * TAN_SUN, b0 * TAN_SUN, r, c0);
-			c.at(frame, w1 * TAN_SUN, b1 * TAN_SUN, r, c1);
-			c.at(frame, -w1 * TAN_SUN, b1 * TAN_SUN, r, c1);
+		}
+		int alpha = SkyColors.argb(0, level);
+		for (int q = 0; q < FACE_STRIPES; q++) {
+			faceQuads.draw(c, q, alpha, FACE_ROW_RGB);
 		}
 	}
 }
