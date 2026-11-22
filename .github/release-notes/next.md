@@ -198,6 +198,7 @@
 - **Holding the now-playing or lock key.** Holding the **Show now-playing card** or **Lock lyrics here** key a moment too long no longer flips it on and off many times a second, leaving it either way: like the show/hide lyrics and music keys, it now acts once per press. The **Lyrics are late** and **Lyrics are early** keys still keep stepping while held.
 - **Closing the settings or song library with its key.** Closing the settings with J (or the song library with Ctrl+N) and holding the key a moment too long no longer opens them again right away: the key has to be let go and pressed again.
 - **The lock key with Floating lyrics.** With **Placement** on **Floating** (Arc or Lines), where nothing can be pinned, the **Lock lyrics here** key no longer says "Lyrics locked here" and quietly turns on **View lock**: it says only lyrics in the sky can be locked and changes nothing. With **Direction** on N, E, S or W, unlocking now says "Lyrics unlocked" instead of "Lyrics follow again", since the lyrics go back to that side of the sky.
+- **Twinkling stars in the World layout.** In the World layout with **Direction** on N, E, S or W, the **Twinkling stars** now stay round the words on that side of the sky instead of following your view when **Placement** was left on **Floating** from another layout (Placement is hidden in World).
 
 ### Faster
 

@@ -4,7 +4,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Direction;
-import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyColors;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
 import dev.beli.skylyrics.lyrics.LyricLine;
@@ -537,7 +536,7 @@ public final class SkyEffects {
 			sparkles = !anchorNeedsInit();
 		}
 		if (sparkles) {
-			sparkleSpread = Mth.clamp(cfg.size, 0.6f, 1.6f) * (cfg.placement == Placement.SKY ? 1 : 0.8f);
+			sparkleSpread = Mth.clamp(cfg.size, 0.6f, 1.6f) * (FollowAnchor.floating(cfg.placement, cfg.layout, lyrics.instrumental()) ? 0.8f : 1);
 		}
 		skyUp = true;
 		updateMeteors(cfg, dt);
@@ -666,7 +665,7 @@ public final class SkyEffects {
 			targetYaw = lock[0];
 			targetPitch = lock[1];
 			speed = 3f;
-		} else if (cfg.placement == Placement.FLOATING) {
+		} else if (FollowAnchor.floating(cfg.placement, cfg.layout, lyrics.instrumental())) {
 			targetYaw = camYaw;
 			targetPitch = Mth.clamp(camera.xRot() - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;
