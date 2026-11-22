@@ -8,9 +8,24 @@ import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Layout;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Placement;
 import dev.beli.skylyrics.config.SkyLyricsConfig.SkyEffect;
+import dev.beli.skylyrics.media.SpotifyWebSource;
 import org.junit.jupiter.api.Test;
 
 class SettingsRowsTest {
+	@Test
+	void whileTheBrowserIsOpenTheSpotifyCardSaysWhatSpotifysOwnErrorPageMeans() {
+		// A wrong Client ID, or a Redirect URI missing or different on the dashboard, ends on Spotify's own English page
+		// ("INVALID_CLIENT: Invalid client", "INVALID_CLIENT: Invalid redirect URI"), which never comes back to the game:
+		// the card said only "Waiting for your browser…" until "Sign-in timed out" five minutes later
+		String note = SkyLyricsScreen.spotifyNote(SpotifyWebSource.Account.WAITING, "", "");
+		assertTrue(note.contains("INVALID_CLIENT") && note.contains("Client ID") && note.contains("Redirect URI"), note);
+		// A failed sign-in still says why, and signed in there is nothing to say
+		assertEquals("Sign-in timed out", SkyLyricsScreen.spotifyNote(SpotifyWebSource.Account.SIGNED_OUT, "Sign-in timed out", ""));
+		assertEquals("x", SkyLyricsScreen.spotifyNote(SpotifyWebSource.Account.SIGNED_OUT, "", "x"));
+		assertEquals("", SkyLyricsScreen.spotifyNote(SpotifyWebSource.Account.SIGNED_OUT, "", ""));
+		assertEquals("", SkyLyricsScreen.spotifyNote(SpotifyWebSource.Account.SIGNED_IN, "Sign-in timed out", "x"));
+	}
+
 	@Test
 	void flatOnlyRowsAreHiddenInWorld() {
 		assertFalse(SkyLyricsScreen.flatLayout(Layout.WORLD));

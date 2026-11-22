@@ -76,6 +76,7 @@ class LibraryFitTest {
 						shown(all, lang, "Can't reach the internet or Spotify"), shown(all, lang, "Something went wrong, try again"),
 						shown(all, lang, "Spotify didn't answer, try again"),
 						shown(all, lang, "Spotify blocked this app. On the Spotify dashboard, add your account under User Management"),
+						shown(all, lang, "Spotify needs Premium on the account that created your Spotify app"),
 						shown(all, lang, "Sign out and sign in again on the Music tab to use the song library"),
 						shown(all, lang, "Spotify signed you out, sign in again"),
 						shown(all, lang, "Spotify no longer accepts your Client ID, check it and sign in again"),
