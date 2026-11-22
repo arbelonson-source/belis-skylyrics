@@ -57,6 +57,24 @@ class VisibilityTest {
 	}
 
 	@Test
+	void swimmingOutOfACaveIntoDeepOpenWaterEndsIt() {
+		// Water dims sky light by 1 a block: 7 blocks under the surface of open water the head is at 8, below SHOW_AT. Out
+		// of a cave through a flooded tunnel into the sea, the lyrics stayed hidden until the head rose to 6 blocks
+		for (int depth = 1; depth <= 30; depth++) {
+			assertFalse(Visibility.underground(true, Math.max(0, 15 - depth), true, 15), depth + " blocks under open water");
+		}
+		// The water's surface in the sun, behind a frozen sea's ice, or at a ravine floor open to the sky
+		assertFalse(Visibility.underground(true, 0, true, Visibility.SHOW_AT));
+		// A pool in a dark cave: the air over its water, or the rock it touches, has no sky light, so it stays a cave
+		assertTrue(Visibility.underground(true, 0, true, 0));
+		assertTrue(Visibility.underground(true, 0, true, Visibility.HIDE_AT));
+		assertTrue(Visibility.underground(true, Visibility.HIDE_AT, true, Visibility.SHOW_AT - 1));
+		// Diving from open sky still never starts it, and the dry rule is unchanged
+		assertFalse(Visibility.underground(false, 0, true, 0));
+		assertTrue(Visibility.underground(false, 2, false, 15));
+	}
+
+	@Test
 	void forgettingDropsTheOldWorldsCaveAnswer() throws Exception {
 		set("checkedAt", System.nanoTime());
 		set("underground", true);
