@@ -6,6 +6,7 @@
 	"client": [
 		"BossHealthOverlayAccessor",
 		"ChatComponentAccessor",
+		"DebugScreenOverlayMixin",
 		"FontPageMixin",
 		"FontTextureMixin",
 		"GlyphStitcherMixin",
