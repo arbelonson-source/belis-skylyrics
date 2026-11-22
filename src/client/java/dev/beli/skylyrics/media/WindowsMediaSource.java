@@ -221,8 +221,11 @@ public final class WindowsMediaSource implements MediaSource {
 	/**
 	 * What a poll said about one player: its state and reported position, when we asked, and the time its
 	 * position counts from (see {@link #countFrom}).
+	 *
+	 * @param baseMs the position that count starts from: the reported one, or for a player that never says when, where
+	 *               the count had got to when it paused without writing a new position
 	 */
-	record Seen(String title, long lengthMs, boolean playing, long reportedMs, long polledMs, long countFromMs, long updatedRawMs) {
+	record Seen(String title, long lengthMs, boolean playing, long reportedMs, long polledMs, long countFromMs, long updatedRawMs, long baseMs) {
 
 		/** Whether this is still the same song, so its count can go on. */
 		boolean sameSong(String title, long lengthMs) {
@@ -300,9 +303,17 @@ public final class WindowsMediaSource implements MediaSource {
 			Seen prev = before.get(key);
 			// Another song on the same player starts its own count
 			Seen same = prev != null && prev.sameSong(title, length) ? prev : null;
+			boolean sameReport = same != null && same.reportedMs() == reported && same.updatedRawMs() == updated;
 			long from;
-			if (same != null && playing && same.playing() && same.reportedMs() == reported && same.updatedRawMs() == updated) {
+			long base = reported;
+			if (sameReport && playing && same.playing()) {
 				from = same.countFromMs(); // the same report as last time: keep counting, whatever the wall clock did
+				base = same.baseMs();
+			} else if (sameReport && updated <= 0) {
+				// A player that never says when still says what it wrote last (often the start) after a pause or a resume:
+				// the song stopped, and goes on, where our count got to
+				base = playing || !same.playing() ? same.baseMs() : position(same.baseMs(), same.countFromMs(), true, length, nowMs, rate);
+				from = playing ? nowMs : NO_TIME;
 			} else {
 				// A first sight of this report: its age on the wall clock, once, then on the steady clock
 				long age = updated > 0 ? Math.max(0, wallMs - updated) : 0;
@@ -311,8 +322,8 @@ public final class WindowsMediaSource implements MediaSource {
 				}
 				from = countFrom(playing, reported, updated > 0 ? monoMs - age : NO_TIME, nowMs, same);
 			}
-			after.put(key, new Seen(title, length, playing, reported, nowMs, from, updated));
-			long position = position(reported, from, playing, length, nowMs, rate);
+			after.put(key, new Seen(title, length, playing, reported, nowMs, from, updated, base));
+			long position = position(base, from, playing, length, nowMs, rate);
 			Track track = new Track(title, string(o, "artist"), string(o, "album"), length, coverUrl(string(o, "cover")), playerKey(id));
 			out.add(new Session((int) number(o, "index"), id, TitleCleaner.clean(track), position, playing, rate));
 		}
