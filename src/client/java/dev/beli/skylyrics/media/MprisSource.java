@@ -368,7 +368,10 @@ public final class MprisSource implements MediaSource {
 
 	/** Held for the whole of a poll, which is the only code that touches {@link #asked} and {@link #lastGood}. */
 	private final java.util.concurrent.locks.ReentrantLock pollLock = new java.util.concurrent.locks.ReentrantLock();
-	/** Set by close(); a poll that was still running then clears the maps itself when it ends. */
+	/**
+	 * Set by close() until the maps are cleared: by close() itself, or by the poll that was still running then, as it
+	 * ends. Later polls keep their reads again (a slow player's answer is still picked up by the next poll).
+	 */
 	private volatile boolean closed;
 	/** How long close() waits for a poll in progress before leaving the clearing to it. */
 	static final long CLOSE_WAIT_MS = 250;
@@ -380,6 +383,7 @@ public final class MprisSource implements MediaSource {
 			return pollLocked();
 		} finally {
 			if (closed) {
+				closed = false;
 				clearReads();
 			}
 			pollLock.unlock();
@@ -776,6 +780,7 @@ public final class MprisSource implements MediaSource {
 		}
 		if (got) {
 			try {
+				closed = false;
 				clearReads();
 			} finally {
 				pollLock.unlock();
