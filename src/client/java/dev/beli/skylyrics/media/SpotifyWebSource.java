@@ -1237,9 +1237,21 @@ public final class SpotifyWebSource implements MediaSource {
 		return e != null && e.isJsonPrimitive() ? e.getAsString() : null;
 	}
 
+	/** The largest whole number a double holds exactly (2^53): far above any length, position, size or count Spotify sends. */
+	private static final double MAX_EXACT = 9_007_199_254_740_992d;
+
+	/**
+	 * A whole number from the answer, or 0 when it is missing or not a number. Read through a double: a number with more
+	 * digits than a long holds, or one like 1e999999999 (which newer Gson refuses with an exception), also reads as missing,
+	 * instead of failing the whole answer or wrapping round to a wrong value.
+	 */
 	static long number(JsonObject o, String key) {
 		JsonElement e = o.get(key);
-		return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? e.getAsLong() : 0;
+		if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) {
+			return 0;
+		}
+		double d = e.getAsDouble();
+		return Double.isFinite(d) && Math.abs(d) <= MAX_EXACT ? (long) d : 0;
 	}
 
 	static String orEmpty(@Nullable String s) {
