@@ -1123,6 +1123,11 @@ final class WorldWords {
 			c.pos = eye.add(swing(offset, turn, tilt, c.clip));
 			c.clip = clipAfter(offset, c.clip, tilt);
 			c.face += turn;
+			// Where it slid out of a neighbour's way, and a knock, turn round with it: left in the world's directions they
+			// would put it off its spot, back onto the word it moved away from
+			c.slide = turned(c.slide, turn);
+			c.slid = turned(c.slid, turn);
+			c.knock = turned(c.knock, turn);
 		}
 		if (sentence != null) {
 			sentence.swing(turn, tilt);
@@ -1130,6 +1135,11 @@ final class WorldWords {
 		if (last != null) {
 			last.swing(turn, tilt);
 		}
+	}
+
+	/** A sideways offset (a slide, a knock) turned {@code turn} degrees round, the way {@link #swing} turns a card. */
+	static Vec3 turned(Vec3 offset, float turn) {
+		return turn == 0 || offset == Vec3.ZERO ? offset : offset.yRot(-turn * DEG);
 	}
 
 	/**

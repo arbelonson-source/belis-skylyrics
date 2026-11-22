@@ -13,6 +13,36 @@ class WorldWordsTravelTest {
 	private static final long FRAME = 16_000_000L;
 
 	/**
+	 * A word the Slide apart setting moved aside, out of its neighbour's way, keeps that place beside it as the words
+	 * turn with you: a boat spinning or an elytra steering a quarter turn swings the whole word round, its slide too,
+	 * so it neither drifts off its spot nor lands back on the word it moved away from.
+	 */
+	@Test
+	void aWordSlidAsideStaysWhereItWasInYourViewWhenTheWordsTurnWithYou() throws Exception {
+		WorldWords words = new WorldWords();
+		Vec3 eye = new Vec3(0, 80, 0);
+		// 10 blocks ahead of you looking south (yaw 0), moved 2 blocks to the side, and already all the way there
+		Object card = card(eye.add(0, 0, 10));
+		set(card, "slide", new Vec3(2, 0, 0));
+		set(card, "slid", new Vec3(2, 0, 0));
+		cards(words).add(card);
+		long now = 1_000_000_000L;
+		words.glide(eye, 0, 0, true, now);
+		Vec3 before = drawn(card).subtract(eye);
+		// A quarter turn while riding, standing still
+		words.glide(eye, 90, 0, true, now + FRAME);
+		Vec3 after = drawn(card).subtract(eye);
+		Vec3 expected = WorldWords.swing(before, 90, 0);
+		assertEquals(expected.x, after.x, 1e-3, "x: the slide turns with the word, " + after);
+		assertEquals(expected.y, after.y, 1e-3, "y: " + after);
+		assertEquals(expected.z, after.z, 1e-3, "z: the slide turns with the word, " + after);
+		// And where it is gliding to turns too, so it doesn't glide off afterwards
+		Vec3 target = ((Vec3) get(card, "pos")).add((Vec3) get(card, "slide")).subtract(eye);
+		assertEquals(expected.x, target.x, 1e-3, "slide target x: " + target);
+		assertEquals(expected.z, target.z, 1e-3, "slide target z: " + target);
+	}
+
+	/**
 	 * With Elytra mode off the words stay where they were put, however fast you go: a rocket-boosted flight or a dive
 	 * (well over 30 blocks a second) must not carry them along or swing them round as you steer, and new words keep
 	 * to the World direction.
