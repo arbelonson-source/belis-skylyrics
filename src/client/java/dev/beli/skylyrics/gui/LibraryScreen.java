@@ -1680,6 +1680,7 @@ public final class LibraryScreen extends Screen {
 		if (key != null && key.matches(event)) {
 			// A letter here starts a search, and a key held since it opened us only repeats
 			if (ScreenKeys.libraryKeyCloses(typing, library != null, event.key(), ScreenKeys.realCtrl(event) || event.hasControlDownWithQuirk(), event.hasAltDown(), closeKeyHeld)) {
+				mod.closedWithKey(key);
 				onClose();
 				return true;
 			}

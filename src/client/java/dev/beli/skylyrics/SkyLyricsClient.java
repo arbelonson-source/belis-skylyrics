@@ -98,6 +98,9 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private boolean attackHeld;
 	// Held keys repeat their click; how each of our keys takes that (see KeyPresses.of)
 	private final java.util.Map<KeyMapping, KeyPresses> presses = new java.util.HashMap<>();
+	// Our screens close on their own key's press; held on, its repeats must not open them straight back
+	private final ClosedByKey settingsClosed = new ClosedByKey();
+	private final ClosedByKey libraryClosed = new ClosedByKey();
 	private SkyEffects sky;
 	private NowPlayingHud hud;
 	private RecordCard card;
@@ -445,7 +448,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			keysChecked = true;
 			moveOffShaderToggle(client, openLibrary, SkyLyricsConfig.get());
 		}
-		while (openSettings.consumeClick()) {
+		if (settingsClosed.opens(drain(openSettings), heldNow(client, openSettings))) {
 			//? if >=26.2 {
 			/*if (client.gui.screen() == null) {
 				client.gui.setScreen(new SkyLyricsScreen(null));
@@ -455,7 +458,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			//?}
 			}
 		}
-		while (openLibrary.consumeClick()) {
+		if (libraryClosed.opens(drain(openLibrary), heldNow(client, openLibrary))) {
 			//? if >=26.2 {
 			/*if (client.gui.screen() == null) {
 				client.gui.setScreen(new LibraryScreen(null));
@@ -586,6 +589,31 @@ public final class SkyLyricsClient implements ClientModInitializer {
 
 	public AlbumArt art() {
 		return art;
+	}
+
+	/** Our screens call this when their own key closes them, so its repeats while it is still held don't open them again. */
+	public void closedWithKey(KeyMapping key) {
+		if (key == openSettings) {
+			settingsClosed.closed();
+		} else if (key == openLibrary) {
+			libraryClosed.closed();
+		}
+	}
+
+	/** Whether the key the mapping is bound to is down on the keyboard right now (never for a mouse button). */
+	private static boolean heldNow(Minecraft client, KeyMapping mapping) {
+		//? if >=26.1 {
+		/*InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(mapping);
+		*///?} else {
+		InputConstants.Key key = KeyBindingHelper.getBoundKeyOf(mapping);
+		//?}
+		//? if >=26.3 {
+		/*return key.getType() == InputConstants.Type.KEYBOARD && InputConstants.isKeyDown(key.getValue());
+		*///?} else if >=1.21.9 {
+		return key.getType() == InputConstants.Type.KEYSYM && InputConstants.isKeyDown(client.getWindow(), key.getValue());
+		//?} else {
+		/*return key.getType() == InputConstants.Type.KEYSYM && InputConstants.isKeyDown(client.getWindow().getWindow(), key.getValue());
+		*///?}
 	}
 
 	/** The key that opens the settings, so the screen can close on it too. */
