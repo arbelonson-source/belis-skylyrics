@@ -1,5 +1,7 @@
 package dev.beli.skylyrics.render;
 
+import java.util.function.IntSupplier;
+
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.DeathScreen;
@@ -89,8 +91,7 @@ public final class Visibility {
 			checkedAt = now;
 			BlockPos at = camera.blockPosition();
 			boolean inWater = camera.getFluidInCamera() == FogType.WATER;
-			underground = underground(underground, level.getBrightness(LightLayer.SKY, at), inWater,
-					inWater ? surfaceSkyLight(level, at) : 0);
+			underground = underground(underground, skyLight(level, at), inWater, inWater ? surfaceSkyLight(level, at) : 0);
 		}
 		return underground;
 	}
@@ -103,7 +104,27 @@ public final class Visibility {
 		for (int i = 0; i < SURFACE_SEARCH && level.getFluidState(pos).is(FluidTags.WATER); i++) {
 			pos.move(Direction.UP);
 		}
-		return level.getBrightness(LightLayer.SKY, pos);
+		return skyLight(level, pos);
+	}
+
+	/** The sky light at {@code at}, at any height the camera can reach (see {@link #skyLight(int, int, IntSupplier)}). */
+	private static int skyLight(ClientLevel level, BlockPos at) {
+		//? if >=1.21.2 {
+		int top = level.getMaxY();
+		//?} else {
+		/*int top = level.getMaxBuildHeight() - 1;
+		*///?}
+		return skyLight(at.getY(), top, () -> level.getBrightness(LightLayer.SKY, at));
+	}
+
+	/**
+	 * The sky light at height {@code y} in a world whose highest block can be at {@code top}, where {@code read} is the
+	 * game's own lookup. Above the top nothing can be built over you, so the sky is open. The lookup keeps only 12 bits of
+	 * the height: from y 2048 up it read the light 4096 blocks lower, under the bedrock floor, so with Hide in caves on,
+	 * flying or teleporting that high hid the lyrics as if underground.
+	 */
+	static int skyLight(int y, int top, IntSupplier read) {
+		return y > top ? 15 : read.getAsInt();
 	}
 
 	/** Whether "under cover" means anything in a dimension: it has sky light to lose, or a ceiling over you. */
