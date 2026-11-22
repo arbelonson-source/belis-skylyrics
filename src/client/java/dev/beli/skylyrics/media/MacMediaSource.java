@@ -111,8 +111,14 @@ public final class MacMediaSource implements MediaSource {
 			"	return v",
 			"end clean");
 
-	/** Spotify: duration in milliseconds, position in seconds; the last field is the song's spotify: address ("spotify:ad:..." for an ad). Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives. */
+	/**
+	 * Spotify: duration in milliseconds, position in seconds; the last field is the song's spotify: address ("spotify:ad:..." for an ad). Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives.
+	 *
+	 * <p>The first line checks again that the app runs (it answers "quit" if not): the main script's check comes before
+	 * this part is compiled, and an app that quit meanwhile would be opened again by the first question.
+	 */
 	private static final String SPOTIFY_READ = """
+			if not (running of application "Spotify") then return {"quit"}
 			tell application "Spotify"
 				set p to player state
 				if p is playing then
@@ -156,9 +162,11 @@ public final class MacMediaSource implements MediaSource {
 
 	/**
 	 * Music: duration and position in seconds; streams may have neither. No cover link, only image data and no
-	 * address, so those two fields are empty. The last field is an internet radio station's "Artist - Song" line.
+	 * address, so those two fields are empty. The last field is an internet radio station's "Artist - Song" line. The
+	 * first line checks again that Music runs, as in Spotify's part.
 	 */
 	private static final String MUSIC_READ = """
+			if not (running of application "Music") then return {"quit"}
 			tell application "Music"
 				set p to player state
 				if p is paused then
@@ -465,7 +473,7 @@ public final class MacMediaSource implements MediaSource {
 			}
 			boolean playing = state.equals("playing");
 			if (!playing && !state.equals("paused")) {
-				continue; // stopped, or the answer to a button press
+				continue; // stopped, quit just as we asked, or the answer to a button press
 			}
 			String uri = field(f, 8);
 			if (uri.startsWith("spotify:ad:")) {

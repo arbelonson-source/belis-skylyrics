@@ -249,6 +249,45 @@ class MacMediaSourceTest {
 		assertTrue(mu.replace("\t", "").contains("try\nset st to current stream title\nend try"));
 	}
 
+	/**
+	 * The main script checks that the app runs, then compiles its part; an app that quits during that compile would be
+	 * opened again by the first question ({@code tell application} launches an app that isn't running). So each part
+	 * checks again itself, right before it asks anything.
+	 */
+	@Test
+	void eachAppPartChecksTheAppStillRunsRightBeforeAsking() {
+		for (MacMediaSource.App app : List.of(MacMediaSource.SPOTIFY, MacMediaSource.MUSIC)) {
+			List<String> lines = app.readScript().lines().map(String::strip).filter(l -> !l.isEmpty()).toList();
+			assertEquals("if not (running of application \"" + app.name() + "\") then return {\"quit\"}", lines.getFirst());
+			assertEquals("tell application \"" + app.name() + "\"", lines.get(1));
+		}
+		// what it prints then is no song and no error
+		MacMediaSource.Answer a = MacMediaSource.parse("Spotify\tquit\n" + MUSIC_PAUSED);
+		assertEquals(1, a.players().size());
+		assertTrue(a.failures().isEmpty());
+	}
+
+	/** On a Mac (CI): Music's part, run while Music is closed, answers "quit" and leaves Music closed. */
+	@Test
+	void musicPartLeavesAClosedMusicClosed() throws Exception {
+		assumeTrue(System.getProperty("os.name", "").toLowerCase(Locale.ROOT).startsWith("mac"), "macOS only");
+		assumeTrue(!MacMediaSource.runningApps().contains("Music"), "Music is open on this Mac");
+		assertEquals("quit", runPart(MacMediaSource.MUSIC.readScript()));
+		assertFalse(MacMediaSource.runningApps().contains("Music"), "Music was opened");
+	}
+
+	/** Runs an app part the way the main script does, with {@code run script}; returns what osascript printed. */
+	private static String runPart(String part) throws Exception {
+		Process p = new ProcessBuilder("/usr/bin/osascript", "-e", "on run argv", "-e", "return run script (item 1 of argv)",
+				"-e", "end run", part).redirectErrorStream(true).start();
+		p.getOutputStream().close();
+		if (!p.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)) {
+			p.destroyForcibly();
+			throw new AssertionError("osascript didn't finish");
+		}
+		return new String(p.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).strip();
+	}
+
 	/** Every field the read scripts return is fetched inside its own try, so one missing field can't lose the reading. */
 	@Test
 	void everyFieldIsReadOnItsOwn() {
