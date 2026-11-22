@@ -46,6 +46,27 @@ public record Track(String title, String artist, String album, long lengthMs, St
 	}
 
 	/**
+	 * The text without the invisible characters the game draws as a dashed box with their name in it (see
+	 * {@link #drawnAsBox}): an emoji's style selector and the other variation selectors, the word joiner, the zero-width
+	 * space and the byte order mark. Lyric lines are cleaned with this; unlike {@link #clean} it keeps the direction marks
+	 * and the spaces as they are. The same instance when there is none.
+	 */
+	public static String dropBoxes(String s) {
+		for (int i = 0; i < s.length(); i++) {
+			if (drawnAsBox(s, i)) {
+				StringBuilder b = new StringBuilder(s.length()).append(s, 0, i);
+				for (; i < s.length(); i++) {
+					if (!drawnAsBox(s, i)) {
+						b.append(s.charAt(i));
+					}
+				}
+				return b.toString();
+			}
+		}
+		return s;
+	}
+
+	/**
 	 * Whether the char at {@code i} is (part of) an invisible character Minecraft's Unifont draws as a dashed box with its
 	 * name in it, which no bundled smooth font covers: the variation selectors (VS1 to VS16, and the high half or the low
 	 * half of VS17 to VS256) and the word joiner; also the zero-width space and the byte order mark, boxes in the pixel font.
