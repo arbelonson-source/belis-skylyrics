@@ -28,6 +28,37 @@ final class Focus {
 	}
 
 	/**
+	 * The stop Tab, Shift+Tab, Up or Down takes the keyboard to from {@code current} (-1 for nothing), skipping stops that
+	 * are not available and wrapping round. From nothing, going forward starts after the first {@code lead} stops (the
+	 * settings put the Lyrics switch and Preview before the rows), going back at the last stop.
+	 */
+	static int step(boolean[] available, int current, int dir, int lead) {
+		return next(available, current < 0 && dir > 0 ? lead - 1 : current, dir);
+	}
+
+	/**
+	 * The stop the keyboard starts from as it leaves the search box. While the search results show, nothing: they are a
+	 * new list, so Tab, Down and Enter land on the first result (Shift+Tab and Up on the last stop), even when the keyboard
+	 * was on Done or a result further down before. With nothing typed it carries on from the stop it was on.
+	 */
+	static int fromSearchBox(int current, boolean results) {
+		return results ? -1 : current;
+	}
+
+	/**
+	 * The row Ctrl+Tab puts the keyboard on in the tab it opens: the one it was on there ({@code remembered}, -1 for none)
+	 * while that row shows, else the next one that does, wrapping round; -1 when no row of the tab shows. A setting on
+	 * another tab, or a look, can hide the row in the meantime, and the Narrator must not name a row that isn't there.
+	 * {@code rows} tells which stops are rows that show.
+	 */
+	static int backOnTab(boolean[] rows, int remembered) {
+		if (remembered < 0) {
+			return -1;
+		}
+		return rows[remembered] ? remembered : next(rows, remembered, 1);
+	}
+
+	/**
 	 * The scroll that shows a row spanning {@code top} to {@code bottom} (measured from the top of the content) in a view
 	 * {@code viewH} tall, with {@code margin} of room around it. Stays put when it is already in view; a row taller than
 	 * the view shows its top.
