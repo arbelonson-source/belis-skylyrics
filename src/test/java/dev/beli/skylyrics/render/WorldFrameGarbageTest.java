@@ -2,13 +2,14 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.management.ManagementFactory;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.sun.management.ThreadMXBean;
 import net.minecraft.client.Camera;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -25,13 +26,15 @@ import org.junit.jupiter.api.Test;
  * outline, glow, letters) of every word, every frame.
  */
 class WorldFrameGarbageTest {
-	private static final ThreadMXBean MX = (ThreadMXBean) ManagementFactory.getThreadMXBean();
 	/** The game keeps the text it is given until the frame is drawn, so it can't be thrown away at once. */
 	private static final Object[] KEPT = new Object[64];
 	private static int submits;
 	/** What a frame drew while {@link #record} is on: each copy's colours and letters. */
 	private static final StringBuilder DRAWN = new StringBuilder();
 	private static boolean record;
+	/** The texts a frame hands the game, in order, while {@link #collect} is on. */
+	private static final List<Object> HANDED = new ArrayList<>();
+	private static boolean collect;
 
 	@BeforeEach
 	void measureByLength() {
@@ -42,6 +45,8 @@ class WorldFrameGarbageTest {
 	void done() {
 		WorldWords.measureHook = null;
 		record = false;
+		collect = false;
+		HANDED.clear();
 	}
 
 	/** A stand-in for the game's collector that keeps what it is handed; 1.21.8 and older draw at once, which needs a game. */
@@ -52,6 +57,9 @@ class WorldFrameGarbageTest {
 					if (m.getName().equals("submitText")) {
 						submits++;
 						KEPT[submits & 63] = a[3];
+						if (collect) {
+							HANDED.add(a[3]);
+						}
 						if (record) {
 							((FormattedCharSequence) a[3]).accept((i, style, cp) -> {
 								TextColor colour = style.getColor();
@@ -95,38 +103,44 @@ class WorldFrameGarbageTest {
 
 	private static final Camera CAMERA = new Camera();
 
-	/** Bytes one frame allocates once the JIT has settled, and how many texts it hands the game. */
-	private static long[] perFrame(float day) {
+	/**
+	 * The texts one steady frame hands the game, after a few frames to settle. Each card's copies (shadow, outline,
+	 * glow, letters) must come out as the very objects of the frame before: nothing rebuilt while nothing changes.
+	 * (Counting the bytes a frame allocates instead depends on how far the JIT has got and on the stand-in collector's
+	 * own boxing, so it differed between machines: GitHub's counted 1 to 4 KB where this PC counted 232 B.)
+	 */
+	private static List<Object> handed(WorldWords words, SubmitNodeCollector out, PoseStack pose, float day, long now) {
+		HANDED.clear();
+		collect = true;
+		words.render(pose, out, CAMERA, Font.DisplayMode.NORMAL, Style.EMPTY, 0xFF88CC, 1f, 0f, day, 1f, false, now);
+		collect = false;
+		return new ArrayList<>(HANDED);
+	}
+
+	private static void sameTextsAsTheFrameBefore(float day, int atLeast) {
 		WorldWords words = sung();
 		SubmitNodeCollector out = collector();
 		PoseStack pose = new PoseStack();
-		for (int i = 0; i < 20_000; i++) {
+		for (int i = 0; i < 3; i++) {
 			words.render(pose, out, CAMERA, Font.DisplayMode.NORMAL, Style.EMPTY, 0xFF88CC, 1f, 0f, day, 1f, false, NOW + i * 1000L);
 		}
-		submits = 0;
-		int frames = 5000;
-		long id = Thread.currentThread().getId();
-		long before = MX.getThreadAllocatedBytes(id);
-		for (int i = 0; i < frames; i++) {
-			words.render(pose, out, CAMERA, Font.DisplayMode.NORMAL, Style.EMPTY, 0xFF88CC, 1f, 0f, day, 1f, false, NOW + i * 1000L);
+		List<Object> before = handed(words, out, pose, day, NOW + 3000L);
+		List<Object> after = handed(words, out, pose, day, NOW + 4000L);
+		assertTrue(before.size() >= atLeast, "texts drawn: " + before.size());
+		assertEquals(before.size(), after.size(), "texts drawn");
+		for (int i = 0; i < before.size(); i++) {
+			assertSame(before.get(i), after.get(i), "text " + i + " of " + before.size() + " was built again");
 		}
-		long used = (MX.getThreadAllocatedBytes(id) - before) / frames;
-		System.out.println("World frame, day " + day + ": " + used + " bytes, " + submits / frames + " texts");
-		return new long[] {used, submits / frames};
 	}
 
 	@Test
 	void aSteadyNightFrameBuildsAlmostNothing() {
-		long[] frame = perFrame(0);
-		assertTrue(frame[1] >= 8, "words drawn: " + frame[1]);
-		assertTrue(frame[0] < 600, frame[0] + " bytes a frame");
+		sameTextsAsTheFrameBefore(0, 8);
 	}
 
 	@Test
 	void aSteadyDayFrameWithItsOutlinesBuildsAlmostNothing() {
-		long[] frame = perFrame(1);
-		assertTrue(frame[1] >= 24, "words and outlines drawn: " + frame[1]);
-		assertTrue(frame[0] < 600, frame[0] + " bytes a frame");
+		sameTextsAsTheFrameBefore(1, 24);
 	}
 
 	private static String drawn(WorldWords words, SubmitNodeCollector out, Style style, int rgb, long now) {
