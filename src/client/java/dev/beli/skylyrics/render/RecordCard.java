@@ -25,6 +25,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.CardCorner;
 import dev.beli.skylyrics.media.MediaTracker;
 import dev.beli.skylyrics.media.Snapshot;
 import dev.beli.skylyrics.media.Track;
+import dev.beli.skylyrics.mixin.ChatComponentAccessor;
 import dev.beli.skylyrics.util.Guard;
 
 /**
@@ -606,13 +607,26 @@ public final class RecordCard {
 		boolean chatOpen = NowPlayingHud.chatOpen(mc);
 		double scale = mc.options.chatScale().get();
 		float chatW = (float) (ChatComponent.getWidth(mc.options.chatWidth().get()) * scale);
-		float chatH = (float) (ChatComponent.getHeight(mc.options.chatHeightFocused().get()) * scale);
+		float chatH = chatOpen ? chatBoxH(mc, scale) : 0;
 		boolean chatHidden = mc.options.chatVisibility().get() == ChatVisiblity.HIDDEN;
 		boolean right = corner == CardCorner.TOP_RIGHT || corner == CardCorner.BOTTOM_RIGHT;
 		float[] sidebar = right ? NowPlayingHud.sidebarBox(mc, guiW, guiH) : null;
 		float[] subtitles = corner == CardCorner.BOTTOM_RIGHT && mc.options.showSubtitles().get()
 				? NowPlayingHud.subtitleBox(mc, guiW, guiH) : null;
 		return place(corner, guiH, h, c -> corner(mc, c, guiW, guiH, effects, h), chatOpen, chatHidden, chatW, chatH, sidebar, subtitles);
+	}
+
+	/** How tall the open chat's box is drawn: behind the lines it shows, scrolled as it is, up to a page (see {@link TopBarLayout#chatBoxH}). */
+	private static float chatBoxH(Minecraft mc, double scale) {
+		//? if >=26.2 {
+		/*ChatComponent chat = mc.gui.hud.getChat();
+		*///?} else {
+		ChatComponent chat = mc.gui.getChat();
+		//?}
+		ChatComponentAccessor lines = (ChatComponentAccessor) chat;
+		int lineH = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0)); // as the chat measures a line
+		return TopBarLayout.chatBoxH(lines.skylyrics$getTrimmedMessages().size() - lines.skylyrics$getChatScrollbarPos(),
+				chat.getLinesPerPage(), lineH, scale);
 	}
 
 	/**
