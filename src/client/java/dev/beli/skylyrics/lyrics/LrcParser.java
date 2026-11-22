@@ -22,7 +22,8 @@ public final class LrcParser {
 	private static final Pattern MARKER = Pattern.compile(
 			"[(\\[（【]\\s*(?:instrumental(?: break| interlude)?|music|musique|musica)\\s*[)\\]）】]|instrumental(?: break| interlude)?",
 			Pattern.CASE_INSENSITIVE);
-	private static final Pattern FULL_WIDTH = Pattern.compile("［[\\d：．.:]+］");
+	// Full-width brackets, colon and stop read as plain ones; with a minus (plain or full width) before the start, as TIME takes
+	private static final Pattern FULL_WIDTH = Pattern.compile("［[-－]?[\\d：．.:]+］");
 	private static final char BOM = 0xFEFF;
 	// A timed line of only music notes, like "♪" or "♫ ♫", marks a break in the singing
 	private static final String NOTE_CHARS = "[\\s♩♪♫♬\\x{1F3B5}\\x{1F3B6}]";
@@ -98,7 +99,7 @@ public final class LrcParser {
 		long offset = 0;
 		List<LyricLine> lines = new ArrayList<>();
 		for (String raw : lines(lrc)) {
-			raw = FULL_WIDTH.matcher(LEADING.matcher(raw).replaceFirst("")).replaceAll(r -> r.group().replace('［', '[').replace('］', ']').replace('：', ':').replace('．', '.'));
+			raw = FULL_WIDTH.matcher(LEADING.matcher(raw).replaceFirst("")).replaceAll(r -> r.group().replace('［', '[').replace('］', ']').replace('：', ':').replace('．', '.').replace('－', '-'));
 			// Only a line that starts with the tag sets it; a broken huge number is ignored instead of losing the lyrics
 			Matcher off = OFFSET.matcher(raw);
 			if (off.lookingAt()) {
