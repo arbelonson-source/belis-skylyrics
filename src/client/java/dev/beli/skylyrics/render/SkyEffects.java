@@ -29,6 +29,7 @@ import net.minecraft.client.renderer.LightTexture;
 //?}
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffects;
@@ -562,11 +563,11 @@ public final class SkyEffects {
 		// layers stack the same way whether or not the pipeline sorts them.
 		// The whole sky goes in an earlier batch than the lyrics: shapes are drawn after text in a batch,
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
-		// The added light leaves no depth behind either: it sits inside the world (at most 110 blocks out), and
-		// glass, water and ice are drawn after it, so marking its depth would cut holes in any of them further away.
-		// Nor does the painted sky (see PaintedSkyType), or every cloud past it would be hidden. It has a batch of its
-		// own before the rest: in one batch the render types come in no set order, and drawn after the sparkles and
-		// shooting stars it would paint over them.
+		// The added light leaves no depth behind either (see AddedLightType): it sits inside the world (at most 110
+		// blocks out), and the lyrics, glass, water, ice and the clouds are drawn after it, so marking its depth would
+		// cut holes in any of them further away. Nor does the painted sky (see PaintedSkyType), or every cloud past it
+		// would be hidden. It has a batch of its own before the rest: in one batch the render types come in no set order,
+		// and drawn after the sparkles and shooting stars it would paint over them.
 		//? if >=26.1 {
 		/*OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
 		OrderedSubmitNodeCollector backdrop = context.submitNodeCollector().order(PAINTED_ORDER);
@@ -577,20 +578,26 @@ public final class SkyEffects {
 		PoseStack pose = context.matrices();
 		//?}
 		pose.pushPose();
+		boolean shaders = ScreenLayer.shadersOn();
 		if (painted()) {
-			backdrop.submitCustomGeometry(pose, PaintedSkyType.get(ScreenLayer.shadersOn()), painter);
+			backdrop.submitCustomGeometry(pose, PaintedSkyType.get(shaders), painter);
 		}
 		if (!painted() || sparkles || meteorsAlive > 0) {
-			sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), drawer);
+			sky.submitCustomGeometry(pose, lightType(shaders), drawer);
 		}
 		if (effect == SkyEffect.ECLIPSE) {
 			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), discDrawer);
 			// Shooting stars and sparkles come after the disc, or it would black them out where they cross the sun
 			if (sparkles || meteorsAlive > 0) {
-				sky.submitCustomGeometry(pose, RenderTypes.dragonRays(), frontDrawer);
+				sky.submitCustomGeometry(pose, lightType(shaders), frontDrawer);
 			}
 		}
 		pose.popPose();
+	}
+
+	/** The render type the added light goes out through (see {@link AddedLightType}); {@code shaders} when a shader pack is on. */
+	static RenderType lightType(boolean shaders) {
+		return AddedLightType.get(shaders);
 	}
 
 	/** True for the skies that cover the vanilla one: synthwave and moonlight. */
@@ -828,9 +835,10 @@ public final class SkyEffects {
 			constellations.draw(light, far * CONSTELLATION_LAYER, baseYaw, amount * smooth(patternShow), clock, pixel, view);
 		}
 		//? if >=26.2 {
-		/*// 26.2 on: the added-light pipeline writes depth, so a nearer shape drawn first hides every farther one drawn
-		// after it (a nebula cloud cutting off the aurora). Draw the stars, then the clouds and curtains far to near,
-		// merged by their distances (blob: 0.97 - 0.025 k, ribbon: 1 - 0.07 k, the same as in blob() and ribbon()).
+		/*// 26.2 on, the vanilla added-light pipeline (kept with a shader pack, see AddedLightType) writes depth, so a
+		// nearer shape drawn first hides every farther one drawn after it (a nebula cloud cutting off the aurora). Draw
+		// the stars, then the clouds and curtains far to near, merged by their distances (blob: 0.97 - 0.025 k, ribbon:
+		// 1 - 0.07 k, the same as in blob() and ribbon()).
 		if (nebula) {
 			dots(pose, vc);
 		}
@@ -1087,7 +1095,7 @@ public final class SkyEffects {
 			float ex = cx + lx * size * wob, ey = cy + ly * size * wob, ez = cz + lz * size * wob;
 			//? if >=26.2 {
 			/*// Slide each corner along its line of sight onto the sphere the cloud's centre is on. It looks the same from
-			// the middle, but the cloud no longer cuts through the aurora's sphere, so the depth the 26.2 pipeline writes
+			// the middle, but the cloud no longer cuts through the aurora's sphere, so the depth vanilla's 26.2 pipeline writes
 			// can hide a farther layer only where a nearer one really lies in front of it
 			float toSphere = dist / Mth.sqrt(mx * mx + my * my + mz * mz);
 			mx *= toSphere;
@@ -1165,7 +1173,7 @@ public final class SkyEffects {
 		double t = clock;
 		float r = radius * 0.92f;
 		//? if >=26.2 {
-		/*// The added-light pipeline writes depth here, so a nearer cloud would hide a sparkle: put them in front of all
+		/*// With a shader pack the added-light pipeline writes depth here, so a nearer cloud would hide a sparkle: put them in front of all
 		r = radius * SPARKLE_FRONT;
 		*///?}
 		float centreYaw = (anchorYaw + 180) * DEG, centreElev = -anchorPitch * DEG;
@@ -1206,7 +1214,7 @@ public final class SkyEffects {
 	private void meteors(PoseStack.Pose pose, VertexConsumer vc) {
 		float r = radius * 0.95f;
 		//? if >=26.2 {
-		/*// The added-light pipeline writes depth here, so a nearer cloud or curtain would cut a streak: put them in front of all
+		/*// With a shader pack the added-light pipeline writes depth here, so a nearer cloud or curtain would cut a streak: put them in front of all
 		r = radius * METEOR_FRONT;
 		*///?}
 		// A share of their distance, so they look as wide wherever they sit
