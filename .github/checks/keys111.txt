@@ -1,0 +1,36 @@
+# Leaving the settings search box with the keyboard (fix/keys111). Compare each shot with the same script on main.
+# - keys111-done: Shift+Tab from nothing puts the white focus ring on Done (the same on both).
+# - keys111-search-enter: "glow" typed in the search box, then Enter. On the branch the ring is on the FIRST result
+#   (the top row of the list, under its first card title). On main it went from Done round to the Lyrics switch at
+#   the bottom of the sidebar, so the list has no ring at all.
+# - keys111-search-tab: Down twice from there, the search box used again, then Tab. On the branch the ring is back on
+#   the first result. On main it is on the second result (main's Down twice went from the Lyrics switch over Preview to
+#   the first result, and Tab carried on to the one after it).
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/keys111 -f script=.github/checks/keys111.txt
+
+cmd time set noon
+cmd weather clear
+look 0 -20
+sleep 6
+guiscale 3
+gui 1
+sleep 2
+key tab shift
+sleep 1
+shot keys111-done
+search glow
+sleep 1
+key enter
+sleep 1
+shot keys111-search-enter
+key down
+sleep 0.3
+key down
+sleep 0.3
+search glow
+sleep 1
+key tab
+sleep 1
+shot keys111-search-tab
+close
+guiscale 0

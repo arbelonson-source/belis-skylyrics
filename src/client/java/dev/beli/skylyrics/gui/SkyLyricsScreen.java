@@ -978,13 +978,19 @@ public final class SkyLyricsScreen extends Screen {
 
 	/** Moves the keyboard to the next ({@code dir} 1) or previous (-1) stop, skipping hidden rows and wrapping round. */
 	private void moveFocus(int dir) {
+		moveFocus(dir, false);
+	}
+
+	/** {@link #moveFocus(int)}; {@code fromSearchBox} when the keyboard leaves the search box (see {@link Focus#fromSearchBox}). */
+	private void moveFocus(int dir, boolean fromSearchBox) {
 		layout();
 		Ring ring = ring();
 		int from = focus == null ? -1 : ring.stops().indexOf(focus);
-		if (from < 0 && dir > 0) {
-			from = 1; // from nothing, going forward starts at the first row, after the Lyrics switch and Preview
+		if (fromSearchBox) {
+			from = Focus.fromSearchBox(from, tab == SEARCH_TAB);
 		}
-		int to = Focus.next(ring.available(), from, dir);
+		// from nothing, going forward starts at the first row, after the Lyrics switch and Preview
+		int to = Focus.step(ring.available(), from, dir, 2);
 		if (to >= 0) {
 			focus = ring.stops().get(to);
 			focusAt = to;
@@ -1023,7 +1029,7 @@ public final class SkyLyricsScreen extends Screen {
 		int to = Math.floorMod((tab == SEARCH_TAB ? searchFrom : tab) + dir, TAB_COUNT);
 		selectTab(to);
 		if (focus == null) {
-			focus = tabFocus[to];
+			focus = rowBackOnTab(tabFocus[to]);
 		}
 		focusVisible = true;
 		// A new tab starts from the keyboard: the mouse has to move again before it picks a row
@@ -1032,6 +1038,17 @@ public final class SkyLyricsScreen extends Screen {
 		announcement = Narration.tab(tabName(to), Tr.t("tab"), Tr.t("%s of %s", to + 1, TAB_COUNT),
 				focus instanceof Row row ? Narration.hinted(rowNarration(row), row.hint()) : "");
 		afterKeyboardAction();
+	}
+
+	/** The row the keyboard goes back to on this tab: {@code remembered} while it shows, else the next row that does (see {@link Focus#backOnTab}). */
+	private @Nullable Row rowBackOnTab(@Nullable Row remembered) {
+		Ring ring = ring();
+		boolean[] rows = new boolean[ring.stops().size()];
+		for (int i = 0; i < rows.length; i++) {
+			rows[i] = ring.available()[i] && ring.stops().get(i) instanceof Row row && row != masterToggle;
+		}
+		int at = Focus.backOnTab(rows, ring.stops().indexOf(remembered));
+		return at < 0 ? null : (Row) ring.stops().get(at);
 	}
 
 	private void press(Chrome button) {
@@ -1069,8 +1086,12 @@ public final class SkyLyricsScreen extends Screen {
 		};
 	}
 
-	/** What the Narrator says for what has the keyboard now. */
+	/** What the Narrator says for what has the keyboard now, or the preview's words while it shows. */
 	private String focusNarration() {
+		return Narration.previewOr(preview, previewText(), keyboardNarration());
+	}
+
+	private String keyboardNarration() {
 		if (announcement != null) {
 			return announcement;
 		}
@@ -1506,10 +1527,14 @@ public final class SkyLyricsScreen extends Screen {
 				.map(net.minecraft.network.chat.FormattedText::getString).toList();
 	}
 
-	private void renderPreviewHint(GuiGraphics g) {
-		boolean nothing = mod.tracker().track() == Track.NONE;
-		String text = nothing ? Tr.t("Nothing is playing. Turn on the demo song on the Music tab to try it.")
+	/** The words the preview shows in place of the panel. */
+	private String previewText() {
+		return mod.tracker().track() == Track.NONE ? Tr.t("Nothing is playing. Turn on the demo song on the Music tab to try it.")
 				: Tr.t("Previewing. Click or press any key to go back.");
+	}
+
+	private void renderPreviewHint(GuiGraphics g) {
+		String text = previewText();
 		List<String> lines = previewLines(font.getSplitter(), text, width);
 		boolean rtl = Ui.paragraphRtl(text);
 		int textW = 0;
@@ -1733,12 +1758,12 @@ public final class SkyLyricsScreen extends Screen {
 			} else if (event.isConfirmation()) {
 				typing = false;
 				if (!tabs.get(SEARCH_TAB).isEmpty()) {
-					moveFocus(1);
+					moveFocus(1, true);
 				}
 			} else if (event.isCycleFocus() || event.isDown() || event.isUp()) {
 				// Tab or the arrows leave the box for the results
 				typing = false;
-				moveFocus(ScreenKeys.focusDir(event.isCycleFocus(), event.hasShiftDown(), event.isUp()));
+				moveFocus(ScreenKeys.focusDir(event.isCycleFocus(), event.hasShiftDown(), event.isUp()), true);
 			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
 				editSearch(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 			} else if (event.isPaste()) {

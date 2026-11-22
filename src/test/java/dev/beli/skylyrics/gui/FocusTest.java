@@ -96,4 +96,46 @@ class FocusTest {
 		assertEquals(true, Focus.mouseMoved(100, 100, 100, 98));
 		assertEquals(false, Focus.mouseMoved(100, 100, 101.9, 98.1));
 	}
+
+	@Test
+	void fromNothingTheKeyboardStartsAtTheFirstRowOrTheLastStop() {
+		// the Lyrics switch, Preview, three rows (the middle one hidden), Reset all, Done
+		boolean[] ring = {true, true, true, false, true, true, true};
+		assertEquals(2, Focus.step(ring, -1, 1, 2));
+		assertEquals(6, Focus.step(ring, -1, -1, 2));
+		assertEquals(4, Focus.step(ring, 2, 1, 2));
+		assertEquals(0, Focus.step(ring, 6, 1, 2));
+	}
+
+	@Test
+	void leavingTheSearchBoxLandsOnTheFirstResult() {
+		// the search results' stops: the Lyrics switch, Preview, three results, Reset all, Done
+		boolean[] ring = {true, true, true, true, true, true, true};
+		int done = 6;
+		// Tab to Done, Ctrl+F, type a word, then Enter (or Tab or Down): the first result, not round to the Lyrics switch
+		assertEquals(2, Focus.step(ring, Focus.fromSearchBox(done, true), 1, 2));
+		// the keyboard was on the second result, which is still found: the first result, not the third
+		assertEquals(2, Focus.step(ring, Focus.fromSearchBox(3, true), 1, 2));
+		// Shift+Tab or Up: the last stop, as from nothing
+		assertEquals(6, Focus.step(ring, Focus.fromSearchBox(3, true), -1, 2));
+		// nothing typed (the tab's own rows still show): Tab carries on from where the keyboard was
+		assertEquals(4, Focus.step(ring, Focus.fromSearchBox(3, false), 1, 2));
+	}
+
+	@Test
+	void backOnATabTheKeyboardSkipsARowHiddenMeanwhile() {
+		// the Look tab's stops: the Lyrics switch, Preview, Pick a look, Depth (hidden since the layout left Arc), Glow,
+		// Reset all, Done; true marks the rows that show
+		boolean[] rows = {false, false, true, false, true, false, false};
+		// the keyboard was on Depth when Ctrl+Tab left the tab: coming back it is on Glow, not on the hidden Depth
+		assertEquals(4, Focus.backOnTab(rows, 3));
+		// a row that still shows keeps it
+		assertEquals(4, Focus.backOnTab(rows, 4));
+		assertEquals(2, Focus.backOnTab(rows, 2));
+		// the last rows hidden: round to the first row that shows, never Reset all or Done
+		assertEquals(2, Focus.backOnTab(new boolean[] {false, false, true, true, false, false, false}, 4));
+		// no row remembered, or none of the tab's rows shows: nowhere
+		assertEquals(-1, Focus.backOnTab(rows, -1));
+		assertEquals(-1, Focus.backOnTab(new boolean[] {false, false, false, false, false}, 2));
+	}
 }
