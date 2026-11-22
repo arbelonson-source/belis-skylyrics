@@ -109,6 +109,10 @@ public final class WindowsMediaSource implements MediaSource {
 	private int failuresInARow;
 	private String loggedStartError = "";
 	private long startedAt;
+	/** Whether the running helper has answered any question yet. */
+	private boolean answered;
+	/** Helpers in a row that said they were ready and then never answered. */
+	private int silentInARow;
 	/** Whether a helper has been ready yet this session. */
 	private boolean everReady;
 	private String startError = "";
@@ -437,16 +441,26 @@ public final class WindowsMediaSource implements MediaSource {
 				throw new IOException(Tr.t("The Windows music reader stopped"));
 			}
 			if (line == null) {
+				String late = Tr.t("Windows didn't say what's playing in time");
 				if (++missed >= MAX_MISSED) {
+					silentInARow = answered ? 0 : silentInARow + 1;
 					stop(); // also clears missed
+					if (silentInARow >= 2) {
+						// A fresh one hung the same way: starting yet another at once would too, every 13 s for as long as the game runs
+						startError = late;
+						failuresInARow++;
+						retryAt = System.nanoTime() + retryDelayNs(failuresInARow);
+					}
 				}
-				throw new IOException(Tr.t("Windows didn't say what's playing in time"));
+				throw new IOException(late);
 			}
 			JsonObject reply = parse(line);
 			if (reply == null || number(reply, "seq") != id) {
 				continue; // a late answer to an earlier question
 			}
 			missed = 0;
+			answered = true;
+			silentInARow = 0;
 			JsonElement ok = reply.get("ok");
 			if (ok != null && ok.isJsonPrimitive() && ok.getAsBoolean()) {
 				failuresInARow = 0; // a helper that answers works: the next failure starts the waits over
@@ -596,6 +610,7 @@ public final class WindowsMediaSource implements MediaSource {
 		reader.setDaemon(true);
 		reader.start();
 		startedAt = System.nanoTime();
+		answered = false;
 
 		String first = queue.poll(startLimitMs(startTimeoutMs, everReady), TimeUnit.MILLISECONDS);
 		JsonObject hello = first == null || first == END ? null : parse(first);
