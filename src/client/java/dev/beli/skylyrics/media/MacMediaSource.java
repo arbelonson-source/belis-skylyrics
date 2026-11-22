@@ -207,11 +207,11 @@ public final class MacMediaSource implements MediaSource {
 				try
 					set al to album of t
 				end try
-				set st to ""
+				set streamLine to ""
 				try
-					set st to current stream title
+					set streamLine to current stream title
 				end try
-				return {s, d, pos, n, ar, al, "", "", st}
+				return {s, d, pos, n, ar, al, "", "", streamLine}
 			end tell""";
 
 	/** An app part with {@link #ANSWER_LIMIT_S} on every question it asks (AppleScript's own limit is two minutes). */
