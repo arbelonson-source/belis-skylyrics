@@ -77,11 +77,14 @@ abstract class GuiMixin {
 			}
 			//? if <1.21.2 {
 			/*// 1.21.1 draws the crosshair with inverted colours; ours are plain, so put the normal blending back for them
-			// and the inverted blending back for whatever vanilla draws next (the attack meter)
+			// and the inverted blending back for whatever vanilla draws next (the attack meter). Each of our fills is drawn
+			// at once and switches blending off when it's done, and the meter's sprites don't switch it on again: without
+			// it they came out as a solid grey and white bar instead of the game's inverted one
 			RenderSystem.defaultBlendFunc();
 			try {
 				CrosshairShape.draw(g, x + width / 2, y + height / 2, style, rgb);
 			} finally {
+				RenderSystem.enableBlend();
 				RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
 						GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
 			}

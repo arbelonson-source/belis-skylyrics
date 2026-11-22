@@ -1,0 +1,85 @@
+# The crosshair and Type animation fixes of fix/cross108. Compare the branch with main by running it twice.
+# Parts 1 and 2 on 1.21.11, part 3 on 1.21.1 (the only version where it differs):
+#   gh workflow run screenshots.yml --ref fix/cross108 -f version=1.21.11 -f script=.github/checks/cross108.txt
+#   gh workflow run screenshots.yml --ref fix/cross108 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/cross108.txt
+#   gh workflow run screenshots.yml --ref fix/cross108 -f version=1.21.1 -f script=.github/checks/cross108.txt
+#   gh workflow run screenshots.yml --ref fix/cross108 -f version=1.21.1 -f mod_ref=main -f script=.github/checks/cross108.txt
+#
+# 1 (type-fast_*): Lines layout, Type animation, only the line being sung, two made-up lines of about 90 letters (two
+#   rows) that each last 1.5 s, sung faster than they type. Frame 00 is just after a seek 1.15 s into a line; the line
+#   after it starts about 0.35 s later (frame 01 or 02). Fixed: frame 00 already shows most of the line (what has been
+#   sung), and in the later frames the typed letters keep up with the karaoke fill, the whole line typed by its end.
+#   Main: frame 00 shows a blank or a letter or two (the seek restarted the typing), and the typing stays behind the
+#   fill: the last frames show only about half of the new line, its second row missing.
+# 2 (type-rtl_*): made-up Hebrew lines, a seek 3.75 s into one, the next starting about 0.25 s later (frame 02 or 03).
+#   Both: the new line types from the right, its first (rightmost) word first; the right-to-left order already worked.
+#   Frames 00 to 02 differ like part 1: fixed, the line seeked into is nearly all there; main, it starts typing again.
+# 3 (flash-first_*, flash-hidden_*): a blue Dot crosshair with Flash with the lyrics on. Look at the crosshair's middle
+#   pixel's colour across the frames (a pixel check, too faint to see well by eye). Fixed: the same colour in every
+#   frame. Main: flash-first_00 to about _04 a little brighter (up to about 20 levels in red) right after new lyrics
+#   come in, and in flash-hidden (lyrics switched off) a few frames brighter right after the seek and after the line
+#   change about 0.35 s later.
+# 4 (meter-*, 1.21.1 only): the attack meter under the crosshair, just after taking an axe. meter-normal is the game's
+#   own crosshair for reference. Fixed: meter-cross shows the same see-through inverted meter as meter-normal. Main
+#   (1.21.1): under the Cross the meter is a solid dark grey bar with a plain white fill. On 1.21.11 both look the same.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -22
+sleep 6
+
+# 1: a fast long line with the Type animation
+set layout LINES
+set animation TYPEWRITER
+set karaoke true
+set showPrevious false
+set showNext false
+fastlines 1500 Racing past the neon towers while the city lights keep spinning round and round us all night long | Every single window flashing like a signal calling out to everyone who waits below the glowing sky
+sleep 1
+seek 29.5
+burst type-fast 9 200
+wait burst type-fast wrote
+where
+
+# 2: right to left
+lines האורות דולקים מעל העצים הגבוהים בלילה | כל בלוק זוהר בשקט מתחת לכוכבים
+sleep 1
+seek 7.6
+burst type-rtl 8 100
+wait burst type-rtl wrote
+
+# 3: no faint flash without a new line
+set animation WORDS
+set showPrevious true
+set showNext true
+set colorMode FIXED
+set color 3368652
+set crosshair DOT
+set crosshairPulse true
+sleep 2
+lines Quiet test line one | Quiet test line two
+burst flash-first 12 50
+wait burst flash-first wrote
+set enabled false
+sleep 2
+seek 7.5
+burst flash-hidden 20 50
+wait burst flash-hidden wrote
+set enabled true
+
+# 4: the attack meter (1.21.1), with the game's crosshair and with the Cross
+look 0 -35
+sleep 2
+set crosshair NORMAL
+cmd item replace entity @p weapon.mainhand with minecraft:wooden_axe
+sleep 0.4
+shot meter-normal
+set crosshair CROSS
+cmd item replace entity @p weapon.mainhand with minecraft:stone_axe
+sleep 0.4
+shot meter-cross
+cmd item replace entity @p weapon.mainhand with minecraft:air
+set crosshair NORMAL
+set crosshairPulse false

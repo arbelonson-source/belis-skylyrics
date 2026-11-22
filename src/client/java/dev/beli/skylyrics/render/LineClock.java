@@ -7,6 +7,11 @@ package dev.beli.skylyrics.render;
  */
 final class LineClock {
 	static final int NONE = Integer.MIN_VALUE;
+	/**
+	 * How long ago a flash that never happened is put, for a line that counts as already settled: past the whole flash
+	 * (under a second), so nothing that reads it shows the last part of one. The settle time alone is shorter than that.
+	 */
+	static final long FLASH_OVER_NS = 1_000_000_000L;
 
 	private int last = NONE;
 	private int previous = NONE;
@@ -24,7 +29,7 @@ final class LineClock {
 			last = index;
 			changedAt = previous == NONE ? now - settleNs : now;
 			if (previous == NONE) {
-				flashAt = now - settleNs;
+				flashAt = now - Math.max(settleNs, FLASH_OVER_NS);
 			} else if (Calm.flashDue(flashAt, now)) {
 				flashAt = now;
 			}
@@ -50,7 +55,7 @@ final class LineClock {
 			previous = index;
 			last = index;
 			changedAt = now - settleNs;
-			flashAt = changedAt;
+			flashAt = now - Math.max(settleNs, FLASH_OVER_NS);
 		}
 	}
 
