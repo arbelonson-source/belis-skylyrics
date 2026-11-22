@@ -65,6 +65,16 @@ public final class MacMediaSource implements MediaSource {
 	/** errAEEventNotPermitted / errAEEventWouldRequireUserConsent: Automation permission was refused. */
 	private static final int NOT_ALLOWED = -1743;
 	private static final int NEEDS_CONSENT = -1744;
+	/** errAETimeout: the app didn't answer within {@link #ANSWER_LIMIT_S}. */
+	private static final int TIMED_OUT = -1712;
+	/**
+	 * Longest one question may take an app that has answered before, while the other app is asked in the same run, so a
+	 * frozen app holds the other one up only this long instead of until the poll gives up on the whole run. Not for an
+	 * app that hasn't answered yet: macOS may be asking the player whether it may be controlled, and that waits for them.
+	 */
+	static final int ANSWER_LIMIT_S = 2;
+	/** An app that ran out of time is left out this long, so it can't keep holding the other one up. */
+	private static final long FROZEN_NS = 5_000_000_000L;
 	/** The app quit, lost its connection or had no track just as we asked: nothing worth showing. */
 	private static final List<Integer> HARMLESS = List.of(-600, -609, -1712, -1728);
 
@@ -111,8 +121,14 @@ public final class MacMediaSource implements MediaSource {
 			"	return v",
 			"end clean");
 
-	/** Spotify: duration in milliseconds, position in seconds; the last field is the song's spotify: address ("spotify:ad:..." for an ad). Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives. */
+	/**
+	 * Spotify: duration in milliseconds, position in seconds; the last field is the song's spotify: address ("spotify:ad:..." for an ad). Each field is read on its own, so one that is missing (the cover of a local file or podcast) comes back empty and the rest still arrives.
+	 *
+	 * <p>The first line checks again that the app runs (it answers "quit" if not): the main script's check comes before
+	 * this part is compiled, and an app that quit meanwhile would be opened again by the first question.
+	 */
 	private static final String SPOTIFY_READ = """
+			if not (running of application "Spotify") then return {"quit"}
 			tell application "Spotify"
 				set p to player state
 				if p is playing then
@@ -156,9 +172,11 @@ public final class MacMediaSource implements MediaSource {
 
 	/**
 	 * Music: duration and position in seconds; streams may have neither. No cover link, only image data and no
-	 * address, so those two fields are empty. The last field is an internet radio station's "Artist - Song" line.
+	 * address, so those two fields are empty. The last field is an internet radio station's "Artist - Song" line. The
+	 * first line checks again that Music runs, as in Spotify's part.
 	 */
 	private static final String MUSIC_READ = """
+			if not (running of application "Music") then return {"quit"}
 			tell application "Music"
 				set p to player state
 				if p is paused then
@@ -189,12 +207,17 @@ public final class MacMediaSource implements MediaSource {
 				try
 					set al to album of t
 				end try
-				set st to ""
+				set streamLine to ""
 				try
-					set st to current stream title
+					set streamLine to current stream title
 				end try
-				return {s, d, pos, n, ar, al, "", "", st}
+				return {s, d, pos, n, ar, al, "", "", streamLine}
 			end tell""";
+
+	/** An app part with {@link #ANSWER_LIMIT_S} on every question it asks (AppleScript's own limit is two minutes). */
+	static String limited(String part) {
+		return "with timeout of " + ANSWER_LIMIT_S + " seconds\n" + part + "\nend timeout";
+	}
 
 	/** An app we can ask. {@code name} is the app's own name, as AppleScript and System Settings use it. */
 	record App(String name, String key, String displayName, long msPerDurationUnit, String readScript) {
@@ -212,8 +235,12 @@ public final class MacMediaSource implements MediaSource {
 	record Failure(App app, int code, String message) {
 	}
 
-	record Answer(List<Reading> players, List<Failure> failures) {
-		static final Answer EMPTY = new Answer(List.of(), List.of());
+	/**
+	 * @param ads      apps playing something that is no song (a Spotify ad): no title, but that app is still the one playing
+	 * @param answered apps that said what they play (or that they are stopped)
+	 */
+	record Answer(List<Reading> players, List<Failure> failures, List<Reading> ads, Set<App> answered) {
+		static final Answer EMPTY = new Answer(List.of(), List.of(), List.of(), Set.of());
 	}
 
 	/** What osascript said when it finished. */
@@ -254,6 +281,10 @@ public final class MacMediaSource implements MediaSource {
 	private volatile long retryAt;
 	/** Apps macOS refused to let us control, and when to ask again. */
 	private final Map<App, Long> deniedUntil = new ConcurrentHashMap<>();
+	/** Apps that answered since they were last seen closed: macOS has settled whether we may control them. */
+	private final Set<App> answered = ConcurrentHashMap.newKeySet();
+	/** Apps that ran out of {@link #ANSWER_LIMIT_S}, and when to ask them again. */
+	private final Map<App, Long> frozenUntil = new ConcurrentHashMap<>();
 	private String retryError = "";
 	/** The last message put in the log, so the same one isn't repeated every retry. */
 	private String loggedError = "";
@@ -375,23 +406,32 @@ public final class MacMediaSource implements MediaSource {
 		boolean returned = lookingNow && !wasLooking; // the song may have changed while nobody looked: read at once
 		wasLooking = lookingNow;
 		if (!haveLast || returned || clock.getAsLong() - lastAt >= gapNs(lookingNow, minPollNs)) {
-			List<String> args = new ArrayList<>();
+			List<App> asked = new ArrayList<>();
 			List<Failure> denied = new ArrayList<>();
 			long now = System.nanoTime();
 			for (App app : APPS) {
 				Long until = deniedUntil.get(app);
+				Long frozen = frozenUntil.get(app);
 				if (until != null && now < until) {
 					// macOS said no a moment ago and osascript exits normally with that answer, so nothing else
 					// would slow us down: leave the app alone until the retry time
 					denied.add(new Failure(app, NOT_ALLOWED, ""));
+				} else if (frozen != null && now < frozen) {
+					// it didn't answer in time a moment ago: left out, so it can't hold the other app up
 				} else if (running.test(app)) {
-					args.add(app.name());
-					args.add(app.readScript());
+					asked.add(app);
+				} else {
+					answered.remove(app); // just opened again, it can be slow to answer at first
 				}
+			}
+			List<String> args = new ArrayList<>();
+			for (App app : asked) {
+				args.add(app.name());
+				args.add(asked.size() > 1 && answered.contains(app) ? limited(app.readScript()) : app.readScript());
 			}
 			boolean late = pending != null;
 			if (args.isEmpty() && !late) {
-				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied); // nothing to ask, no osascript to start
+				last = denied.isEmpty() ? Answer.EMPTY : new Answer(List.of(), denied, List.of(), Set.of()); // nothing to ask, no osascript to start
 				lastAt = clock.getAsLong();
 				lastReadAt = System.nanoTime();
 				haveLast = true;
@@ -399,19 +439,34 @@ public final class MacMediaSource implements MediaSource {
 				String out = osascript(args, true);
 				Answer answer = parse(out);
 				List<Failure> failures = new ArrayList<>(answer.failures());
+				boolean timedOut = false;
 				for (Failure f : answer.failures()) {
 					if (isDenied(f.code())) {
 						deniedUntil.put(f.app(), System.nanoTime() + RETRY_NS);
+						answered.remove(f.app());
+					} else if (f.code() == TIMED_OUT) {
+						frozenUntil.put(f.app(), System.nanoTime() + FROZEN_NS);
+						timedOut = true;
 					}
 				}
+				answered.addAll(answer.answered());
 				failures.addAll(denied);
-				last = new Answer(answer.players(), failures);
-				lastAt = clock.getAsLong();
-				lastReadAt = readStamp(ranFromNs, ranToNs);
-				haveLast = !late; // a late answer may be old: read again next time
+				if (timedOut) {
+					// The other app's answer waited behind the frozen one, so when it was read is unknown: keep the
+					// last answer for now and read again at once, without the frozen app
+					haveLast = false;
+				} else {
+					last = new Answer(answer.players(), failures, answer.ads(), answer.answered());
+					lastAt = clock.getAsLong();
+					lastReadAt = readStamp(ranFromNs, ranToNs);
+					haveLast = !late; // a late answer may be old: read again next time
+				}
 			}
 		}
-		Reading chosen = PlayerPicker.choose(last.players(), r -> r.app().name(), r -> r.track().player(), Reading::playing,
+		// An ad comes after the songs: it only keeps the app it plays in followed (or picked), it never beats a playing song
+		List<Reading> candidates = new ArrayList<>(last.players());
+		candidates.addAll(last.ads());
+		Reading chosen = PlayerPicker.choose(candidates, r -> r.app().name(), r -> r.track().player(), Reading::playing,
 				preferredPlayer.get(), current == null ? null : current.name());
 		if (chosen == null) {
 			current = null;
@@ -429,6 +484,9 @@ public final class MacMediaSource implements MediaSource {
 		}
 		current = chosen.app();
 		currentDisplayName = chosen.app().displayName();
+		if (chosen.track().isNone()) {
+			return Snapshot.NOTHING; // an ad: no song to show, but the buttons still reach the app that plays it
+		}
 		return new Snapshot(chosen.track(), chosen.positionMs(), chosen.playing(), lastReadAt);
 	}
 
@@ -441,6 +499,8 @@ public final class MacMediaSource implements MediaSource {
 	static Answer parse(String output) {
 		List<Reading> players = new ArrayList<>();
 		List<Failure> failures = new ArrayList<>();
+		List<Reading> ads = new ArrayList<>();
+		Set<App> answered = new java.util.HashSet<>();
 		for (String line : output.split("\n")) {
 			String[] f = line.split("\t", -1);
 			if (f.length < 2) {
@@ -456,12 +516,17 @@ public final class MacMediaSource implements MediaSource {
 				continue;
 			}
 			boolean playing = state.equals("playing");
+			if (playing || state.equals("paused") || state.equals("stopped")) {
+				answered.add(app);
+			}
 			if (!playing && !state.equals("paused")) {
-				continue; // stopped, or the answer to a button press
+				continue; // stopped, quit just as we asked, or the answer to a button press
 			}
 			String uri = field(f, 8);
 			if (uri.startsWith("spotify:ad:")) {
-				continue; // an ad is not a song
+				// An ad is not a song, but Spotify still plays: kept apart, so Music's paused song doesn't take over for it
+				ads.add(new Reading(app, new Track("", "", "", 0, "", app.key(), uri), 0, playing));
+				continue;
 			}
 			String title = field(f, 4);
 			String artist = field(f, 5);
@@ -489,7 +554,7 @@ public final class MacMediaSource implements MediaSource {
 			Track track = new Track(title, artist, album, length, field(f, 7), app.key(), uri);
 			players.add(new Reading(app, TitleCleaner.clean(track), position, playing));
 		}
-		return new Answer(players, failures);
+		return new Answer(players, failures, ads, answered);
 	}
 
 	private static @Nullable App app(String name) {
@@ -685,6 +750,7 @@ public final class MacMediaSource implements MediaSource {
 		retryAt = 0;
 		fails = 0;
 		deniedUntil.clear();
+		frozenUntil.clear();
 		haveLast = false;
 	}
 }
