@@ -73,10 +73,12 @@ public final class SkyEffects {
 	private static final float DEG = (float) (Math.PI / 180);
 	/** At the default strength the synthwave sky and the suns show fully; lower strengths fade them. */
 	private static final float FULL_STRENGTH = 0.7f;
-	/** Batch the sky is drawn in; lower batches are drawn first and the world's own things use 0. */
-	private static final int SKY_ORDER = -1;
+	/** Batch the sky is drawn in; lower batches are drawn first and the world's own things (the lyrics too) use 0. */
+	static final int SKY_ORDER = -2;
 	/** Batch the painted skies are drawn in, before the rest of the sky (the sparkles and shooting stars go over them). */
-	private static final int PAINTED_ORDER = SKY_ORDER - 1;
+	static final int PAINTED_ORDER = SKY_ORDER - 1;
+	/** Batch the eclipse's sparkles and shooting stars are drawn in: after its disc, before the lyrics. */
+	static final int FRONT_ORDER = SKY_ORDER + 1;
 	/** With the lyrics following the view, the suns sit where the real sun went down: the west. */
 	static final float FOLLOW_YAW = 90;
 	/** Constellations sit in front of the far sky shapes (and behind the aurora and the lyrics). */
@@ -565,15 +567,18 @@ public final class SkyEffects {
 		// The added light leaves no depth behind either (see AddedLightType): it sits inside the world (at most 110
 		// blocks out), and the lyrics, glass, water, ice and the clouds are drawn after it, so marking its depth would
 		// cut holes in any of them further away. Nor do the painted sky and the eclipse disc (see PaintedSkyType), or
-		// every cloud past them would be hidden. The painted sky has a batch of its own before the rest: in one batch
-		// the render types come in no set order, and drawn after the sparkles and shooting stars it would paint over them.
+		// every cloud past them would be hidden. In one batch the render types come in no set order, so the painted sky
+		// has a batch of its own before the rest (drawn after the sparkles and shooting stars it would paint over them),
+		// and the eclipse's sparkles and shooting stars one after the rest (or its disc would black them out).
 		//? if >=26.1 {
 		/*OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
 		OrderedSubmitNodeCollector backdrop = context.submitNodeCollector().order(PAINTED_ORDER);
+		OrderedSubmitNodeCollector front = context.submitNodeCollector().order(FRONT_ORDER);
 		PoseStack pose = context.poseStack();
 		*///?} else {
 		OrderedSubmitNodeCollector sky = context.commandQueue().order(SKY_ORDER);
 		OrderedSubmitNodeCollector backdrop = context.commandQueue().order(PAINTED_ORDER);
+		OrderedSubmitNodeCollector front = context.commandQueue().order(FRONT_ORDER);
 		PoseStack pose = context.matrices();
 		//?}
 		pose.pushPose();
@@ -586,9 +591,10 @@ public final class SkyEffects {
 		}
 		if (effect == SkyEffect.ECLIPSE) {
 			sky.submitCustomGeometry(pose, discType(shaders), discDrawer);
-			// Shooting stars and sparkles come after the disc, or it would black them out where they cross the sun
+			// Shooting stars and sparkles come after the disc, or it would black them out where they cross the sun. They go
+			// out through the glow's type, so in the sky's batch they would be drawn with the glow, before or after the disc.
 			if (sparkles || meteorsAlive > 0) {
-				sky.submitCustomGeometry(pose, lightType(shaders), frontDrawer);
+				front.submitCustomGeometry(pose, lightType(shaders), frontDrawer);
 			}
 		}
 		pose.popPose();
