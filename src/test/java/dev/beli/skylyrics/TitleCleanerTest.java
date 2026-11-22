@@ -326,4 +326,13 @@ class TitleCleanerTest {
 		assertNotEquals(TitleCleaner.key("\u0915\u093e"), TitleCleaner.key("\u0915\u0940"));
 		assertEquals(TitleCleaner.key("Beyonc\u00e9"), TitleCleaner.key("beyonce"));
 	}
+
+	@Test
+	void anEmojiStyleSelectorNeverMakesItAnotherSong() {
+		// The player's title loses its selector (Track drops it, it draws as a box); a lyrics site's may still have it
+		same("Paper Hearts \u2764", "Paper Hearts \u2764\uFE0F");
+		same("Paper Hearts \u2764\uFE0E", "Paper Hearts \u2764");
+		assertEquals(TitleCleaner.key("\u6F22\u5B57"), TitleCleaner.key("\u6F22\uDB40\uDD00\u5B57"));
+		different("Paper Hearts \u2764", "Paper Hearts \u2764 Part 2");
+	}
 }
