@@ -938,9 +938,16 @@ public final class SpotifyWebSource implements MediaSource {
 	 * with that the idle pace would leave the lyrics standing (or the bar empty) for up to 4 s while the music plays.
 	 */
 	void pressTaken() {
+		pressedAt = System.nanoTime();
 		afterPress = AFTER_PRESS_POLLS;
 		pollNow = true;
 	}
+
+	/**
+	 * When the last press Spotify took was noted ({@link System#nanoTime}). Presses come from the library's thread too, so
+	 * an ask already on its way then (the reader's thread) was sent before the press: its answer is not one of those quick asks.
+	 */
+	private volatile long pressedAt;
 
 	/** The Client ID Spotify was last asked with (see {@link #settle}). Media thread only. */
 	private String askedWith = "";
@@ -1066,7 +1073,7 @@ public final class SpotifyWebSource implements MediaSource {
 			}
 			default -> throw new BadStatus(response.statusCode(), response.body());
 		}
-		if (afterPress > 0) {
+		if (afterPress > 0 && sent - pressedAt >= 0) {
 			afterPress--;
 		}
 		if (!last.track().isNone()) {
