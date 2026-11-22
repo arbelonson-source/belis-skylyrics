@@ -180,7 +180,7 @@ class HudDodgeTest {
 	@Test
 	void theOpenChatFadesACardItsBoxCoversInAnyCorner() {
 		int w = NARROW_W, h = NARROW_H;
-		// The default chat (320 wide, 180 tall when open) reaches x 332 and y 20 here: over every corner's card
+		// A full page of the default chat (320 wide, 180 tall when open) reaches x 332 and y 20 here: over every corner's card
 		for (CardCorner c : CardCorner.values()) {
 			assertNull(placed(c, w, h, true, false, null), c.name());
 			// With the chat closed, or set to Hidden (no box), the card stays
@@ -192,6 +192,28 @@ class HudDodgeTest {
 			assertNotNull(placed(c, 640, 360, true, false, null), c.name());
 		}
 		assertNull(placed(CardCorner.BOTTOM_LEFT, 640, 360, true, false, null));
+	}
+
+	@Test
+	void aShortChatOnlyFadesTheCardsItsLinesReach() {
+		// 1920x1080 at the Auto GUI scale (4): 480 x 270, where both top cards sit within the chat's width (320 + 12)
+		int w = 480, h = 270;
+		// The game draws the open chat's backdrop behind the lines it has only, 9 high each, up to a page of 20: three
+		// lines (a new world, a command or two) end far below the top cards
+		float few = TopBarLayout.chatBoxH(3, 20, 9, 1);
+		float page = TopBarLayout.chatBoxH(40, 20, 9, 1);
+		for (CardCorner c : new CardCorner[] {CardCorner.TOP_LEFT, CardCorner.TOP_RIGHT}) {
+			assertNotNull(RecordCard.place(c, h, CARD_H, k -> cornerOn(k, w, h), true, false, 320, few, null, null),
+					c + " faded under three lines of chat at the bottom");
+			assertNull(RecordCard.place(c, h, CARD_H, k -> cornerOn(k, w, h), true, false, 320, page, null, null), c + ", a full page");
+		}
+		assertEquals(27, few, 1e-4f);
+		assertEquals(180, page, 1e-4f, "a full page is the game's focused chat height");
+		// Lines are 9 times the chat's scale high
+		assertEquals(13.5f, TopBarLayout.chatBoxH(3, 20, 9, 0.5), 1e-4f);
+		// An empty chat draws no box at all, so not even a bottom left card is under it
+		assertNotNull(RecordCard.place(CardCorner.BOTTOM_LEFT, h, CARD_H, k -> cornerOn(k, w, h), true, false, 320,
+				TopBarLayout.chatBoxH(0, 20, 9, 1), null, null));
 	}
 
 	/**
