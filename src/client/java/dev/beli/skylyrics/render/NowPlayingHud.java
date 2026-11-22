@@ -152,6 +152,8 @@ public final class NowPlayingHud {
 	private float width = -1, widthFrom, widthTo, widthSpeed;
 	/** The bar's scale and pivot this frame, for the clip box on versions whose scissor ignores the pose. */
 	private float clipSize = 1, clipPivotY, clipGuiWidth;
+	/** The text's clip box edges this frame, in the bar's own units, for the dev probe. */
+	private int textClipLeft, textClipRight;
 	private long resizedAt;
 	/** Where the bar's top edge is, eased: below any boss bars. */
 	private float top = -1;
@@ -882,6 +884,8 @@ public final class NowPlayingHud {
 		// Words past the room stop where the highlight would, a little before the equaliser
 		int clipRight = Math.round(tx + room);
 		int clipTop = Math.round(midY - PILL_H / 2f) + 1, clipBottom = Math.round(midY + PILL_H / 2f) - 1;
+		textClipLeft = clipLeft;
+		textClipRight = clipRight;
 		//? if <1.21.2 {
 		/*// 1.21.1's scissor ignores the pose, so give it the box already scaled like the bar is
 		int[] box = TopBarLayout.scaledClip(clipLeft, clipTop, clipRight, clipBottom, clipSize, clipGuiWidth, clipPivotY);
@@ -971,6 +975,7 @@ public final class NowPlayingHud {
 
 		if (probe) {
 			BarProbe.line(c.text(), rtl, scale, start, shift, pad, wordGap, total, g);
+			BarProbe.clip(textClipLeft, textClipRight);
 		}
 		if (live) {
 			float left = Math.min(words.x[prev], words.x[current]), right = Math.max(words.x[prev] + words.w[prev], words.x[current] + words.w[current]);
