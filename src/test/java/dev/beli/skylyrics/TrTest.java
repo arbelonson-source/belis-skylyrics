@@ -90,6 +90,37 @@ class TrTest {
 		found.forEach((k, english) -> assertEquals(english, en.get(k), k));
 	}
 
+	/** Words a screen may draw as they are in every language: names. */
+	private static final java.util.Set<String> NAMES = java.util.Set.of("SkyLyrics", "Beli", "Beli's", "GitHub", "LRCLIB");
+	/** A text written straight into something drawn, a screen's title, a card, a row or a button, without Tr. */
+	private static final Pattern DRAWN = Pattern.compile("(?:Ui\\.visual\\(|Component\\.literal\\(|Component\\.nullToEmpty\\("
+			+ "|new (?:Card|Info|Toggle|Cycle|Slider|Segmented|Buttons|Button|Paragraph)\\(|Button\\.builder\\("
+			+ "|draw(?:Centered|Word)?String\\(\\s*[\\w.]+\\s*,|Tooltip\\.create\\()\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+
+	@Test
+	void noWordIsDrawnWithoutTr() throws IOException {
+		List<String> english = new ArrayList<>();
+		try (Stream<Path> files = Files.walk(Path.of("src/client/java"))) {
+			for (Path p : (Iterable<Path>) files.filter(f -> f.toString().endsWith(".java"))::iterator) {
+				if (p.toString().replace('\\', '/').contains("/skylyrics/dev/")) {
+					continue; // the test hook's own screens
+				}
+				String source = Files.readString(p, StandardCharsets.UTF_8);
+				Matcher m = DRAWN.matcher(source);
+				while (m.find()) {
+					Matcher word = Pattern.compile("[A-Za-z][A-Za-z']+").matcher(m.group(1));
+					while (word.find()) {
+						if (!NAMES.contains(word.group())) {
+							english.add(p.getFileName() + ":" + source.substring(0, m.start()).lines().count() + " \"" + m.group(1) + "\"");
+							break;
+						}
+					}
+				}
+			}
+		}
+		assertEquals(List.of(), english, "drawn in English in every language; put it through Tr.t");
+	}
+
 	@Test
 	void noLeftoverTexts() throws IOException {
 		Map<String, String> found = literals();

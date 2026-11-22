@@ -244,6 +244,7 @@
 - **Windows music reader that never answers.** On Windows, when the music reader starts but then never answers (Windows' media controls stuck), SkyLyrics now tries a fresh one once and then waits 15 seconds, then longer, between tries, instead of starting a new hidden PowerShell about every 13 seconds for as long as the game runs.
 - **Spotify Web on Windows.** On Windows, picking **Spotify Web** as the **Player** now stops the hidden PowerShell that reads Windows' media controls, instead of leaving it running idle until you close the game; picking another player starts it again.
 - **Mac status messages in your language.** On a Mac, when SkyLyrics can't start osascript, osascript doesn't answer in time or it fails, the **Status** line on the Music tab now says so in the game's language instead of in English.
+- **"by Beli" in your language.** The small line under SkyLyrics at the top of the settings sidebar is now in the game's language too, like "von Beli" in German or "от Beli" in Russian, instead of always "by Beli".
 
 ### Faster
 

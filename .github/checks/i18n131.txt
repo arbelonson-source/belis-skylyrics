@@ -1,0 +1,33 @@
+# The small line under "SkyLyrics" at the top left of the settings sidebar, in the game's language. On main it reads
+# "by Beli" in every language; on fix/i18n131 it reads "от Beli" in Russian, "מאת Beli" in Hebrew and "von Beli" in
+# German, and stays inside the sidebar. (The branch's other fix, the Mac Status texts, can't show on Linux: tests only.)
+# Compare a branch with main by running it twice.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=<branch or commit> -f script=.github/checks/i18n131.txt
+
+cmd time set noon
+look 0 -20
+sleep 6
+
+lang ru_ru
+sleep 15
+gui 0
+sleep 3
+shot byline-ru
+close
+
+lang he_il
+sleep 15
+gui 0
+sleep 3
+shot byline-he
+close
+
+lang de_de
+sleep 15
+gui 0
+sleep 3
+shot byline-de
+close
+
+lang en_us
+sleep 15
