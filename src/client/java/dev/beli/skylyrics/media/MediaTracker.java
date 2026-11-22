@@ -44,6 +44,8 @@ public final class MediaTracker {
 	};
 	private Consumer<Track> onCoverChange = t -> {
 	};
+	private Consumer<Track> onDetailsChange = t -> {
+	};
 	/**
 	 * The most cover corrections passed on per song. A player's first cover can be the last song's (the Windows helper reads it
 	 * again 5 s in), so one or two corrections are real; but some players (a few Linux browsers) write a new temp file on every
@@ -83,8 +85,17 @@ public final class MediaTracker {
 		executor.scheduleWithFixedDelay(this::pollOnce, 0, pollMs, TimeUnit.MILLISECONDS);
 	}
 
+	/** Called when a new song starts (or the music stops: {@link Track#NONE}). */
 	public void onTrackChange(Consumer<Track> listener) {
 		this.onTrackChange = listener;
+	}
+
+	/**
+	 * Called when the same song comes with a length, cover or artist that was missing (browsers often send them a moment
+	 * after the title): worth looking the lyrics up again with and loading the cover, but not a new song.
+	 */
+	public void onDetailsChange(Consumer<Track> listener) {
+		this.onDetailsChange = listener;
 	}
 
 	/**
@@ -273,7 +284,7 @@ public final class MediaTracker {
 			// Still the same song, so its clock goes on (a player that reads 0 keeps counting from when the song appeared)
 			followSameSong(old, fresh);
 			sourceName = source.displayName();
-			onTrackChange.accept(freshTrack);
+			onDetailsChange.accept(freshTrack);
 			return;
 		}
 

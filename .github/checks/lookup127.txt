@@ -1,0 +1,42 @@
+# A song whose length comes in a while after its name (as browsers and some Linux players send it), fix/lookup127
+# (1280x720, 1.21.11, the demo song, World layout, the bar's lyric line on, song name only on change: the defaults).
+# The test hook's "songlength 0" has the demo report no length; "song" then starts a made-up song with no length, and
+# "songlength 78" brings the length in mid-line. Each shot, the branch against the old code:
+# 1. lookup127-before (about 21 s into the song, the line "Neon skyline, can you hear it"): the bar shows that line and
+#    the first World words of it are up. The same on both.
+# 2. lookup127-after_00..05 (1.5 seconds right after the length comes in, still the same line; the first frame or two
+#    can be from before the tracker's next read, the same on both). On the old code the bar goes back to
+#    "Late Length · SkyLyrics Demo" (for 3.5 s) in place of the line being sung, and the World words of the line vanish
+#    at once, the last few sung coming back together, arriving anew. On the branch the bar keeps the line, and the
+#    words stay where they are, the next ones joining them one by one.
+# 3. lookup127-later (about 26 s, the next line "Every word is written in the stars"): the bar shows the line and the
+#    words of it, the same on both.
+# What the demo can't show: with a real player the old code also faded the lyrics out and back in while the song was
+# looked up again (the demo's lyrics never need a lookup). That part is checked by tests only (LateDetailsTest).
+# Run it, and with -f mod_ref=fix/lookup127-red (main plus the songlength hook alone) to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/lookup127 -f version=1.21.11 -f script=.github/checks/lookup127.txt
+#   gh workflow run screenshots.yml --ref fix/lookup127 -f version=1.21.11 -f mod_ref=fix/lookup127-red -f script=.github/checks/lookup127.txt
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout WORLD
+set barLyrics true
+set hudOnlyOnChange true
+look 0 -10
+sleep 8
+
+songlength 0
+sleep 1
+song Late Length | SkyLyrics Demo
+sleep 4.5
+seek 20
+sleep 1.2
+shot lookup127-before
+songlength 78
+burst lookup127-after 6 250
+sleep 3
+shot lookup127-later
+song
+songlength 78
