@@ -210,6 +210,7 @@
 - **Preview with the Narrator.** In the settings, the Narrator now reads what the preview shows when you press **Preview** ("Previewing. Click or press any key to go back.", or that nothing is playing and how to start the demo song), and names the **Preview** button again when you come back. Before, it said nothing at either step, so there was no telling that the settings had gone or how to get them back.
 - **Song places with the Narrator.** In the song library, the Narrator now says where a song is in the whole list ("50 of 300") and how many songs a search found in all. Before, it counted only the songs loaded so far: the 50th of 300 liked songs was "50 of 50", as if the list ended there, and a search that found hundreds said "10 results".
 - **Esc in a playlist from the view buttons.** In the song library, pressing Esc while the keyboard is on the grid, shelf or carousel button inside an open playlist now closes the playlist and puts the keyboard back on that playlist, and the Narrator names it. Before, the keyboard stayed on the button and the Narrator said nothing.
+- **Song library messages with the Narrator.** In the song library, the Narrator now reads every message as it shows, also one with the same words as the one before. Before, pressing Enter on the next made-up song said nothing (its "These songs are made up, so nothing plays" was the same as the last song's), and neither did a song that failed to start for the same reason as the one before.
 
 ### Faster
 

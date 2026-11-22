@@ -1316,8 +1316,11 @@ public final class LibraryScreen extends Screen {
 	private void say(String text) {
 		toast = text;
 		toastAge = 0;
+		message.shown();
 		afterKeyboardAction(); // the Narrator reads it while it shows
 	}
+
+	private final MessageNarration message = new MessageNarration();
 
 	private void pollPlaying() {
 		if (playing == null || !playing.isDone()) {
@@ -1955,10 +1958,7 @@ public final class LibraryScreen extends Screen {
 		if (!now.isEmpty()) {
 			output.nest().add(NarratedElementType.TITLE, Component.literal(now));
 		}
-		String message = toastWords();
-		if (!message.isEmpty()) {
-			output.nest().nest().add(NarratedElementType.TITLE, Component.literal(message));
-		}
+		message.add(output, toastWords());
 	}
 
 	@Override
