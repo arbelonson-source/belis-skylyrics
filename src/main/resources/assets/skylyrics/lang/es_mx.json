@@ -559,5 +559,7 @@
   "skylyrics.ui.s_playlists": "%s listas",
   "skylyrics.ui.spotify_is_having_problems_right_now": "Spotify tiene problemas en este momento",
   "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify está recibiendo demasiadas solicitudes, espera un momento",
-  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "Al mod le falta el lector de música de Windows. Descarga SkyLyrics de nuevo"
+  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "Al mod le falta el lector de música de Windows. Descarga SkyLyrics de nuevo",
+  "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify exige Premium en la cuenta que creó tu app de Spotify",
+  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "Si Spotify muestra INVALID_CLIENT, revisa el Client ID y que tu app tenga la Redirect URI de arriba, exactamente igual"
 }
