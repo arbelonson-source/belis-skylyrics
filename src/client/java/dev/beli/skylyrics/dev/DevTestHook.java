@@ -109,6 +109,14 @@ import dev.beli.skylyrics.media.DemoSource;
  * tick), {@code option clouds off|fast|fancy}, {@code option cloudRange 32} (Cloud Distance in chunks, 1.21.6 and newer;
  * older versions only log that they have none). It logs "Test hook: option ... is now ...".
  * <p>
+ * Resources: {@code reload} loads every resource again, as F3 + T does. {@code pack <id> on|off} turns a resource pack on
+ * or off as the Resource Packs screen does, saved in options.txt, and reloads when that changed the packs in use:
+ * {@code pack high_contrast on} is Accessibility > High Contrast, {@code pack programmer_art on} the built-in Programmer
+ * Art. An unknown id logs "Test hook: pack ... ignored" with the ids there are. {@code unicode on|off} sets Options >
+ * Language > Force Unicode Font (the letters change in place, with no reload) and logs "Test hook: Force Unicode Font is
+ * now ...". Whenever the loading screen goes away (any reload, also from {@code lang}) the hook logs
+ * "Test hook: resources reloaded", so a script can {@code wait resources reloaded}.
+ * <p>
  * {@code music pause} and {@code music play} pause or play the music, as the play/pause key does, only when it isn't so
  * already (it reads the player's last poll, so leave a moment after the song starts). The song stays where it is, and
  * {@code seek} still moves a paused demo song, which stays paused. It logs "Test hook: music pause sent" (or play), or
@@ -117,6 +125,8 @@ import dev.beli.skylyrics.media.DemoSource;
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
 	private int countdown;
+	/** Whether the resource loading screen was up last tick, so the end of a reload is logged once. */
+	private boolean wasLoading;
 	/** Ticks left of a frame-rate measurement, and the rate it saw each second so far. */
 	private int fpsLeft;
 	private final List<Integer> fpsSeen = new ArrayList<>();
@@ -355,6 +365,11 @@ public final class DevTestHook {
 
 	public void tick(Minecraft client) {
 		keepHolds(client);
+		boolean loadingNow = loading(client);
+		if (wasLoading && !loadingNow) {
+			SkyLyricsClient.LOG.info("Test hook: resources reloaded");
+		}
+		wasLoading = loadingNow;
 		if (fpsLeft > 0 && --fpsLeft % 20 == 0) {
 			fpsSeen.add(client.getFps());
 			if (fpsLeft == 0) {
@@ -475,6 +490,34 @@ public final class DevTestHook {
 				*///?}
 			}
 		}
+	}
+
+	/**
+	 * "pack id on|off": turns a resource pack on or off as the Resource Packs screen's Done does (saved in options.txt), and
+	 * reloads the resources when that changed the packs in use. Accessibility > High Contrast does exactly this with the
+	 * pack "high_contrast".
+	 */
+	private static void pack(Minecraft client, String arg) {
+		PackArg.Pack pack = PackArg.parse(arg);
+		net.minecraft.server.packs.repository.PackRepository repository = client.getResourcePackRepository();
+		if (!repository.isAvailable(pack.id())) {
+			SkyLyricsClient.LOG.warn("Test hook: pack {} ignored (no such pack; there are {})", pack.id(), repository.getAvailableIds());
+			return;
+		}
+		boolean changed = pack.on() ? repository.addPack(pack.id()) : repository.removePack(pack.id());
+		if (changed) {
+			client.options.updateResourcePacks(repository);
+		}
+		SkyLyricsClient.LOG.info("Test hook: pack {} is now {}{}", pack.id(), pack.on() ? "on" : "off", changed ? ", reloading" : " (it was already)");
+	}
+
+	/** Whether the resource loading screen is up (a reload, or the game starting). */
+	private static boolean loading(Minecraft client) {
+		//? if >=26.2 {
+		/*return client.gui.overlay() != null;
+		*///?} else {
+		return client.getOverlay() != null;
+		//?}
 	}
 
 	/** "set field value": changes one config field for this run (not saved). */
@@ -900,6 +943,14 @@ public final class DevTestHook {
 					client.options.languageCode = arg;
 					client.reloadResourcePacks();
 				}
+				// F3 + T: every resource is loaded again (fonts, textures, languages) while the song plays on
+				case "reload" -> client.reloadResourcePacks();
+				case "unicode" -> {
+					// Options > Language > Force Unicode Font: the game's letters change in place, with no reload
+					client.options.forceUnicodeFont().set(PackArg.onOff(arg));
+					SkyLyricsClient.LOG.info("Test hook: Force Unicode Font is now {}", client.options.forceUnicodeFont().get() ? "on" : "off");
+				}
+				case "pack" -> pack(client, arg);
 				case "guiscale" -> {
 					client.options.guiScale().set(Integer.parseInt(arg));
 					//? if >=26.1 {

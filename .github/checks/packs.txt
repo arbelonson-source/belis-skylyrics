@@ -1,0 +1,185 @@
+# Resource packs, Force Unicode Font and resource reloads while the demo song plays (fix/packs154). 1280x720, GUI
+# scale 2 as the test world starts. Run it for 1.21.11 and 26.3:
+#   gh workflow run screenshots.yml --ref fix/packs154 -f version=1.21.11 -f script=.github/checks/packs.txt
+#   gh workflow run screenshots.yml --ref fix/packs154 -f version=26.3 -f script=.github/checks/packs.txt
+# Every group shows the same things, so a shot can be laid beside the same shot of group 0:
+#   -sky       the night sky lyrics (Lines layout), the top bar with the line being sung, and the Record card in the
+#              bottom right with its three lyric lines
+#   -settings  the settings screen, Lyrics tab; -about the About tab (wrapped paragraphs); -library the library screen;
+#   -intro     the welcome screen (the only one with the game's own buttons on it)
+# 0. Default packs: how everything should look.
+# 1. Force Unicode Font on (no reload; the game's letters change in place): the game's letters in the settings, library
+#    and welcome screens are the thinner Unicode ones; every label, button and value still fits its row with nothing
+#    overlapping and "…" only where group 0 has one (Unicode letters are narrower, so maybe fewer). The smooth lyrics,
+#    top bar and card text are the mod's own fonts and look the same as group 0.
+# 2. High Contrast on (a reload): the mod's panels, rows and switches look exactly as in group 0 (they are drawn in the
+#    mod's own colours); only the welcome screen's buttons are the black ones with white edges, their words readable.
+#    The sky, bar and card as in group 0 (no black or missing boxes, no white squares where the cover or corners are).
+# 3. Programmer Art on (a reload): the blocks look like old Minecraft; the lyrics, bar, card and settings as in group 0.
+# 4. Reloads (F3 + T) mid-song, each one after the loading screen is gone:
+#    -lines-after  the same line as -lines-before, its letters evenly spaced (none on top of each other, no gaps inside
+#                  words), the sung part lit up to the right letter, the bar and card text in place with their rounded
+#                  corners; no black or missing-letter boxes anywhere
+#    -world-after  the World layout's floating words, letters whole and evenly spaced
+#    -arc-after    the Arc layout, as above
+#    -settings-after / -library-after  a reload with the screen open: the screen as in group 0, every row in place
+#    -unicode-after  Force Unicode Font on and then a reload: as group 1, nothing left with the default letters' widths
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set barLyrics true
+set hudOnlyOnChange false
+set recordCard true
+set cardLyrics true
+set cardLines 3
+set cardCorner BOTTOM_RIGHT
+set layout LINES
+look 0 -22
+sleep 6
+
+# 0. Default packs
+seek 20
+sleep 3
+where
+shot packs-0-sky
+gui 0
+sleep 3
+shot packs-0-settings
+gui 4
+sleep 3
+shot packs-0-about
+close
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot packs-0-library
+close
+screen dev.beli.skylyrics.gui.IntroScreen
+sleep 3
+shot packs-0-intro
+close
+sleep 1
+
+# 1. Force Unicode Font
+unicode on
+seek 20
+sleep 3
+where
+shot packs-1-sky
+gui 0
+sleep 3
+shot packs-1-settings
+gui 4
+sleep 3
+shot packs-1-about
+close
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot packs-1-library
+close
+screen dev.beli.skylyrics.gui.IntroScreen
+sleep 3
+shot packs-1-intro
+close
+unicode off
+sleep 1
+
+# 2. High Contrast
+pack high_contrast on
+wait resources reloaded
+seek 20
+sleep 3
+where
+shot packs-2-sky
+gui 0
+sleep 3
+shot packs-2-settings
+gui 4
+sleep 3
+shot packs-2-about
+close
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot packs-2-library
+close
+screen dev.beli.skylyrics.gui.IntroScreen
+sleep 3
+shot packs-2-intro
+close
+pack high_contrast off
+wait resources reloaded
+
+# 3. Programmer Art
+pack programmer_art on
+wait resources reloaded
+seek 20
+sleep 3
+where
+shot packs-3-sky
+gui 0
+sleep 3
+shot packs-3-settings
+close
+pack programmer_art off
+wait resources reloaded
+
+# 4. Reloads mid-song
+seek 20
+sleep 2
+where
+shot packs-4-lines-before
+reload
+wait resources reloaded
+sleep 1
+where
+shot packs-4-lines-after
+set layout WORLD
+seek 20
+sleep 3
+reload
+wait resources reloaded
+sleep 1
+where
+shot packs-4-world-after
+set layout ARC
+seek 20
+sleep 3
+reload
+wait resources reloaded
+sleep 1
+where
+shot packs-4-arc-after
+set layout LINES
+gui 4
+sleep 3
+reload
+wait resources reloaded
+sleep 2
+shot packs-4-settings-after
+close
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+reload
+wait resources reloaded
+sleep 2
+shot packs-4-library-after
+close
+unicode on
+reload
+wait resources reloaded
+seek 20
+sleep 3
+where
+shot packs-4-unicode-after
+gui 0
+sleep 3
+shot packs-4-unicode-settings-after
+close
+unicode off
+
+# Back as the test world starts
+set recordCard false
+set hudOnlyOnChange true
+look 0 -28
+sleep 2

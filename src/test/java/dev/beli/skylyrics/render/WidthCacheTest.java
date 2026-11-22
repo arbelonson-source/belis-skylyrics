@@ -57,6 +57,20 @@ class WidthCacheTest {
 	}
 
 	@Test
+	void aNewLanguageObjectIsAReload() {
+		WidthCache cache = new WidthCache(8);
+		cache.language(LANG);
+		long before = cache.epoch();
+		cache.get(FONT, STYLE, "hello", LANG, measure);
+		cache.language(LANG);
+		assertEquals(before, cache.epoch(), "the same language object is no reload");
+		assertEquals(1, cache.size());
+		cache.language(new Object()); // what every resource reload makes
+		assertEquals(before + 1, cache.epoch());
+		assertEquals(0, cache.size());
+	}
+
+	@Test
 	void stayBoundedAndKeepTheRecentlyUsed() {
 		WidthCache cache = new WidthCache(4);
 		for (int i = 0; i < 1000; i++) {
