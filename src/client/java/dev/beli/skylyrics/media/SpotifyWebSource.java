@@ -939,8 +939,10 @@ public final class SpotifyWebSource implements MediaSource {
 			synchronized (this) {
 				accessToken = null;
 			}
+			// Renewed first: the round trip the position is dated in starts only when the song is asked for again
+			String renewed = access();
 			sent = System.nanoTime();
-			response = api("GET", "/me/player/currently-playing?additional_types=episode", access());
+			response = api("GET", "/me/player/currently-playing?additional_types=episode", renewed);
 		}
 		// The position was read somewhere during the round trip; the middle is the best guess
 		long readAt = sent + (System.nanoTime() - sent) / 2;

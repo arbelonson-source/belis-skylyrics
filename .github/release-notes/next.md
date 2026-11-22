@@ -199,6 +199,7 @@
 - **Closing the settings or song library with its key.** Closing the settings with J (or the song library with Ctrl+N) and holding the key a moment too long no longer opens them again right away: the key has to be let go and pressed again.
 - **The lock key with Floating lyrics.** With **Placement** on **Floating** (Arc or Lines), where nothing can be pinned, the **Lock lyrics here** key no longer says "Lyrics locked here" and quietly turns on **View lock**: it says only lyrics in the sky can be locked and changes nothing. With **Direction** on N, E, S or W, unlocking now says "Lyrics unlocked" instead of "Lyrics follow again", since the lyrics go back to that side of the sky.
 - **Twinkling stars in the World layout.** In the World layout with **Direction** on N, E, S or W, the **Twinkling stars** now stay round the words on that side of the sky instead of following your view when **Placement** was left on **Floating** from another layout (Placement is hidden in World).
+- **Spotify after the computer sleeps.** With Spotify signed in, when Spotify asks for a renewed sign-in in the middle of a song (as it does after the computer wakes from sleep), the lyrics no longer run ahead of the song by up to half the time the renewal took. Before, when that was under about a third of a second, they stayed that far ahead until the next pause, skip or seek.
 
 ### Faster
 

@@ -667,6 +667,31 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void aSongReadRightAfterASignInRenewalIsTimedFromTheReadNotFromBeforeTheRenewal(@TempDir Path dir) throws Exception {
+		// After the computer slept, Spotify refuses the access token mid-song and it is renewed before asking again. On a
+		// network that has just woken up the renewal can take a while; the position must not be dated back into it, or
+		// the lyrics run ahead by half of it (and stay ahead for the song when that is under the tracker's jitter limit)
+		FakeHttp http = new FakeHttp(200);
+		SpotifyWebSource source = signedIn(dir, http);
+		http.apiAnswers.add("401");
+		http.apiAnswers.add(PLAYING);
+		long[] renewedAt = {0};
+		http.duringToken = () -> {
+			try {
+				Thread.sleep(400);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			renewedAt[0] = System.nanoTime();
+		};
+		Snapshot s = source.poll();
+		assertEquals(List.of("token", "api", "token", "api"), http.calls);
+		assertEquals(1000, s.positionMs());
+		assertTrue(s.readAtNanos() >= renewedAt[0], "read " + (renewedAt[0] - s.readAtNanos()) / 1_000_000
+				+ " ms before the renewal ended, when the song was asked for only after it");
+	}
+
+	@Test
 	void anAnswerForTheOldAccountIsDroppedWhenThePlayerSignsOutMeanwhile(@TempDir Path dir) throws Exception {
 		FakeHttp http = new FakeHttp(200);
 		SpotifyWebSource source = signedIn(dir, http);
