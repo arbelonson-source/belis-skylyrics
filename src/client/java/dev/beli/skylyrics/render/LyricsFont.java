@@ -206,8 +206,13 @@ public final class LyricsFont {
 		checkFonts(font.getSplitter(), System.nanoTime());
 	}
 
-	/** {@link #checkFonts(Font)} at a given time; measures only when the last probe is 250 ms old or a reload was seen. */
+	/**
+	 * {@link #checkFonts(Font)} at a given time; measures only when the last probe is 250 ms old or a reload was seen. A new
+	 * language object (every reload makes one) drops the widths at once.
+	 */
 	static void checkFonts(StringSplitter splitter, long now) {
+		// A new language object is a reload too (the title screen's lyrics don't draw while packs change in its Options)
+		WIDTHS.language(Language.getInstance());
 		if (probed && now - lastProbe < PROBE_GAP_NS) {
 			return;
 		}
