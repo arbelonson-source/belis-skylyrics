@@ -542,7 +542,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker.shutdown();
 		lyrics.shutdown();
 		heard.flush();
-		SkyLyricsConfig.get().flush(2000); // a save still waiting for the writer
+		// A save still waiting for the writer, and the open settings screen's, which Minecraft closes after this event
+		SkyLyricsConfig.get().close(2000);
 		art.close();
 		covers.close();
 	}

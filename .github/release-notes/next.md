@@ -228,6 +228,8 @@
 - **Film and session songs in a browser.** With Spotify's Web Player (or another music site) in a browser, a song named like "Song - From "Film"", "Song - From the Film Soundtrack", "Song - Recorded at …" or "Song - Bonus Track" is no longer split into the song's name as the artist and the tag as the title: the top bar and the **Record card** show the real artist, and the lyrics are looked up for the right song.
 - **Emoji in lyrics.** A lyric line with an emoji like ❤️ or ✨️ no longer shows a dashed box with "VS16" in it after the emoji, in the sky (**Lines**, **Arc** and **World**), in the top bar's lyric line or on the **Record card**.
 - **Arabic lyrics in the Lines layout.** An Arabic or Persian lyric line that fits across the sky now stays on one row instead of breaking in two, and a long one takes only the rows it needs (two where it took three) instead of short rows with room to spare. The same goes for the lyrics on the title screen.
+- **Closing the game with the settings open.** Changes made in the SkyLyrics settings are now saved when you close the game window while the settings are still open. Before, that save was only handed to the background after SkyLyrics had finished waiting for its saves, so the game could exit before it was written (most likely on a slow disk or with an antivirus checking the file) and those changes could be lost.
+- **Spotify sign-in at start.** If Windows, an antivirus or OneDrive holds the Spotify sign-in file for a moment as the game starts, SkyLyrics now tries again, as it already did for the settings. Before, you started signed out of Spotify for that whole game, and had to sign in again or restart.
 
 ### Faster
 

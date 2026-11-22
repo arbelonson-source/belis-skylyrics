@@ -860,6 +860,10 @@ public final class SkyLyricsConfig {
 		if (start) {
 			startWriter();
 		}
+		long wait = closeWaitMs;
+		if (wait >= 0) {
+			flush(wait); // the game is stopping: nothing would wait for this save later
+		}
 	}
 
 	/** Hands the writer to its thread ({@code draining} is already set); if that is refused, the queue is idle again. */
@@ -921,6 +925,19 @@ public final class SkyLyricsConfig {
 				}
 			}
 		}
+	}
+
+	/** Set by {@link #close}: how long each later save waits until it is on disk; below 0 while the game runs. */
+	transient volatile long closeWaitMs = -1;
+
+	/**
+	 * For the game stopping: waits for the queued saves like {@link #flush}, and makes every later save wait too (at most
+	 * {@code timeoutMs} each). Minecraft closes the open screen only after its stopping event, so the settings screen saves
+	 * what was changed in it after this; left to the writer thread alone, that save races the exit and can be lost.
+	 */
+	public boolean close(long timeoutMs) {
+		closeWaitMs = Math.max(0, timeoutMs);
+		return flush(timeoutMs);
 	}
 
 	/** Waits until every queued save is written, at most {@code timeoutMs}; true when nothing is left. */

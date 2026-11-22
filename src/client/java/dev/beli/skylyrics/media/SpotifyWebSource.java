@@ -105,6 +105,8 @@ public final class SpotifyWebSource implements MediaSource {
 
 	private final Supplier<String> clientId;
 	private final Path loginFile;
+	/** Reads the sign-in file at start; a seam so tests can hold the file the way Windows sometimes does. */
+	private final dev.beli.skylyrics.util.SafeFile.Reader loginReader;
 	private final SecureRandom random = new SecureRandom();
 	/** Built on first use: the SSL context and java.net.http classes cost tens of milliseconds at mod init. */
 	private volatile @org.jspecify.annotations.Nullable HttpClient httpClient;
@@ -166,9 +168,14 @@ public final class SpotifyWebSource implements MediaSource {
 	}
 
 	public SpotifyWebSource(Supplier<String> clientId, Path loginFile, BooleanSupplier looking) {
+		this(clientId, loginFile, looking, f -> Files.readString(f, StandardCharsets.UTF_8));
+	}
+
+	SpotifyWebSource(Supplier<String> clientId, Path loginFile, BooleanSupplier looking, dev.beli.skylyrics.util.SafeFile.Reader loginReader) {
 		this.clientId = clientId;
 		this.loginFile = loginFile;
 		this.looking = looking;
+		this.loginReader = loginReader;
 		load();
 	}
 
@@ -722,7 +729,9 @@ public final class SpotifyWebSource implements MediaSource {
 					damagedLogin("it is far too big to be ours");
 					return;
 				}
-				String text = Files.readString(loginFile, StandardCharsets.UTF_8);
+				// Tried again for a moment when Windows, an antivirus or OneDrive holds it, like the settings: else you start signed out
+				String text = dev.beli.skylyrics.util.SafeFile.readText(loginFile, loginReader, dev.beli.skylyrics.util.SafeFile.READ_TRIES,
+						dev.beli.skylyrics.util.SafeFile.READ_PAUSE_MS);
 				JsonObject json = object(text);
 				if (json != null) {
 					refreshToken = string(json, "refreshToken");
