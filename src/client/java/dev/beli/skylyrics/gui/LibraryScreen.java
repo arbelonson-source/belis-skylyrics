@@ -1678,6 +1678,7 @@ public final class LibraryScreen extends Screen {
 			} else if (opened != null) {
 				closeOpened();
 				restorePlace();
+				stop = LibraryKeys.stopAfterClose(stop);
 				sayNewSection = true;
 			} else {
 				onClose();
