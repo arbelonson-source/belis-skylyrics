@@ -136,6 +136,12 @@ public final class RecordCard {
 				want = false;
 				at = null;
 			}
+			// With F3 closed, the lines a player pinned to show always: a top card has moved down below them (corner)
+			if (want && pinnedCovers(cfg.cardCorner, new float[] {at[0], at[1], at[0] + W, at[1] + h},
+					NowPlayingHud.pinnedLines(mc, now), g.guiHeight())) {
+				want = false;
+				at = null;
+			}
 		}
 		alpha = want ? Math.min(1, alpha + dt * 4) : Math.max(0, alpha - dt * 3);
 		if (alpha <= 0.01f) {
@@ -441,6 +447,29 @@ public final class RecordCard {
 		return DebugText.covers(box, f3Lines);
 	}
 
+	/**
+	 * The least a top corner card's top may be so it keeps below the debug lines a player pinned to show with F3 closed
+	 * (1.21.9 and later) in its column: the Performance profile's FPS line in the top left corner reaches a card there on
+	 * any screen. 0 for a bottom corner, or when none reach it.
+	 */
+	static float pinnedClear(CardCorner corner, int guiW, float[][] pinned) {
+		if (!topCorner(corner)) {
+			return 0;
+		}
+		float x = corner == CardCorner.TOP_LEFT ? MARGIN : guiW - MARGIN - W;
+		return DebugText.clearBelow(pinned, x, x + W);
+	}
+
+	/**
+	 * Whether the debug lines a player pinned to show with F3 closed (1.21.9 and later) hide a card at {@code box} (left,
+	 * top, right, bottom). In a bottom corner when they reach it (many lines on a short screen), as F3's text does. In a
+	 * top corner, which moves down below them ({@link #pinnedClear}), when they still reach it (no room below) or reach
+	 * past the top third of the screen: so many lines fill the top like the full F3 screen, and the card hides as for that.
+	 */
+	static boolean pinnedCovers(CardCorner corner, float[] box, float[][] pinned, int guiH) {
+		return DebugText.covers(box, pinned) || topCorner(corner) && DebugText.clearBelow(pinned, box[0], box[2]) > guiH / 3f;
+	}
+
 	/** How many good and bad potion effect icons Minecraft shows in the top right corner. */
 	static int[] effectCounts(Minecraft mc) {
 		int good = 0, bad = 0;
@@ -723,8 +752,9 @@ public final class RecordCard {
 				corner == CardCorner.TOP_LEFT ? MARGIN + W : guiW - MARGIN);
 		int[] counts = corner == CardCorner.TOP_LEFT ? effectCounts(mc) : NO_EFFECTS;
 		float icons = effectsClear(corner, guiW, counts[0], counts[1], mc.isDemo());
+		float pinned = pinnedClear(corner, guiW, NowPlayingHud.pinnedLines(mc, System.nanoTime()));
 		return corner(corner, guiW, guiH, effects, h, rightHanded, indicator,
-				Math.max(Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0), icons),
+				Math.max(Math.max(Math.max(bossClear(corner, guiW, guiH, bars), topCorner(corner) ? demo : 0), icons), pinned),
 				liftUp(canHurt, NowPlayingHud.healthTopUp(mc)), NowPlayingHud.bottomBox(), NowPlayingHud.actionBarShowing(mc), NowPlayingHud.topBox());
 	}
 

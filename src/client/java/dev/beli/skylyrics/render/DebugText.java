@@ -7,10 +7,12 @@ import org.jspecify.annotations.Nullable;
 
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
+import net.minecraft.client.Minecraft;
 
 /**
  * The debug screen's (F3) text as the game drew it last: one box per line (left, top, right, bottom, in GUI units), for
- * its left and its right column, so a bar or a Record card at the bottom can tell whether it would sit on that text. How much F3 shows
+ * its left and its right column, so a bar or a Record card at the bottom can tell whether it would sit on that text, and a
+ * bar or card anywhere can keep clear of the lines a player pinned to show with F3 closed (1.21.9 and later). How much F3 shows
  * depends on the game version and the mods (on 1.21.1 its left column nearly fills a GUI scale 3 screen, on 1.21.11 it
  * stops well above a bottom bar at GUI scale 2), so it is measured as the game draws each column, not guessed.
  */
@@ -28,13 +30,10 @@ public final class DebugText {
 
 	/**
 	 * Called as the game draws one of F3's columns (DebugScreenOverlayMixin), with its lines, the screen's width and the
-	 * game's font. It only measures while a bar or a Record card at the bottom could need it.
+	 * game's font. It only measures while a bar or a Record card could need it ({@link #measures}).
 	 */
 	public static void drawn(List<String> lines, boolean leftColumn, int guiWidth, ToIntFunction<String> width) {
-		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		boolean bar = cfg.nowPlayingHud && cfg.barPosition == BarPosition.BOTTOM;
-		boolean card = cfg.recordCard && !RecordCard.topCorner(cfg.cardCorner);
-		if (!cfg.enabled || !bar && !card) {
+		if (!measures(SkyLyricsConfig.get(), NowPlayingHud.f3Open(Minecraft.getInstance()))) {
 			return;
 		}
 		int[] widths = new int[lines.size()];
@@ -51,6 +50,17 @@ public final class DebugText {
 			right = boxes;
 			rightAt = now;
 		}
+	}
+
+	/**
+	 * Whether F3's text is measured as the game draws it. With F3 open, while a bar or a Record card at the bottom could need
+	 * it (at the top they hide for F3 anyway). With F3 closed the game draws only the lines a player pinned to show always
+	 * (1.21.9 and later, in the debug options screen), in the top corners, so then for a bar or a card anywhere.
+	 */
+	static boolean measures(SkyLyricsConfig cfg, boolean f3Open) {
+		boolean bar = cfg.nowPlayingHud && (!f3Open || cfg.barPosition == BarPosition.BOTTOM);
+		boolean card = cfg.recordCard && (!f3Open || !RecordCard.topCorner(cfg.cardCorner));
+		return cfg.enabled && (bar || card);
 	}
 
 	/**
@@ -88,6 +98,20 @@ public final class DebugText {
 		System.arraycopy(a, 0, both, 0, a.length);
 		System.arraycopy(b, 0, both, a.length, b.length);
 		return both;
+	}
+
+	/**
+	 * The least top at which something spanning {@code left} to {@code right} keeps {@link TopBarLayout#DODGE_GAP} below
+	 * every line box its width reaches, so it sits under them however far down it starts; 0 when it reaches none.
+	 */
+	static float clearBelow(float[][] lines, float left, float right) {
+		float clear = 0;
+		for (float[] line : lines) {
+			if (line[0] < right && line[2] > left) {
+				clear = Math.max(clear, line[3] + TopBarLayout.DODGE_GAP);
+			}
+		}
+		return clear;
 	}
 
 	/** Whether any of the line boxes overlaps the box (left, top, right, bottom). */

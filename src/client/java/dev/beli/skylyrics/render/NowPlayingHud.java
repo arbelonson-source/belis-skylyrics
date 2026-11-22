@@ -334,6 +334,7 @@ public final class NowPlayingHud {
 		Track track = tracker.track();
 		LyricsService.Snapshot snap = service.snapshot().forSong(track);
 		Content line = cfg.barLyrics ? currentLine(cfg, snap.lyrics()) : null;
+		float[][] pinned = pinnedLines(mc, now);
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
 		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(snap.lyrics(), lyricsTime(cfg));
 		//? if >=26.2 {
@@ -344,7 +345,7 @@ public final class NowPlayingHud {
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
 				// The debug screen (F3) fills the top corners, and its text can reach down to a bar at the bottom
-				&& !f3HidesBar(mc, cfg, g, now)
+				&& !f3HidesBar(mc, cfg, g, now, pinned)
 				// The player list (held Tab) is drawn after the bar, over it and see-through
 				&& !(cfg.barPosition != BarPosition.BOTTOM && tabListUp(mc))
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
@@ -408,9 +409,11 @@ public final class NowPlayingHud {
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
 				? bottomTopNow(mc, g.guiHeight())
-				: Math.max(Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW)),
-						TopBarLayout.demoClear(mc.isDemo(), g.guiWidth(), demoTimerWidth(mc),
-								TopBarLayout.barRight(g.guiWidth(), cfg.barSize, fit.pill(), statsW, fit.stats())));
+				: topNow(mc, cfg, g.guiWidth(), g.guiHeight(), sizes, pinned);
+		if (Float.isNaN(topTarget)) {
+			// Fading out for debug lines pinned too far down the screen: it stays where it was
+			topTarget = Math.max(top, 0);
+		}
 		float k = 1 - (float) Math.exp(-dt * 12);
 		top = top < 0 ? topTarget : top + (topTarget - top) * k;
 		float y = top - (1 - easeOut(alpha)) * 10;
@@ -464,13 +467,46 @@ public final class NowPlayingHud {
 		return TopBarLayout.bottomTop(guiHeight, mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc), actionBarShowing(mc));
 	}
 
+	/** Where a bar at the top heads for without pinned debug lines: below the boss bars, and the effect icons and demo timer it reaches. */
+	private static float topClearNow(Minecraft mc, SkyLyricsConfig cfg, int guiWidth, int guiHeight, Sizes sizes) {
+		TopBarLayout.Fit fit = sizes.fit();
+		return Math.max(Math.max(topBelowBossBars(mc, guiHeight), effectsClear(mc, guiWidth, cfg, fit, sizes.statsW())),
+				TopBarLayout.demoClear(mc.isDemo(), guiWidth, demoTimerWidth(mc),
+						TopBarLayout.barRight(guiWidth, cfg.barSize, fit.pill(), sizes.statsW(), fit.stats())));
+	}
+
+	/** The top bar's box at its widest with its top at {@code top}. */
+	private static float[] widestTopBox(SkyLyricsConfig cfg, int guiWidth, Sizes sizes, float top) {
+		TopBarLayout.Fit fit = sizes.fit();
+		return TopBarLayout.topBarBox(guiWidth, cfg.barSize, fit.pill(), sizes.clockW(), fit.clock(), sizes.statsW(), fit.stats(), top);
+	}
+
 	/**
-	 * Whether the open debug screen (F3) hides the bar now. A bar at the bottom is measured where it heads for, at the
-	 * widest this screen lets it be, against F3's text as the game drew it last.
+	 * Where a bar at the top heads for ({@link #topClearNow}), and below the debug lines a player pinned to show with F3
+	 * closed that its width reaches ({@link #topBelowPinned}; NaN when that is too far down and the bar hides).
 	 */
-	private boolean f3HidesBar(Minecraft mc, SkyLyricsConfig cfg, GuiGraphics g, long now) {
+	private static float topNow(Minecraft mc, SkyLyricsConfig cfg, int guiWidth, int guiHeight, Sizes sizes, float[][] pinned) {
+		float top = topClearNow(mc, cfg, guiWidth, guiHeight, sizes);
+		return pinned.length == 0 ? top : topBelowPinned(top, widestTopBox(cfg, guiWidth, sizes, top), pinned, guiHeight);
+	}
+
+	/**
+	 * Whether the debug screen (F3) hides the bar now. With F3 open, a bar at the bottom is measured where it heads for, at
+	 * the widest this screen lets it be, against F3's text as the game drew it last. With F3 closed, against the lines a
+	 * player pinned to show always ({@link #pinnedHides}).
+	 */
+	private boolean f3HidesBar(Minecraft mc, SkyLyricsConfig cfg, GuiGraphics g, long now, float[][] pinned) {
 		if (!f3Open(mc)) {
-			return false;
+			if (pinned.length == 0) {
+				return false;
+			}
+			Sizes sizes = sizes(mc, cfg, g.guiWidth());
+			boolean bottom = cfg.barPosition == BarPosition.BOTTOM;
+			float[] box = bottom
+					? TopBarLayout.barBox(g.guiWidth(), cfg.barSize, sizes.fit().pill(), sizes.clockW(), sizes.fit().clock(), sizes.statsW(),
+							sizes.fit().stats(), bottomTopNow(mc, g.guiHeight()))
+					: widestTopBox(cfg, g.guiWidth(), sizes, topClearNow(mc, cfg, g.guiWidth(), g.guiHeight(), sizes));
+			return pinnedHides(bottom, box, pinned, g.guiHeight());
 		}
 		if (cfg.barPosition != BarPosition.BOTTOM) {
 			return f3Hides(false, true, null, null);
@@ -509,6 +545,54 @@ public final class NowPlayingHud {
 			return true;
 		}
 		return f3Lines == null ? barBox[1] < RecordCard.F3_REACH : DebugText.covers(barBox, f3Lines);
+	}
+
+	/** No debug lines. */
+	static final float[][] NO_LINES = new float[0][];
+
+	/**
+	 * The debug lines a player pinned to show with F3 closed, as the game drew them last (from 1.21.9 the debug options
+	 * screen can set each of F3's lines to show always; the Performance profile does it for the FPS line). Empty while F3
+	 * is open (the full screen has its own rules), while none show, and before 1.21.9. The game's charts can't be pinned:
+	 * they show only with F3 open in every version.
+	 */
+	static float[][] pinnedLines(Minecraft mc, long now) {
+		//? if >=1.21.9 {
+		if (f3Open(mc) || mc.debugEntries.getCurrentlyEnabled().isEmpty()) {
+			return NO_LINES;
+		}
+		float[][] lines = DebugText.recent(now);
+		return lines == null ? NO_LINES : lines;
+		//?} else {
+		/*return NO_LINES;
+		*///?}
+	}
+
+	/**
+	 * Where a top bar's top goes for the debug lines a player pinned to show with F3 closed (1.21.9 and later): a little
+	 * below the lowest one its width reaches, else {@code top}. A pinned FPS line in the top left corner reaches a bar
+	 * with its clock on a narrow screen (Auto GUI scale at 1920x1080 is 480 wide). NaN when that is past the top third
+	 * of the screen: so many lines fill the top like the full F3 screen, and the bar hides as it does for that.
+	 *
+	 * @param barBox the bar's box at its widest (left, top, right, bottom)
+	 */
+	static float topBelowPinned(float top, float[] barBox, float[][] pinned, int guiHeight) {
+		float clear = DebugText.clearBelow(pinned, barBox[0], barBox[2]);
+		if (clear <= top) {
+			return top;
+		}
+		return clear > guiHeight / 3f ? Float.NaN : clear;
+	}
+
+	/**
+	 * Whether the debug lines a player pinned to show with F3 closed (1.21.9 and later) hide the bar. At the bottom when
+	 * they reach down to it (many lines on a short screen), as F3's text does. At the top, where the bar moves down below
+	 * them, when that is too far down ({@link #topBelowPinned}).
+	 *
+	 * @param barBox the bar's box at its widest, where it heads for without the pinned lines
+	 */
+	static boolean pinnedHides(boolean atBottom, float[] barBox, float[][] pinned, int guiHeight) {
+		return atBottom ? DebugText.covers(barBox, pinned) : Float.isNaN(topBelowPinned(barBox[1], barBox, pinned, guiHeight));
 	}
 
 	/** Whether the resource loading screen is up. */
@@ -707,7 +791,8 @@ public final class NowPlayingHud {
 
 	/**
 	 * Whether the full debug screen (F3) is open. From 1.21.9 players can pin single debug lines to show without F3, and
-	 * showDebugScreen() is true for those too; they stay small in a corner, so they must not hide the bar.
+	 * showDebugScreen() is true for those too; they stay small in a corner, so they must not hide the bar the way F3 does
+	 * ({@link #pinnedLines} has their own rules).
 	 */
 	static boolean f3Open(Minecraft mc) {
 		//? if >=1.21.11 {
