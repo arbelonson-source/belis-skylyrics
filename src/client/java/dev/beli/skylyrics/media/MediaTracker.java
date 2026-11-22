@@ -157,13 +157,17 @@ public final class MediaTracker {
 
 	/**
 	 * The second line of the player bar when nothing is playing: where music can come from. Empty while the reader itself
-	 * is failing (the Status line says why), and on a Mac without the browsers it can't read.
+	 * is failing (the Status line says why), and on a Mac without the browsers it can't read. With Spotify Web only the
+	 * Spotify account counts, on any device, so neither another player nor a browser video is offered.
 	 */
 	public static String idleHint(boolean reading, boolean mac, boolean webPlayer) {
 		if (!reading) {
 			return "";
 		}
-		return mac && !webPlayer ? Tr.t("Play a song in Spotify or the Music app") : Tr.t("Play a song in Spotify, a browser or any player");
+		if (webPlayer) {
+			return Tr.t("Play a song in Spotify on any device");
+		}
+		return mac ? Tr.t("Play a song in Spotify or the Music app") : Tr.t("Play a song in Spotify, a browser or any player");
 	}
 
 	/**

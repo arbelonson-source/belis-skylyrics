@@ -162,7 +162,12 @@ public final class SpotifyLibrary implements Library {
 					response = caller.call("PUT", "/me/player/play?device_id=" + encode(device), body);
 				}
 			}
-			return outcome(response.statusCode(), response.body(), uri, openHere);
+			String outcome = outcome(response.statusCode(), response.body(), uri, openHere);
+			if (outcome.isEmpty() && spotify != null) {
+				// Asked for at once and every second for a moment, so the new song shows as soon as Spotify has it, not 4 s later
+				spotify.pressTaken();
+			}
+			return outcome;
 		}).exceptionally(e -> {
 			Throwable cause = e instanceof java.util.concurrent.CompletionException && e.getCause() != null ? e.getCause() : e;
 			boolean specific = cause instanceof SpotifyWebSource.NotSetUp || MediaTracker.networkFailure(cause);
