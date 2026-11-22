@@ -8,21 +8,33 @@
 # "debug pin <line>" sets one of F3's lines to show always, as the debug options screen (F3 + F6) does (its Performance
 # profile does it for "fps"); "debug unpin <line>" puts it back as a new player has it. The world is creative, so a
 # bottom bar sits 50 above the bottom.
+# These test games run slowly (1.21.11 at about 4 frames a second, 26.3 at 5 to 13). Before 038d36c3 and 39e1c7f4 the
+# branch lost the pinned lines, and the card lost the bar's place, on about every other frame at 4 a second, so the bar
+# and the cards slid between two places and a picture caught them anywhere between (the first 1.21.11 run, gh143). Now
+# each should sit still where it belongs; on the old code the cards may still be caught between two places.
+# The top bar steps aside for its widest size (with a long line), as the bottom bar does under F3, so it can move for a
+# line its current, shorter pill doesn't touch. On 26.3, F3's text is drawn at half the Auto GUI scale (its "Debug GUI
+# scale" default: 2 at 1920x1080), smaller than the HUD at GUI scale 3 and 4, but the mod measures it at the HUD's
+# scale, so there the bar and the cards stop further below the lines than they need to (a known gap, both versions'
+# F3 measuring; at GUI scale 2 the two scales are the same).
 #
 # 0. f3p-f3-bottom: nothing pinned, F3 open, bottom bar at GUI scale 3: the bar shows under F3's text, on both
 #    (unchanged; as edges144's e144-f3-text).
-# 1. f3p-card-tl-fps: the FPS line pinned, Record card top left (GUI 3): branch: the card a few pixels lower than
-#    usual, the FPS line's grey box above it, apart; old: the line's grey box drawn over the card's top edge.
-# 2. f3p-card-tl-f3: the same with F3 open: no card on both (unchanged: a top card hides for the full F3 screen).
+# 1. f3p-card-tl-fps: the FPS line pinned, Record card top left, GUI scale 2 (960x540, where even the top bar's widest
+#    size ends right of the card, which stays in its corner): branch: the card a few pixels lower than its corner,
+#    the FPS line's grey box above it, apart; old: the line's grey box over the card's top edge.
+#    f3p-card-tl-fps-gui3: the same at GUI scale 3, where the top bar's widest size reaches the card's column: on both
+#    the card sits below the bar, clear of the FPS line (on the old code possibly caught between there and its corner).
+# 2. f3p-card-tl-f3: F3 open: no card on both (unchanged: a top card hides for the full F3 screen).
 # 3. Top bar.
-#    f3p-bar-gui4-fps (480x270, FPS line only): the line may or may not reach the bar's clock (the game's FPS line is
-#      shorter without vsync): branch: the bar just below the line where it reaches, else at its usual place; old:
-#      always at its usual place, under the line if they meet.
-#    f3p-bar-pos (GUI 3, the position lines pinned too, down to "Facing: ..." about 55 down on the left): branch: the
-#      bar below the lines its left part reaches; old: at its usual place with those lines over its left part.
+#    f3p-bar-gui4-fps (480x270, FPS line only): the line ends just left of the clock; branch: the bar a little lower,
+#      as its widest size would reach the line; old: at its usual place.
+#    f3p-bar-pos (GUI 3, the position lines pinned too, down to about 64 on the left): branch: the bar below them (its
+#      widest size reaches the XYZ and Facing lines); old: at its usual place, the lines ending left of its clock.
 # 4. The system lines pinned too (Java, CPU, Display, the GPU, its driver: five rows down the right side).
-#    f3p-bar-specs: branch: the bar below the lines of both sides that reach it; old: the right lines over its stats.
-#    f3p-card-tr-specs: Record card top right as well: branch: below the bar, clear of the lines; old: under them.
+#    f3p-bar-specs: branch: the bar below the lines of both sides; old: the CPU line over its stats.
+#    f3p-card-tr-specs: Record card top right as well: branch: the bar as in f3p-bar-specs and the card below it, both
+#      clear of the lines (on 1.21.11 this one stayed under the lines in the first run); old: the card under the lines.
 # 5. Many lines pinned (about F3's whole text, with F3 closed).
 #    f3p-many-top (GUI 3, top bar and top left card): branch: no card, and no bar unless the lines its width reaches
 #      end within the top third (120 down); old: both, with the lines over them.
@@ -55,12 +67,16 @@ debug off
 set barPosition TOP
 sleep 2
 
-# 1. Top left card and the FPS line
+# 1. Top left card and the FPS line, at GUI scale 2 and 3
 set recordCard true
 set cardCorner TOP_LEFT
 debug pin fps
+guiscale 2
 sleep 3
 shot f3p-card-tl-fps
+guiscale 3
+sleep 3
+shot f3p-card-tl-fps-gui3
 
 # 2. The same with F3 open
 debug on
