@@ -1,0 +1,46 @@
+# The timing keys' message above the hotbar, fix/time125 (1.21.11, the demo song). The timing keys start with no key,
+# so the script puts them on . and , with the test hook's bind (commit 6d4b02e5, the commit before the fix: compare
+# against that, main has no bind and would show no message at all). Each shot, the branch against 6d4b02e5:
+# - time125-en-late: "Timing for this song: +0.10 s" above the hotbar, the same on both.
+# - time125-he-late: the same message in Hebrew after a second press. On the branch the number reads "+0.20 s" (plus on
+#   the left, "s" on the right) to the left of the colon and the Hebrew words. On 6d4b02e5 it reads "s 0.20+": the "s"
+#   at the far left and the plus on the right of the number.
+# - time125-he-early: four presses of Lyrics are early. Branch "-0.20 s", 6d4b02e5 "s 0.20-".
+# - time125-he-zero: two presses of Lyrics are late, back to no timing for the song. Branch "0 s", 6d4b02e5 "s 0".
+# Run it, and with -f mod_ref=6d4b02e5 to compare with the old Hebrew text (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/time125 -f version=1.21.11 -f script=.github/checks/time125.txt
+#   gh workflow run screenshots.yml --ref fix/time125 -f version=1.21.11 -f mod_ref=6d4b02e5 -f script=.github/checks/time125.txt
+
+cmd time set noon
+cmd weather clear
+look 0 -20
+sleep 6
+bind skylyrics.lyrics_late period
+bind skylyrics.lyrics_early comma
+sleep 1
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot time125-en-late
+
+lang he_il
+sleep 15
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot time125-he-late
+hold skylyrics.lyrics_early 60
+sleep 0.3
+hold skylyrics.lyrics_early 60
+sleep 0.3
+hold skylyrics.lyrics_early 60
+sleep 0.3
+hold skylyrics.lyrics_early 60
+sleep 0.6
+shot time125-he-early
+hold skylyrics.lyrics_late 60
+sleep 0.3
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot time125-he-zero
+
+lang en_us
+sleep 15
