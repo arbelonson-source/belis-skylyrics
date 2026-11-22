@@ -56,6 +56,13 @@ class MediaTrackerTest {
 		public void previous() {
 		}
 
+		final AtomicInteger standBys = new AtomicInteger();
+
+		/** No @Override: the test also builds against a MediaSource without it. */
+		public void standBy() {
+			standBys.incrementAndGet();
+		}
+
 		@Override
 		public String displayName() {
 			return "Fake";
@@ -408,5 +415,38 @@ class MediaTrackerTest {
 		} finally {
 			tracker.shutdown();
 		}
+	}
+
+	/**
+	 * Turning the demo song on puts the player on stand-by, once, so the Windows reader's hidden PowerShell doesn't idle
+	 * while the demo plays; turning it off reads the player again (which starts the helper again).
+	 */
+	@Test
+	void theDemoSongPutsThePlayerOnStandBy() throws InterruptedException {
+		FakeSource source = new FakeSource();
+		source.then(song(215_000, ""));
+		// What each poll finds the demo setting at: player, demo three times, player, demo, demo
+		Deque<Boolean> demoAtPoll = new java.util.concurrent.ConcurrentLinkedDeque<>(List.of(false, true, true, true, false, true, true));
+		AtomicInteger asked = new AtomicInteger();
+		MediaTracker tracker = new MediaTracker(source, () -> {
+			asked.incrementAndGet();
+			return demoAtPoll.size() > 1 ? demoAtPoll.poll() : demoAtPoll.peek();
+		});
+		try {
+			for (int i = 0; i < 8; i++) {
+				tracker.refresh();
+			}
+			// The polls run one after another: once the 8th has asked the setting, the first 7 are over
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+			while (asked.get() < 8) {
+				assertTrue(System.nanoTime() < until, "timed out");
+				Thread.sleep(5);
+			}
+		} finally {
+			tracker.shutdown();
+		}
+		assertEquals(2, source.polls.get(), "the player is read only while the demo is off");
+		assertEquals(2, source.standBys.get(), "once each time the demo is turned on after the player was read");
+		assertEquals(DemoSource.PLAYER, tracker.track().player());
 	}
 }
