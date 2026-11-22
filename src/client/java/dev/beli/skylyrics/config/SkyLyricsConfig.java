@@ -566,7 +566,12 @@ public final class SkyLyricsConfig {
 		java.util.List<String> bad = new java.util.ArrayList<>();
 		JsonObject json;
 		try {
-			json = JsonParser.parseString(text).getAsJsonObject();
+			// Checked, not getAsJsonObject(): its error writes the element out, which older Gson does by recursion, so a
+			// list nested thousands deep was a StackOverflowError instead of a damaged file
+			if (!(JsonParser.parseString(text) instanceof JsonObject object)) {
+				return new Parsed(config, bad, true);
+			}
+			json = object;
 		} catch (RuntimeException e) {
 			return new Parsed(config, bad, true);
 		}
@@ -581,7 +586,8 @@ public final class SkyLyricsConfig {
 			}
 			try {
 				if (!wholeNumberFits(field.getType(), value)) {
-					throw new NumberFormatException(value.toString());
+					// Not value.toString(): older Gson writes a list nested thousands deep by recursion, a StackOverflowError
+					throw new NumberFormatException(field.getName());
 				}
 				Object read;
 				if (field.getName().equals("songOffsets") && value.isJsonObject()) {
@@ -590,7 +596,7 @@ public final class SkyLyricsConfig {
 					for (var e : value.getAsJsonObject().entrySet()) {
 						try {
 							if (!wholeNumberFits(int.class, e.getValue())) {
-								throw new NumberFormatException(e.getValue().toString());
+								throw new NumberFormatException(e.getKey());
 							}
 							Integer ms = GSON.fromJson(e.getValue(), Integer.class);
 							if (ms == null) {
@@ -1085,7 +1091,10 @@ public final class SkyLyricsConfig {
 		}
 		JsonObject theirs; // also when the file is unchanged since load: it may hold settings only a newer version knows
 		try {
-			theirs = JsonParser.parseString(disk).getAsJsonObject();
+			if (!(JsonParser.parseString(disk) instanceof JsonObject object)) {
+				return null; // damaged: nothing worth keeping (checked, for the reason in parse)
+			}
+			theirs = object;
 		} catch (RuntimeException e) {
 			return null; // damaged: nothing worth keeping
 		}

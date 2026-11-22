@@ -281,6 +281,7 @@
 - **Pasting the Client ID.** A Client ID copied with quotes, a label like "Client ID:" or a web page's spaces around it, or inside the address of its page on the Spotify dashboard, is now picked out when you press **Paste**, instead of showing "That isn't a Client ID".
 - **Browsing the song library for hours.** On 1.21.4 and 1.21.5, every album cover the song library showed left a little memory behind until the game closed, so browsing for an evening slowly added to the game's memory use. Covers now take over the texture names of the ones that scrolled out of the cover memory, so the number stays the same however long you browse.
 - **Font packs turned on from the title screen.** A resource pack that changes the width of only some letters (Cyrillic ones, say), turned on or off in the title screen's Options while a song plays, no longer leaves the title screen's lyrics drawn with the old letter widths: lines already shown kept their old line breaks and letter places (letters on top of each other or gaps inside words) for the rest of the song. Every resource reload now has every line laid out again.
+- **Settings file nested very deep.** On Minecraft 1.21.1 to 1.21.10, a settings file with a value buried thousands of brackets deep (damaged, or made to break things) no longer crashes the game at every start or stops your settings from saving: the file or that setting counts as damaged and goes back to the default, as on the newer versions.
 
 ### Faster
 
