@@ -49,6 +49,8 @@ class SpotifyLibraryLeftoversTest {
 	private static class Net extends HttpClient {
 		final List<String> requests = new CopyOnWriteArrayList<>();
 		final Function<String, Reply> api;
+		/** When set, every Web API call fails with this instead of an answer, as a broken connection does. */
+		volatile IOException breaks;
 
 		Net(Function<String, Reply> api) {
 			this.api = api;
@@ -62,6 +64,9 @@ class SpotifyLibraryLeftoversTest {
 			}
 			String what = request.method() + " " + request.uri().getPath() + (request.uri().getRawQuery() == null ? "" : "?" + request.uri().getRawQuery());
 			requests.add(what);
+			if (breaks != null) {
+				throw breaks;
+			}
 			return (HttpResponse<T>) response(request, api.apply(what));
 		}
 
@@ -264,5 +269,22 @@ class SpotifyLibraryLeftoversTest {
 		String body = "{\"total\":1,\"offset\":0,\"items\":[{\"id\":\"p\",\"uri\":\"spotify:playlist:p\",\"name\":\"Mix\",\"owner\":{\"id\":\"x\"}}]}";
 		assertTrue(SpotifyLibrary.parsePlaylists(body, "").items().getFirst().openable());
 		assertFalse(SpotifyLibrary.parsePlaylists(body, "me").items().getFirst().openable());
+	}
+
+	@Test
+	void aConnectionThatBreaksShowsTheInternetSentenceNotJavasWords(@TempDir Path dir) throws Exception {
+		for (IOException broken : List.of(new java.net.SocketException("Connection reset"),
+				new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake"),
+				new IOException("HTTP/1.1 header parser received no bytes"))) {
+			Net net = new Net(what -> Reply.ok("{}"));
+			net.breaks = broken;
+			SpotifyLibrary lib = library(dir, net);
+			// What the song library shows where the songs would be
+			assertEquals(Tr.t("Can't reach the internet or Spotify"), SpotifyLibrary.errorText(failure(lib.liked(0))), broken.getMessage());
+			assertEquals(Tr.t("Can't reach the internet or Spotify"), SpotifyLibrary.errorText(failure(lib.search("x", 0))), broken.getMessage());
+			// Starting a song says it too, not "try again" as if Spotify had said no
+			assertEquals(Tr.t("Can't reach the internet or Spotify"), lib.play(new LibraryItem("a", "spotify:track:a", "A", "", "", "", 0, ""), List.of())
+					.get(5, TimeUnit.SECONDS), broken.getMessage());
+		}
 	}
 }

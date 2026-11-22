@@ -98,6 +98,16 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
+	/**
+	 * No answer came back at all: no internet, or a connection that was refused, broke off, timed out or couldn't be made
+	 * safe. The player is told that in words; Java's own ("Connection reset", a handshake text) stays the cause, for the log.
+	 */
+	static final class Unreachable extends IOException {
+		Unreachable(IOException cause) {
+			super(Tr.t("Can't reach the internet or Spotify"), cause);
+		}
+	}
+
 	/** What to tell a player whose Spotify source can't ask yet: the first missing step. */
 	static NotSetUp notSetUp(String clientId) {
 		return new NotSetUp(validClientId(clientId) ? Tr.t("Sign in to Spotify below") : Tr.t("Paste your Client ID first"));
@@ -402,6 +412,7 @@ public final class SpotifyWebSource implements MediaSource {
 				}
 			} catch (IOException | InterruptedException | RuntimeException e) {
 				message = Tr.t("Sign-in failed: %s", failureText(e));
+				LOG.warn("Spotify sign-in failed: {}", dev.beli.skylyrics.util.LogText.chain(e));
 				setProblem(server, message);
 			}
 			respond(socket.getOutputStream(), "200 OK", message);
@@ -428,13 +439,21 @@ public final class SpotifyWebSource implements MediaSource {
 		return true;
 	}
 
-	/** What to show for a failure: the internet's fault when it is, else its message, or its class name when it has none (never "null"). */
+	/**
+	 * What to show for a failure: the internet's fault when it is, else our own sentence. Our failures carry one in an
+	 * IOException; anything else (a bug, an answer that can't be read) only has Java's words, so it gets a plain one (never "null").
+	 */
 	static String failureText(Throwable e) {
 		if (MediaTracker.networkFailure(e)) {
 			return Tr.t("Can't reach the internet or Spotify");
 		}
+		if (e instanceof Refused r) {
+			// Spotify's reason ("Invalid authorization code") is English and says nothing to do: it goes to the log
+			return r.appRejected ? Tr.t("Spotify no longer accepts your Client ID, check it and sign in again")
+					: Tr.t("Something went wrong, try again");
+		}
 		String message = e.getMessage();
-		return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
+		return e instanceof IOException && message != null && !message.isBlank() ? message : Tr.t("Something went wrong, try again");
 	}
 
 	private static void closeQuietly(java.io.Closeable c) {
@@ -564,7 +583,7 @@ public final class SpotifyWebSource implements MediaSource {
 				.header("Content-Type", "application/x-www-form-urlencoded")
 				.POST(HttpRequest.BodyPublishers.ofString(body))
 				.build();
-		HttpResponse<String> response = http().send(request, HttpResponse.BodyHandlers.ofString());
+		HttpResponse<String> response = send(request);
 		JsonObject json = object(response.body());
 		if (response.statusCode() == 429) {
 			holdOff(response); // the poller waits out what Spotify asked, like for the Web API
@@ -578,9 +597,18 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		if (response.statusCode() != 200 || json == null || string(json, "access_token") == null) {
 			String why = json == null ? null : string(json, "error_description");
-			throw new IOException(why != null ? why : "HTTP " + response.statusCode());
+			// Spotify's own English words and the bare status are kept as the cause, for the log
+			throw new IOException(answerText(response.statusCode()),
+					new IOException("HTTP " + response.statusCode() + (why != null ? ": " + why : "")));
 		}
 		return json;
+	}
+
+	/** What the player is told when Spotify's sign-in server answered {@code status} instead of a token: never the bare number. */
+	static String answerText(int status) {
+		return status == 429 ? Tr.t("Spotify is getting too many requests, wait a moment")
+				: status >= 500 ? Tr.t("Spotify is having problems right now")
+				: Tr.t("Spotify didn't answer, try again");
 	}
 
 	private synchronized void accept(String id, JsonObject json) {
@@ -903,6 +931,7 @@ public final class SpotifyWebSource implements MediaSource {
 			// A 401 here means a token we had just refreshed was refused too, so only signing in again helps.
 			super(status == 403 ? Tr.t("Spotify blocked this app. On the Spotify dashboard, add your account under User Management")
 					: status == 401 ? Tr.t("Spotify signed you out, sign in again")
+					: status >= 500 ? Tr.t("Spotify is having problems right now")
 					: Tr.t("Spotify answered with error %s", status));
 			this.status = status;
 		}
@@ -994,7 +1023,16 @@ public final class SpotifyWebSource implements MediaSource {
 		} else {
 			request.header("Content-Type", "application/json").method(method, HttpRequest.BodyPublishers.ofString(json));
 		}
-		return http().send(request.build(), HttpResponse.BodyHandlers.ofString());
+		return send(request.build());
+	}
+
+	/** Sends one request to Spotify; when no answer comes back at all, the failure says so in words (see {@link Unreachable}). */
+	private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
+		try {
+			return http().send(request, HttpResponse.BodyHandlers.ofString());
+		} catch (IOException e) {
+			throw new Unreachable(e);
+		}
 	}
 
 	/** Calls the Web API as the signed-in user, fetching a fresh access token once if Spotify says it went stale. */

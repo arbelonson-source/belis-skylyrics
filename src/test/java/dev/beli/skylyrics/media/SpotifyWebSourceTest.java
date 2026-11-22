@@ -349,6 +349,11 @@ class SpotifyWebSourceTest {
 		int tokenStatus;
 		/** A Retry-After header on the token answer, or null. */
 		String tokenRetryAfter;
+		/** The body sent with {@link #tokenStatus}, when it isn't {@link #tokenBadBody}'s 400. */
+		String tokenStatusBody;
+		/** When set, the token call or the Web API calls get no answer at all: the connection fails with this. */
+		volatile IOException tokenThrows;
+		volatile IOException apiThrows;
 
 		FakeHttp(int apiStatus) {
 			this.apiStatus = apiStatus;
@@ -367,9 +372,13 @@ class SpotifyWebSourceTest {
 
 		@Override
 		@SuppressWarnings("unchecked")
-		public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) {
+		public <T> HttpResponse<T> send(HttpRequest request, HttpResponse.BodyHandler<T> handler) throws IOException {
 			boolean token = request.uri().getHost().startsWith("accounts");
 			calls.add(token ? "token" : "api");
+			IOException cut = token ? tokenThrows : apiThrows;
+			if (cut != null) {
+				throw cut;
+			}
 			int status = token ? 200 : apiStatus;
 			String body = token ? "{\"access_token\":\"fresh\",\"expires_in\":3600" + (newRefresh == null ? "" : ",\"refresh_token\":\"" + newRefresh + "\"") + "}" : "";
 			if (token) {
@@ -381,7 +390,7 @@ class SpotifyWebSourceTest {
 				}
 				if (tokenStatus != 0) {
 					status = tokenStatus;
-					body = tokenBadBody == null ? "{}" : tokenBadBody;
+					body = tokenStatusBody != null ? tokenStatusBody : tokenBadBody == null ? "{}" : tokenBadBody;
 				}
 				if (tokenBadBody != null) {
 					status = 400;
@@ -478,7 +487,7 @@ class SpotifyWebSourceTest {
 		http.tokenRetryAfter = "120";
 		SpotifyWebSource source = signedIn(dir, http);
 		IOException e = assertThrows(IOException.class, source::poll);
-		assertEquals("HTTP 429", e.getMessage());
+		assertEquals("Spotify is getting too many requests, wait a moment", e.getMessage());
 		long now = System.nanoTime();
 		assertFalse(source.pollDue(now + 100 * SEC, true), "still held at 100 s");
 		assertTrue(source.pollDue(now + 125 * SEC, true), "free after the 120 s it asked for");
@@ -555,7 +564,7 @@ class SpotifyWebSourceTest {
 			release.countDown();
 			assertTrue(page.get(30, java.util.concurrent.TimeUnit.SECONDS).contains("Sign-in failed"));
 			t.join(30_000);
-			assertEquals("Sign-in failed: HTTP 400", source.problem());
+			assertEquals("Sign-in failed: Spotify didn't answer, try again", source.problem());
 		}
 	}
 
@@ -604,7 +613,7 @@ class SpotifyWebSourceTest {
 		http.tokenBadBody = "<html>captive portal</html>";
 		SpotifyWebSource source = signedIn(dir, http);
 		IOException e = assertThrows(IOException.class, source::poll);
-		assertEquals("HTTP 400", e.getMessage());
+		assertEquals("Spotify didn't answer, try again", e.getMessage());
 		assertSame(e, source.failing());
 		// The failure counted: the next poll is held back
 		assertFalse(source.pollDue(System.nanoTime() + SEC / 2, true));
@@ -634,7 +643,10 @@ class SpotifyWebSourceTest {
 
 	@Test
 	void anExceptionWithoutAMessageStillGetsATextWithoutNull() {
-		assertEquals("NullPointerException", SpotifyWebSource.failureText(new NullPointerException()));
+		assertEquals("Something went wrong, try again", SpotifyWebSource.failureText(new NullPointerException()));
+		assertEquals("Something went wrong, try again", SpotifyWebSource.failureText(new InterruptedException()));
+		// Java's own words about a bug are no sentence for the player either
+		assertEquals("Something went wrong, try again", SpotifyWebSource.failureText(new NumberFormatException("For input string: \"soon\"")));
 		assertEquals("boom", SpotifyWebSource.failureText(new IOException("boom")));
 	}
 
@@ -973,5 +985,121 @@ class SpotifyWebSourceTest {
 		assertEquals(net, SpotifyWebSource.failureText(new java.net.http.HttpConnectTimeoutException("HTTP connect timed out")));
 		assertEquals(net, SpotifyWebSource.failureText(new java.net.UnknownHostException("accounts.spotify.com")));
 		assertEquals(net, SpotifyWebSource.failureText(new IOException("wrapped", new java.net.ConnectException())));
+	}
+
+	/** What Java says when a connection to Spotify breaks in other ways than the ones it has a type for. */
+	private static List<IOException> brokenConnections() {
+		return List.of(new java.net.SocketException("Connection reset"),
+				new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake"),
+				new javax.net.ssl.SSLHandshakeException("PKIX path building failed: unable to find valid certification path to requested target"),
+				new IOException("HTTP/1.1 header parser received no bytes"),
+				new java.io.EOFException("EOF reached while reading"));
+	}
+
+	@Test
+	void aConnectionThatBreaksShowsTheInternetSentenceNotJavasWords(@TempDir Path dir) throws Exception {
+		String net = "Can't reach the internet or Spotify";
+		for (IOException broken : brokenConnections()) {
+			for (boolean atToken : new boolean[] {true, false}) {
+				FakeHttp http = new FakeHttp(200);
+				if (atToken) {
+					http.tokenThrows = broken;
+				} else {
+					http.apiThrows = broken;
+				}
+				SpotifyWebSource source = signedIn(dir, http);
+				IOException e = assertThrows(IOException.class, source::poll);
+				String where = broken.getMessage() + (atToken ? " (sign-in renewal)" : " (song)");
+				// The Music tab's Status line and its help paragraph
+				assertEquals(net, MediaTracker.failureText(e), where);
+				// The toast blames the internet, not the music player
+				assertTrue(MediaTracker.networkFailure(e), where);
+				assertSame(broken, rootOf(e), "Java's own words are kept for the log: " + where);
+			}
+		}
+	}
+
+	@Test
+	void aConnectionThatBreaksDuringSignInSaysSoInWords(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenThrows = new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake");
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		source.useHttp(http);
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			String page = get(server.getLocalPort(), "/callback?state=st&code=c");
+			t.join(30_000);
+			assertEquals("Sign-in failed: Can't reach the internet or Spotify", source.problem());
+			assertTrue(page.contains("Sign-in failed: Can't reach the internet or Spotify"), page);
+			assertFalse(page.contains("handshake"), page);
+		}
+	}
+
+	private static Throwable rootOf(Throwable e) {
+		while (e.getCause() != null) {
+			e = e.getCause();
+		}
+		return e;
+	}
+
+	@Test
+	void spotifysOwnErrorWordsAndNumbersAreNotShown(@TempDir Path dir) throws Exception {
+		String busy = "Spotify is having problems right now";
+		// The token call: Spotify's own description, or the bare status when there is none
+		for (int status : new int[] {500, 502, 503}) {
+			for (String body : new String[] {"{\"error\":\"server_error\",\"error_description\":\"Server error\"}", "<html>Bad gateway</html>"}) {
+				FakeHttp http = new FakeHttp(200);
+				http.tokenStatus = status;
+				http.tokenStatusBody = body;
+				IOException e = assertThrows(IOException.class, signedIn(dir, http)::poll);
+				assertEquals(busy, MediaTracker.failureText(e), status + " " + body);
+				assertTrue(rootOf(e).getMessage().contains(String.valueOf(status)), "the status is kept for the log");
+			}
+		}
+		FakeHttp odd = new FakeHttp(200);
+		odd.tokenBadBody = "{\"error\":\"invalid_request\",\"error_description\":\"Invalid refresh_token parameter\"}";
+		assertEquals("Spotify didn't answer, try again", MediaTracker.failureText(assertThrows(IOException.class, signedIn(dir, odd)::poll)));
+		// The song itself: a server error is said in words, not as "error 502"
+		FakeHttp api = new FakeHttp(502);
+		assertEquals(busy, MediaTracker.failureText(assertThrows(IOException.class, signedIn(dir, api)::poll)));
+	}
+
+	@Test
+	void aSignInSpotifyRefusesSaysSoWithoutSpotifysEnglish(@TempDir Path dir) throws Exception {
+		String[][] cases = {
+				{"400", "{\"error\":\"invalid_grant\",\"error_description\":\"Invalid authorization code\"}", "Sign-in failed: Something went wrong, try again"},
+				{"400", "{\"error\":\"invalid_client\",\"error_description\":\"Invalid client\"}", "Sign-in failed: Spotify no longer accepts your Client ID, check it and sign in again"},
+				{"503", "{\"error\":\"server_error\",\"error_description\":\"Service unavailable\"}", "Sign-in failed: Spotify is having problems right now"},
+				{"429", "", "Sign-in failed: Spotify is getting too many requests, wait a moment"}};
+		for (String[] c : cases) {
+			FakeHttp http = new FakeHttp(200);
+			http.tokenStatus = Integer.parseInt(c[0]);
+			http.tokenStatusBody = c[1];
+			SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+			source.useHttp(http);
+			try (ServerSocket server = freeServer()) {
+				Thread t = wait(source, server);
+				String page = get(server.getLocalPort(), "/callback?state=st&code=c");
+				t.join(30_000);
+				assertEquals(c[2], source.problem(), c[1]);
+				assertTrue(page.contains(c[2]), page);
+			}
+		}
+	}
+
+	@Test
+	void aSignInAnswerThatCantBeReadSaysSoInWords(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(200);
+		http.tokenStatus = 200;
+		http.tokenStatusBody = "{\"access_token\":\"fresh\",\"expires_in\":\"soon\"}";
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
+		source.useHttp(http);
+		try (ServerSocket server = freeServer()) {
+			Thread t = wait(source, server);
+			String page = get(server.getLocalPort(), "/callback?state=st&code=c");
+			t.join(30_000);
+			assertEquals("Sign-in failed: Something went wrong, try again", source.problem());
+			assertFalse(page.contains("input string"), page);
+		}
 	}
 }

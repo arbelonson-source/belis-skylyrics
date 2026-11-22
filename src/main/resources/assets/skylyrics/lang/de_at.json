@@ -555,5 +555,8 @@
   "skylyrics.ui.search_cleared": "Suche geleert",
   "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab wechselt den Bereich, die Pfeiltasten bewegen die Auswahl, die Eingabetaste spielt ab oder öffnet, Pfeil hoch in der obersten Reihe führt zu den Ansichts-Schaltflächen und den letzten Suchen, Esc führt zurück, und Tippen startet eine Suche",
   "skylyrics.ui.1_playlist": "1 Playlist",
-  "skylyrics.ui.s_playlists": "%s Playlists"
+  "skylyrics.ui.s_playlists": "%s Playlists",
+  "skylyrics.ui.spotify_is_having_problems_right_now": "Spotify hat gerade Probleme",
+  "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify bekommt gerade zu viele Anfragen, warte einen Moment",
+  "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "Die Windows-Musikerkennung fehlt in der Mod. Lade SkyLyrics neu herunter"
 }
