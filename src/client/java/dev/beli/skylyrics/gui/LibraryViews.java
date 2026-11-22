@@ -98,7 +98,7 @@ final class LibraryViews {
 	/** Room between the shelf's last column and the line after it. */
 	static final int TAIL_GAP = 8;
 
-	/** The line after the shelf's last column: "Loading…" while the next page comes, else why it failed (a click on it tries again), else nothing. */
+	/** The line after the shelf's last column: "Loading…" while the next page comes, else why it failed (a click on it, or Enter with the keyboard on it, tries again), else nothing. */
 	static String tailText(boolean loading, String error, String loadingText) {
 		return loading ? loadingText : error;
 	}

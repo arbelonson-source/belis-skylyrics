@@ -548,5 +548,7 @@
   "skylyrics.ui.pulse": "Pulso",
   "skylyrics.ui.settings_reset": "Ajustes restablecidos",
   "skylyrics.ui.search_cleared": "Búsqueda borrada",
-  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab cambia de sección, las flechas mueven, Enter reproduce o abre, Arriba desde la primera fila llega a los botones de vista y a las búsquedas recientes, Esc vuelve y escribir busca"
+  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab cambia de sección, las flechas mueven, Enter reproduce o abre, Arriba desde la primera fila llega a los botones de vista y a las búsquedas recientes, Esc vuelve y escribir busca",
+  "skylyrics.ui.1_playlist": "1 lista",
+  "skylyrics.ui.s_playlists": "%s listas"
 }

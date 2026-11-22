@@ -197,4 +197,27 @@ class NarrationTest {
 		assertEquals("Lyrics, tab, 1 of 5", Narration.searchCleared(false, "Search cleared", "", "Lyrics, tab, 1 of 5"));
 		assertEquals("Done, button", Narration.searchCleared(false, "Search cleared", "Done, button", "Lyrics, tab, 1 of 5"));
 	}
+
+	@Test
+	void aListThatHasFinishedLoadingSaysHowManyCardsItHas() {
+		// Nothing chosen yet: once the songs are there the Narrator says how many, where it said nothing after "Loading"
+		assertEquals("300 songs", Narration.listState("", 300, "1 song", "300 songs"));
+		assertEquals("1 song", Narration.listState("", 1, "1 song", "1 song"));
+		assertEquals("6 playlists", Narration.listState("", 6, "1 playlist", "6 playlists"));
+		assertEquals("Liked songs, 2 of 3, 300 songs",
+				Narration.join(Narration.card("Liked songs, 2 of 3", "", "", "", ""), Narration.listState("", 300, "1 song", "300 songs")));
+		// Still loading, empty, or a search's own count: those words, not a count
+		assertEquals("Loading", Narration.listState("Loading", 0, "1 song", "0 songs"));
+		assertEquals("No liked songs yet", Narration.listState("No liked songs yet", 0, "1 song", "0 songs"));
+		assertEquals("12 results", Narration.listState("12 results", 12, "1 result", "12 results"));
+		assertEquals("", Narration.listState("", 0, "1 song", "0 songs"));
+	}
+
+	@Test
+	void theLineUnderTheSongsSaysWhyTheNextPageFailedAndThatEnterTriesAgain() {
+		assertEquals("Can't reach the internet or Spotify, Try again, button",
+				Narration.footer(false, "Loading", "Can't reach the internet or Spotify", "Try again", "button"));
+		// Enter pressed: the page is being tried again
+		assertEquals("Loading", Narration.footer(true, "Loading", "", "Try again", "button"));
+	}
 }

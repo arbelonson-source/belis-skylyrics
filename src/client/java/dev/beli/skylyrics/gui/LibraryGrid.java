@@ -49,7 +49,7 @@ final class LibraryGrid {
 		return next < 0 ? loaded : loaded + Math.max(0, total - next);
 	}
 
-	/** Room under the last row for one line: "Loading…" while the next page comes, or why it failed (a click on it tries again). */
+	/** Room under the last row for one line: "Loading…" while the next page comes, or why it failed (a click on it, or Enter with the keyboard on it, tries again). */
 	static final int FOOTER = 16;
 
 	/** Height of {@code count} cards in rows of {@code cols} with {@code pad} above and below, plus the line under them while a page loads or after one failed. */
