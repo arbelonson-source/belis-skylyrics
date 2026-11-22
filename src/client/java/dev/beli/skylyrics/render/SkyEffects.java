@@ -603,7 +603,9 @@ public final class SkyEffects {
 			synthwave.draw(paint, far, baseYaw, amount, clock, pixel, view);
 		}
 		if (starPatterns) {
-			constellations.draw(paint, far * CONSTELLATION_LAYER, baseYaw, amount * smooth(patternShow), clock, pixel, view);
+			// Mixed into the painted sky and as opaque as it, as this pipeline throws away anything fainter than a tenth
+			constellations.drawOver(paint, far * CONSTELLATION_LAYER, baseYaw, amount, smooth(patternShow), clock, pixel, view,
+					effect == SkyEffect.MOONLIGHT ? MoonlitSky.CONSTELLATIONS_BEHIND : SynthwaveSky.CONSTELLATIONS_BEHIND);
 		}
 	}
 

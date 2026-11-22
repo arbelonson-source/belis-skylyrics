@@ -90,6 +90,46 @@ final class Constellations {
 
 	/** As above, leaving out the patterns the camera {@code view} can't see. */
 	void draw(SkyCanvas c, float radius, float baseYaw, float level, double time, float pixel, SkyView view) {
+		draw(c, radius, baseYaw, level, 1, time, pixel, view, null);
+	}
+
+	/**
+	 * Over a painted sky (synthwave, moonlight), whose finished colour behind each pattern star {@link #behind} gave.
+	 * That sky goes out through a pipeline that throws away every pixel fainter than a tenth, so lines sent at their
+	 * own 0.4 of the sky's strength vanished whenever the sky showed under a quarter (dusk, dawn, a low Strength, rain)
+	 * and the patterns' own fade ended in a jump. Like the painted skies' stars, each line and star is mixed into the
+	 * sky behind it instead, by its own strength times {@code show} (0..1, how much the patterns show), and sent exactly
+	 * as opaque as the sky itself, {@code level}: it shows whenever the sky does and fades smoothly into it. Over a fully
+	 * shown sky it looks the same as the see-through lines and stars did.
+	 */
+	void drawOver(SkyCanvas c, float radius, float baseYaw, float level, float show, double time, float pixel, SkyView view,
+			int[][] behind) {
+		draw(c, radius, baseYaw, level, show, time, pixel, view, behind);
+	}
+
+	/**
+	 * The sky colour (lyrics facing south) right behind every pattern star, pattern by pattern: worked out once per
+	 * painted sky, which only turns with the lyrics' direction, as the patterns do.
+	 */
+	static int[][] behind(SkyMesh.Paint sky) {
+		int[][] out = new int[PATTERNS.length][];
+		SkyFrame f = new SkyFrame();
+		for (int p = 0; p < PATTERNS.length; p++) {
+			f.aim(PATTERNS[p].yaw(), PATTERNS[p].elev());
+			out[p] = new int[TAN_X[p].length];
+			for (int i = 0; i < out[p].length; i++) {
+				float a = TAN_X[p][i], b = TAN_Y[p][i];
+				float x = f.dx + a * f.ux + b * f.vx, y = f.dy + a * f.uy + b * f.vy, z = f.dz + a * f.uz + b * f.vz;
+				float l = (float) Math.sqrt(x * x + y * y + z * z);
+				out[p][i] = sky.at(x / l, y / l, z / l);
+			}
+		}
+		return out;
+	}
+
+	/** Every star's and line's colour, see-through over the sky ({@code behind} null) or mixed into the painted one. */
+	private void draw(SkyCanvas c, float radius, float baseYaw, float level, float show, double time, float pixel, SkyView view,
+			int[][] behind) {
 		int line = SkyColors.argb(LINE_RGB, LINE_ALPHA * level);
 		float half = LINE_PIXELS * pixel / 2;
 		float s = STAR_PIXELS * pixel;
@@ -102,17 +142,22 @@ final class Constellations {
 			float[] xs = TAN_X[p], ys = TAN_Y[p];
 			int[] lines = pat.lines();
 			for (int k = 0; k + 1 < lines.length; k += 2) {
-				float ax = xs[lines[k]], ay = ys[lines[k]], bx = xs[lines[k + 1]], by = ys[lines[k + 1]];
+				int from = lines[k], to = lines[k + 1];
+				float ax = xs[from], ay = ys[from], bx = xs[to], by = ys[to];
 				float len = (float) Math.sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay));
 				float nx = -(by - ay) / len * half, ny = (bx - ax) / len * half;
-				c.at(frame, ax + nx, ay + ny, radius, line);
-				c.at(frame, bx + nx, by + ny, radius, line);
-				c.at(frame, bx - nx, by - ny, radius, line);
-				c.at(frame, ax - nx, ay - ny, radius, line);
+				// Over a painted sky each end takes on the sky behind its own star
+				int lineA = behind == null ? line : SkyColors.argb(SkyColors.mix(behind[p][from], LINE_RGB, LINE_ALPHA * show), level);
+				int lineB = behind == null ? line : SkyColors.argb(SkyColors.mix(behind[p][to], LINE_RGB, LINE_ALPHA * show), level);
+				c.at(frame, ax + nx, ay + ny, radius, lineA);
+				c.at(frame, bx + nx, by + ny, radius, lineB);
+				c.at(frame, bx - nx, by - ny, radius, lineB);
+				c.at(frame, ax - nx, ay - ny, radius, lineA);
 			}
 			for (int i = 0; i < xs.length; i++) {
 				float twinkle = 0.85f + 0.15f * (float) Math.sin(SkyClock.phase(time, 1.3, p * 1.7f + i * 2.9f));
-				int star = SkyColors.argb(STAR_RGB, STAR_ALPHA * twinkle * level);
+				int star = behind == null ? SkyColors.argb(STAR_RGB, STAR_ALPHA * twinkle * level)
+						: SkyColors.argb(SkyColors.mix(behind[p][i], STAR_RGB, STAR_ALPHA * twinkle * show), level);
 				c.at(frame, xs[i] - s, ys[i] - s, radius, star);
 				c.at(frame, xs[i] + s, ys[i] - s, radius, star);
 				c.at(frame, xs[i] + s, ys[i] + s, radius, star);
