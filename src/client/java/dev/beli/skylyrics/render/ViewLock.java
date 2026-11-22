@@ -71,9 +71,18 @@ public final class ViewLock {
 	private static boolean joining;
 
 	/**
+	 * Whether a world joined a moment ago is still behind its loading screen (see {@link #joined} and {@link #tick}). The
+	 * game draws the world, and the lyrics in it, while that screen still covers it.
+	 */
+	static boolean joining() {
+		return joining;
+	}
+
+	/**
 	 * You joined a world: a locked view pins wherever you look first there, never a stale spot from the last one. The
 	 * world is drawn behind its loading screen before the server says where you look, with the camera still on the
-	 * game's default turn (north, level), so the spot is pinned again once that screen is gone (see {@link #tick}).
+	 * game's default turn (north, level), so the spot is pinned again once that screen is gone (see {@link #tick}). The
+	 * World layout's song title waits for that moment too (see {@link #joining()}).
 	 */
 	public static void joined() {
 		release();

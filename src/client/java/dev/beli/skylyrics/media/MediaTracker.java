@@ -75,6 +75,11 @@ public final class MediaTracker {
 	private @Nullable MediaSource lastSource;
 	private @Nullable Track pending;
 	private int pendingCount;
+	/**
+	 * Set when the game closes ({@link #shutdown}). The read going on then has its wait cut short, which is no failing
+	 * player, and whatever it still brings in is for nobody: the lyrics, the cover and Recently heard are being stopped.
+	 */
+	private volatile boolean stopping;
 
 	public MediaTracker(MediaSource player, BooleanSupplier demoMode) {
 		this.player = player;
@@ -196,7 +201,7 @@ public final class MediaTracker {
 			pollInner();
 			loggedFault = false;
 		} catch (Throwable e) {
-			if (!loggedFault) {
+			if (!loggedFault && !stopping) {
 				LOG.warn("Media poll failed, carrying on", e);
 				loggedFault = true; // logged again only after a poll that went through
 			}
@@ -220,6 +225,9 @@ public final class MediaTracker {
 		} catch (Throwable e) {
 			failure = e;
 			fresh = Snapshot.NOTHING;
+		}
+		if (stopping) {
+			return; // the game is closing (see stopping): nothing of this read is logged or passed on
 		}
 		if (failure != null) {
 			connected = false;
@@ -476,6 +484,7 @@ public final class MediaTracker {
 	}
 
 	public void shutdown() {
+		stopping = true; // before the interrupt, so the read it cuts short sees it
 		executor.shutdownNow();
 		player.close();
 	}
