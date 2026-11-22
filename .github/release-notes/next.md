@@ -263,6 +263,7 @@
 - **Lighter lyrics and sky effects.** Lines and Arc lyrics and the Galaxy sky do less work each frame. The default Aurora sky, the Nebula clouds and stars, and the constellations skip the parts behind you or off the side of the screen. They look the same and cost less each frame. While the day goes by, the stars' brightness is worked out once a frame instead of twice. The Moonlight clouds, the Comet streamers and the eclipse corona do less work each frame.
 - **Lighter bars, menus and cards.** The bar keeps its line laid out instead of measuring it again every frame, and the card keeps its times and cut titles. Nothing looks different. The settings window lays out each row once per frame instead of several times, and remembers the right-to-left text it has already put in order. Nothing looks different. A card without a cover works out its big letter once instead of every frame, and a title that starts with a letter piled with accents shows just the letter. Names cut short with "…" in the song library and the settings are cut once instead of every frame.
 - **Less garbage each frame.** The World and Arc lyrics and the font checks make fewer throwaway objects each frame, so Java has less to clean up. Nothing looks different.
+- **Round shapes in fewer pieces.** The top bar's pill, its equaliser and signal bars and the round space for the cover, and the Record card's record, are drawn from about half as many pieces, so the game has fewer things to build and sort each frame. They look the same.
 
 ### Changed
 
