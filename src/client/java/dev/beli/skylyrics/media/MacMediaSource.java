@@ -663,7 +663,8 @@ public final class MacMediaSource implements MediaSource {
 		return osascript(List.of(), false);
 	}
 
-	private static Run startProcess(List<String> command) throws IOException {
+	/** Starts osascript the way every poll and button press does (the tests on a Mac run the real scripts through it). */
+	static Run startProcess(List<String> command) throws IOException {
 		ProcessBuilder builder = new ProcessBuilder(command);
 		builder.environment().put("LANG", "en_US.UTF-8"); // so titles come out as UTF-8
 		Process p = builder.start();
