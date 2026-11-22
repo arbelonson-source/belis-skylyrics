@@ -227,6 +227,7 @@
 - **Spotify sign-in at start.** If Windows, an antivirus or OneDrive holds the Spotify sign-in file for a moment as the game starts, SkyLyrics now tries again, as it already did for the settings. Before, you started signed out of Spotify for that whole game, and had to sign in again or restart.
 - **Settings held at start.** If Windows, an antivirus or OneDrive holds the SkyLyrics settings file for longer than a moment as the game starts, the first-run tour no longer opens again for someone who finished it long ago, and the song library key is no longer moved off the key you gave it (it could happen when that key is also Iris's shader key). Your settings come back as soon as the file can be read, as before.
 - **Closing the game with Recently heard on a stuck drive.** If saving the **Recently heard** list stops answering as you quit (a network drive that went away, say), the game now waits at most 2 seconds for it and then closes. Before, it could hang on exit for ever and had to be ended by hand. A normal save is still finished first, and a save cut short leaves the list as it was.
+- **Updates turned off, settings held at start.** If you turned SkyLyrics updates **Off** (or to **Tell me**) and Windows, an antivirus or OneDrive held the settings file as the game started, SkyLyrics could still download and install a new version that game, because it went by the default. Now it doesn't look for updates in a game whose settings it couldn't read, and goes by your choice again the next time.
 
 ### Faster
 

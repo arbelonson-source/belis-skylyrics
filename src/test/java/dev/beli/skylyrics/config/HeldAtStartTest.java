@@ -51,6 +51,24 @@ class HeldAtStartTest {
 	}
 
 	@Test
+	void aSettingsFileHeldAtStartDoesNotInstallAnUpdateThePlayerTurnedOff() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		Files.writeString(file, "{\"introSeen\": true, \"keysMigrated\": true, \"updates\": \"OFF\"}");
+		SkyLyricsConfig c = loadHeld(file);
+		assertEquals(SkyLyricsConfig.Updates.OFF, c.updatesAtStart(), "the default (download and install) is used for a player who turned updates off");
+	}
+
+	@Test
+	void theUpdateCheckAtStartFollowsTheFileWhenItReads() throws Exception {
+		Path file = dir.resolve("skylyrics.json");
+		assertEquals(SkyLyricsConfig.Updates.INSTALL, SkyLyricsConfig.load(file, SafeFile::readText, 3, 0).updatesAtStart());
+		Files.writeString(file, "{\"updates\": \"NOTIFY\"}");
+		assertEquals(SkyLyricsConfig.Updates.NOTIFY, SkyLyricsConfig.load(file, SafeFile::readText, 3, 0).updatesAtStart());
+		Files.writeString(file, "{\"updates\": \"INSTALL\"}");
+		assertEquals(SkyLyricsConfig.Updates.INSTALL, SkyLyricsConfig.load(file, SafeFile::readText, 3, 0).updatesAtStart());
+	}
+
+	@Test
 	void aNewPlayerStillGetsTheTourAndTheKeyCheck() throws Exception {
 		Path file = dir.resolve("skylyrics.json");
 		SkyLyricsConfig none = SkyLyricsConfig.load(file, SafeFile::readText, 3, 0);
