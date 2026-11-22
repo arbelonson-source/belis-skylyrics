@@ -785,9 +785,12 @@ public final class LyricsRenderer {
 		//?}
 	}
 
-	/** Whether a new song's title can be announced now: its lyrics are in and the words are visible, so it isn't used up unseen. */
+	/**
+	 * Whether a new song's title can be announced now: its lyrics are in, the words are visible and a world just joined
+	 * is no longer behind its loading screen (the world is drawn under it), so the title isn't used up unseen.
+	 */
 	static boolean titleCanShow(boolean hasLyrics, float alpha) {
-		return hasLyrics && alpha > 0.01f;
+		return hasLyrics && alpha > 0.01f && !ViewLock.joining();
 	}
 
 	/** Same title and artist as the track already announced; the same Track object is the common case and costs nothing. */

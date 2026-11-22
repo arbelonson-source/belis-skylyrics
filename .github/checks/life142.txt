@@ -1,0 +1,103 @@
+# The life cycle of fix/life142: changing dimension, dying, the title screen, leaving and joining the world again
+# (1280x720, GUI scale 2 as the test world starts, a clear night, World layout, aurora). Only part 4 should differ
+# between the branch run and the main run; the rest is a look at how the code behaves around these events.
+#  1. life-overworld, then life-nether-arrive / life-nether: in the Nether none of the Overworld's World words hang
+#     anywhere (they start afresh round you), the song title does NOT float up again, no aurora. life-back-arrive /
+#     life-back: in the Overworld again no Nether words left over, and the aurora fades back in. The log should say
+#     "world line starts over (other: newLyrics ... a world change)" once per change.
+#  2. life-dead: on the death screen the words drop away; life-respawned: they start afresh round you.
+#  3. life-title: the title screen with the lyrics under its buttons.
+#  4. life-join-0 ... life-join-8 (seconds after the server logs the join). Branch: once the loading screen is gone the
+#     song's title floats up in front of you (facing south, a little up) and stays its few seconds (about 4 s). Main:
+#     the world is drawn behind the loading screen and the title is put up there, so it shows only for what is left of
+#     its 4 s, or not at all if loading took longer. Neither should show words or sky left from before leaving.
+#  5. life-arc-synth: Arc and the synthwave sky, both picked on the title screen, show in the next world, the sky
+#     fully faded in (not left half done) and the Arc line in front of you.
+# Run it on the branch, and with -f mod_ref=main to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/life142 -f version=1.21.11 -f script=.github/checks/life142.txt
+#   gh workflow run screenshots.yml --ref fix/life142 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/life142.txt
+
+# A clear night that stays night; World words and the aurora (the defaults)
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+cmd effect give @p minecraft:resistance 900 255 true
+set layout WORLD
+set sky AURORA
+look 0 -15
+sleep 10
+where
+shot life-overworld
+
+# 1. Into the Nether, then a cleared pocket on an obsidian floor round you
+cmd execute in minecraft:the_nether run tp @p 0 100 0
+sleep 2
+shot life-nether-arrive
+sleep 4
+cmd execute as @p at @p run fill ~-3 ~ ~-3 ~3 ~3 ~3 minecraft:air
+cmd execute as @p at @p run fill ~-3 ~-1 ~-3 ~3 ~-1 ~3 minecraft:obsidian
+look 0 -15
+sleep 6
+where
+shot life-nether
+
+# Back to the Overworld at the world spawn (where the server console runs its commands from)
+cmd execute in minecraft:overworld run tp @p ~ ~ ~
+sleep 2
+look 0 -15
+shot life-back-arrive
+sleep 8
+where
+shot life-back
+
+# 2. Dying and respawning
+cmd kill @p
+sleep 1.5
+shot life-dead
+press Respawn
+sleep 3
+look 0 -15
+sleep 5
+shot life-respawned
+
+# 3. The title screen
+cmd effect give @p minecraft:resistance 900 255 true
+look 0 -15
+sleep 1
+quit
+sleep 6
+shot life-title
+
+# 4. Joining again: pictures from the moment the server logs the join
+join SkyTest
+wait joined the game
+shot life-join-0
+sleep 1
+shot life-join-1
+sleep 1
+shot life-join-2
+sleep 1
+shot life-join-3
+sleep 2
+shot life-join-5
+sleep 3
+shot life-join-8
+where
+
+# 5. Settings changed on the title screen, then joining again
+look 0 -15
+sleep 1
+quit
+sleep 5
+set layout ARC
+set sky SYNTHWAVE
+sleep 1
+join SkyTest
+wait joined the game
+sleep 8
+look 0 -15
+sleep 4
+shot life-arc-synth
+set layout WORLD
+set sky AURORA
