@@ -263,6 +263,7 @@
 - **"Nothing playing" with Spotify Web.** With Spotify Web, the **Now playing** card on the Music tab now says "Play a song in Spotify on any device" while nothing plays, instead of suggesting a browser or any player: Spotify Web only follows your Spotify account, so a video in a browser or another music player never shows there.
 - **Play/pause right after using your phone.** With Spotify Web, the play/pause key and button now work the first time after you paused or resumed Spotify somewhere else (your phone, the Spotify app). Before, a press a few seconds after that (up to 15 seconds with the lyrics off) could ask Spotify for what it was already doing, so nothing happened until you pressed again.
 - **World words in a narrow window.** In the World layout, words no longer come up off the left or right edge of a tall or square window (a window tiled to half the screen, 800x1000) or at a low FOV: the scattered words and a **Flowing line**'s rows now keep to the width the screen really shows, where before they were spread as if every screen were 16:9. Wide screens show the words where they always did.
+- **Keyboard pick after a resize.** In the song library (grid and shelf) and in the settings, the card or row you picked with the keyboard now scrolls back into view when the window changes size (fewer columns or a shorter panel can move it out of sight), instead of staying hidden until the next key. If you scrolled with the mouse last, the list stays where you left it.
 
 ### Faster
 

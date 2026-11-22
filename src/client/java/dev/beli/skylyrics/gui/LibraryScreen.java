@@ -91,6 +91,8 @@ public final class LibraryScreen extends Screen {
 	private @Nullable LibraryPlaylist openedList;
 	/** The last input was a key, not a click. */
 	private boolean keyboardLast;
+	/** Brings the card the keys picked back into view when the window is resized. */
+	private final PickInView picks = new PickInView();
 	/** A recent search was just picked, so the Narrator says how many results it found; any later key or click ends that. */
 	private boolean sayResults;
 	/** The section just changed, so the Narrator names it once; any later key or click ends that. */
@@ -326,6 +328,11 @@ public final class LibraryScreen extends Screen {
 		return Math.min(300, screenH - 16);
 	}
 
+	/** A grid card's height with its two lines of text, for songs this wide. */
+	static int cellHeight(int viewW) {
+		return LibraryGrid.cellWidth(viewW) + TEXT_H;
+	}
+
 	/** The height the songs get on a screen this high, under a sign-in strip this tall (0 for none). */
 	static int viewHeight(int screenH, int stripH) {
 		return panelH(screenH) - HEADER_H - 12 - (stripH > 0 ? stripH + 3 : 0);
@@ -342,7 +349,7 @@ public final class LibraryScreen extends Screen {
 		viewH = viewHeight(height, heardMode() ? bannerStripH() : 0);
 		cols = LibraryGrid.columns(viewW);
 		cellW = LibraryGrid.cellWidth(viewW);
-		cellH = cellW + TEXT_H;
+		cellH = cellHeight(viewW);
 		shelfRows = LibraryViews.shelfRows(viewH - TEXT_H - 4, SHELF_COVER + SHELF_FLOOR);
 		shelfStride = SHELF_COVER + LibraryGrid.GAP;
 	}
@@ -542,6 +549,7 @@ public final class LibraryScreen extends Screen {
 		pollPlaying();
 		mod.covers().upload();
 		layout();
+		boolean followPick = picks.follow(width, height);
 
 		Frame f = new Frame(g, font, mouseX, mouseY, dt, true);
 		Ui.rect(g, px - 1, py - 1, pw + 2, ph + 2, 9, 0x50000000);
@@ -564,6 +572,15 @@ public final class LibraryScreen extends Screen {
 			if (!status.equals(lastStatus)) {
 				lastStatus = status;
 				afterKeyboardAction(); // loading finished, nothing found, how many results: said when it changes
+			}
+			if (followPick && stop < 0) {
+				// The window changed size under the keyboard's pick (fewer columns move a card down, a shorter panel shows
+				// less): scroll it back into view, as the next key would have
+				if (footer) {
+					shelf.scrollTarget = Float.MAX_VALUE; // the line under the songs sits at the very end
+				} else {
+					reveal(shelf);
+				}
 			}
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget, 0, maxScroll(shelf));
 			shelf.scroll = Ui.approach(shelf.scroll, shelf.scrollTarget, dt, 18);
@@ -1526,6 +1543,7 @@ public final class LibraryScreen extends Screen {
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		keyboardLast = false;
+		picks.scrolledAway();
 		sayNewSection = false;
 		sayResults = false;
 		stop = -1;
@@ -1725,6 +1743,7 @@ public final class LibraryScreen extends Screen {
 			if (hit >= 0) {
 				// The mouse chose a cover: the keyboard is back on the covers too
 				footer = false;
+				picks.scrolledAway();
 			}
 			selected = LibraryKeys.afterHover(selected, hit);
 		}
@@ -1733,6 +1752,7 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+		picks.scrolledAway();
 		Shelf shelf = shelf();
 		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
 			if (!shelf.items.isEmpty() && scrollY != 0) {
@@ -1752,6 +1772,7 @@ public final class LibraryScreen extends Screen {
 	//?}
 	public boolean keyPressed(KeyEvent event) {
 		keyboardLast = true;
+		picks.keyPicked();
 		sayNewSection = false;
 		sayResults = false;
 		boolean used = handleKey(event);
@@ -1940,12 +1961,7 @@ public final class LibraryScreen extends Screen {
 		if (view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
 			return;
 		}
-		int y = (selected / cols) * (cellH + LibraryGrid.GAP);
-		if (y < shelf.scrollTarget) {
-			shelf.scrollTarget = y;
-		} else if (y + cellH > shelf.scrollTarget + viewH) {
-			shelf.scrollTarget = y + cellH - viewH;
-		}
+		shelf.scrollTarget = LibraryGrid.reveal(shelf.scrollTarget, selected, cols, cellH, viewH);
 	}
 
 	//? if >=1.21.9 {
