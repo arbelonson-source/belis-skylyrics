@@ -97,6 +97,15 @@ final class Focus {
 	}
 
 	/**
+	 * Whether the ring is drawn on the row or button the keyboard is on: after keys, not after the mouse
+	 * ({@code keysUsed}), and not while the search box has the keyboard ({@code typing}): the box has its own outline
+	 * then, and only one thing may look focused.
+	 */
+	static boolean ringShows(boolean keysUsed, boolean typing) {
+		return keysUsed && !typing;
+	}
+
+	/**
 	 * The scroll that shows a row spanning {@code top} to {@code bottom} (measured from the top of the content) in a view
 	 * {@code viewH} tall, with {@code margin} of room around it. Stays put when it is already in view; a row taller than
 	 * the view shows its top.

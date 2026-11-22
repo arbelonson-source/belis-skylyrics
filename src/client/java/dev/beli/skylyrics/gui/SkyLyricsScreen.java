@@ -1030,7 +1030,8 @@ public final class SkyLyricsScreen extends Screen {
 			tabFocus[tab] = now;
 		}
 		if (to >= 0 && focusVisible) {
-			// The ring moved by itself (a song stopped, the mouse changed a setting): keep it in view and say where it is
+			// The ring moved by itself (a song stopped, a sign-in finished): keep it in view and say where it is. After a
+			// click there is no ring, and the click's own words (like Settings reset) are said instead.
 			if (focus instanceof Row now && now != masterToggle) {
 				scrollIntoView(now);
 			}
@@ -1237,10 +1238,15 @@ public final class SkyLyricsScreen extends Screen {
 		renderHeader(g, frame);
 		renderContent(g, frame);
 		renderFooter(g, frame);
-		if (focusVisible && focus instanceof Chrome button) {
+		if (ringShows() && focus instanceof Chrome button) {
 			int[] r = chromeRect(button);
 			Ui.outline(g, r[0] - 2, r[1] - 2, r[2] + 4, r[3] + 4, 6, Ui.TEXT);
 		}
+	}
+
+	/** Whether the keyboard's ring is drawn: after keys, and not while the search box has the keyboard (see {@link Focus#ringShows}). */
+	private boolean ringShows() {
+		return Focus.ringShows(focusVisible, typing);
 	}
 
 	private void renderSidebar(GuiGraphics g, Frame f) {
@@ -1275,7 +1281,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		g.fill(px + 10, py + ph - 36, px + SIDEBAR_W - 10, py + ph - 35, Ui.DIVIDER);
 		masterToggle.render(f);
-		if (focusVisible && focus == masterToggle) {
+		if (ringShows() && focus == masterToggle) {
 			masterToggle.renderFocus(f);
 		}
 	}
@@ -1497,7 +1503,7 @@ public final class SkyLyricsScreen extends Screen {
 					Ui.rect(g, row.x + 2, row.y + 1, row.w - 4, row.height() - 2, 4, Ui.CARD_HOVER);
 				}
 				row.render(inner);
-				if (focusVisible && row == focus) {
+				if (ringShows() && row == focus) {
 					row.renderFocus(inner);
 				}
 				List<String> cut = row.hovered(inner) ? row.cutTexts(font) : List.of();

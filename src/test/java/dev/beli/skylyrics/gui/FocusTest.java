@@ -1,7 +1,9 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -171,5 +173,16 @@ class FocusTest {
 		assertNull(Focus.place(rows, -1));
 		// a lone row says no place, as a vanilla list of one doesn't
 		assertNull(Focus.place(new boolean[] {false, false, true, false, false}, 2));
+	}
+
+	@Test
+	void onlyOneThingLooksFocusedWhileTyping() {
+		// keys moved the keyboard onto a row or a button: its ring shows
+		assertTrue(Focus.ringShows(true, false));
+		// Ctrl+F or a click puts the keyboard in the search box, which has its own outline: the row's ring goes
+		assertFalse(Focus.ringShows(true, true));
+		// after the mouse, no ring either way
+		assertFalse(Focus.ringShows(false, false));
+		assertFalse(Focus.ringShows(false, true));
 	}
 }

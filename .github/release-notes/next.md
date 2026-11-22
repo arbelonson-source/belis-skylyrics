@@ -210,6 +210,7 @@
 - **Where a setting sits, with the Narrator.** In the settings, when the keyboard moves onto a setting, the Narrator now also says where it sits among the settings that show on that tab (or in the search results), in Minecraft's own words ("Selected list row 3 out of 12"), as the game's own lists do. Hidden settings aren't counted, and changing the setting after that says just its new value, without the place again.
 - **A setting that disappears under the keyboard.** In the settings, when the setting the keyboard is on disappears (like **This song** when the song stops, or the Spotify sign-in problem once you are signed in), the keyboard now goes to the next setting that shows, and the Narrator names it. Before, the keyboard moved on without a word, and from the last setting of a tab (like that Spotify problem) it went on to **Reset all**.
 - **Esc in the settings search with the Narrator.** In the settings, Esc in the search box (or in its results) now has the Narrator say "Search cleared" and where the keyboard is now: the setting it is on, or the tab. Before, it said nothing, so there was no telling that the settings were still open, and pressing Esc again to check closed them.
+- **One focus ring while typing a settings search.** In the settings, while you type in the search box, only the search box looks focused. Before, the white ring also stayed on the setting or button the keyboard was on before (like **Done**), so two things looked focused at once.
 
 ### Faster
 
