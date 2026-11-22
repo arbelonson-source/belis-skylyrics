@@ -6,6 +6,9 @@ import net.minecraft.client.gui.screens.DeathScreen;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.material.FogType;
@@ -84,15 +87,39 @@ public final class Visibility {
 		long now = System.nanoTime();
 		if (now - checkedAt >= CHECK_NS) {
 			checkedAt = now;
-			underground = underground(underground, level.getBrightness(LightLayer.SKY, camera.blockPosition()),
-					camera.getFluidInCamera() == FogType.WATER);
+			BlockPos at = camera.blockPosition();
+			boolean inWater = camera.getFluidInCamera() == FogType.WATER;
+			underground = underground(underground, level.getBrightness(LightLayer.SKY, at), inWater,
+					inWater ? surfaceSkyLight(level, at) : 0);
 		}
 		return underground;
+	}
+
+	private static final int SURFACE_SEARCH = 64;
+
+	/** The sky light just over the water the camera is in: at the first block up that holds no water (64 up at most). */
+	private static int surfaceSkyLight(ClientLevel level, BlockPos camera) {
+		BlockPos.MutableBlockPos pos = camera.mutable();
+		for (int i = 0; i < SURFACE_SEARCH && level.getFluidState(pos).is(FluidTags.WATER); i++) {
+			pos.move(Direction.UP);
+		}
+		return level.getBrightness(LightLayer.SKY, pos);
 	}
 
 	/** Whether "under cover" means anything in a dimension: it has sky light to lose, or a ceiling over you. */
 	static boolean canBeUnderground(boolean hasSkyLight, boolean hasCeiling) {
 		return hasSkyLight || hasCeiling;
+	}
+
+	/**
+	 * As {@link #underground(boolean, int, boolean)}, but in water it also ends where the water's surface has the sky over
+	 * it ({@code surfaceSkyLight}, the sky light at the first block up from the head that holds no water): water dims
+	 * sky light by 1 a block, so 7 blocks under open water the head alone looked like a cave, and swimming out of one into
+	 * the sea kept the lyrics hidden until the head rose to 6 blocks under. A pool in a cave has dark air or rock over its
+	 * water.
+	 */
+	static boolean underground(boolean was, int skyLight, boolean inWater, int surfaceSkyLight) {
+		return !(inWater && surfaceSkyLight >= SHOW_AT) && underground(was, skyLight, inWater);
 	}
 
 	/**
