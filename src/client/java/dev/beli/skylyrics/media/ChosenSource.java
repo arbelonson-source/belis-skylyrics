@@ -55,6 +55,15 @@ public final class ChosenSource implements MediaSource {
 		current().seek(positionMs);
 	}
 
+	/** The demo song is played instead: the source in use stops what it keeps running (the other one already has). */
+	@Override
+	public void standBy() {
+		MediaSource source = polled;
+		if (source != null) {
+			source.standBy();
+		}
+	}
+
 	/** The chosen source's own failing streak, so its quiet retries count as the same outage (see {@link MediaTracker}). */
 	@Override
 	public @org.jspecify.annotations.Nullable Throwable failing() {

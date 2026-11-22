@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.media;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,5 +55,34 @@ class MprisSourceCloseTest {
 			media.join(20_000);
 		}
 		assertNull(failure.get(), "the poll that was running when close() came broke: " + failure.get());
+	}
+
+	/**
+	 * close() (the game's shutdown, or a reconnect) left the source closed for good: every later poll threw away the reads
+	 * still running when it ended, so a player slower to answer than one poll waits never showed again.
+	 */
+	@Test
+	void aSlowPlayerIsStillReadAfterAClose() throws Exception {
+		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
+			@Override
+			public List<String> names() {
+				return List.of(SLOW);
+			}
+
+			@Override
+			public MprisSource.Reading read(String busName) throws Exception {
+				Thread.sleep(MprisSource.ANSWER_WAIT_MS + 500); // answers, but after a poll has stopped waiting
+				return new MprisSource.Reading(busName, new Track("Song", "Band", "", 200_000, "", "x"), 0, true, "/id");
+			}
+		});
+		source.close();
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+		Snapshot s = Snapshot.NOTHING;
+		while (s.track().isNone()) {
+			assertTrue(System.nanoTime() < until, "the slow player never showed after close()");
+			s = source.poll();
+			Thread.sleep(50);
+		}
+		assertEquals("Song", s.track().title());
 	}
 }

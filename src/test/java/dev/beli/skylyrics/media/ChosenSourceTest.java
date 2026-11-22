@@ -165,6 +165,30 @@ class ChosenSourceTest {
 		assertSame(local.failure, source.failing(), "the failure of the poll that just ran is the local player's");
 	}
 
+	/**
+	 * The demo song is played instead (MediaTracker says so): the source the last poll asked stops what it keeps running,
+	 * like the Windows reader's helper.
+	 */
+	@Test
+	void standByReachesTheSourceInUse() throws Exception {
+		Local local = new Local();
+		AtomicReference<String> setting = new AtomicReference<>("");
+		ChosenSource source = new ChosenSource(local, web(), setting::get);
+		source.poll();
+		source.standBy();
+		assertEquals(1, local.standBys, "the local source was in use");
+		source.poll(); // started again by its next poll
+		setting.set(SpotifyWebSource.KEY);
+		try {
+			source.poll();
+		} catch (java.io.IOException signedOut) {
+			// the web source's own message
+		}
+		assertEquals(2, local.standBys, "Spotify Web picked");
+		source.standBy();
+		assertEquals(2, local.standBys, "Spotify Web was in use: the local source is on stand-by already");
+	}
+
 	/** Spotify Web being picked tells the computer's own reader once, so it can stop what it keeps running. */
 	@Test
 	void switchingToSpotifyWebPutsTheLocalSourceOnStandByOnce() throws Exception {

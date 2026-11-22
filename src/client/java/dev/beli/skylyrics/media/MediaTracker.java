@@ -191,6 +191,9 @@ public final class MediaTracker {
 		MediaSource source = source();
 		if (switchedToDemo(source, lastSource, demo)) {
 			demo.restart();
+			if (lastSource == player) {
+				player.standBy(); // no hidden PowerShell left idling on Windows while the demo plays; the next read starts it
+			}
 		}
 		Snapshot fresh;
 		Throwable failure;

@@ -677,6 +677,24 @@ class MacMediaSourceTest {
 		assertTrue(slow.killed);
 	}
 
+	/**
+	 * Spotify Web or the demo song is followed instead: an osascript still waiting (on macOS's permission question, or on
+	 * a frozen app) is stopped instead of being left running for nobody, and the next poll asks again at once.
+	 */
+	@Test
+	void standByStopsAWaitingOsascript() throws Exception {
+		FakeRunner runner = new FakeRunner();
+		MacMediaSource source = new MacMediaSource(() -> "", runner, 0);
+		FakeRun slow = new FakeRun(new MacMediaSource.Result(0, "", ""), Integer.MAX_VALUE);
+		runner.plans.add(slow);
+		assertThrows(IOException.class, source::poll, "waiting");
+		source.standBy();
+		assertTrue(slow.killed, "the waiting osascript was left running");
+		runner.answer(SPOTIFY_PLAYING);
+		assertEquals("Song One", source.poll().track().title());
+		assertEquals(2, runner.starts, "a fresh osascript");
+	}
+
 	private static void assertDoesNotThrow(MacMediaSource source) {
 		org.junit.jupiter.api.Assertions.assertDoesNotThrow(source::poll);
 	}
