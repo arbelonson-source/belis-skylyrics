@@ -21,4 +21,13 @@ final class ClosedByKey {
 		}
 		return clicks > 0;
 	}
+
+	/**
+	 * Whether to ask the keyboard if the key is down: a keyboard key only (a mouse button is not on the keyboard), and a
+	 * bound one. An unbound key is -1 (GLFW's unknown key) on 1.21.1 to 26.2, and asking GLFW about -1 is an "Invalid key"
+	 * error that the game writes to its log as three ERROR lines, so an unbound key filled the log every tick.
+	 */
+	static boolean asksKeyboard(boolean keyboardKey, int value) {
+		return keyboardKey && value >= 0;
+	}
 }

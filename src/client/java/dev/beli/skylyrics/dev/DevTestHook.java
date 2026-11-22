@@ -49,6 +49,10 @@ import dev.beli.skylyrics.media.DemoSource;
  * of the binding as options.txt has it without {@code key_}; {@code playerlist} alone also works). An unknown name logs
  * "Test hook: no key mapping ..." and nothing else happens.
  * <p>
+ * {@code unbind <mapping>} unbinds a key binding, as Escape on it in Controls does, without saving options.txt:
+ * {@code unbind skylyrics.open_settings} or {@code unbind skylyrics.library} (names as for {@code hold}). It logs
+ * "Test hook: unbound ...", or "Test hook: no key mapping ..." for an unknown name.
+ * <p>
  * {@code debug on|off} opens or closes the F3 debug screen, as the F3 key does.
  * <p>
  * World changes: {@code pause} opens the pause menu, as Escape does in a world ({@code pause nomenu} pauses as F3 + Esc
@@ -179,6 +183,20 @@ public final class DevTestHook {
 		holds.hold(found, System.nanoTime() / 1_000_000L, hold.ms());
 		found.setDown(true);
 		SkyLyricsClient.LOG.info("Test hook: holding {} for {} ms", hold.mapping(), hold.ms());
+	}
+
+	/** "unbind <mapping>": the binding's key becomes the unknown key, as Escape on it in Controls sets it (not saved). */
+	private static void unbind(Minecraft client, String arg) {
+		String name = DevKeys.mappingName(arg);
+		for (net.minecraft.client.KeyMapping mapping : client.options.keyMappings) {
+			if (mapping.getName().equals(name)) {
+				mapping.setKey(com.mojang.blaze3d.platform.InputConstants.UNKNOWN);
+				net.minecraft.client.KeyMapping.resetMapping();
+				SkyLyricsClient.LOG.info("Test hook: unbound {}", name);
+				return;
+			}
+		}
+		SkyLyricsClient.LOG.warn("Test hook: no key mapping {}", name);
 	}
 
 	private void startBurst(String arg, boolean atLineChange) {
@@ -786,6 +804,7 @@ public final class DevTestHook {
 				}
 				case "use" -> net.minecraft.client.KeyMapping.click(com.mojang.blaze3d.platform.InputConstants.getKey(client.options.keyUse.saveString()));
 				case "hold" -> hold(client, arg);
+				case "unbind" -> unbind(client, arg);
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
 				case "lines" -> lines(client, arg);
