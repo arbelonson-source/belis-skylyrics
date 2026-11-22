@@ -24,7 +24,10 @@
 #    -grid-g1: at most 460x300 GUI units; the grid's columns fill the panel's width, covers and names are not cut off.
 # 6. World words (last: the made-up lines replace the demo song's), looking level (look 0 0) at a long made-up line
 #    sung over 4 seconds: w141-world-a/-b/-c (the scatter, the default) and w141-flow-a/-b/-c (Flowing line on), Keep
-#    the middle clear on.
+#    the middle clear on, then w141-flow-nomid-a/-b/-c with Keep the middle clear off. Where the test world puts a sand
+#    wall or hill beside you, words with no clear place in front of it were lifted up its side; since fix/flow143 they
+#    stop under the top of the screen (a flowing line's: under where its rows go, floating up counted) and never land
+#    on another word, else they keep their place drawn through the sand (flow143.txt builds such a wall on purpose).
 #    Old code at 800x1000 (and less so 640x480): words at the left and right are cut by the screen's edge or missing,
 #      a flowing line's rows run off one side (they were spread up to 40 degrees out, the screen shows 29).
 #    Branch: every word whole on the screen, a little in from each edge. 3440x1440, 2560x1080, 3840x2160: the same
@@ -169,4 +172,13 @@ sleep 2
 shot w141-flow-b
 sleep 3
 shot w141-flow-c
+set worldClearMiddle false
+seek 0
+sleep 2.5
+shot w141-flow-nomid-a
+sleep 2
+shot w141-flow-nomid-b
+sleep 3
+shot w141-flow-nomid-c
+set worldClearMiddle true
 set worldFlow false
