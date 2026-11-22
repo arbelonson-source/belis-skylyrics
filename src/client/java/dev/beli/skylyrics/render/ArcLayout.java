@@ -166,12 +166,21 @@ final class ArcLayout {
 	 * gap (neighbouring Chinese or Japanese characters). May be null.
 	 */
 	static int[] rows(float[] widths, boolean[] pause, boolean @Nullable [] tight) {
+		return rows(widths, pause, tight, ROW_WIDTH);
+	}
+
+	/**
+	 * Like {@link #rows(float[], boolean[], boolean[])}, with rows about {@code rowWidth} wide where that is less than
+	 * {@link #ROW_WIDTH}: a line wider than that is never left on one row.
+	 */
+	static int[] rows(float[] widths, boolean[] pause, boolean @Nullable [] tight, float rowWidth) {
 		int n = widths.length;
 		if (n == 0) {
 			return new int[0];
 		}
+		float wide = Math.min(ROW_WIDTH, rowWidth);
 		float total = width(widths, tight, 0, n, GAP);
-		int k = total <= SINGLE_ROW ? 1 : Math.max(2, (int) Math.ceil(total / ROW_WIDTH));
+		int k = total <= Math.min(SINGLE_ROW, wide) ? 1 : Math.max(2, (int) Math.ceil(total / wide));
 		k = Math.min(k, n);
 		if (k == 1) {
 			return new int[] {0};
@@ -184,7 +193,7 @@ final class ArcLayout {
 			gaps[i + 1] = gaps[i] + (tight == null || !tight[i] ? 1 : 0);
 		}
 		if ((long) k * n * n > MAX_DP_STEPS) {
-			return fill(sum, gaps, n);
+			return fill(sum, gaps, n, wide);
 		}
 		if (k == 2) {
 			// The usual case: try every cut, and let one after a comma win when it's nearly as even
@@ -229,6 +238,52 @@ final class ArcLayout {
 		return starts;
 	}
 
+	/** How many times a line too wide for the view is cut again into more rows; one more row each time at the least. */
+	private static final int FIT_TRIES = 8;
+
+	/**
+	 * Cuts a line into rows and places it ({@link #rows(float[], boolean[], boolean[])}, then
+	 * {@link #place(float[], int[], float, long, boolean[], int[])}), and while any group is drawn further than
+	 * {@code room} units left or right of the block's middle (a big Size, a low FOV, a narrow window), cuts it again into
+	 * more, narrower rows. Words are never cut, so at worst each word gets a row of its own. A line that fits comes out
+	 * exactly as before; an infinite {@code room} is no limit.
+	 */
+	static List<Group> fit(float[] widths, boolean[] pause, boolean @Nullable [] tight, float space, long seed, int[] rank,
+			float room) {
+		int n = widths.length;
+		int[] rowStarts = rows(widths, pause, tight);
+		List<Group> groups = place(widths, rowStarts, space, seed, tight, rank);
+		if (Float.isNaN(room)) {
+			return groups;
+		}
+		float total = width(widths, tight, 0, n, GAP);
+		for (int t = 0; t < FIT_TRIES && rowStarts.length < n; t++) {
+			float reach = halfWidth(groups, widths, tight, space);
+			if (reach <= room) {
+				break;
+			}
+			// The drawn width shrinks about as the rows do: that many times more rows, at least one more
+			int k = (int) Math.min(n, Math.max(rowStarts.length + 1L, (long) Math.ceil(rowStarts.length * (double) reach / Math.max(1e-3f, room))));
+			int[] more = rows(widths, pause, tight, total / (k - 0.5f));
+			if (more.length <= rowStarts.length) {
+				break; // the cut can't go narrower
+			}
+			rowStarts = more;
+			groups = place(widths, rowStarts, space, seed, tight, rank);
+		}
+		return groups;
+	}
+
+	/** How far left or right of the block's middle any group is drawn, tilted, in layout units. */
+	private static float halfWidth(List<Group> groups, float[] widths, boolean @Nullable [] tight, float space) {
+		float half = 0;
+		for (Group g : groups) {
+			float[] e = edges(g, width(widths, tight, g.from(), g.to(), space) * g.scale() / 2);
+			half = Math.max(half, Math.max(-e[0], e[1]));
+		}
+		return half;
+	}
+
 	/** {@link #width(float[], boolean[], int, int, float)} with {@link #GAP} from prefix sums of the widths and the gaps. */
 	private static float span(double[] sum, int[] gaps, int from, int to) {
 		return (float) (sum[to] - sum[from] + GAP * (gaps[to - 1] - gaps[from]));
@@ -236,10 +291,10 @@ final class ArcLayout {
 
 	/**
 	 * Cheap cut for a line too long for the exact search: each row takes words until the next one would pass
-	 * {@link #ROW_WIDTH} (a row has at least one word). Linear in the number of words.
+	 * {@code row} wide (a row has at least one word). Linear in the number of words.
 	 */
-	private static int[] fill(double[] sum, int[] gaps, int n) {
-		int[] starts = new int[Math.min(n, (int) (Math.ceil(span(sum, gaps, 0, n) / ROW_WIDTH) * 2) + 2)];
+	private static int[] fill(double[] sum, int[] gaps, int n, float row) {
+		int[] starts = new int[Math.min(n, (int) (Math.ceil(span(sum, gaps, 0, n) / row) * 2) + 2)];
 		int rows = 0;
 		for (int from = 0; from < n; ) {
 			if (rows == starts.length) {
@@ -247,7 +302,7 @@ final class ArcLayout {
 			}
 			starts[rows++] = from;
 			int to = from + 1;
-			while (to < n && span(sum, gaps, from, to + 1) <= ROW_WIDTH) {
+			while (to < n && span(sum, gaps, from, to + 1) <= row) {
 				to++;
 			}
 			from = to;
