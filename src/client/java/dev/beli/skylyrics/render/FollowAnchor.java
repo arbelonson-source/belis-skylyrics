@@ -16,9 +16,13 @@ final class FollowAnchor {
 	private FollowAnchor() {
 	}
 
-	/** Whether Lazy follow counts: the World layout ignores it (its setting is hidden there), so the sparkles must too. */
-	static boolean lazy(boolean lazyFollow, SkyLyricsConfig.Layout layout) {
-		return lazyFollow && layout != SkyLyricsConfig.Layout.WORLD;
+	/**
+	 * Whether Lazy follow counts: World words ignore it (its setting is hidden there), so the sparkles must too; only the
+	 * note line of an instrumental song, drawn like Lines even in World, still goes by it, like by Placement (see
+	 * {@link #floating}).
+	 */
+	static boolean lazy(boolean lazyFollow, SkyLyricsConfig.Layout layout, boolean instrumental) {
+		return lazyFollow && (layout != SkyLyricsConfig.Layout.WORLD || instrumental);
 	}
 
 	/**

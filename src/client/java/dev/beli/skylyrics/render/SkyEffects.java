@@ -712,7 +712,7 @@ public final class SkyEffects {
 			targetPitch = Mth.clamp(camera.xRot() - Math.min(cfg.height, 30) * 0.5f, -85, 85);
 			speed = 5f;
 		} else if (cfg.direction == Direction.FOLLOW) {
-			boolean lazy = FollowAnchor.lazy(cfg.lazyFollow, cfg.layout);
+			boolean lazy = FollowAnchor.lazy(cfg.lazyFollow, cfg.layout, lyrics.instrumental());
 			following = FollowAnchor.following(following, lazy, camYaw - anchorYaw);
 			targetYaw = following ? camYaw : anchorYaw;
 			speed = FollowAnchor.speed(lazy);
