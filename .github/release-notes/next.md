@@ -195,6 +195,8 @@
 - **Pausing a player that doesn't say where the song is.** Some music players and websites never tell where in the song they are, so the lyrics follow the clock from when the song started. Pausing one of them no longer sends the lyrics back to the first line, and playing it again goes on from where you paused instead of starting the lyrics over.
 - **Pausing on Windows.** On Windows, pausing a player that never says when it last told where the song is (some browser tabs and players) no longer sends the lyrics back to the start of the song, or to the last spot it told, and playing it again goes on from where you paused.
 - **A late cover from a player that doesn't say where the song is.** When such a player sends the song's cover, length or artist a moment after its title, as browsers often do, the lyrics no longer start counting again from that moment, so they no longer run late for the rest of the song or go back to the first line.
+- **Holding the now-playing or lock key.** Holding the **Show now-playing card** or **Lock lyrics here** key a moment too long no longer flips it on and off many times a second, leaving it either way: like the show/hide lyrics and music keys, it now acts once per press. The **Lyrics are late** and **Lyrics are early** keys still keep stepping while held.
+- **Closing the settings or song library with its key.** Closing the settings with J (or the song library with Ctrl+N) and holding the key a moment too long no longer opens them again right away: the key has to be let go and pressed again.
 
 ### Faster
 

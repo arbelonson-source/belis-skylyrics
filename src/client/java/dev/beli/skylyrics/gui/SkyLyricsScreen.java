@@ -1764,6 +1764,7 @@ public final class SkyLyricsScreen extends Screen {
 		KeyMapping open = mod.openSettingsKey();
 		if (open != null && open.matches(event)) {
 			if (!closeKeyHeld) {
+				mod.closedWithKey(open);
 				onClose();
 			}
 			return true;
