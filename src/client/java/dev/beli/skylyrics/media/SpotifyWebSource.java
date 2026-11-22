@@ -309,6 +309,7 @@ public final class SpotifyWebSource implements MediaSource {
 		synchronized (this) {
 			signOutInMemory();
 		}
+		pollNow = true; // the reader says to sign in at its next read, not once its pace or a failure's wait is up
 		flush();
 	}
 
@@ -937,14 +938,25 @@ public final class SpotifyWebSource implements MediaSource {
 	 * with that the idle pace would leave the lyrics standing (or the bar empty) for up to 4 s while the music plays.
 	 */
 	void pressTaken() {
+		pressedAt = System.nanoTime();
 		afterPress = AFTER_PRESS_POLLS;
 		pollNow = true;
 	}
 
-	/** Notes that Spotify is being asked at {@code now}. */
+	/**
+	 * When the last press Spotify took was noted ({@link System#nanoTime}). Presses come from the library's thread too, so
+	 * an ask already on its way then (the reader's thread) was sent before the press: its answer is not one of those quick asks.
+	 */
+	private volatile long pressedAt;
+
+	/** The Client ID Spotify was last asked with (see {@link #settle}). Media thread only. */
+	private String askedWith = "";
+
+	/** Notes that Spotify is being asked at {@code now}, with the Client ID set now. */
 	void settle(long now) {
 		pollNow = false;
 		askedNs = now;
+		askedWith = id();
 	}
 
 	/** Whether it is time to ask Spotify about the song again. */
@@ -996,6 +1008,11 @@ public final class SpotifyWebSource implements MediaSource {
 	@Override
 	public Snapshot poll() throws Exception {
 		long now = System.nanoTime();
+		// A Client ID pasted on the settings screen since the last ask is asked about at once: the last answer, and the
+		// wait after its failure (up to 30 s), were for the old one, and the Status line would say to paste it meanwhile
+		if (!id().equals(askedWith)) {
+			pollNow = true;
+		}
 		if (!pollDue(now, looking.getAsBoolean())) {
 			return last;
 		}
@@ -1056,7 +1073,7 @@ public final class SpotifyWebSource implements MediaSource {
 			}
 			default -> throw new BadStatus(response.statusCode(), response.body());
 		}
-		if (afterPress > 0) {
+		if (afterPress > 0 && sent - pressedAt >= 0) {
 			afterPress--;
 		}
 		if (!last.track().isNone()) {
