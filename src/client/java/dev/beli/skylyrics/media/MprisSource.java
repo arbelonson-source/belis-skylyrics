@@ -531,13 +531,16 @@ public final class MprisSource implements MediaSource {
 
 	private static @Nullable Reading read(DBusConnection conn, String busName) throws Exception {
 		Properties props = conn.getRemoteObject(busName, PATH, Properties.class);
-		Map<String, Variant<?>> all = props.GetAll(PLAYER_IFACE);
+		return reading(busName, props.GetAll(PLAYER_IFACE), () -> props.Get(PLAYER_IFACE, "Position"));
+	}
 
+	/** What a player's properties say it plays, or null when it is stopped or names no song (apart from D-Bus for tests). */
+	static @Nullable Reading reading(String busName, Map<String, Variant<?>> all, Callable<Object> getPosition) {
 		if (stopped(all)) {
 			return null; // a stopped player may keep its old song's data: that isn't playing anything
 		}
 		boolean playing = "Playing".equals(value(all.get("PlaybackStatus")));
-		long positionUs = positionMicros(all, () -> props.Get(PLAYER_IFACE, "Position"));
+		long positionUs = positionMicros(all, getPosition);
 		Object metaObj = value(all.get("Metadata"));
 		if (!(metaObj instanceof Map<?, ?> meta)) {
 			return null;
