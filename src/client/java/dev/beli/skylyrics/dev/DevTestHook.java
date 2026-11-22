@@ -93,6 +93,11 @@ import dev.beli.skylyrics.media.DemoSource;
  * player, and the bar treats it as a song change. {@code song} alone goes back to the demo's own name. It logs
  * "Test hook: the demo song is now ...".
  * <p>
+ * {@code songlength <seconds>} has the demo song reported with that length ({@code 0}: none, as a browser sends at first;
+ * the demo still loops every 78 s). {@code songlength 0}, then {@code song <title> | <artist>} (which keeps that length),
+ * then {@code songlength 78} plays a song whose length comes in a while after its name. It logs
+ * "Test hook: the demo song's length is now ... s".
+ * <p>
  * {@code seek <seconds>} moves the demo song to that second (decimal, e.g. {@code seek 12.5}); a leading sign is relative to
  * now ({@code seek -3} three seconds back, {@code seek +3} forward). It goes through the tracker like the Now playing bar's
  * click, so the lyrics notice the jump as they would a player's seek; the position shows from the next poll. Only the demo
@@ -763,6 +768,12 @@ public final class DevTestHook {
 					String[] song = SongArg.parse(arg);
 					DemoSource.renameForTest(song[0], song[1]);
 					SkyLyricsClient.LOG.info("Test hook: the demo song is now '{}' by '{}'", song[0], song[1]);
+				}
+				case "songlength" -> {
+					long ms = Math.round(Double.parseDouble(arg.strip()) * 1000);
+					DemoSource.lengthForTest(ms);
+					SkyLyricsClient.LOG.info("Test hook: the demo song's length is now {} s",
+							String.format(java.util.Locale.ROOT, "%.1f", Math.max(0, ms) / 1000.0));
 				}
 				case "where" -> where();
 				case "meteor" -> {

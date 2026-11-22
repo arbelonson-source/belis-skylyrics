@@ -82,6 +82,26 @@ class DemoSourceTest {
 	}
 
 	@Test
+	void aTestLengthIsKeptByARenameAndTheDemosOwnNameBringsItsLengthBack() {
+		try {
+			DemoSource.lengthForTest(0);
+			assertEquals(0, new DemoSource().poll().track().lengthMs());
+			assertEquals(DemoSource.TRACK.title(), new DemoSource().poll().track().title());
+			DemoSource.renameForTest("Late Length", "Made Up Band");
+			Track renamed = new DemoSource().poll().track();
+			assertEquals("Late Length", renamed.title());
+			assertEquals(0, renamed.lengthMs());
+			DemoSource.lengthForTest(78_000);
+			assertEquals(new Track("Late Length", "Made Up Band", DemoSource.TRACK.album(), 78_000, "", DemoSource.PLAYER),
+					new DemoSource().poll().track());
+			DemoSource.renameForTest("", "");
+			assertEquals(DemoSource.TRACK, new DemoSource().poll().track());
+		} finally {
+			DemoSource.renameForTest("", "");
+		}
+	}
+
+	@Test
 	void onlyTheFirstReadFromTheDemoRestartsIt() {
 		DemoSource demo = new DemoSource();
 		MediaSource player = new DemoSource();

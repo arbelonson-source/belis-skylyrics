@@ -39,12 +39,23 @@ public final class DemoSource implements MediaSource {
 
 	/**
 	 * Test checks only (the test hook's {@code song} command): the demo song is reported with this title and artist, so
-	 * a check can show how the bar and the Record card draw odd song details. It keeps the demo's length, lyrics and
-	 * player; both blank goes back to {@link #TRACK}. Passed through {@link Track}'s own cleaning, like a player's.
+	 * a check can show how the bar and the Record card draw odd song details. It keeps the demo's lyrics, player and the
+	 * length it reports now (see {@link #lengthForTest}); both blank goes back to {@link #TRACK}. Passed through
+	 * {@link Track}'s own cleaning, like a player's.
 	 */
 	public static void renameForTest(String title, String artist) {
 		playing = title.isBlank() && artist.isBlank() ? TRACK
-				: new Track(title, artist, TRACK.album(), TRACK.lengthMs(), TRACK.artUrl(), PLAYER);
+				: new Track(title, artist, TRACK.album(), playing.lengthMs(), TRACK.artUrl(), PLAYER);
+	}
+
+	/**
+	 * Test checks only (the test hook's {@code songlength} command): the demo song is reported with this length, 0 for
+	 * none, so a check can show a song whose length comes in a moment after its name, as a browser's does. It keeps the
+	 * title, artist, lyrics and player, and the demo still loops after {@link #TRACK}'s length.
+	 */
+	public static void lengthForTest(long lengthMs) {
+		Track p = playing;
+		playing = new Track(p.title(), p.artist(), p.album(), Math.max(0, lengthMs), p.artUrl(), PLAYER);
 	}
 
 	private long startNanos = System.nanoTime();
