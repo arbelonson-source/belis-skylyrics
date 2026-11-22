@@ -11,7 +11,7 @@ Go through these in order:
 1. **Is the mod turned on?** At the bottom left of the settings screen, under the list of tabs, there is a **Lyrics** switch. If you set a key for "Show or hide lyrics", you may have pressed it by accident.
 2. **Are you looking the right way?** On the **Lyrics** tab, **Direction** can be set to N, E, S or W (north, east, south or west). Then the lyrics stay on that side of the sky. (**Direction** only shows in the World layout, or with the Arc and Lines layouts when **Placement** is **Sky**; with **Floating** it is hidden.) Turn around, or set Direction to **Follow** so they stay where you look. If they seem stuck in one spot, **View lock** (under **Position**) may be on: turn it off, or press your "Lock lyrics here" key if you set one.
 3. **Are they hidden on purpose?** On the **Display** tab check **Hide with F1** (pressing F1 hides them along with the rest of the screen), **Hide in menus** (hidden while chat or any menu is open) and **Hide when paused** (hidden while the music is paused).
-4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" (on a Mac: "No Spotify or Music playing") or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen). With **Spotify Web**, "Can't reach the internet or Spotify" means your internet (or Spotify) isn't answering: check that a web page opens. The mod keeps asking and carries on by itself once it is back. If the mod can't read your music player (or reach the internet, with **Spotify Web**) for 10 seconds, a pop-up says so once per game start; the **Music** tab shows why.
+4. **Does the mod see your music?** On the **Music** tab, **Status** should say "Following" and the name of your player. If it says "No music playing" (on a Mac: "No Spotify or Music playing (browsers can't be read on a Mac)") or "Can't reach music players", see [Check that your player can be seen](#check-that-your-player-can-be-seen). With **Spotify Web**, "Can't reach the internet or Spotify" means your internet (or Spotify) isn't answering: check that a web page opens. The mod keeps asking and carries on by itself once it is back. If the mod can't read your music player (or reach the internet, with **Spotify Web**) for 10 seconds, a pop-up says so once per game start; the **Music** tab shows why.
 5. **Were lyrics found?** The **Lyrics** line on the Music tab tells you:
    - **Looking for lyrics…**: wait a moment.
    - **No lyrics found for this song. Try Retry.**: neither LRCLIB nor NetEase Cloud Music, the two lyrics sites the mod uses, has this song. The mod can't show lyrics it doesn't have. It checks again after a few days, or press **Retry**. If a lyrics site answers with something odd, this is what you see too (not a message about your internet), and **Retry** asks again.
@@ -30,7 +30,7 @@ Go through these in order:
 - **More than one thing is playing.** The mod follows one player at a time. Pause the other one, or on the **Music** tab set **Player** to the app you want. The choices are different on Linux, Windows and macOS (see the [FAQ](FAQ.md#can-i-choose-which-player-it-follows)).
 - **A browser tab is playing something else.** A muted video in another tab still counts as playing. Pause it or close it.
 - **The song has no artist.** Browser audio often comes without an artist and without a length. Then the mod only accepts a lyrics match whose title is the same and, when the song's length is known, whose length is within about 3 seconds. When different artists have a song with that title, it shows no lyrics rather than guess and show another song's words, so a common title like "Intro" may show none. If you play the song in a player that shows the artist (like Spotify), the lyrics are found.
-- **The song name is messy.** Video titles like "Artist - Song (Official Video)" or "Artist - Song | Official Video" are cleaned up before looking for lyrics, and a title like "Song - Skrillex Remix" is no longer taken for "Artist - Song". A title with a version tag in brackets, like "Song (2011 Remaster)", is looked up again without the tag when nothing is found. Some titles are still too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. Lyrics that are only unsynced, or that came from the backup site, are looked up again after a week, and replaced if something better exists. If the words are only early or late, use the **This song** slider on the Music tab.
+- **The song name is messy.** Video titles like "Artist - Song (Official Video)" or "Artist - Song | Official Video" are cleaned up before looking for lyrics, and a title like "Song - Skrillex Remix" is no longer taken for "Artist - Song". Neither is "Song - From "Film"", "Song - Recorded at …" or "Song - Bonus Track". A title with a version tag in brackets, like "Song (2011 Remaster)", is looked up again without the tag when nothing is found. Some titles are still too unusual to match, or LRCLIB matched a different version. If the Music tab says no lyrics were found, press **Retry** to look again. If lyrics were found but are the wrong ones, the mod keeps them for that song, and Retry can't look again. Play the song from a player that shows the artist (like Spotify) if you can. Lyrics that are only unsynced, or that came from the backup site, are looked up again after a week, and replaced if something better exists. If the words are only early or late, use the **This song** slider on the Music tab.
 
 ## Lyrics come early or late
 
@@ -38,7 +38,7 @@ Lyrics can be a little off when the version you're hearing is different from the
 
 **In the settings:** open the **Music** tab while the song plays and move the **This song** slider. If the words come late, move it right. If they come early, move it left. It moves in steps of 0.05 seconds, up to 5 seconds either way.
 
-**With keys, without leaving the game:** in **Options → Controls → Key Binds → Beli's SkyLyrics**, give keys to **Lyrics are late (this song)** and **Lyrics are early (this song)**. Each press moves the lyrics by 0.1 seconds, and a message above your hotbar shows the new timing.
+**With keys, without leaving the game:** in **Options → Controls → Key Binds → Beli's SkyLyrics**, give keys to **Lyrics are late (this song)** and **Lyrics are early (this song)**. Each press moves the lyrics by 0.1 seconds (hold the key to keep stepping), and a message above your hotbar shows the new timing.
 
 A few more things to know:
 
@@ -66,9 +66,9 @@ The mod reads the media controls that Windows shows when you press a media key o
 - a school or work computer blocks PowerShell scripts, or
 - an antivirus program blocks it. Allowing Minecraft (Java) to run PowerShell fixes this.
 
-The helper writes its own error messages to `.cache\skylyrics\windows\windows-media.log` in your Minecraft folder. That file is useful to include if you [ask for help](#still-stuck). If the helper fails, the mod tries again on its own, first after 15 seconds and then less and less often, up to every 5 minutes.
+The helper writes its own error messages to `.cache\skylyrics\windows\windows-media.log` in your Minecraft folder. That file is useful to include if you [ask for help](#still-stuck). If the helper fails, or starts but never answers, the mod tries again on its own, first after 15 seconds and then less and less often, up to every 5 minutes.
 
-**"The Windows music reader stopped right away…"** The Music tab shows this when PowerShell started and quit at once. PowerShell's own message follows in brackets, for example one about Constrained Language Mode or AppLocker. That means the computer is set up to block PowerShell, which is common on school and work PCs. The mod can't change that, and only whoever looks after the PC (your school or IT) can allow it. You can use the mod anyway: on the **Music** tab set **Player** to **Spotify Web** and sign in to Spotify there. Spotify Web asks Spotify over the internet, so it doesn't need PowerShell (see "Can it follow Spotify on my phone or another computer?" in the [FAQ](FAQ.md)).
+**"The Windows music reader stopped right away…"** The Music tab shows this when PowerShell started and quit at once. PowerShell's own message follows in brackets, for example one about Constrained Language Mode or AppLocker. That means the computer is set up to block PowerShell, which is common on school and work PCs. The mod can't change that, and only whoever looks after the PC (your school or IT) can allow it. You can use the mod anyway: on the **Music** tab set **Player** to **Spotify Web** and sign in to Spotify there. Spotify Web asks Spotify over the internet, so it doesn't need PowerShell, and while it is picked the mod stops the PowerShell helper (see "Can it follow Spotify on my phone or another computer?" in the [FAQ](FAQ.md)).
 
 ### On Linux
 
@@ -132,7 +132,9 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 **No album cover for Music songs.** Spotify gives the mod a link to the album cover, but the Music app doesn't, so the top bar shows no album cover for songs played in Music.
 
-**Internet radio and ads.** When Music plays an internet radio station, the mod shows the song the station is playing now, not just the station's name. Spotify's ads are skipped: the mod doesn't look up lyrics for them.
+**Internet radio and ads.** When Music plays an internet radio station, the mod shows the song the station is playing now, not just the station's name. Spotify's ads are skipped: the mod doesn't look up lyrics for them. While an ad plays, the mod stays with Spotify, so it doesn't switch to a song paused in Music, and the play/pause key still reaches Spotify.
+
+**One app frozen.** If Spotify or Music freezes (the spinning beach ball) while both are open, the mod stops waiting for the frozen one after 2 seconds, follows the other, and asks the frozen one again every few seconds.
 
 **Music tab Status mentions osascript.** The mod talks to Spotify and Music with `osascript`, a tool that comes with every Mac. If it fails a few times in a row, the mod waits 15 seconds and then tries again on its own.
 
@@ -185,11 +187,11 @@ The song bar sits at the top centre of the screen, where Jade and WTHIT show wha
 
 ## The Record card moves or fades
 
-The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and in the bottom left the card fades where the chat covers it. A card in the bottom left also hides while the debug screen (F3) is open when it is tall enough to reach F3's text (on a small window or a big GUI scale). This is on purpose; it comes back when the other thing goes away.
+The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and a card fades while the chat's messages cover it: in the bottom left most often, and in the other corners too in a small window or at a big GUI scale (not when chat is set to Hidden). A card in a top corner moves down below your potion effect icons when they reach it. A card in a top corner hides while the debug screen (F3) is open, and one in the bottom left does too when it is tall enough to reach F3's text (on a small window or a big GUI scale). This is on purpose; it comes back when the other thing goes away.
 
 ## The top bar and the player list (Tab)
 
-While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays.
+While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays. The same happens while the debug screen (F3) is open.
 
 ## Spotify sign-in doesn't start
 
@@ -197,7 +199,8 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 - **"Spotify sign-in needs port ... but another program is using it"**: close the other program or Minecraft game that holds that port (often a second game with SkyLyrics), then press **Sign in** again. The red line goes away when you press **Sign in** or **Sign out**.
 - **"Can't reach the internet or Spotify"**: your internet (or Spotify) isn't answering. Check that a web page opens, then try again.
 - **"Spotify no longer accepts your Client ID, check it and sign in again"**: your Spotify app was deleted or reset, so you are signed out. Check the Client ID in your app on the Spotify dashboard (or make a new app), paste it, and press **Sign in**.
-- **"Too many requests"**: when Spotify says this, the mod waits as long as Spotify asks before trying again. Nothing for you to do.
+- **"Sign-in timed out"**: the Spotify page in your browser wasn't answered within 5 minutes. Press **Sign in** again.
+- **Spotify is busy**: when Spotify says there are too many requests, the mod waits as long as Spotify asks before trying again. No message shows, and there is nothing for you to do.
 
 ## The mod says a new version is out, but won't install it
 
@@ -213,7 +216,7 @@ If you launch with a launcher that links the `mods` or instance folder to somewh
 
 ## Settings or Spotify sign-in not saved on Windows
 
-Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. The mod tries again for up to about a second before giving up, for the settings, the Spotify sign-in, saved album covers and the Windows music reader's helper file. If a setting still won't stick, update to the newest version first.
+Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. The mod tries again for up to about a second before giving up, for the settings, the Spotify sign-in, saved album covers and the Windows music reader's helper file. When the game starts, it also tries reading the settings and the Spotify sign-in again, so you don't start signed out of Spotify because the file was held. If a setting still won't stick, update to the newest version first.
 
 ## Two Minecraft games open at once
 
