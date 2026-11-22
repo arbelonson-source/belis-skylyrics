@@ -53,6 +53,7 @@ final class WidthCache {
 	private long epoch;
 	private float seen = Float.NaN;
 	private int mode = -1;
+	private Object language;
 
 	WidthCache(int limit) {
 		this.limit = limit;
@@ -79,6 +80,18 @@ final class WidthCache {
 			invalidate();
 		}
 		mode = glyphMode;
+	}
+
+	/**
+	 * Called once per frame with the game's language object. Every resource reload (F3+T, a pack turned on or off, another
+	 * language) makes a new one, so a new one is a reload, even one nothing here drew during and whose changed letters the
+	 * probe text doesn't have. The first call only remembers it.
+	 */
+	void language(Object language) {
+		if (this.language != null && language != this.language) {
+			invalidate();
+		}
+		this.language = language;
 	}
 
 	/** How many reloads were seen; part of every key that is cached elsewhere on top of these widths. */
