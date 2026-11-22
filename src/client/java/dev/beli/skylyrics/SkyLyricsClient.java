@@ -271,7 +271,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
 		}
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> shutdown());
-		Updater.start(cfg.updates, version);
+		Updater.start(cfg.updatesAtStart(), version); // not the defaults of a settings file that could not be read
 		if (FabricLoader.getInstance().isModLoaded("exordium")) {
 			LOG.info("Exordium is installed: it redraws the HUD less often, so the lyrics may trail behind when you turn. Turn off Exordium's HUD buffering if they do.");
 		}
@@ -541,7 +541,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		spotify.cancelLogin();
 		tracker.shutdown();
 		lyrics.shutdown();
-		heard.flush();
+		heard.flush(2000); // a write stuck on a network drive must not keep the game open
 		// A save still waiting for the writer, and the open settings screen's, which Minecraft closes after this event
 		SkyLyricsConfig.get().close(2000);
 		art.close();

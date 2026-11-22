@@ -446,6 +446,15 @@ public final class SkyLyricsConfig {
 	/** Set when the settings file exists but couldn't be read: save() then leaves it alone, so the player's real settings aren't overwritten by defaults. */
 	transient boolean saveBlocked;
 	transient boolean blockedLogged;
+	/**
+	 * What the update check at start may do. While the settings file couldn't be read, the player's choice isn't known and
+	 * the default would download and install, also for someone who turned updates off: no check this game instead. Not
+	 * stored in {@link #updates}, so a file that has to be started anew doesn't keep updates off for ever.
+	 */
+	public Updates updatesAtStart() {
+		return saveBlocked ? Updates.OFF : updates;
+	}
+
 	/** Failed saves are logged once, until one works again. */
 	private static final dev.beli.skylyrics.util.OnceGate SAVE_LOG = new dev.beli.skylyrics.util.OnceGate();
 	transient dev.beli.skylyrics.util.SafeFile.Reader reader;
@@ -485,6 +494,10 @@ public final class SkyLyricsConfig {
 			SkyLyricsConfig blocked = new SkyLyricsConfig();
 			blocked.saveBlocked = true;
 			blocked.reader = reader;
+			// The file is there, so this is no first run: no tour, and the one-time library key move waits for a game that can
+			// read the file (on these defaults it would move a key the player chose). The file's own values come back when it reads.
+			blocked.introSeen = true;
+			blocked.keysMigrated = true;
 			return blocked;
 		}
 		if (text.strip().isEmpty() || text.equals("\uFEFF")) {
