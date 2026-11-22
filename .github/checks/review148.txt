@@ -1,0 +1,33 @@
+# A word timing stamped before the song's start (fix/review148): in a file timed word by word and shifted earlier,
+# "<-00:00.50>" must not show with the words. Run it twice, on the branch and on main, and compare (1280x720, the default):
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/review148 -f script=.github/checks/review148.txt -f size=1280x720
+#      gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=main -f script=.github/checks/review148.txt -f size=1280x720
+#
+# The two made-up lines take turns every 4 s over the 78 s demo (the first from 0 s, 8 s, 16 s ...; the second from 4 s,
+# 12 s ...). Each carries word timings; the first one's first timing has a minus in front.
+# neg-word-lines-1 (Lines layout): main shows "<-00:00.50>Lanterns drift over the town"; the branch shows
+#   "Lanterns drift over the town" with nothing in front.
+# neg-word-lines-2: "Glow on until the morning" on both (its word timings have no minus and were already dropped).
+# neg-word-world-1 (World layout): on main one card reads "<-00:00.50>Lanterns" (or the stamp is a card of its own); on
+#   the branch every card is a sung word.
+# The test hook stamps its lines from 0 s on, so the line stamped before the start itself ([-00:01.00], batch 113) can't
+# be shown here; its tests are LrcNegativeStampTest and OddLrcFilesTest.
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 6
+lines <-00:00.50>Lanterns <00:00.30>drift <00:00.60>over <00:00.90>the <00:01.20>town | <00:04.00>Glow <00:04.30>on <00:04.60>until <00:04.90>the <00:05.20>morning
+seek 9
+sleep 2
+shot neg-word-lines-1
+seek 13
+sleep 2
+shot neg-word-lines-2
+set layout WORLD
+look 0 0
+seek 16
+sleep 3
+shot neg-word-world-1
