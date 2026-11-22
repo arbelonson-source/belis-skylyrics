@@ -246,6 +246,8 @@
 - **Spotify ads on a Mac.** On a Mac, while Spotify plays an ad, the lyrics no longer switch to a song paused in the Music app and back again after the ad (also with Spotify picked as the **Player**), and the play/pause key now reaches Spotify during the ad instead of doing nothing.
 - **Quitting Spotify or Music on a Mac.** On a Mac, quitting Spotify or the Music app at the very moment SkyLyrics checks it can no longer open it again by itself: the check that the app still runs now comes right before the app is asked anything.
 - **A frozen Spotify or Music on a Mac.** On a Mac with both Spotify and the Music app open, one of them freezing (the spinning beach ball) no longer stops the other one's lyrics for as long as it stays frozen, with a "Waiting for Spotify or Music" message about a permission question that wasn't there. SkyLyrics now stops waiting for the frozen app after 2 seconds, follows the other one, and tries the frozen one again every few seconds.
+- **Mac status messages in your language.** On a Mac, when SkyLyrics can't start osascript, osascript doesn't answer in time or it fails, the **Status** line on the Music tab now says so in the game's language instead of in English.
+- **"by Beli" in your language.** The small line under SkyLyrics at the top of the settings sidebar is now in the game's language too, like "von Beli" in German or "от Beli" in Russian, instead of always "by Beli".
 
 ### Faster
 

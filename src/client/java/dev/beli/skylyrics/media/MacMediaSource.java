@@ -601,7 +601,7 @@ public final class MacMediaSource implements MediaSource {
 			try {
 				run = runner.start(command(args));
 			} catch (IOException | RuntimeException e) {
-				throw backOff("Couldn't start osascript: " + (e.getMessage() == null ? e.toString() : e.getMessage()));
+				throw backOff(Tr.t("Couldn't start osascript: %s", e.getMessage() == null ? e.toString() : e.getMessage()));
 			}
 			pending = run;
 			pendingSince = System.nanoTime();
@@ -612,7 +612,7 @@ public final class MacMediaSource implements MediaSource {
 			if (!mayWait || System.nanoTime() - pendingSince > GIVE_UP_NS) {
 				run.kill();
 				pending = null;
-				throw failed("osascript didn't answer in time");
+				throw failed(Tr.t("osascript didn't answer in time"));
 			}
 			throw new IOException(Tr.t("Waiting for Spotify or Music. If macOS asks to let your launcher control them, click OK"));
 		}
@@ -622,7 +622,7 @@ public final class MacMediaSource implements MediaSource {
 		if (result.exitCode() != 0) {
 			String err = result.err().strip();
 			int newline = err.indexOf('\n');
-			throw failed("osascript failed: " + (newline > 0 ? err.substring(0, newline) : err.isEmpty() ? "exit code " + result.exitCode() : err));
+			throw failed(Tr.t("osascript failed: %s", newline > 0 ? err.substring(0, newline) : err.isEmpty() ? Tr.t("exit code %s", result.exitCode()) : err));
 		}
 		fails = 0;
 		loggedError = "";

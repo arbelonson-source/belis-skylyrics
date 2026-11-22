@@ -155,6 +155,26 @@ class TranslationFitTest {
 	}
 
 	@Test
+	void theBylineFitsTheSidebar() throws IOException {
+		List<String> over = new ArrayList<>();
+		int measured = 0;
+		for (Map.Entry<String, Map<String, String>> lang : languages().entrySet()) {
+			String byline = lang.getValue().getOrDefault("skylyrics.ui.by_beli", "by Beli");
+			int w = width(byline);
+			if (w < 0) {
+				continue;
+			}
+			measured++;
+			// It starts 31 in, under "SkyLyrics", and must end where the tab highlights do, 6 before the sidebar's edge
+			if (31 + w > SkyLyricsScreen.SIDEBAR_W - 6) {
+				over.add(lang.getKey() + " \"" + byline + "\" " + w + "px");
+			}
+		}
+		assertTrue(measured >= 10, "only " + measured + " languages measured");
+		assertTrue(over.isEmpty(), "the byline runs past the sidebar: " + over);
+	}
+
+	@Test
 	void theSongSearchHintFitsItsBoxUncut() throws IOException {
 		List<String> cut = new ArrayList<>();
 		int measured = 0;

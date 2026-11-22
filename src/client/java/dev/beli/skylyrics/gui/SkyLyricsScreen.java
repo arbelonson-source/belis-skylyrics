@@ -228,7 +228,7 @@ public final class SkyLyricsScreen extends Screen {
 					? List.of("Spotify", "Music", "Spotify Web")
 					: List.of("Spotify", "Firefox", "Chrome", "mpv", "VLC", "Spotify Web");
 
-	private static final int SIDEBAR_W = 96;
+	static final int SIDEBAR_W = 96;
 	/** Width of the Lyrics switch under the tabs: room for a 40px name (the French "Paroles" is 39) beside the switch. */
 	static final int MASTER_TOGGLE_W = SIDEBAR_W - 6;
 	private static final int TAB_H = 20;
@@ -1266,7 +1266,7 @@ public final class SkyLyricsScreen extends Screen {
 		Ui.rect(g, px + 10, py + 11, 16, 16, 4, Ui.ACCENT);
 		g.drawCenteredString(font, "♪", px + 18, py + 15, 0xFFFFFFFF);
 		g.drawString(font, Ui.visual("SkyLyrics"), px + 31, py + 10, Ui.TEXT, false);
-		g.drawString(font, Ui.visual("by Beli"), px + 31, py + 20, Ui.DIM, false);
+		g.drawString(font, Ui.visual(Tr.t("by Beli")), px + 31, py + 20, Ui.DIM, false);
 
 		int tabsY = py + TABS_Y;
 		renderSearch(g, f);
