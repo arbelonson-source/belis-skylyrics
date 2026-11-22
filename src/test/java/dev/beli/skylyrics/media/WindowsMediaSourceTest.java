@@ -608,6 +608,35 @@ class WindowsMediaSourceTest {
 		assertEquals(90_000, p[3]);
 	}
 
+	/** A player that never says when keeps saying where it last wrote the position (here the start) through a pause. */
+	@Test
+	void aPlayerWithNoUpdateTimePausesWhereItsCountGotToAndGoesOnFromThere() {
+		long[] p = positions(
+				poll("Playing", 0, 0), 10_000L,
+				poll("Playing", 0, 0), 40_000L,
+				poll("Paused", 0, 0), 41_000L, // paused, and the player still says 0
+				poll("Paused", 0, 0), 50_000L,
+				poll("Playing", 0, 0), 60_000L, // played again
+				poll("Playing", 0, 0), 62_000L);
+		assertEquals(30_000, p[1]);
+		assertEquals(31_000, p[2], "paused where the count got to, not back at the start");
+		assertEquals(31_000, p[3], "and stays there");
+		assertEquals(31_000, p[4], "played again from the pause");
+		assertEquals(33_000, p[5]);
+	}
+
+	@Test
+	void aPlayerWithNoUpdateTimeThatWritesThePausedPositionIsBelieved() {
+		long[] p = positions(
+				poll("Playing", 0, 0), 10_000L,
+				poll("Paused", 29_500, 0), 40_000L,
+				poll("Playing", 29_500, 0), 50_000L,
+				poll("Playing", 29_500, 0), 51_000L);
+		assertEquals(29_500, p[1]);
+		assertEquals(29_500, p[2]);
+		assertEquals(30_500, p[3]);
+	}
+
 	@Test
 	void aNewSongOnAPlayerWithNoUpdateTimeStartsItsOwnCount() {
 		long[] p = positions(
