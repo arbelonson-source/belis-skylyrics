@@ -262,6 +262,7 @@
 - **Pressing play with Spotify Web.** With Spotify Web, when you press play on a paused song, jump to another spot in a paused song or start a song from the song library, the lyrics and the top bar now catch up within about a second. Before, they could stand still (or say nothing is playing) for up to 4 seconds while the music already played: Spotify often still gives the old state for a moment after a press, and SkyLyrics then went back to asking it only every 4 seconds.
 - **"Nothing playing" with Spotify Web.** With Spotify Web, the **Now playing** card on the Music tab now says "Play a song in Spotify on any device" while nothing plays, instead of suggesting a browser or any player: Spotify Web only follows your Spotify account, so a video in a browser or another music player never shows there.
 - **Play/pause right after using your phone.** With Spotify Web, the play/pause key and button now work the first time after you paused or resumed Spotify somewhere else (your phone, the Spotify app). Before, a press a few seconds after that (up to 15 seconds with the lyrics off) could ask Spotify for what it was already doing, so nothing happened until you pressed again.
+- **Quitting while a song plays.** Closing the game while SkyLyrics is reading your music player no longer writes "Couldn't read the music player" into the game's log, and a song change read in that last moment no longer sets off a lyrics and cover lookup that the closing game refuses (more lines in the log). It was likeliest on a Mac, where each read takes longest.
 
 ### Faster
 
