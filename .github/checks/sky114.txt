@@ -1,0 +1,68 @@
+# The constellations on the painted skies (Synthwave, Moonlight), fix/sky114 (1280x720, GUI scale 2 as the test world starts).
+# The painted skies go out through vanilla's text background shader, which throws away every pixel fainter than a tenth;
+# the constellation lines were sent at 0.4 of the sky's strength, so they went missing whenever the sky showed under a
+# quarter. The view below looks west of the lyrics at the six-star figure (as in sky-fixes.txt).
+# 1. sky114-synthwave-faint / sky114-moonlight-faint (Strength 15%): on the branch the six stars are joined by thin,
+#    faint lines; with the old code the same stars show with no lines at all.
+# 2. sky114-moonlight-off / -on bursts (Strength 70%, Constellations switched off, then on): on the branch the lines and
+#    stars fade into the sky over 1.5 s, frame by frame; with the old code the lines are gone in one step about two
+#    thirds of the way through (and come on in one step a third of the way in), and the stars a frame or two later
+#    (or earlier).
+# 3. sky114-synthwave-dusk (Strength 70%, time 12200, the sky about a fifth of the way in): on the branch the faint
+#    synthwave sky has its constellation lines; with the old code only the stars.
+# sky114-synthwave-full and sky114-moonlight-full (a full night at 70%) look the same on both: compare them as a check
+# that nothing else changed.
+# Run it, and with -f mod_ref=main to compare with the old code:
+#   gh workflow run screenshots.yml --ref fix/sky114 -f version=1.21.11 -f script=.github/checks/sky114.txt
+#   gh workflow run screenshots.yml --ref fix/sky114 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/sky114.txt
+
+# A clear night that stays night; the lyrics pinned to the north, looking at the six-star constellation west of them
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set direction NORTH
+set sky SYNTHWAVE
+set skyStrength 0.7
+set constellations true
+set shootingStars false
+set twinkle false
+set skyPulse false
+look 258 -34
+sleep 8
+shot sky114-synthwave-full
+
+# 1. A low Strength: the lines must still join the stars
+set skyStrength 0.15
+sleep 3
+shot sky114-synthwave-faint
+set sky MOONLIGHT
+sleep 5
+shot sky114-moonlight-faint
+set skyStrength 0.7
+sleep 3
+shot sky114-moonlight-full
+
+# 2. Constellations off and on again over the Moonlight sky: a smooth fade either way
+set constellations false
+burst sky114-moonlight-off 12 150
+wait burst sky114-moonlight-off wrote
+sleep 2
+set constellations true
+burst sky114-moonlight-on 12 150
+wait burst sky114-moonlight-on wrote
+sleep 2
+
+# 3. Early dusk: the synthwave sky about a fifth of the way in
+set sky SYNTHWAVE
+sleep 5
+cmd time set 12200
+sleep 3
+shot sky114-synthwave-dusk
+
+# Back as the test world starts
+cmd time set midnight
+set sky AURORA
+set direction FOLLOW
+look 0 -28
+sleep 2

@@ -155,6 +155,9 @@ final class SynthwaveSky {
 		}
 	}
 
+	/** This sky right behind each constellation star, so they are drawn into it (see {@link Constellations#drawOver}). */
+	static final int[][] CONSTELLATIONS_BEHIND = Constellations.behind(SynthwaveSky::background);
+
 	private final SkyFrame frame = new SkyFrame();
 
 	/** Rings round the sun as tangents: its middle, then finely through the glow and coarser through the halo. */
