@@ -35,9 +35,11 @@ class LateDetailsTest {
 	private LyricsService service;
 
 	@AfterEach
-	void stop() {
+	void stop() throws InterruptedException {
 		if (service != null) {
-			service.shutdown();
+			// Wait for the worker: it may still be saving the lyrics into the temp folder, and on Windows and macOS a
+			// file being written makes the folder's clean-up fail the test
+			assertTrue(service.shutdownAndWait(10, TimeUnit.SECONDS));
 		}
 	}
 
