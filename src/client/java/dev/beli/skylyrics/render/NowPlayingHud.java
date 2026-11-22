@@ -985,7 +985,7 @@ public final class NowPlayingHud {
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
 		int clipLeft = TopBarLayout.textClipLeft(x);
 		// Words past the room stop where the highlight would, a little before the equaliser
-		int clipRight = TopBarLayout.textClipRight(x, width);
+		int clipRight = TopBarLayout.textClipRight(x, width, clipLeft, clipSize, clipGuiWidth);
 		int clipTop = Math.round(midY - PILL_H / 2f) + 1, clipBottom = Math.round(midY + PILL_H / 2f) - 1;
 		textClipLeft = clipLeft;
 		textClipRight = clipRight;
