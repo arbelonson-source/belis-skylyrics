@@ -204,6 +204,8 @@ public final class LibraryScreen extends Screen {
 		final List<Float> lift = new ArrayList<>();
 		@Nullable CompletableFuture<? extends Page<?>> pending;
 		int next;
+		/** How many entries the list has altogether, as the last page said. */
+		int total;
 		boolean loaded;
 		String error = "";
 		float retryAt;
@@ -249,6 +251,7 @@ public final class LibraryScreen extends Screen {
 					lift.add(0f);
 				}
 				next = page.next();
+				total = page.total();
 				failures = 0;
 			} catch (CompletionException e) {
 				error = message(e.getCause());
@@ -257,6 +260,11 @@ public final class LibraryScreen extends Screen {
 			}
 			pending = null;
 			loaded = true;
+		}
+
+		/** How many cards the list has with the pages still to come, not just the ones loaded so far. */
+		int size() {
+			return LibraryGrid.listSize(items.size(), next, total);
 		}
 	}
 
@@ -1308,8 +1316,11 @@ public final class LibraryScreen extends Screen {
 	private void say(String text) {
 		toast = text;
 		toastAge = 0;
+		message.shown();
 		afterKeyboardAction(); // the Narrator reads it while it shows
 	}
+
+	private final MessageNarration message = new MessageNarration();
 
 	private void pollPlaying() {
 		if (playing == null || !playing.isDone()) {
@@ -1670,6 +1681,7 @@ public final class LibraryScreen extends Screen {
 			} else if (opened != null) {
 				closeOpened();
 				restorePlace();
+				stop = LibraryKeys.stopAfterClose(stop);
 				sayNewSection = true;
 			} else {
 				onClose();
@@ -1882,7 +1894,7 @@ public final class LibraryScreen extends Screen {
 			if (query.isBlank()) {
 				return emptyText();
 			}
-			int n = shelf.items.size();
+			int n = shelf.size();
 			return Narration.resultCount(true, busy || !shelf.loaded, n, loading, emptyText(), Tr.t("1 result"), Tr.t("%s results", n));
 		}
 		return Narration.shelfState(shelf.items.size(), shelf.loaded, busy, shelf.error, loading, emptyText());
@@ -1918,7 +1930,7 @@ public final class LibraryScreen extends Screen {
 			boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, mod.tracker().track());
 			String action = entry instanceof LibraryPlaylist list && list.openable() ? Tr.t("Press Enter to open") : Tr.t("button");
 			String tile = Narration.tile(Narration.card(name, shelf.error, text[0], Narration.underPlaying(text[1], current, Tr.t("Now playing")),
-					Tr.t("%s of %s", selected + 1, shelf.items.size())), action);
+					Tr.t("%s of %s", selected + 1, shelf.size())), action);
 			return sayResults ? Narration.join(statusWords(shelf), tile) : tile;
 		}
 		return Narration.join(Narration.card(name, shelf.error, "", "", ""), statusWords(shelf));
@@ -1946,10 +1958,7 @@ public final class LibraryScreen extends Screen {
 		if (!now.isEmpty()) {
 			output.nest().add(NarratedElementType.TITLE, Component.literal(now));
 		}
-		String message = toastWords();
-		if (!message.isEmpty()) {
-			output.nest().nest().add(NarratedElementType.TITLE, Component.literal(message));
-		}
+		message.add(output, toastWords());
 	}
 
 	@Override

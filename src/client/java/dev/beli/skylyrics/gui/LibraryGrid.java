@@ -40,6 +40,15 @@ final class LibraryGrid {
 		return next < 0 || next >= count ? selected : next;
 	}
 
+	/**
+	 * How many cards the list has altogether, for the Narrator's "3 of 40" and "40 results": the {@code loaded} cards
+	 * plus the ones still to come, which Spotify counts in {@code total} past {@code next} (where the next page starts,
+	 * -1 once the last page is in). Entries left out of a loaded page (local files, repeats) are not counted.
+	 */
+	static int listSize(int loaded, int next, int total) {
+		return next < 0 ? loaded : loaded + Math.max(0, total - next);
+	}
+
 	/** Room under the last row for one line: "Loading…" while the next page comes, or why it failed (a click on it tries again). */
 	static final int FOOTER = 16;
 

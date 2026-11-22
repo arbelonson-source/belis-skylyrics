@@ -113,6 +113,23 @@ class LibraryGridTest {
 	}
 
 	@Test
+	void theNarratorsPlaceAndResultCountTakeInTheSongsStillToCome() {
+		// the made-up library's 28 liked songs come 12 a page: two pages in, the last card loaded is "24 of 28", not
+		// "24 of 24" as if the list ended there (and a search finding 20 says "20 results", not "12 results")
+		var second = new dev.beli.skylyrics.media.SpotifyLibrary.Page<>(java.util.Collections.nCopies(12, "song"), 28, 12);
+		assertEquals(28, LibraryGrid.listSize(24, second.next(), second.total()));
+		var firstHits = new dev.beli.skylyrics.media.SpotifyLibrary.Page<>(java.util.Collections.nCopies(12, "song"), 20, 0);
+		assertEquals(20, LibraryGrid.listSize(12, firstHits.next(), firstHits.total()));
+		// Spotify sent 50 of 300 liked songs and 2 of them were left out (local files): 48 cards and 250 to come
+		assertEquals(298, LibraryGrid.listSize(48, 50, 300));
+		// the last page is in: exactly the cards that show, even when Spotify's count was off
+		assertEquals(27, LibraryGrid.listSize(27, -1, 28));
+		// songs unliked while scrolling made Spotify's count smaller than what already shows
+		assertEquals(60, LibraryGrid.listSize(60, 60, 50));
+		assertEquals(0, LibraryGrid.listSize(0, 0, 0));
+	}
+
+	@Test
 	void aChoicePastTheEndOfAShorterListComesBackOnTheArrows() {
 		// the list was swapped for a shorter one under the keyboard: card 10 chosen, 3 cards now
 		assertEquals(2, LibraryGrid.move(9, 1, 3), "Right");
