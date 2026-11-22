@@ -978,13 +978,19 @@ public final class SkyLyricsScreen extends Screen {
 
 	/** Moves the keyboard to the next ({@code dir} 1) or previous (-1) stop, skipping hidden rows and wrapping round. */
 	private void moveFocus(int dir) {
+		moveFocus(dir, false);
+	}
+
+	/** {@link #moveFocus(int)}; {@code fromSearchBox} when the keyboard leaves the search box (see {@link Focus#fromSearchBox}). */
+	private void moveFocus(int dir, boolean fromSearchBox) {
 		layout();
 		Ring ring = ring();
 		int from = focus == null ? -1 : ring.stops().indexOf(focus);
-		if (from < 0 && dir > 0) {
-			from = 1; // from nothing, going forward starts at the first row, after the Lyrics switch and Preview
+		if (fromSearchBox) {
+			from = Focus.fromSearchBox(from, tab == SEARCH_TAB);
 		}
-		int to = Focus.next(ring.available(), from, dir);
+		// from nothing, going forward starts at the first row, after the Lyrics switch and Preview
+		int to = Focus.step(ring.available(), from, dir, 2);
 		if (to >= 0) {
 			focus = ring.stops().get(to);
 			focusAt = to;
@@ -1733,12 +1739,12 @@ public final class SkyLyricsScreen extends Screen {
 			} else if (event.isConfirmation()) {
 				typing = false;
 				if (!tabs.get(SEARCH_TAB).isEmpty()) {
-					moveFocus(1);
+					moveFocus(1, true);
 				}
 			} else if (event.isCycleFocus() || event.isDown() || event.isUp()) {
 				// Tab or the arrows leave the box for the results
 				typing = false;
-				moveFocus(ScreenKeys.focusDir(event.isCycleFocus(), event.hasShiftDown(), event.isUp()));
+				moveFocus(ScreenKeys.focusDir(event.isCycleFocus(), event.hasShiftDown(), event.isUp()), true);
 			} else if (event.key() == InputConstants.KEY_BACKSPACE && !query.isEmpty()) {
 				editSearch(event.hasControlDownWithQuirk() ? "" : query.substring(0, query.offsetByCodePoints(query.length(), -1)));
 			} else if (event.isPaste()) {

@@ -204,6 +204,7 @@
 - **Type animation and fast lines.** With the **Type** animation (Lines layout), a line sung faster than it types (a fast rap line, or a long one on two rows) now keeps up with the singing: the **Karaoke fill** no longer runs on into letters that aren't typed yet, and the end of the line shows before the next line takes over (with **Previous line** off it never showed at all). Seeking into the middle of a line shows what has been sung at once and types on from there.
 - **Attack meter under a picked crosshair (1.21.1).** On Minecraft 1.21.1, with a crosshair style picked, the attack meter under it is see-through and inverted like the game's own again, instead of a solid grey and white bar.
 - **Spotify after the computer sleeps.** With Spotify signed in, when Spotify asks for a renewed sign-in in the middle of a song (as it can after the computer wakes from sleep), the lyrics no longer run ahead of the song by up to half the time the renewal took. Before, when that was under about a third of a second, they stayed that far ahead until the next pause, skip or seek.
+- **Leaving the settings search with the keyboard.** In the settings, Enter, Tab or Down in the search box now go to the first setting found. Before, they carried on from wherever the keyboard was before the search: from **Done** round to the **Lyrics** switch (so Space then turned the lyrics off), from **Reset all** to **Done**, and from a setting that was also found to the one after it, skipping the first results.
 
 ### Faster
 

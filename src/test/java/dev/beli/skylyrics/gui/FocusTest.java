@@ -96,4 +96,29 @@ class FocusTest {
 		assertEquals(true, Focus.mouseMoved(100, 100, 100, 98));
 		assertEquals(false, Focus.mouseMoved(100, 100, 101.9, 98.1));
 	}
+
+	@Test
+	void fromNothingTheKeyboardStartsAtTheFirstRowOrTheLastStop() {
+		// the Lyrics switch, Preview, three rows (the middle one hidden), Reset all, Done
+		boolean[] ring = {true, true, true, false, true, true, true};
+		assertEquals(2, Focus.step(ring, -1, 1, 2));
+		assertEquals(6, Focus.step(ring, -1, -1, 2));
+		assertEquals(4, Focus.step(ring, 2, 1, 2));
+		assertEquals(0, Focus.step(ring, 6, 1, 2));
+	}
+
+	@Test
+	void leavingTheSearchBoxLandsOnTheFirstResult() {
+		// the search results' stops: the Lyrics switch, Preview, three results, Reset all, Done
+		boolean[] ring = {true, true, true, true, true, true, true};
+		int done = 6;
+		// Tab to Done, Ctrl+F, type a word, then Enter (or Tab or Down): the first result, not round to the Lyrics switch
+		assertEquals(2, Focus.step(ring, Focus.fromSearchBox(done, true), 1, 2));
+		// the keyboard was on the second result, which is still found: the first result, not the third
+		assertEquals(2, Focus.step(ring, Focus.fromSearchBox(3, true), 1, 2));
+		// Shift+Tab or Up: the last stop, as from nothing
+		assertEquals(6, Focus.step(ring, Focus.fromSearchBox(3, true), -1, 2));
+		// nothing typed (the tab's own rows still show): Tab carries on from where the keyboard was
+		assertEquals(4, Focus.step(ring, Focus.fromSearchBox(3, false), 1, 2));
+	}
 }
