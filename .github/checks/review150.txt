@@ -1,0 +1,57 @@
+# The top bar's highlight at Bar sizes other than 100%, fix/review150 (1280x720, GUI scale 3 = 427x240; the demo song,
+# paused on a line so the pictures hold still; Font: Minecraft, where the highlight's round ends show best).
+# Run it on the branch, and with -f mod_ref=main for the old code:
+#   gh workflow run screenshots.yml --ref fix/review150 -f version=1.21.11 -f script=.github/checks/review150.txt
+#   gh workflow run screenshots.yml --ref fix/review150 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/review150.txt
+# (and the same two with -f version=1.21.1: its clip box is worked out by the mod, TopBarLayout.scaledClip, not the game).
+#
+# Paused on "Every word is written in the stars" with "the stars" on the violet highlight (as bar133-pixel-last): the
+# pill is sized to the line, so the last word's highlight ends exactly at the end of the text's room, where the clip box
+# ends. The game scales that box with the bar and rounds its left edge and its width down to whole GUI units.
+#   review150-size100: Bar size 100%: both ends round, the same on both (batch 101's fix; nothing changed here).
+#   review150-size130, review150-size95, review150-size115: old code: the highlight's right end is cut straight up and
+#     down, about 2 to 3.5 screen pixels of its round end missing (worked out for this pill; the exact amount depends on
+#     where the eased pill sits, so one of the three may show less). Branch: the right end round in all three.
+#   review150-size75: the smallest bar, old code about 0.7 pixel cut (may not show); branch round.
+#   The log's "barprobe clip left= right=" are in the bar's own units (before the size): the branch's right is the
+#     old one (303 in bar133) or one to three more; it must stay left of the equaliser's bars in every picture.
+# Also look that no word of the line shows under the equaliser at 130% (the clip may reach up to 2 units further right).
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+guiscale 3
+sleep 8
+
+set smoothFont false
+music pause
+sleep 1
+seek 27.6
+sleep 2
+where
+shot review150-size100
+barprobe
+sleep 1
+set barSize 1.3
+sleep 2
+shot review150-size130
+barprobe
+sleep 1
+set barSize 0.95
+sleep 2
+shot review150-size95
+barprobe
+sleep 1
+set barSize 1.15
+sleep 2
+shot review150-size115
+barprobe
+sleep 1
+set barSize 0.75
+sleep 2
+shot review150-size75
+barprobe
+sleep 1
+set barSize 1

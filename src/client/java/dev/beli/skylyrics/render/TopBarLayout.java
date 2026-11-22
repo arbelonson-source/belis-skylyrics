@@ -399,6 +399,25 @@ final class TopBarLayout {
 	}
 
 	/**
+	 * The same for a bar drawn {@code size} big about the middle of a GUI {@code guiWidth} wide, with the clip starting at
+	 * {@code left}. The game takes the box through the bar's scale and then rounds its left edge and its width down to
+	 * whole GUI units (on 1.21.1 {@link #scaledClip} does it the same way), which at any size but 100% could leave its
+	 * right edge up to two units short of the room's end, on the highlight's round end. The right edge goes out until it
+	 * still reaches the room's end after that rounding.
+	 */
+	static int textClipRight(float x, float pill, int left, float size, float guiWidth) {
+		float end = x + ART_INSET + ART + TEXT_GAP + textRoom(pill);
+		int right = textClipRight(x, pill);
+		// Worked out as the pose does it: scaled, then moved by the bar's offset from the screen's middle
+		float dx = (1 - size) * guiWidth / 2f;
+		float x1 = size * left + dx, want = size * end + dx;
+		for (int i = 0; i < 4 && Math.floor(x1) + Math.floor(size * right + dx - x1) < want; i++) {
+			right++;
+		}
+		return right;
+	}
+
+	/**
 	 * How far a line too long for the pill moves left, in reading order, so the word being sung (with its
 	 * highlight) stays in view before the equaliser. A line that fits never moves, and a long one moves no
 	 * further than to show its end. A word wider than the room keeps its start in view (never shifted past

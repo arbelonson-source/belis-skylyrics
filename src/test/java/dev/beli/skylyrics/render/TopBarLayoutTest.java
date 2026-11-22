@@ -66,6 +66,49 @@ class TopBarLayoutTest {
 		}
 	}
 
+	/**
+	 * Where the game's clip box ends up for a box given in the bar's own units, with the bar drawn {@code size} big about
+	 * the screen's middle: its scissor takes the box through the pose and rounds the left edge and the width down to whole
+	 * GUI units (ScreenRectangle.transformAxisAligned, the same on every version; 1.21.1's is {@link TopBarLayout#scaledClip}).
+	 */
+	private static int[] gameClip(int left, int right, float size, int guiWidth) {
+		float dx = (1 - size) * guiWidth / 2f;
+		float x1 = size * left + dx, x2 = size * right + dx;
+		int l = (int) Math.floor(x1);
+		return new int[] {l, l + (int) Math.floor(x2 - x1)};
+	}
+
+	@Test
+	void theTextClipNeverCutsTheHighlightsRoundEndsAtAnyBarSize() {
+		// Every Bar size the slider gives (75% to 150% in steps of 5), on the usual GUI widths, the pill anywhere
+		for (int step = 0; step <= 15; step++) {
+			float size = (float) (0.75 + 0.05 * step);
+			for (int guiWidth : new int[] {320, 427, 480, 640, 683, 854, 960}) {
+				float dx = (1 - size) * guiWidth / 2f;
+				for (float pill : new float[] {TopBarLayout.MIN_PILL, 203.2f, TopBarLayout.PILL_W}) {
+					for (int nudge = 0; nudge < 20; nudge++) {
+						float x = (guiWidth - pill) / 2f + nudge / 20f;
+						float textX = x + TopBarLayout.ART_INSET + TopBarLayout.ART + TopBarLayout.TEXT_GAP;
+						// A scrolled line's sung word ends its highlight at the end of the room
+						float hlLeft = size * (textX - TopBarLayout.HL_PAD) + dx, hlRight = size * (textX + TopBarLayout.textRoom(pill)) + dx;
+						float eqLeft = size * (x + pill - TopBarLayout.EQ_INSET - TopBarLayout.EQ_W) + dx;
+						int left = TopBarLayout.textClipLeft(x);
+						int right = TopBarLayout.textClipRight(x, pill, left, size, guiWidth);
+						String at = " (Bar size " + size + ", GUI " + guiWidth + " wide, pill at " + x + ", " + pill + " wide)";
+						int[] shown = gameClip(left, right, size, guiWidth);
+						assertTrue(shown[0] <= hlLeft + 0.001f, "the clip starts at " + shown[0] + ", after the highlight's left end at " + hlLeft + at);
+						assertTrue(shown[1] >= hlRight - 0.001f, "the clip ends at " + shown[1] + ", before the highlight's right end at " + hlRight + at);
+						assertTrue(shown[1] <= eqLeft - 1, "the clip reaches the equaliser at " + eqLeft + ": " + shown[1] + at);
+						// 1.21.1 works the box out itself, the same way
+						int[] old = TopBarLayout.scaledClip(left, 20, right, 36, size, guiWidth, 20);
+						assertEquals(shown[0], old[0], "1.21.1's left" + at);
+						assertEquals(shown[1], old[2], "1.21.1's right" + at);
+					}
+				}
+			}
+		}
+	}
+
 	@Test
 	void lineThatFitsNeverScrolls() {
 		assertEquals(0, TopBarLayout.lineShift(100, 80, 100, 120, 3));
