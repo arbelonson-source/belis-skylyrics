@@ -140,4 +140,12 @@ final class Narration {
 	static String listState(String state, int count, String one, String many) {
 		return !state.isEmpty() || count <= 0 ? state : count == 1 ? one : many;
 	}
+
+	/**
+	 * The line under the songs as the keyboard is on it: {@code loadingWord} ("Loading") while the next page is being tried
+	 * again, else why it failed and the Try again button that Enter presses.
+	 */
+	static String footer(boolean loading, String loadingWord, String error, String tryAgain, String kind) {
+		return loading ? loadingWord : join(error, button(tryAgain, kind));
+	}
 }

@@ -80,4 +80,18 @@ final class LibraryKeys {
 	static int stopAfterClose(int stop) {
 		return -1;
 	}
+
+	/**
+	 * Whether an arrow takes the keyboard onto the line under the songs that says why the next page failed (where Enter
+	 * tries again, as a click does): the arrow toward that line ({@code towardIt}: Down under the grid, Right after the
+	 * shelf's last column), from a card it can't move past ({@code stuck}), while the line shows ({@code failed}).
+	 */
+	static boolean ontoFooter(boolean towardIt, boolean stuck, boolean failed) {
+		return towardIt && stuck && failed;
+	}
+
+	/** Whether Enter (or Space) presses Try again: on the line under the songs, or in an empty list that failed to load. */
+	static boolean triesAgain(boolean onFooter, boolean emptyAndFailed) {
+		return onFooter || emptyAndFailed;
+	}
 }

@@ -56,7 +56,7 @@ public final class LibraryScreen extends Screen {
 	private static final float TOAST_TIME = 3;
 	/** A page that failed in the middle of a list is tried again after this many seconds. */
 	private static final float RETRY_AFTER = 4;
-	/** After this many failed loads in a row the list stops trying by itself (a click still tries again). */
+	/** After this many failed loads in a row the list stops trying by itself (a click, or Enter on the line under the songs, still tries again). */
 	private static final int AUTO_RETRIES = 3;
 	/** How many of the following songs are queued after the one clicked. */
 	private static final int QUEUE = 50;
@@ -97,6 +97,11 @@ public final class LibraryScreen extends Screen {
 	private boolean sayNewSection;
 	/** Which header stop the keyboard is on (see {@link #stops}), or -1 when it is on the songs or the search box. */
 	private int stop = -1;
+	/**
+	 * The keyboard is on the line under the songs that says why the next page failed (Enter tries again, as a click does),
+	 * reached with the arrow past the last card; {@link #selected} is still the card it came from.
+	 */
+	private boolean footer;
 	/** What the empty list or the search results said last, so the Narrator is told when that changes. */
 	private String lastStatus = "";
 	private boolean closed;
@@ -189,6 +194,7 @@ public final class LibraryScreen extends Screen {
 			// The chosen card and header button were places in the old list and header: the new list starts at its top
 			selected = -1;
 			stop = -1;
+			footer = false;
 		}
 		if (library instanceof HeardLibrary && section == Section.PLAYLISTS) {
 			section = Section.LIKED;
@@ -426,7 +432,45 @@ public final class LibraryScreen extends Screen {
 
 	private int contentHeight(Shelf shelf) {
 		return LibraryGrid.contentHeight(shelf.items.size(), cols, cellH, GRID_PAD, shelf.pending != null, !shelf.error.isEmpty())
-				+ 10 * (gridErrorLines(shelf) - 1);
+				+ 10 * (gridErrorLines(shelf) - 1) + (footer ? FOOTER_RING : 0);
+	}
+
+	/** Room added under the grid's last line while the keyboard is on it, so the ring around it is not cut off at the bottom. */
+	private static final int FOOTER_RING = 5;
+
+	/** Where the first of {@code lines} lines under the grid sits, for a grid drawn from {@code top}. */
+	private int footerY(Shelf shelf, int top, int lines) {
+		return top + contentHeight(shelf) - (footer ? FOOTER_RING : 0) - 12 - 10 * (lines - 1);
+	}
+
+	/** The line under the songs shows: "Loading…" for the next page, or why it failed. Not in the carousel, which has no such line. */
+	private boolean footerShown(Shelf shelf) {
+		return view() != SkyLyricsConfig.LibraryView.CAROUSEL && !shelf.items.isEmpty() && (shelf.pending != null || !shelf.error.isEmpty());
+	}
+
+	/** The line under the songs says why the next page failed (the automatic tries may be over: only a click or Enter tries again). */
+	private boolean footerFailed(Shelf shelf) {
+		return footerShown(shelf) && shelf.pending == null;
+	}
+
+	/** The arrow that goes past the last card onto the line under the songs: Down in the grid, Right on the shelf. */
+	private static boolean towardFooter(KeyEvent event, SkyLyricsConfig.LibraryView mode) {
+		return switch (mode) {
+			case GRID -> event.isDown();
+			case SHELF -> event.isRight();
+			case CAROUSEL -> false;
+		};
+	}
+
+	/** Where that arrow takes the keyboard from the chosen card. */
+	private int pastCard(Shelf shelf) {
+		return view() == SkyLyricsConfig.LibraryView.SHELF ? LibraryViews.shelfMove(selected, 1, 0, shelfRows, shelf.items.size())
+				: LibraryGrid.move(selected, cols, shelf.items.size());
+	}
+
+	/** The line under the songs as the Narrator says it with the keyboard on it. */
+	private String footerWords(Shelf shelf) {
+		return Narration.footer(shelf.pending != null, Tr.t("Loading"), shelf.error, Tr.t("Try again"), Tr.t("button"));
 	}
 
 	/** How many lines why the next page failed takes under the grid (at least 1, the Loading line's room the grid always gets). */
@@ -508,7 +552,15 @@ public final class LibraryScreen extends Screen {
 			renderSignIn(g, f);
 		} else {
 			shelf.poll();
-			String status = statusWords(shelf);
+			if (footer && !footerShown(shelf)) {
+				// The page tried again came: the keyboard goes on where the arrow that reached the line goes now, onto the new cards
+				footer = false;
+				selected = pastCard(shelf);
+				reveal(shelf);
+				afterKeyboardAction();
+			}
+			// On the line under the songs, the Narrator also hears its Loading and the error after another failed try
+			String status = footer ? footerWords(shelf) : statusWords(shelf);
 			if (!status.equals(lastStatus)) {
 				lastStatus = status;
 				afterKeyboardAction(); // loading finished, nothing found, how many results: said when it changes
@@ -678,6 +730,7 @@ public final class LibraryScreen extends Screen {
 		cfg.libraryView = SkyLyricsConfig.LibraryView.values()[index];
 		cfg.save();
 		typing = false;
+		footer = false;
 		Shelf current = shelf();
 		if (current != null) {
 			current.scrollTarget = 0;
@@ -816,6 +869,8 @@ public final class LibraryScreen extends Screen {
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
 		try {
 			int top = viewY + GRID_PAD - Math.round(shelf.scroll);
+			// The card the keyboard is on; none while it is on the line under the songs
+			int chosen = footer ? -1 : selected;
 			for (int i = 0; i < shelf.items.size(); i++) {
 				int x = viewX + (i % cols) * (cellW + LibraryGrid.GAP);
 				int y = top + (i / cols) * (cellH + LibraryGrid.GAP);
@@ -823,7 +878,7 @@ public final class LibraryScreen extends Screen {
 					continue;
 				}
 				boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, cellW, cellH);
-				float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
+				float lift = Ui.approach(shelf.lift.get(i), hover || i == chosen ? 1 : 0, f.dt(), 14);
 				shelf.lift.set(i, lift);
 				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
 				if (t <= 0) {
@@ -831,15 +886,25 @@ public final class LibraryScreen extends Screen {
 				}
 				Object entry = shelf.items.get(i);
 				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-				renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == selected, current, moving);
+				renderCard(g, entry, x, y, LibraryGrid.popIn(t), t, lift, i == chosen, current, moving);
 			}
 			if (shelf.pending != null) {
-				int y = top + contentHeight(shelf) - 12;
+				int y = footerY(shelf, top, 1);
 				g.drawCenteredString(font, Ui.visual(Tr.t("Loading") + ".".repeat(1 + (int) (clock * 3) % 3)), px + pw / 2, y, Ui.DIM);
 			} else if (!shelf.error.isEmpty()) {
 				// In the Loading line's place, which the scroll reaches; the grid ends lower for each line more it takes
 				List<String> lines = errorLines(shelf.error);
-				drawLines(g, lines, shelf.error, top + contentHeight(shelf) - 12 - 10 * (lines.size() - 1));
+				drawLines(g, lines, shelf.error, footerY(shelf, top, lines.size()));
+			}
+			if (footer && footerShown(shelf)) {
+				// The keyboard is on that line: a ring round it, like a button's
+				List<String> lines = shelf.pending != null ? List.of(Tr.t("Loading") + "...") : errorLines(shelf.error);
+				int w = 0;
+				for (String line : lines) {
+					w = Math.max(w, font.width(line));
+				}
+				int y = footerY(shelf, top, lines.size());
+				Ui.outline(g, px + pw / 2 - w / 2 - 5, y - 4, w + 10, 10 * lines.size() + 6, 6, Ui.TEXT);
 			}
 		} finally {
 			g.disableScissor();
@@ -886,6 +951,8 @@ public final class LibraryScreen extends Screen {
 		int top = shelfTop();
 		int left = Math.round(shelf.scroll);
 		int width = LibraryViews.shelfWidth(shelf.items.size(), shelfRows, shelfStride, LibraryGrid.GAP);
+		// The cover the keyboard is on; none while it is on the line after the last column
+		int chosen = footer ? -1 : selected;
 		g.enableScissor(viewX - 4, viewY, viewX + viewW + 4, viewY + viewH);
 		try {
 			for (int r = 0; r < shelfRows; r++) {
@@ -904,7 +971,7 @@ public final class LibraryScreen extends Screen {
 					continue;
 				}
 				boolean hover = inView && Ui.inside(f.mx(), f.my(), x, y, SHELF_COVER, SHELF_COVER);
-				float lift = Ui.approach(shelf.lift.get(i), hover || i == selected ? 1 : 0, f.dt(), 14);
+				float lift = Ui.approach(shelf.lift.get(i), hover || i == chosen ? 1 : 0, f.dt(), 14);
 				shelf.lift.set(i, lift);
 				float t = Mth.clamp((clock - shelf.born.get(i)) / POP, 0, 1);
 				if (t <= 0) {
@@ -912,21 +979,26 @@ public final class LibraryScreen extends Screen {
 				}
 				Object entry = shelf.items.get(i);
 				boolean current = entry instanceof LibraryItem item && LibraryGrid.isPlaying(item, now);
-				renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == selected,
+				renderCard(g, entry, x, y - Math.round(lift * 3), SHELF_COVER, 1, false, LibraryGrid.popIn(t), t, lift, i == chosen,
 						current, moving);
 			}
-			// "Loading…", or why the next page failed (a click on it tries again), after the last column where the scroll reaches
+			// "Loading…", or why the next page failed (a click or Enter on it tries again), after the last column where the scroll reaches
 			List<String> tail = shelfTail(shelf, 1 + (int) (clock * 3) % 3);
 			boolean rtl = Ui.paragraphRtl(String.join(" ", tail));
 			for (int i = 0; i < tail.size(); i++) {
 				g.drawString(font, Ui.visual(tail.get(i), rtl), LibraryViews.tailX(viewX, left, width), shelfTailY(top, tail.size()) + 10 * i,
 						shelf.pending != null ? Ui.DIM : Ui.MUTED, false);
 			}
+			if (footer && !tail.isEmpty()) {
+				// The keyboard is on those lines: a ring round them, like a button's (the scissor leaves room for it at the right)
+				Ui.outline(g, LibraryViews.tailX(viewX, left, width) - 4, shelfTailY(top, tail.size()) - 4, shelfTailW(shelf) + 8,
+						10 * tail.size() + 6, 6, Ui.TEXT);
+			}
 		} finally {
 			g.disableScissor();
 		}
-		if (selected >= 0 && selected < shelf.items.size()) {
-			String[] text = labels(shelf.items.get(selected));
+		if (chosen >= 0 && chosen < shelf.items.size()) {
+			String[] text = labels(shelf.items.get(chosen));
 			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[0], viewW - 20)), px + pw / 2, viewY + viewH - TEXT_H + 2, Ui.TEXT);
 			g.drawCenteredString(font, Ui.visual(Ui.clip(font, text[1], viewW - 20)), px + pw / 2, viewY + viewH - TEXT_H + 12, Ui.DIM);
 		}
@@ -1378,6 +1450,7 @@ public final class LibraryScreen extends Screen {
 			openedFrom = index;
 			openedList = list;
 			selected = -1;
+			footer = false;
 			sayNewSection = true;
 			return;
 		}
@@ -1423,6 +1496,7 @@ public final class LibraryScreen extends Screen {
 	}
 
 	private void closeOpened() {
+		footer = false;
 		if (opened != null) {
 			opened.cancel();
 			opened = null;
@@ -1440,6 +1514,7 @@ public final class LibraryScreen extends Screen {
 		selected = -1;
 		openedFrom = -1;
 		stop = -1;
+		footer = false;
 		sayNewSection = true;
 		if (s == Section.SEARCH) {
 			typing = true;
@@ -1454,6 +1529,7 @@ public final class LibraryScreen extends Screen {
 		sayNewSection = false;
 		sayResults = false;
 		stop = -1;
+		footer = false;
 		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
 			return true;
 		}
@@ -1535,7 +1611,7 @@ public final class LibraryScreen extends Screen {
 			int gridEnd = viewY + GRID_PAD - Math.round(shelf.scroll) + contentHeight(shelf);
 			if (!shelf.items.isEmpty() && !shelf.error.isEmpty() && view() == SkyLyricsConfig.LibraryView.GRID
 					&& my <= gridEnd && my >= gridEnd - LibraryGrid.FOOTER - 10 * (gridErrorLines(shelf) - 1)) {
-				// The error under the last card is a button too, all its lines
+				// The error under the last card is a button too, all its lines (Enter on it with the keyboard does the same)
 				shelf.more();
 				return true;
 			}
@@ -1645,7 +1721,12 @@ public final class LibraryScreen extends Screen {
 		Shelf shelf = shelf();
 		if (library != null && shelf != null && view() == SkyLyricsConfig.LibraryView.SHELF
 				&& Ui.inside(mx, my, viewX, viewY, viewW, viewH)) {
-			selected = LibraryKeys.afterHover(selected, shelfHitAt(shelf, mx, my));
+			int hit = shelfHitAt(shelf, mx, my);
+			if (hit >= 0) {
+				// The mouse chose a cover: the keyboard is back on the covers too
+				footer = false;
+			}
+			selected = LibraryKeys.afterHover(selected, hit);
 		}
 		super.mouseMoved(mx, my);
 	}
@@ -1767,6 +1848,17 @@ public final class LibraryScreen extends Screen {
 			stop = -1;
 		}
 		boolean hasSongs = !shelf.items.isEmpty();
+		if (footer && !footerShown(shelf)) {
+			footer = false;
+		}
+		if (footer && arrow) {
+			// On the line under the songs: the arrow that came here stays, the others go back to the card it came from
+			if (!towardFooter(event, mode)) {
+				footer = false;
+				reveal(shelf);
+			}
+			return true;
+		}
 		if (stop >= 0) {
 			if (event.isConfirmation() || event.key() == InputConstants.KEY_SPACE) {
 				swallowSpace = event.key() == InputConstants.KEY_SPACE;
@@ -1803,6 +1895,7 @@ public final class LibraryScreen extends Screen {
 				return true;
 			}
 			typing = false;
+			int from = selected;
 			if (mode == SkyLyricsConfig.LibraryView.SHELF) {
 				int dCol = event.isLeft() ? -1 : event.isRight() ? 1 : 0;
 				int dRow = event.isUp() ? -1 : event.isDown() ? 1 : 0;
@@ -1810,10 +1903,18 @@ public final class LibraryScreen extends Screen {
 			} else {
 				selected = LibraryGrid.move(selected, step, shelf.items.size());
 			}
+			if (LibraryKeys.ontoFooter(towardFooter(event, mode), from >= 0 && selected == from, footerFailed(shelf))) {
+				// Past the last card onto the line saying why the next page failed, where Enter tries again; it sits at the very end
+				footer = true;
+				shelf.scrollTarget = Float.MAX_VALUE;
+				return true;
+			}
 			reveal(shelf);
 			return true;
 		}
-		if (shelf.items.isEmpty() && !shelf.error.isEmpty() && (event.isConfirmation() || !typing && event.key() == InputConstants.KEY_SPACE)) {
+		if (LibraryKeys.triesAgain(footer, shelf.items.isEmpty() && !shelf.error.isEmpty())
+				&& (event.isConfirmation() || !typing && event.key() == InputConstants.KEY_SPACE)) {
+			// Tries the page again, as a click does (nothing while it is already being tried again); never plays the card above
 			shelf.more();
 			swallowSpace = event.key() == InputConstants.KEY_SPACE;
 			return true;
@@ -1886,6 +1987,7 @@ public final class LibraryScreen extends Screen {
 	private void edit(String text) {
 		query = dev.beli.skylyrics.util.TextCut.limit(text, 80);
 		selected = -1;
+		footer = false;
 		typedAt = System.nanoTime();
 		searchDirty = true;
 	}
@@ -1931,6 +2033,9 @@ public final class LibraryScreen extends Screen {
 		String name = Narration.section(sayNewSection, opened != null, openedName, Narration.join(sectionName(section), where));
 		if (shelf.items.isEmpty() && !shelf.error.isEmpty()) {
 			return Narration.join(Narration.card(name, shelf.error, "", "", ""), Tr.t("Try again"), Tr.t("button"));
+		}
+		if (footer && footerShown(shelf)) {
+			return footerWords(shelf);
 		}
 		if (selected >= 0 && selected < shelf.items.size()) {
 			Object entry = shelf.items.get(selected);

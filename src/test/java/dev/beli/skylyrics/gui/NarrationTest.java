@@ -212,4 +212,12 @@ class NarrationTest {
 		assertEquals("12 results", Narration.listState("12 results", 12, "1 result", "12 results"));
 		assertEquals("", Narration.listState("", 0, "1 song", "0 songs"));
 	}
+
+	@Test
+	void theLineUnderTheSongsSaysWhyTheNextPageFailedAndThatEnterTriesAgain() {
+		assertEquals("Can't reach the internet or Spotify, Try again, button",
+				Narration.footer(false, "Loading", "Can't reach the internet or Spotify", "Try again", "button"));
+		// Enter pressed: the page is being tried again
+		assertEquals("Loading", Narration.footer(true, "Loading", "", "Try again", "button"));
+	}
 }
