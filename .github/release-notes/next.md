@@ -243,6 +243,7 @@
 - **The song's name shows once per song.** When a browser or a Linux player sends a song's length, album cover or artist some seconds after its name, the top bar no longer goes back to the song's name over the line being sung, and with **Song name only on change** it no longer pops up again for it.
 - **Windows music reader that never answers.** On Windows, when the music reader starts but then never answers (Windows' media controls stuck), SkyLyrics now tries a fresh one once and then waits 15 seconds, then longer, between tries, instead of starting a new hidden PowerShell about every 13 seconds for as long as the game runs.
 - **Spotify Web on Windows.** On Windows, picking **Spotify Web** as the **Player** now stops the hidden PowerShell that reads Windows' media controls, instead of leaving it running idle until you close the game; picking another player starts it again.
+- **Mac status messages in your language.** On a Mac, when SkyLyrics can't start osascript, osascript doesn't answer in time or it fails, the **Status** line on the Music tab now says so in the game's language instead of in English.
 
 ### Faster
 
