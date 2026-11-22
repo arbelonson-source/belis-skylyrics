@@ -183,6 +183,8 @@ public final class LrcParser {
 			}
 			String row = dev.beli.skylyrics.media.Track.cap(tidy(raw), MAX_LINE);
 			if (!SECTION.matcher(row).matches()) {
+				// "[Chorus] words" shows only the words, as on a timed line
+				row = LEADING_TAG.matcher(row).replaceFirst("");
 				rows.add(NOTES.matcher(row).matches() ? "" : row);
 			}
 		}
