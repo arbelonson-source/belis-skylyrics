@@ -30,7 +30,6 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
@@ -565,9 +564,9 @@ public final class SkyEffects {
 		// and see-through text leaves no depth behind, so an opaque sky drawn later would paint over it.
 		// The added light leaves no depth behind either (see AddedLightType): it sits inside the world (at most 110
 		// blocks out), and the lyrics, glass, water, ice and the clouds are drawn after it, so marking its depth would
-		// cut holes in any of them further away. Nor does the painted sky (see PaintedSkyType), or every cloud past it
-		// would be hidden. It has a batch of its own before the rest: in one batch the render types come in no set order,
-		// and drawn after the sparkles and shooting stars it would paint over them.
+		// cut holes in any of them further away. Nor do the painted sky and the eclipse disc (see PaintedSkyType), or
+		// every cloud past them would be hidden. The painted sky has a batch of its own before the rest: in one batch
+		// the render types come in no set order, and drawn after the sparkles and shooting stars it would paint over them.
 		//? if >=26.1 {
 		/*OrderedSubmitNodeCollector sky = context.submitNodeCollector().order(SKY_ORDER);
 		OrderedSubmitNodeCollector backdrop = context.submitNodeCollector().order(PAINTED_ORDER);
@@ -586,7 +585,7 @@ public final class SkyEffects {
 			sky.submitCustomGeometry(pose, lightType(shaders), drawer);
 		}
 		if (effect == SkyEffect.ECLIPSE) {
-			sky.submitCustomGeometry(pose, RenderTypes.textBackground(), discDrawer);
+			sky.submitCustomGeometry(pose, discType(shaders), discDrawer);
 			// Shooting stars and sparkles come after the disc, or it would black them out where they cross the sun
 			if (sparkles || meteorsAlive > 0) {
 				sky.submitCustomGeometry(pose, lightType(shaders), frontDrawer);
@@ -598,6 +597,16 @@ public final class SkyEffects {
 	/** The render type the added light goes out through (see {@link AddedLightType}); {@code shaders} when a shader pack is on. */
 	static RenderType lightType(boolean shaders) {
 		return AddedLightType.get(shaders);
+	}
+
+	/**
+	 * The render type the eclipse's black disc goes out through; {@code shaders} when a shader pack is on. The painted
+	 * skies' one (see {@link PaintedSkyType}): the text background type without marking its depth, which hid every cloud
+	 * in front of the sun and left the black disc on top of them. Nothing needs its depth: the lyrics hang nearer, the
+	 * sparkles and shooting stars are drawn after it, and its glow lies round it, never over it.
+	 */
+	static RenderType discType(boolean shaders) {
+		return PaintedSkyType.get(shaders);
 	}
 
 	/** True for the skies that cover the vanilla one: synthwave and moonlight. */
