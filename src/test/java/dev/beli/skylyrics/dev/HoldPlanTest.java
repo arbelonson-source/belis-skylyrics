@@ -36,6 +36,16 @@ class HoldPlanTest {
 	}
 
 	@Test
+	void bindTakesAMappingAndAKey() {
+		assertEquals(new DevKeys.Bind("key.skylyrics.lyrics_late", "key.keyboard.period"), DevKeys.parseBind("skylyrics.lyrics_late period"));
+		assertEquals(new DevKeys.Bind("key.skylyrics.lyrics_early", "key.keyboard.comma"), DevKeys.parseBind(" key.skylyrics.lyrics_early  key.keyboard.comma "));
+		assertEquals(new DevKeys.Bind("key.sneak", "key.mouse.4"), DevKeys.parseBind("sneak key.mouse.4"));
+		assertThrows(IllegalArgumentException.class, () -> DevKeys.parseBind(""));
+		assertThrows(IllegalArgumentException.class, () -> DevKeys.parseBind("skylyrics.lyrics_late"));
+		assertThrows(IllegalArgumentException.class, () -> DevKeys.parseBind("skylyrics.lyrics_late period comma"));
+	}
+
+	@Test
 	void legacyUseOnOffIsRecognised() {
 		assertEquals(Boolean.TRUE, DevKeys.legacyUse("use on"));
 		assertEquals(Boolean.FALSE, DevKeys.legacyUse("use off"));

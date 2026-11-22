@@ -196,6 +196,23 @@ public final class DevTestHook {
 		SkyLyricsClient.LOG.info("Test hook: holding {} for {} ms", hold.mapping(), hold.ms());
 	}
 
+	/**
+	 * "bind <mapping> <key>": puts the key on the binding, as picking it in Controls does (not saved), so {@code hold} can
+	 * press a binding that starts with no key, like the timing keys: "bind skylyrics.lyrics_late period".
+	 */
+	private static void bind(Minecraft client, String arg) {
+		DevKeys.Bind bind = DevKeys.parseBind(arg);
+		for (net.minecraft.client.KeyMapping mapping : client.options.keyMappings) {
+			if (mapping.getName().equals(bind.mapping())) {
+				mapping.setKey(com.mojang.blaze3d.platform.InputConstants.getKey(bind.key()));
+				net.minecraft.client.KeyMapping.resetMapping();
+				SkyLyricsClient.LOG.info("Test hook: {} is on {}", bind.mapping(), bind.key());
+				return;
+			}
+		}
+		SkyLyricsClient.LOG.warn("Test hook: no key mapping {}", bind.mapping());
+	}
+
 	/** "unbind <mapping>": the binding's key becomes the unknown key, as Escape on it in Controls sets it (not saved). */
 	private static void unbind(Minecraft client, String arg) {
 		String name = DevKeys.mappingName(arg);
@@ -846,6 +863,7 @@ public final class DevTestHook {
 				case "use" -> net.minecraft.client.KeyMapping.click(com.mojang.blaze3d.platform.InputConstants.getKey(client.options.keyUse.saveString()));
 				case "hold" -> hold(client, arg);
 				case "unbind" -> unbind(client, arg);
+				case "bind" -> bind(client, arg);
 				case "attack" -> client.options.keyAttack.setDown(arg.equals("on"));
 				case "set" -> set(arg);
 				case "option" -> option(client, arg);
