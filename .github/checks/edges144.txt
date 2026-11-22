@@ -1,0 +1,200 @@
+# Leftovers at the screen's edges, fix/edges144. Run at 1920x1080 (GUI scale 3 = 640x360, where 1.21.11's F3 text ends
+# well above a bottom bar; GUI scale 2 = 960x540). The branch, then the old code for comparison:
+#   gh workflow run screenshots.yml --ref fix/edges144 -f version=1.21.11 -f script=.github/checks/edges144.txt -f size=1920x1080
+#   gh workflow run screenshots.yml --ref fix/edges144 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/edges144.txt -f size=1920x1080
+# main has no "debug fps/net/pie" (there they close F3), so its run only compares parts 1 and 4 (and the F3-alone shots).
+# For old pictures of every part, with the charts showing, use the branch's test hook commit instead of main (batch 109
+# plus the hook's chart switches alone): -f mod_ref=6cdf5a13
+# Worth a run with -f version=1.21.1 too (its pie is drawn in the window's pixels, its F3 text is the old long one) and
+# -f version=26.3 (a wider pie, the light map). The test world is creative: a bottom bar sits 50 above the bottom (64
+# with hearts, in the survival shot).
+#
+# 1. Keyboard pick after a resize (GUI scale 2, as in window141-resize's rs-lib shots).
+#    e144-lib-1080: the grid, the 15th card ("Copper Rust") picked with the keys, outlined, in the third row.
+#    e144-lib-640 (640x480 = 320x240, four columns): branch: the outlined card is in view (the grid scrolled down to it,
+#      the fourth row); old: rows 1 and 2 show, the outlined card is below the bottom until the next key.
+#    e144-lib-640-mouse: the same after a mouse wheel scroll back to the top and a resize to 1920x1080 and back: the
+#      grid stays at the top (a mouse user's scroll is kept), on both.
+#    e144-shelf-1080 / e144-shelf-640: the shelf (two rows, then one), the 13th cover picked with the keys: branch:
+#      after the resize the picked cover (raised, its name under the shelf) is in view; old: off to the right.
+#    e144-settings-1080 / e144-settings-640: Display tab, the keyboard's ring on a row near the bottom of the view; after
+#      the resize (rows narrower, a shorter panel): branch: the ring's row is in view; old: it can be below the bottom
+#      (if the old picture shows it anyway, this case was not real at that size).
+# 2. Bottom bar and F3's charts (GUI scale 3, 640x360, paused on a line).
+#    e144-f3-text: F3 alone: the bar shows under F3's text (both; as bar133-f3-bottom-gui2).
+#    e144-f3-fps (F3+2), e144-f3-fps-survival, e144-f3-net (F3+3), e144-f3-pie (F3+1): branch: no bar; old (6cdf5a13):
+#      the bar under the charts' grey strip along the bottom (the frame time chart from the left, the tick or
+#      ping chart from the right, both 242 wide) or under the pie's dark box in the bottom right corner.
+#    e144-f3-fps-gui2 (960x540): the charts stay beside the bar and the bar shows (both).
+#    On 1.21.1 the right column (the tags of the sand in view) already reaches the bar, so it hides with F3 alone, and
+#    its pie (drawn in the window's pixels, 110 wide at GUI scale 3) stays right of the bar.
+# 3. Record card in a bottom corner and F3 (GUI scale 3, the bar at the top).
+#    e144-card-f3-text: bottom left card, F3 alone: branch: the card shows (F3's text ends far above it); old: no card
+#      (it hid on any screen up to about 370 tall).
+#    e144-card-f3-fps: the same with F3+2: no card on the branch (the frame time chart covers its corner); old
+#      (6cdf5a13): the chart drawn over the card.
+#    e144-card-f3-pie: bottom right card with F3+1: branch: no card; old: the pie's box over it (1.21.1: its pie sits
+#      higher up and smaller and misses the card, which shows on both).
+# 4. The note in the top bar for the demo song's missing cover, Minecraft's letters (zoom on the round space at the
+#    bar's left end): e144-note-gui3, -gui2, -gui4. Old: its pixels are 2 or 3 screen pixels by turns at GUI 3 (1 or 2 at
+#    GUI 2, 3 or 4 at GUI 4). Branch: every pixel the same: 3 at GUI 3, 2 at GUI 2, 3 at GUI 4 (a little bigger than
+#    before at GUI 2 and 3, a little smaller at GUI 4).
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout LINES
+guiscale 2
+resize 1920x1080
+look 0 -20
+sleep 8
+
+# 1. Keyboard pick after a resize: the grid, the shelf, the settings
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+key down
+sleep 0.5
+key down
+sleep 0.5
+key down
+sleep 0.5
+key right
+sleep 0.5
+key right
+sleep 1.5
+shot e144-lib-1080
+resize 640x480
+sleep 2
+shot e144-lib-640
+scroll 10
+sleep 1
+resize 1920x1080
+sleep 1
+resize 640x480
+sleep 2
+shot e144-lib-640-mouse
+close
+resize 1920x1080
+sleep 2
+set libraryView SHELF
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+key down
+sleep 0.3
+key right
+sleep 0.3
+key right
+sleep 0.3
+key right
+sleep 0.3
+key right
+sleep 0.3
+key right
+sleep 0.3
+key right
+sleep 1.5
+shot e144-shelf-1080
+resize 640x480
+sleep 2
+shot e144-shelf-640
+close
+set libraryView GRID
+resize 1920x1080
+sleep 2
+gui 3
+sleep 3
+key down
+sleep 0.3
+key down
+sleep 0.3
+key down
+sleep 0.3
+key down
+sleep 0.3
+key down
+sleep 0.3
+key down
+sleep 0.3
+key down
+sleep 0.3
+key down
+sleep 1.5
+shot e144-settings-1080
+resize 640x480
+sleep 2
+shot e144-settings-640
+close
+resize 1920x1080
+sleep 2
+
+# 2. Bottom bar and F3's charts, paused on a line
+guiscale 3
+set barPosition BOTTOM
+music pause
+sleep 1
+seek 25.5
+sleep 2
+debug on
+sleep 2
+shot e144-f3-text
+debug fps
+sleep 2
+shot e144-f3-fps
+cmd gamemode survival @p
+sleep 2
+shot e144-f3-fps-survival
+cmd gamemode creative @p
+debug fps
+debug net
+sleep 2
+shot e144-f3-net
+debug net
+debug pie
+sleep 3
+shot e144-f3-pie
+debug pie
+debug fps
+guiscale 2
+sleep 2
+shot e144-f3-fps-gui2
+guiscale 3
+debug fps
+debug off
+set barPosition TOP
+sleep 1
+
+# 3. Record card in a bottom corner and F3
+set recordCard true
+set cardCorner BOTTOM_LEFT
+sleep 2
+debug on
+sleep 2
+shot e144-card-f3-text
+debug fps
+sleep 2
+shot e144-card-f3-fps
+debug fps
+set cardCorner BOTTOM_RIGHT
+debug pie
+sleep 3
+shot e144-card-f3-pie
+debug pie
+debug off
+set recordCard false
+set cardCorner BOTTOM_LEFT
+sleep 1
+
+# 4. The no-cover note, Minecraft's letters, at GUI scale 3, 2 and 4
+set smoothFont false
+sleep 2
+shot e144-note-gui3
+guiscale 2
+sleep 2
+shot e144-note-gui2
+guiscale 4
+sleep 2
+shot e144-note-gui4
+guiscale 3
+music play
