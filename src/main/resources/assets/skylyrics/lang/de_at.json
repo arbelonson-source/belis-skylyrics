@@ -14,6 +14,8 @@
   "skylyrics.timing.none": "Es läuft kein Song",
   "skylyrics.lock.on": "Songtext hier fixiert",
   "skylyrics.lock.off": "Songtext folgt dir wieder",
+  "skylyrics.lock.unlocked": "Songtext nicht mehr fixiert",
+  "skylyrics.lock.sky_only": "Nur Songtext am Himmel lässt sich fixieren",
   "skylyrics.lyrics.on": "Songtext an",
   "skylyrics.lyrics.off": "Songtext aus",
   "modmenu.descriptionTranslation.skylyrics": "Der Songtext zur Musik, die du gerade hörst – synchron und schwebend am Himmel.",

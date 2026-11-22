@@ -14,6 +14,8 @@
   "skylyrics.timing.none": "Aucune chanson en cours",
   "skylyrics.lock.on": "Paroles fixées ici",
   "skylyrics.lock.off": "Les paroles vous suivent à nouveau",
+  "skylyrics.lock.unlocked": "Les paroles ne sont plus fixées",
+  "skylyrics.lock.sky_only": "Seules les paroles dans le ciel peuvent être fixées",
   "skylyrics.lyrics.on": "Paroles activées",
   "skylyrics.lyrics.off": "Paroles désactivées",
   "modmenu.descriptionTranslation.skylyrics": "Les paroles synchronisées de la chanson que vous écoutez, flottant dans le ciel.",

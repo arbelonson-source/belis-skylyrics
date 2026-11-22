@@ -14,6 +14,8 @@
   "skylyrics.timing.none": "Nenhuma música tocando",
   "skylyrics.lock.on": "Letra fixada aqui",
   "skylyrics.lock.off": "A letra volta a seguir você",
+  "skylyrics.lock.unlocked": "A letra não está mais fixada",
+  "skylyrics.lock.sky_only": "Só dá para fixar a letra no céu",
   "skylyrics.lyrics.on": "Letra ativada",
   "skylyrics.lyrics.off": "Letra desativada",
   "modmenu.descriptionTranslation.skylyrics": "Letras sincronizadas da música que você está ouvindo, flutuando no céu.",

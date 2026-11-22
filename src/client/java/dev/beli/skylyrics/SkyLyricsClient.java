@@ -499,10 +499,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 		for (int i = acts(lockView); i > 0; i--) {
 			SkyLyricsConfig cfg = SkyLyricsConfig.get();
-			cfg.viewLock = !cfg.viewLock;
-			ViewLock.release(); // locking again pins the spot you look at now, even if it was toggled twice between frames
+			String message = ViewLock.press(cfg);
 			cfg.save();
-			String message = cfg.viewLock ? "skylyrics.lock.on" : "skylyrics.lock.off";
 			//? if >=26.2 {
 			/*client.gui.hud.setOverlayMessage(Component.translatable(message), false);
 			*///?} else {

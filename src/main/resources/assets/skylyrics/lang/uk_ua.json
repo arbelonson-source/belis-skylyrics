@@ -14,6 +14,8 @@
   "skylyrics.timing.none": "Зараз нічого не грає",
   "skylyrics.lock.on": "Текст закріплено тут",
   "skylyrics.lock.off": "Текст знову йде за поглядом",
+  "skylyrics.lock.unlocked": "Текст більше не закріплено",
+  "skylyrics.lock.sky_only": "Закріпити можна лише текст у небі",
   "skylyrics.lyrics.on": "Текст увімкнено",
   "skylyrics.lyrics.off": "Текст вимкнено",
   "modmenu.descriptionTranslation.skylyrics": "Синхронний текст пісні, яку ви слухаєте, — просто в небі.",
