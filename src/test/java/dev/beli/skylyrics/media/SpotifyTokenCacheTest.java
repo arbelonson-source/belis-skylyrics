@@ -30,8 +30,8 @@ class SpotifyTokenCacheTest {
 	private static final String ID = "0123456789abcdef0123456789abcdef";
 	private static final long SEC = 1_000_000_000L;
 
-	/** Answers the token call with the given expires_in (or none) and every Web API call with 204. */
-	private static final class Net extends HttpClient {
+	/** Answers the token call with the given expires_in (or none) and every Web API call with 204. Also used by SpotifyOddNumbersTest. */
+	static final class Net extends HttpClient {
 		final String expiresIn;
 		int tokenCalls;
 		int apiCalls;

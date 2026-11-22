@@ -108,6 +108,18 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
+	/**
+	 * Spotify answered with something that can't be read (a sign-in answer whose lifetime isn't a number). An IOException,
+	 * so a refresh backs off like any failed read instead of asking again at every poll, but with no sentence of its own:
+	 * like an answer Java can't read, each place says it its usual way ("Couldn't read your music player" on the Music
+	 * tab, "Something went wrong, try again" for a sign-in). What was wrong stays the cause, for the log.
+	 */
+	static final class Unreadable extends IOException {
+		Unreadable(String detail) {
+			super(null, new IOException(detail));
+		}
+	}
+
 	/** What to tell a player whose Spotify source can't ask yet: the first missing step. */
 	static NotSetUp notSetUp(String clientId) {
 		return new NotSetUp(validClientId(clientId) ? Tr.t("Sign in to Spotify below") : Tr.t("Paste your Client ID first"));
@@ -625,6 +637,9 @@ public final class SpotifyWebSource implements MediaSource {
 			throw new IOException(answerText(response.statusCode()),
 					new IOException("HTTP " + response.statusCode() + (why != null ? ": " + why : "")));
 		}
+		if (tokenSeconds(json) < 0) {
+			throw new Unreadable("Spotify's token answer has an expires_in that isn't a number");
+		}
 		return json;
 	}
 
@@ -637,8 +652,7 @@ public final class SpotifyWebSource implements MediaSource {
 
 	private synchronized void accept(String id, JsonObject json) {
 		accessToken = string(json, "access_token");
-		long seconds = json.has("expires_in") ? json.get("expires_in").getAsLong() : 3600;
-		accessUntilNs = System.nanoTime() + seconds * 1_000_000_000L - EARLY_NS;
+		accessUntilNs = System.nanoTime() + tokenSeconds(json) * 1_000_000_000L - EARLY_NS;
 		// Spotify may hand out a new refresh token; the old one then stops working
 		String refresh = string(json, "refresh_token");
 		String scope = string(json, "scope");
@@ -656,6 +670,33 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		problem = "";
 		pollNow = true;
+	}
+
+	/** A token's lifetime when Spotify doesn't say. */
+	private static final long TOKEN_S = 3600;
+	/** The longest lifetime taken (Spotify's last an hour): a token Spotify stops taking sooner is renewed on its 401. */
+	private static final long MAX_TOKEN_S = 86_400;
+
+	/**
+	 * How long Spotify says the token lasts, in seconds: an hour when it doesn't say (no expires_in, or null), else between
+	 * 0 and a day, so the time it is good until can't run past what a long holds (a huge one renewed the token at every
+	 * poll); -1 when it says something that isn't a number ("soon", a list), which makes the answer one that can't be read.
+	 */
+	static long tokenSeconds(JsonObject json) {
+		JsonElement e = json.get("expires_in");
+		if (e == null || e.isJsonNull()) {
+			return TOKEN_S;
+		}
+		if (!e.isJsonPrimitive() || e.getAsJsonPrimitive().isBoolean()) {
+			return -1;
+		}
+		double seconds;
+		try {
+			seconds = e.getAsDouble(); // a number, or one written as text
+		} catch (NumberFormatException notANumber) {
+			return -1;
+		}
+		return Double.isNaN(seconds) ? -1 : (long) Math.max(0, Math.min(seconds, MAX_TOKEN_S));
 	}
 
 	/** Whether a token refresh that began under {@code started} may still be stored: only if nobody signed in or out since. */
@@ -1254,9 +1295,21 @@ public final class SpotifyWebSource implements MediaSource {
 		return e != null && e.isJsonPrimitive() ? e.getAsString() : null;
 	}
 
+	/** The largest whole number a double holds exactly (2^53): far above any length, position, size or count Spotify sends. */
+	private static final double MAX_EXACT = 9_007_199_254_740_992d;
+
+	/**
+	 * A whole number from the answer, or 0 when it is missing or not a number. Read through a double: a number with more
+	 * digits than a long holds, or one like 1e999999999 (which newer Gson refuses with an exception), also reads as missing,
+	 * instead of failing the whole answer or wrapping round to a wrong value.
+	 */
 	static long number(JsonObject o, String key) {
 		JsonElement e = o.get(key);
-		return e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isNumber() ? e.getAsLong() : 0;
+		if (e == null || !e.isJsonPrimitive() || !e.getAsJsonPrimitive().isNumber()) {
+			return 0;
+		}
+		double d = e.getAsDouble();
+		return Double.isFinite(d) && Math.abs(d) <= MAX_EXACT ? (long) d : 0;
 	}
 
 	static String orEmpty(@Nullable String s) {
