@@ -20,7 +20,12 @@ public final class ViewLock {
 
 	/** True when the lock means something: lyrics in the sky, or World words (which gather round a spot). */
 	public static boolean applies(SkyLyricsConfig cfg) {
-		return cfg.viewLock && (cfg.layout == Layout.WORLD || cfg.placement == Placement.SKY);
+		return cfg.viewLock && pinnable(cfg);
+	}
+
+	/** Whether these lyrics can be pinned at all; floating Arc and Lines can't (the settings hide View lock for them). */
+	private static boolean pinnable(SkyLyricsConfig cfg) {
+		return cfg.layout == Layout.WORLD || cfg.placement == Placement.SKY;
 	}
 
 	/**
@@ -60,5 +65,43 @@ public final class ViewLock {
 	/** Forgets the pinned spot, so the next frame pins a new one (when locked). */
 	public static void release() {
 		held = null;
+	}
+
+	/** Set on joining a world until the world first shows with its loading screen gone. */
+	private static boolean joining;
+
+	/**
+	 * You joined a world: a locked view pins wherever you look first there, never a stale spot from the last one. The
+	 * world is drawn behind its loading screen before the server says where you look, with the camera still on the
+	 * game's default turn (north, level), so the spot is pinned again once that screen is gone (see {@link #tick}).
+	 */
+	public static void joined() {
+		release();
+		joining = true;
+	}
+
+	/** Call every client tick with whether a screen is open: the first tick with none after {@link #joined} pins afresh. */
+	public static void tick(boolean screenOpen) {
+		if (joining && !screenOpen) {
+			joining = false;
+			release();
+		}
+	}
+
+	/**
+	 * The lock key: turns View lock on or off and returns the message to show above the hotbar. Floating Arc and Lines
+	 * can't be pinned, so there it changes nothing and says only sky lyrics lock. Unlocked lyrics follow you again only
+	 * with Direction Follow; with N, E, S or W they go back to that side of the sky, so they are just unlocked.
+	 */
+	public static String press(SkyLyricsConfig cfg) {
+		if (!pinnable(cfg)) {
+			return "skylyrics.lock.sky_only";
+		}
+		cfg.viewLock = !cfg.viewLock;
+		release(); // locking again pins the spot you look at now, even if it was toggled twice between frames
+		if (cfg.viewLock) {
+			return "skylyrics.lock.on";
+		}
+		return cfg.direction == Direction.FOLLOW ? "skylyrics.lock.off" : "skylyrics.lock.unlocked";
 	}
 }
