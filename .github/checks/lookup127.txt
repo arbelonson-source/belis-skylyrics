@@ -7,8 +7,8 @@
 # 2. lookup127-after_00..05 (1.5 seconds right after the length comes in, still the same line; the first frame or two
 #    can be from before the tracker's next read, the same on both). On the old code the bar goes back to
 #    "Late Length · SkyLyrics Demo" (for 3.5 s) in place of the line being sung, and the World words of the line vanish
-#    at once and come back as if the line had just started. On the branch the bar keeps the line, and the words stay
-#    where they are.
+#    at once, the last few sung coming back together, arriving anew. On the branch the bar keeps the line, and the
+#    words stay where they are, the next ones joining them one by one.
 # 3. lookup127-later (about 26 s, the next line "Every word is written in the stars"): the bar shows the line and the
 #    words of it, the same on both.
 # What the demo can't show: with a real player the old code also faded the lyrics out and back in while the song was
