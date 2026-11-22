@@ -36,4 +36,14 @@ class ClosedByKeyTest {
 		assertTrue(k.opens(1, false));
 		assertTrue(k.opens(1, true));
 	}
+
+	@Test
+	void anUnboundKeyIsNotAskedAbout() {
+		// Unbound is -1 on 1.21.1 to 26.2 (GLFW's unknown key): asking GLFW about it logs three ERROR lines every tick
+		assertFalse(ClosedByKey.asksKeyboard(true, -1));
+		assertTrue(ClosedByKey.asksKeyboard(true, com.mojang.blaze3d.platform.InputConstants.KEY_J));
+		assertTrue(ClosedByKey.asksKeyboard(true, com.mojang.blaze3d.platform.InputConstants.KEY_N));
+		// A mouse button is not on the keyboard
+		assertFalse(ClosedByKey.asksKeyboard(false, 0));
+	}
 }

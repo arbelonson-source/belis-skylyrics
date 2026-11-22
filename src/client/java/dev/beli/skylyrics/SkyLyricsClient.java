@@ -603,7 +603,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		}
 	}
 
-	/** Whether the key the mapping is bound to is down on the keyboard right now (never for a mouse button). */
+	/** Whether the key the mapping is bound to is down on the keyboard right now (never for a mouse button or an unbound key). */
 	private static boolean heldNow(Minecraft client, KeyMapping mapping) {
 		//? if >=26.1 {
 		/*InputConstants.Key key = KeyMappingHelper.getBoundKeyOf(mapping);
@@ -611,11 +611,11 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		InputConstants.Key key = KeyBindingHelper.getBoundKeyOf(mapping);
 		//?}
 		//? if >=26.3 {
-		/*return key.getType() == InputConstants.Type.KEYBOARD && InputConstants.isKeyDown(key.getValue());
+		/*return ClosedByKey.asksKeyboard(key.getType() == InputConstants.Type.KEYBOARD, key.getValue()) && InputConstants.isKeyDown(key.getValue());
 		*///?} else if >=1.21.9 {
-		return key.getType() == InputConstants.Type.KEYSYM && InputConstants.isKeyDown(client.getWindow(), key.getValue());
+		return ClosedByKey.asksKeyboard(key.getType() == InputConstants.Type.KEYSYM, key.getValue()) && InputConstants.isKeyDown(client.getWindow(), key.getValue());
 		//?} else {
-		/*return key.getType() == InputConstants.Type.KEYSYM && InputConstants.isKeyDown(client.getWindow().getWindow(), key.getValue());
+		/*return ClosedByKey.asksKeyboard(key.getType() == InputConstants.Type.KEYSYM, key.getValue()) && InputConstants.isKeyDown(client.getWindow().getWindow(), key.getValue());
 		*///?}
 	}
 
