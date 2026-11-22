@@ -192,6 +192,9 @@
 - **Real lyrics over an empty copy.** When the lyrics site (LRCLIB) has several copies of a song and one of them holds only time stamps, only tags or words without times, that copy no longer wins over one with real timed words just because its length is a little closer. Before, such a song could show "instrumental" for good, or no lyrics, although its lyrics were there.
 - **Backup lyrics for a song with no artist.** A song with no artist tag (a browser tab, an untagged file) whose title two artists share at about the same length no longer gets one of their lyrics from the backup site (NetEase). It now shows none, as the main site already did.
 - **Artists whose name starts with "&".** An artist whose name starts with "&" no longer gets another band's lyrics for a song of the same name. Cutting a credit like "A, B" down to its first artist used to leave such a name empty, and the lookup then searched by the title alone.
+- **Pausing a player that doesn't say where the song is.** Some music players and websites never tell where in the song they are, so the lyrics follow the clock from when the song started. Pausing one of them no longer sends the lyrics back to the first line, and playing it again goes on from where you paused instead of starting the lyrics over.
+- **Pausing on Windows.** On Windows, pausing a player that never says when it last told where the song is (some browser tabs and players) no longer sends the lyrics back to the start of the song, or to the last spot it told, and playing it again goes on from where you paused.
+- **A late cover from a player that doesn't say where the song is.** When such a player sends the song's cover, length or artist a moment after its title, as browsers often do, the lyrics no longer start counting again from that moment, so they no longer run late for the rest of the song or go back to the first line.
 
 ### Faster
 

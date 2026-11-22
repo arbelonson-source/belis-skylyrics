@@ -156,4 +156,79 @@ class TrackerClockTest {
 			tracker.shutdown();
 		}
 	}
+
+	private static final long SEC = 1_000_000_000L;
+
+	/**
+	 * A player that never says where the song is (it reads 0 every time) is followed on the clock from when the song
+	 * appeared. Such a player reads 0 when paused too: that is not where the song stopped.
+	 */
+	@Test
+	void aPlayerThatNeverSaysWhereItIsPausesWhereTheClockGotTo() throws InterruptedException {
+		long now = System.nanoTime();
+		Snapshot zero = new Snapshot(song(0), 0, true, now - 12 * SEC);
+		MediaTracker tracker = feed(new Snapshot(song(0), 0, true, now - 20 * SEC), zero, zero, zero, zero,
+				new Snapshot(song(0), 0, false, now - 10 * SEC));
+		try {
+			assertFalse(tracker.playing());
+			assertEquals(10_000, tracker.positionMs(), "paused 10 s after the song appeared, not back at the top");
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	/** Browsers often send the cover (or the length) a moment after the title: still the same song, so its count goes on. */
+	@Test
+	void aLateCoverDoesNotRestartTheCountOfAPlayerThatNeverSaysWhereItIs() throws InterruptedException {
+		long now = System.nanoTime();
+		Track bare = song(0);
+		Track withCover = new Track(bare.title(), bare.artist(), bare.album(), 0, "file:///tmp/cover.png", bare.player());
+		Snapshot zero = new Snapshot(bare, 0, true, now - 12 * SEC);
+		Snapshot covered = new Snapshot(withCover, 0, true, now - 10 * SEC);
+		MediaTracker tracker = feed(new Snapshot(bare, 0, true, now - 20 * SEC), zero, zero, zero, zero,
+				covered, covered, covered, covered, covered);
+		try {
+			long pos = tracker.positionMs();
+			long hi = 20_000 + (System.nanoTime() - now) / 1_000_000 + 50;
+			assertEquals("file:///tmp/cover.png", tracker.track().artUrl());
+			assertTrue(pos >= 19_950 && pos <= hi, "position " + pos + " not in 19950.." + hi + " (from when the song appeared)");
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	@Test
+	void aCoverThatArrivesOnTheSecondReadIsNotWhereTheCountStarts() throws InterruptedException {
+		long now = System.nanoTime();
+		Track bare = song(0);
+		Track withCover = new Track(bare.title(), bare.artist(), bare.album(), 0, "file:///tmp/cover.png", bare.player());
+		Snapshot covered = new Snapshot(withCover, 0, true, now - 18 * SEC);
+		MediaTracker tracker = feed(new Snapshot(bare, 0, true, now - 20 * SEC), covered, covered, covered, covered, covered);
+		try {
+			long pos = tracker.positionMs();
+			long hi = 20_000 + (System.nanoTime() - now) / 1_000_000 + 50;
+			assertTrue(pos >= 19_950 && pos <= hi, "position " + pos + " not in 19950.." + hi + " (from when the song appeared)");
+		} finally {
+			tracker.shutdown();
+		}
+	}
+
+	@Test
+	void aPlayerThatNeverSaysWhereItIsGoesOnFromThePauseWhenPlayedAgain() throws InterruptedException {
+		long now = System.nanoTime();
+		Snapshot zero = new Snapshot(song(0), 0, true, now - 25 * SEC);
+		Snapshot paused = new Snapshot(song(0), 0, false, now - 20 * SEC); // 10 s into the song
+		Snapshot again = new Snapshot(song(0), 0, true, now - 5 * SEC); // played again 15 s later
+		MediaTracker tracker = feed(new Snapshot(song(0), 0, true, now - 30 * SEC), zero, zero, zero, zero,
+				paused, paused, again, again, again, again, again);
+		try {
+			long pos = tracker.positionMs();
+			// 10 s before the pause and 5 s since, plus however long this machine took since now
+			long hi = 15_000 + (System.nanoTime() - now) / 1_000_000 + 50;
+			assertTrue(tracker.playing());
+			assertTrue(pos >= 14_950 && pos <= hi, "position " + pos + " not in 14950.." + hi);
+		} finally {
+			tracker.shutdown();
+		}
+	}
 }
