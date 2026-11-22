@@ -1,17 +1,23 @@
 package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * A number in a Spotify answer that no whole number can hold (30 digits, or 1e999999999, which newer Gson refuses
- * outright) reads as missing, like a number that isn't there: the song or page around it still counts.
+ * outright) reads as missing, like a number that isn't there: the song, page or sign-in around it still counts.
  */
 class SpotifyOddNumbersTest {
 	private static final String HUGE = "9".repeat(30);
+	private static final String ID = "0123456789abcdef0123456789abcdef";
 
 	@Test
 	void aPlayingAnswerWithAnUnholdableNumberStillGivesTheSong() {
@@ -34,5 +40,37 @@ class SpotifyOddNumbersTest {
 		SpotifyLibrary.Page<LibraryItem> page = SpotifyLibrary.parseSearch(body);
 		assertEquals(1, page.items().size());
 		assertEquals(0, page.items().get(0).lengthMs());
+	}
+
+	/** Polls a signed-in source three times with this expires_in in the token answer; how many tokens that took. */
+	private static int tokenCallsFor(Path dir, String expiresIn) throws Exception {
+		Path login = dir.resolve("login.json");
+		Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"r\",\"scopes\":\"\"}");
+		SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
+		SpotifyTokenCacheTest.Net net = new SpotifyTokenCacheTest.Net(expiresIn);
+		source.useHttp(net);
+		for (int i = 0; i < 3; i++) {
+			source.settle(System.nanoTime() - 10_000_000_000L);
+			source.poll();
+		}
+		return net.tokenCalls;
+	}
+
+	@Test
+	void aTokenLifetimeOfNullOrTooBigANumberIsStillReused(@TempDir Path dir) throws Exception {
+		// null is no lifetime, as a missing one (an hour). 9.3e9 s in nanoseconds is past what a long holds: the token looked
+		// stale at once and was asked for again at every poll; so it was with 30 digits (wrapped round) and 1e999999999
+		for (String odd : List.of("null", "9300000000", HUGE, "1e999999999")) {
+			assertEquals(1, tokenCallsFor(dir, odd), "expires_in " + odd);
+		}
+	}
+
+	@Test
+	void aTokenLifetimeThatIsNoNumberIsAFailedReadInWords(@TempDir Path dir) throws Exception {
+		// Like a sign-in answer that can't be read: an IOException with a sentence, which backs the polling off
+		for (String odd : List.of("\"soon\"", "{}", "[]", "true")) {
+			IOException e = assertThrows(IOException.class, () -> tokenCallsFor(dir, odd), "expires_in " + odd);
+			assertEquals("Something went wrong, try again", MediaTracker.failureText(e), "expires_in " + odd);
+		}
 	}
 }
