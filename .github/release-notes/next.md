@@ -203,6 +203,7 @@
 - **Crosshair and hat flicker with no new line.** With **Flash with the lyrics** (a crosshair picked) or the hat's **Glow with the lyrics** on, the crosshair and the hat no longer brighten faintly for a moment when a song's lyrics first come up, or at each new line while the lyrics are hidden (switched off, or by **Hide in menus** or **Hide in caves**). It was the fading end of a flash that never started; real new lines flash as before.
 - **Type animation and fast lines.** With the **Type** animation (Lines layout), a line sung faster than it types (a fast rap line, or a long one on two rows) now keeps up with the singing: the **Karaoke fill** no longer runs on into letters that aren't typed yet, and the end of the line shows before the next line takes over (with **Previous line** off it never showed at all). Seeking into the middle of a line shows what has been sung at once and types on from there.
 - **Attack meter under a picked crosshair (1.21.1).** On Minecraft 1.21.1, with a crosshair style picked, the attack meter under it is see-through and inverted like the game's own again, instead of a solid grey and white bar.
+- **Spotify after the computer sleeps.** With Spotify signed in, when Spotify asks for a renewed sign-in in the middle of a song (as it can after the computer wakes from sleep), the lyrics no longer run ahead of the song by up to half the time the renewal took. Before, when that was under about a third of a second, they stayed that far ahead until the next pause, skip or seek.
 
 ### Faster
 
