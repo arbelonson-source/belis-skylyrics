@@ -318,12 +318,12 @@ public final class HeardLibrary implements Library {
 	/** False when it couldn't be written (after SafeFile's retries); the file is then as it was. */
 	static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover) {
 		try {
-			Path dir = file.toAbsolutePath().getParent();
-			Files.createDirectories(dir);
-			Path tmp = Files.createTempFile(dir, file.getFileName() + ".", ".tmp");
+			Files.createDirectories(file.toAbsolutePath().getParent());
+			Path target = SafeFile.writeTarget(file.toAbsolutePath()); // a list shared through a link stays linked
+			Path tmp = Files.createTempFile(target.getParent(), file.getFileName() + ".", ".tmp");
 			try {
 				SafeFile.writeDurably(tmp, toJson(entries));
-				SafeFile.replace(tmp, file, mover, SafeFile.TRIES, SafeFile.PAUSE_MS);
+				SafeFile.replace(tmp, target, mover, SafeFile.TRIES, SafeFile.PAUSE_MS);
 			} finally {
 				Files.deleteIfExists(tmp);
 			}

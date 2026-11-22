@@ -160,6 +160,23 @@ public final class SafeFile {
 		}
 	}
 
+	/**
+	 * Where a save of {@code file} has to go. A file that is a link (players share one settings file or sign-in between
+	 * game folders that way) is saved where the link points, so it stays a link: moving a temp file over the link itself
+	 * would put a plain file in its place, and the other game folders would stop seeing changes. The temp file belongs next
+	 * to what this returns, so the move stays on one drive. A link that leads nowhere, and any other file, is itself.
+	 */
+	public static Path writeTarget(Path file) {
+		if (!Files.isSymbolicLink(file)) {
+			return file;
+		}
+		try {
+			return file.toRealPath();
+		} catch (IOException | RuntimeException e) {
+			return file; // a link to nothing (a drive that isn't there): the save makes a plain file, as before
+		}
+	}
+
 	/** Replaces target with tmp. If it can't be done, tmp is deleted and the last error is thrown. */
 	public static void replace(Path tmp, Path target) throws IOException {
 		replace(tmp, target, Files::move, TRIES, PAUSE_MS);

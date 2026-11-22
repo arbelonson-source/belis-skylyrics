@@ -1020,9 +1020,10 @@ public final class SkyLyricsConfig {
 				JsonObject from = queue.lastSnapshot != null && queue.lastGen > baseGen ? queue.lastSnapshot : base;
 				JsonObject out = mergeWithDisk(file, mine, from);
 				String text = GSON.toJson(out == null ? mine : out);
-				tmp = Files.createTempFile(file.getParent(), file.getFileName() + ".", ".tmp");
+				Path target = dev.beli.skylyrics.util.SafeFile.writeTarget(file); // a linked settings file stays linked
+				tmp = Files.createTempFile(target.getParent(), file.getFileName() + ".", ".tmp");
 				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, text);
-				dev.beli.skylyrics.util.SafeFile.replace(tmp, file);
+				dev.beli.skylyrics.util.SafeFile.replace(tmp, target);
 				tmp = null;
 				Parsed parsed = parse(text); // once, for the base and for what this game takes over
 				JsonObject tree = GSON.toJsonTree(parsed.config()).getAsJsonObject();
