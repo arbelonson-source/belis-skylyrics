@@ -8,7 +8,8 @@ import java.util.regex.Pattern;
 
 /** Parses LRC text ("[01:23.45]words") into {@link Lyrics}. */
 public final class LrcParser {
-	private static final Pattern TIME = Pattern.compile("\\[\\s*(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
+	// A minus in front is a stamp before the song's start, which some editors write after shifting a file earlier
+	private static final Pattern TIME = Pattern.compile("\\[\\s*(-)?(?:(\\d{1,2}):(?=\\d{1,3}:\\d{1,2}\\.))?(\\d{1,3}):(\\d{1,2})(?:[.:,](\\d+))?\\s*]");
 	private static final Pattern OFFSET = Pattern.compile("\\[offset:\\s*([+-]?\\d+)\\s*]", Pattern.CASE_INSENSITIVE);
 	// Word-level timing from "enhanced" LRC, e.g. <00:12.34>
 	private static final Pattern WORD_TIME = Pattern.compile("<(?:\\d{1,2}:)?\\d{1,3}:\\d{1,2}(?:[.:,]\\d+)?>");
@@ -112,7 +113,8 @@ public final class LrcParser {
 			int end = 0;
 			// Some files put spaces between the stamps of a repeated line: "[00:05] [00:30] text"
 			while (m.find() && raw.substring(end, m.start()).isBlank()) {
-				times.add(toMillis(m.group(1), m.group(2), m.group(3), m.group(4)));
+				long t = toMillis(m.group(2), m.group(3), m.group(4), m.group(5));
+				times.add(m.group(1) != null ? -t : t);
 				end = m.end();
 			}
 			if (times.isEmpty()) {
@@ -144,7 +146,7 @@ public final class LrcParser {
 			shifted.add(new LyricLine(line.timeMs() + shift, line.text()));
 		}
 		shifted.sort(Comparator.comparingLong(LyricLine::timeMs));
-		// Lines pushed before the start of the song can't have a negative time (the rest of the mod reads time 0 as the start),
+		// Lines pushed before the start of the song (by an offset, or stamped there) can't have a negative time (the rest of the mod reads time 0 as the start),
 		// but all sitting on 0 would merge them into one line: each distinct time takes the next of 0, 1, 2 ms and keeps its
 		// order, while lines that shared a time keep sharing one (an original and its translation still join). The first
 		// line that was not pushed back has priority: clamped times stay below its time, so groups that don't fit share the last free ms
@@ -181,6 +183,8 @@ public final class LrcParser {
 			}
 			String row = dev.beli.skylyrics.media.Track.cap(tidy(raw), MAX_LINE);
 			if (!SECTION.matcher(row).matches()) {
+				// "[Chorus] words" shows only the words, as on a timed line
+				row = LEADING_TAG.matcher(row).replaceFirst("");
 				rows.add(NOTES.matcher(row).matches() ? "" : row);
 			}
 		}

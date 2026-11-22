@@ -1,0 +1,36 @@
+# Untimed lyrics with a song-part tag in front of their words (fix/lrc145): the tag must not float in the sky with them.
+# Run it twice, on the branch and on main, and compare:
+# Run: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/lrc145 -f script=.github/checks/lrc145.txt
+#      gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=main -f script=.github/checks/lrc145.txt
+#
+# The two made-up lines are untimed ("plain"), spread over the 78 s demo: the first from 6.5 s, the second from 42 s.
+# plain-tag-lines-1 (Lines layout): main shows "[Chorus] Lanterns drift over the town"; the branch shows
+#   "Lanterns drift over the town" with no bracket.
+# plain-tag-lines-2: main shows "[Verse 1: Someone] Glow on until the morning"; the branch "Glow on until the morning".
+# plain-tag-world-1 / -2 (World layout): the same words as floating cards; on main the first card reads "[Chorus]" or
+#   "[Verse" and "1:" and "Someone]" come as cards of their own; on the branch every card is a sung word.
+# The lyrics shown are untimed, so the top bar and the Record card show no line on either: that is expected.
+# (The other fix on the branch, a line stamped before the song's start, can't be shown here: the test hook only plays
+#  lines stamped from 0 s on. Its tests are LrcNegativeStampTest and OddLrcFilesTest.)
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 6
+plain [Chorus] Lanterns drift over the town | [Verse 1: Someone] Glow on until the morning
+seek 9
+sleep 3
+shot plain-tag-lines-1
+seek 45
+sleep 3
+shot plain-tag-lines-2
+set layout WORLD
+look 0 0
+seek 7
+sleep 5
+shot plain-tag-world-1
+seek 43
+sleep 5
+shot plain-tag-world-2
