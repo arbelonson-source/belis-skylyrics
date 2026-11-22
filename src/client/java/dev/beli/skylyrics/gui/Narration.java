@@ -131,4 +131,21 @@ final class Narration {
 	static String tile(String card, String action) {
 		return join(card, action);
 	}
+
+	/**
+	 * What a list says while the keyboard is in it on no card: what it is doing ({@code state}: loading, empty, a search's
+	 * result count) when there is something to say, else how many cards it has ({@code one} or {@code many}, like "40
+	 * songs"), so the end of "Loading" is heard.
+	 */
+	static String listState(String state, int count, String one, String many) {
+		return !state.isEmpty() || count <= 0 ? state : count == 1 ? one : many;
+	}
+
+	/**
+	 * The line under the songs as the keyboard is on it: {@code loadingWord} ("Loading") while the next page is being tried
+	 * again, else why it failed and the Try again button that Enter presses.
+	 */
+	static String footer(boolean loading, String loadingWord, String error, String tryAgain, String kind) {
+		return loading ? loadingWord : join(error, button(tryAgain, kind));
+	}
 }

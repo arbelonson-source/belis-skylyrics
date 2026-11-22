@@ -548,5 +548,7 @@
   "skylyrics.ui.s_results": "Найдено: %s",
   "skylyrics.ui.settings_reset": "Настройки сброшены",
   "skylyrics.ui.search_cleared": "Поиск очищен",
-  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab меняет раздел, стрелки — переход, Enter включает или открывает, стрелка вверх с верхнего ряда — кнопки вида и недавние запросы, Esc — назад, а ввод текста запускает поиск"
+  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab меняет раздел, стрелки — переход, Enter включает или открывает, стрелка вверх с верхнего ряда — кнопки вида и недавние запросы, Esc — назад, а ввод текста запускает поиск",
+  "skylyrics.ui.1_playlist": "1 плейлист",
+  "skylyrics.ui.s_playlists": "Плейлистов: %s"
 }

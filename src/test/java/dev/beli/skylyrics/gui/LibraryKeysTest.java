@@ -115,4 +115,22 @@ class LibraryKeysTest {
 		assertEquals(-1, LibraryKeys.stopAfterClose(2));
 		assertEquals(-1, LibraryKeys.stopAfterClose(-1));
 	}
+
+	@Test
+	void theArrowPastTheLastCardGoesOntoTheLineThatSaysWhyTheNextPageFailed() {
+		// After the automatic tries, Down from the grid's last row (Right from the shelf's last column) reaches the line
+		// that a click tries again, instead of staying on the card with no key to try again
+		assertTrue(LibraryKeys.ontoFooter(true, true, true));
+		// The arrow still moves to a card, it is the other way, or no page failed: it does what it always did
+		assertFalse(LibraryKeys.ontoFooter(true, false, true));
+		assertFalse(LibraryKeys.ontoFooter(false, true, true));
+		assertFalse(LibraryKeys.ontoFooter(true, true, false));
+	}
+
+	@Test
+	void enterOnTheLineUnderTheSongsTriesAgain() {
+		assertTrue(LibraryKeys.triesAgain(true, false), "Enter on the failed page's line plays the card above it or nothing");
+		assertTrue(LibraryKeys.triesAgain(false, true), "the empty list's Try again button");
+		assertFalse(LibraryKeys.triesAgain(false, false), "on a card Enter plays or opens it");
+	}
 }

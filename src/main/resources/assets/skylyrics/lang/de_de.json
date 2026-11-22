@@ -548,5 +548,7 @@
   "skylyrics.ui.s_results": "%s Treffer",
   "skylyrics.ui.settings_reset": "Einstellungen zurückgesetzt",
   "skylyrics.ui.search_cleared": "Suche geleert",
-  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab wechselt den Bereich, die Pfeiltasten bewegen die Auswahl, die Eingabetaste spielt ab oder öffnet, Pfeil hoch in der obersten Reihe führt zu den Ansichts-Schaltflächen und den letzten Suchen, Esc führt zurück, und Tippen startet eine Suche"
+  "skylyrics.ui.tab_changes_the_section_arrow_keys_move_enter_pl": "Tab wechselt den Bereich, die Pfeiltasten bewegen die Auswahl, die Eingabetaste spielt ab oder öffnet, Pfeil hoch in der obersten Reihe führt zu den Ansichts-Schaltflächen und den letzten Suchen, Esc führt zurück, und Tippen startet eine Suche",
+  "skylyrics.ui.1_playlist": "1 Playlist",
+  "skylyrics.ui.s_playlists": "%s Playlists"
 }
