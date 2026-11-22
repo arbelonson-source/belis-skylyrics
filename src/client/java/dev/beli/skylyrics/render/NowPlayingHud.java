@@ -5,7 +5,6 @@ import static dev.beli.skylyrics.render.TopBarLayout.ART_INSET;
 import static dev.beli.skylyrics.render.TopBarLayout.BARS;
 import static dev.beli.skylyrics.render.TopBarLayout.BAR_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.BAR_W;
-import static dev.beli.skylyrics.render.TopBarLayout.CLIP_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.CLOCK_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_INSET;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_W;
@@ -880,9 +879,9 @@ public final class NowPlayingHud {
 		float tx = x + ART_INSET + ART + TEXT_GAP;
 		float room = TopBarLayout.textRoom(width);
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
-		int clipLeft = Math.round(x + ART_INSET + ART + CLIP_GAP);
+		int clipLeft = TopBarLayout.textClipLeft(x);
 		// Words past the room stop where the highlight would, a little before the equaliser
-		int clipRight = Math.round(tx + room);
+		int clipRight = TopBarLayout.textClipRight(x, width);
 		int clipTop = Math.round(midY - PILL_H / 2f) + 1, clipBottom = Math.round(midY + PILL_H / 2f) - 1;
 		textClipLeft = clipLeft;
 		textClipRight = clipRight;

@@ -47,6 +47,26 @@ class TopBarLayoutTest {
 	}
 
 	@Test
+	void theTextClipNeverCutsTheHighlightsRoundEnds() {
+		// The pill is centred, so its left end sits anywhere between two whole GUI units; the clip box is in whole units
+		for (float pill : new float[] {90.37f, 151.5f, 203.2f, TopBarLayout.PILL_W}) {
+			for (int step = 0; step < 100; step++) {
+				float x = 40 + step / 100f;
+				float textX = x + TopBarLayout.ART_INSET + TopBarLayout.ART + TopBarLayout.TEXT_GAP;
+				// The first word's highlight reaches HL_PAD before the text, the last word's to the end of the room
+				float hlLeft = textX - TopBarLayout.HL_PAD, hlRight = textX + TopBarLayout.textRoom(pill);
+				int left = TopBarLayout.textClipLeft(x), right = TopBarLayout.textClipRight(x, pill);
+				String at = " (pill at " + x + ", " + pill + " wide)";
+				assertTrue(left <= hlLeft + 0.001f, "the clip starts at " + left + ", after the highlight's left end at " + hlLeft + at);
+				assertTrue(right >= hlRight - 0.001f, "the clip ends at " + right + ", before the highlight's right end at " + hlRight + at);
+				// and a scrolled line still never runs under the cover or over the equaliser
+				assertTrue(left >= x + TopBarLayout.ART_INSET + TopBarLayout.ART + 1, "the clip reaches the cover" + at);
+				assertTrue(right <= x + pill - TopBarLayout.EQ_INSET - TopBarLayout.EQ_W - 1, "the clip reaches the equaliser" + at);
+			}
+		}
+	}
+
+	@Test
 	void lineThatFitsNeverScrolls() {
 		assertEquals(0, TopBarLayout.lineShift(100, 80, 100, 120, 3));
 		assertEquals(0, TopBarLayout.lineShift(100, 20, 40, 103, 3));
