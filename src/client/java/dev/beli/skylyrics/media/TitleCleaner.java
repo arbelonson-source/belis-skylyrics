@@ -87,7 +87,7 @@ public final class TitleCleaner {
 		String artist = withoutArtistNoise(track.artist());
 
 		if (BROWSERS.contains(track.player().toLowerCase(Locale.ROOT))) {
-			title = NOISE.matcher(capped(title)).replaceAll("").trim();
+			title = withoutNoise(capped(title)).trim();
 			title = NOISE_TAIL.matcher(title).replaceFirst("").trim();
 			String[] parts = DASH.split(title, 2);
 			// "Artist - Song" video titles; the channel name is usually not the real artist.
@@ -112,9 +112,21 @@ public final class TitleCleaner {
 		return !DASH.matcher(afterDash).find() && VERSION_END.matcher(afterDash).matches();
 	}
 
+	/**
+	 * The title without its noise brackets ("(Official Video)"). One that also says the track has no singing
+	 * ("(Official Instrumental)", "[Karaoke Video]") keeps that word, as "(Instrumental)": it is another recording, and
+	 * dropped whole the track would get the sung song's lyrics.
+	 */
+	private static String withoutNoise(String title) {
+		return NOISE.matcher(title).replaceAll(m -> {
+			Matcher vocals = NO_VOCALS.matcher(m.group());
+			return vocals.find() ? Matcher.quoteReplacement(" (" + vocals.group() + ")") : "";
+		});
+	}
+
 	/** A stricter version used only for looking lyrics up: "Song - Remastered 2011" -> "Song". */
 	public static String forSearch(String title) {
-		String t = NOISE.matcher(capped(title)).replaceAll("");
+		String t = withoutNoise(capped(title));
 		t = NOISE_TAIL.matcher(t.trim()).replaceFirst("");
 		t = t.replaceAll("(?i)\\s+[-\u2013\u2014]\\s+(\\d{4}\\s*)?(remaster(ed)?|mono|stereo|single|radio edit|live|version|edit|from .*)\\b.*$", "");
 		String bracketed = GUEST_BRACKETS.matcher(t).replaceAll("");
@@ -192,8 +204,13 @@ public final class TitleCleaner {
 	/** Brackets that make it another work, so they are never ignored. */
 	private static final Pattern OTHER_WORK = Pattern.compile("(?i)\\b(remix|part|pt|reprise|interlude|intro|outro|skit|cover)\\b");
 
-	/** Brackets naming a track without the singing (or only the singing): another recording, with other lyrics or none. */
-	private static final Pattern NO_VOCALS = Pattern.compile("(?i)\\b(instrumental|karaoke|backing track|a ?cap+ella|off[ -]vocal)\\b");
+	/**
+	 * Brackets naming a track without the singing (or only the singing): another recording, with other lyrics or none. "Inst."
+	 * is how K-pop and J-pop releases name the instrumental; NetEase uploads say 伴奏 (backing track) or 纯音乐 (pure music),
+	 * Japanese ones カラオケ, オフボーカル or インスト. Those words have no word edges to look for, so they count anywhere in a bracket.
+	 */
+	private static final Pattern NO_VOCALS = Pattern.compile("(?i)\\b(instrumental|inst|karaoke|backing track|a ?cap+ella|off[ -]vocal)\\b"
+			+ "|伴奏|纯音乐|カラオケ|オフボーカル|インスト");
 
 	private static boolean noVocals(String title) {
 		Matcher m = ANY_BRACKET.matcher(capped(title));
