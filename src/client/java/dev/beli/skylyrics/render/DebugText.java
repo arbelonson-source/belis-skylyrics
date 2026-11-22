@@ -17,13 +17,12 @@ import net.minecraft.client.Minecraft;
  * stops well above a bottom bar at GUI scale 2), so it is measured as the game draws each column, not guessed.
  */
 public final class DebugText {
-	/** A column not drawn for this long is taken as gone (F3 closed, or a mod draws F3 its own way). */
-	private static final long STALE_NS = 250_000_000L;
 	/** The game puts each line this far below the one before, its first 2 down and 2 in from its side of the screen. */
 	static final int LINE_H = 9, INSET = 2;
 
 	private static volatile float[][] left = new float[0][], right = new float[0][];
-	private static volatile long leftAt, rightAt;
+	/** When each column was drawn last and the time before, for {@link DrawnLately}. */
+	private static volatile long leftAt, rightAt, leftBefore, rightBefore;
 
 	private DebugText() {
 	}
@@ -41,13 +40,18 @@ public final class DebugText {
 			String line = lines.get(i);
 			widths[i] = line == null || line.isEmpty() ? -1 : width.applyAsInt(line);
 		}
-		float[][] boxes = boxes(widths, leftColumn, guiWidth);
-		long now = System.nanoTime();
+		record(boxes(widths, leftColumn, guiWidth), leftColumn, System.nanoTime());
+	}
+
+	/** Keeps one column's line boxes as the game drew them at {@code now}. */
+	static void record(float[][] boxes, boolean leftColumn, long now) {
 		if (leftColumn) {
 			left = boxes;
+			leftBefore = leftAt;
 			leftAt = now;
 		} else {
 			right = boxes;
+			rightBefore = rightAt;
 			rightAt = now;
 		}
 	}
@@ -87,9 +91,13 @@ public final class DebugText {
 		return out;
 	}
 
-	/** Both columns' line boxes, or null when the game hasn't drawn F3's text in the last moment. */
+	/**
+	 * Both columns' line boxes, or null when the game hasn't drawn F3's text lately: a column it stopped drawing is taken
+	 * as gone (F3 closed, or a mod draws F3 its own way), one it drew in its last frame still counts on a slow game
+	 * ({@link DrawnLately}). The game draws F3 after the HUD, so the bar and the card always read the last frame's.
+	 */
 	static float @Nullable [][] recent(long now) {
-		boolean l = now - leftAt <= STALE_NS, r = now - rightAt <= STALE_NS;
+		boolean l = DrawnLately.drawn(now, leftAt, leftBefore), r = DrawnLately.drawn(now, rightAt, rightBefore);
 		if (!l && !r) {
 			return null;
 		}
