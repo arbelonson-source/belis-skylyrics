@@ -222,6 +222,19 @@ public final class NowPlayingHud {
 
 	/** The note in the round space for a missing cover. */
 	private static final String NOTE = "♪";
+	/** The size the note is asked for, in Minecraft's letters (see {@link #noteSize}). */
+	static final float NOTE_SCALE = 0.85f;
+
+	/**
+	 * The size the note is drawn at in a bar {@code barSize} big at this GUI scale. It is a letter of Minecraft's pixel
+	 * font: at 0.85 each of its pixels came out 2 or 3 screen pixels by turns at GUI scale 3, so it looked uneven. It gets
+	 * the nearest size with a whole number of screen pixels per letter pixel, as the Record card's small text does
+	 * ({@link RecordCard#smallSize}).
+	 */
+	static float noteSize(double guiScale, float barSize) {
+		// The bar's size scales the note too: the screen pixels per unit are the GUI scale times it
+		return RecordCard.smallSize(false, NOTE_SCALE, (float) guiScale * barSize);
+	}
 
 	private static @Nullable Language noteLanguage;
 	private static @Nullable FormattedCharSequence noteOrder;
@@ -465,23 +478,33 @@ public final class NowPlayingHud {
 		TopBarLayout.Fit fit = sizes.fit();
 		float[] box = TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), sizes.clockW(), fit.clock(), sizes.statsW(), fit.stats(),
 				bottomTopNow(mc, g.guiHeight()));
-		return f3Hides(true, true, box, DebugText.recent(now));
+		return f3Hides(true, true, box, DebugText.recent(now), DebugCharts.shown(mc, g.guiWidth(), g.guiHeight()));
+	}
+
+	/** {@link #f3Hides(boolean, boolean, float[], float[][], float[][])} with none of F3's charts showing. */
+	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines) {
+		return f3Hides(atBottom, f3Open, barBox, f3Lines, new float[0][]);
 	}
 
 	/**
 	 * Whether the open debug screen (F3) hides the bar: at the top always, as F3 fills the top corners; at the bottom when
-	 * the bar would sit on F3's text (at GUI scale 3 it does, on a taller screen F3's text can end above it). Without F3's
-	 * text measured (a mod draws F3 its own way), a bottom bar hides when it reaches as high as F3's text usually does,
-	 * as a Record card in the bottom left does.
+	 * the bar would sit on F3's text (at GUI scale 3 it does, on a taller screen F3's text can end above it) or on one of
+	 * its charts along the bottom (on a screen up to about 830 wide they reach under the bar). Without F3's text measured
+	 * (a mod draws F3 its own way), a bottom bar hides when it reaches as high as F3's text usually does, as a Record card
+	 * in the bottom left does.
 	 *
 	 * @param barBox the bar's box (left, top, right, bottom) when it sits at the bottom
 	 * @param f3Lines F3's text lines' boxes as the game drew them last, null when it didn't lately
+	 * @param f3Charts the boxes of F3's charts showing ({@link DebugCharts#shown})
 	 */
-	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines) {
+	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines, float[][] f3Charts) {
 		if (!f3Open) {
 			return false;
 		}
 		if (!atBottom || barBox == null) {
+			return true;
+		}
+		if (DebugText.covers(barBox, f3Charts)) {
 			return true;
 		}
 		return f3Lines == null ? barBox[1] < RecordCard.F3_REACH : DebugText.covers(barBox, f3Lines);
@@ -881,7 +904,8 @@ public final class NowPlayingHud {
 			g.pose().pushMatrix();
 			try {
 				g.pose().translate(x + ART_INSET + ART / 2f, y + PILL_H / 2f);
-				g.pose().scale(0.85f, 0.85f);
+				float noteSize = noteSize(guiScale, cfg.barSize);
+				g.pose().scale(noteSize, noteSize);
 				// As drawCenteredString draws it, with its shadow
 				FormattedCharSequence note = note(Language.getInstance());
 				g.drawString(font, note, -font.width(note) / 2, -4, noteColor(a * dim), true);

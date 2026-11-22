@@ -307,6 +307,8 @@ public final class SkyLyricsScreen extends Screen {
 	private int focusAt;
 	/** Whether to draw the focus ring: after keys, not after the mouse. */
 	private boolean focusVisible;
+	/** Brings the row the keys are on back into view when the window is resized. */
+	private final PickInView picks = new PickInView();
 	/** The row the keyboard was on in each tab. */
 	private final @Nullable Row[] tabFocus = new Row[TAB_COUNT + 1];
 	/** What the Narrator says instead of the focused row, after a tab changes. */
@@ -1227,6 +1229,11 @@ public final class SkyLyricsScreen extends Screen {
 		tabAnim = Ui.approach(tabAnim, 1, dt, 14);
 		scroll[tab] = Ui.approach(scroll[tab], scrollTarget[tab], dt, 18);
 		layout();
+		if (picks.follow(width, height) && ringShows() && focus instanceof Row row && row != masterToggle) {
+			// The window changed size under the keyboard's row (narrower rows stack, a shorter panel shows less): scroll it
+			// back into view, as the next key would have
+			scrollIntoView(row);
+		}
 		validateFocus();
 
 		if (preview) {
@@ -1625,6 +1632,7 @@ public final class SkyLyricsScreen extends Screen {
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		announcement = null;
+		picks.scrolledAway();
 		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
 			return true;
 		}
@@ -1781,6 +1789,7 @@ public final class SkyLyricsScreen extends Screen {
 		if (preview || active != null) {
 			return true;
 		}
+		picks.scrolledAway();
 		if (Ui.inside(mx, my, px + SIDEBAR_W, py, pw - SIDEBAR_W, ph)) {
 			scrollTarget[tab] = Mth.clamp(scrollTarget[tab] - (float) scrollY * 24, 0, maxScroll());
 			return true;
@@ -1814,6 +1823,7 @@ public final class SkyLyricsScreen extends Screen {
 	//?}
 	public boolean keyPressed(KeyEvent event) {
 		announcement = null; // a tab switch (set again below) is said once; after that the focused row speaks
+		picks.keyPicked();
 		if (preview) {
 			preview = false;
 			return true;
@@ -1872,14 +1882,17 @@ public final class SkyLyricsScreen extends Screen {
 			return true;
 		}
 		if (active == null && (event.key() == InputConstants.KEY_PAGEUP || event.key() == InputConstants.KEY_PAGEDOWN)) {
+			picks.scrolledAway();
 			scrollTarget[tab] = Focus.page(scrollTarget[tab], event.key() == InputConstants.KEY_PAGEUP ? -1 : 1, viewH, maxScroll());
 			return true;
 		}
 		if (active == null && event.key() == InputConstants.KEY_HOME) {
+			picks.scrolledAway();
 			scrollTarget[tab] = 0;
 			return true;
 		}
 		if (active == null && event.key() == InputConstants.KEY_END) {
+			picks.scrolledAway();
 			scrollTarget[tab] = maxScroll();
 			return true;
 		}

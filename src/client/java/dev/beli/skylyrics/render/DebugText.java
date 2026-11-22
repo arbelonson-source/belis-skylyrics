@@ -10,7 +10,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
 
 /**
  * The debug screen's (F3) text as the game drew it last: one box per line (left, top, right, bottom, in GUI units), for
- * its left and its right column, so a bar at the bottom can tell whether it would sit on that text. How much F3 shows
+ * its left and its right column, so a bar or a Record card at the bottom can tell whether it would sit on that text. How much F3 shows
  * depends on the game version and the mods (on 1.21.1 its left column nearly fills a GUI scale 3 screen, on 1.21.11 it
  * stops well above a bottom bar at GUI scale 2), so it is measured as the game draws each column, not guessed.
  */
@@ -28,11 +28,13 @@ public final class DebugText {
 
 	/**
 	 * Called as the game draws one of F3's columns (DebugScreenOverlayMixin), with its lines, the screen's width and the
-	 * game's font. It only measures while a bar at the bottom could need it.
+	 * game's font. It only measures while a bar or a Record card at the bottom could need it.
 	 */
 	public static void drawn(List<String> lines, boolean leftColumn, int guiWidth, ToIntFunction<String> width) {
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
-		if (!cfg.enabled || !cfg.nowPlayingHud || cfg.barPosition != BarPosition.BOTTOM) {
+		boolean bar = cfg.nowPlayingHud && cfg.barPosition == BarPosition.BOTTOM;
+		boolean card = cfg.recordCard && !RecordCard.topCorner(cfg.cardCorner);
+		if (!cfg.enabled || !bar && !card) {
 			return;
 		}
 		int[] widths = new int[lines.size()];

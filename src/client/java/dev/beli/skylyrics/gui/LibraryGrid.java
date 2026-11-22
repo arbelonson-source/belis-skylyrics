@@ -49,6 +49,18 @@ final class LibraryGrid {
 		return next < 0 ? loaded : loaded + Math.max(0, total - next);
 	}
 
+	/** Scrolls the least that brings card {@code selected} of a grid {@code cols} wide wholly into a view {@code viewH} tall. */
+	static float reveal(float scrollTarget, int selected, int cols, int cellH, int viewH) {
+		int y = (selected / cols) * (cellH + GAP);
+		if (y < scrollTarget) {
+			return y;
+		}
+		if (y + cellH > scrollTarget + viewH) {
+			return y + cellH - viewH;
+		}
+		return scrollTarget;
+	}
+
 	/** Room under the last row for one line: "Loading…" while the next page comes, or why it failed (a click on it, or Enter with the keyboard on it, tries again). */
 	static final int FOOTER = 16;
 
