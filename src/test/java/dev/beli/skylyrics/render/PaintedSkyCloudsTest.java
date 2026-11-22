@@ -43,7 +43,7 @@ class PaintedSkyCloudsTest {
 	//?}
 
 	/** Whether drawing with {@code type} marks the depth buffer. */
-	private static boolean leavesDepth(RenderType type) throws Exception {
+	static boolean leavesDepth(RenderType type) throws Exception {
 		//? if >=26.1 {
 		/*var state = type.pipeline().getDepthStencilState();
 		return state != null && state.writeDepth();
@@ -57,7 +57,7 @@ class PaintedSkyCloudsTest {
 	}
 
 	/** A private field's value, looked up through the object's classes. */
-	private static Object field(Object o, String name) throws Exception {
+	static Object field(Object o, String name) throws Exception {
 		for (Class<?> c = o.getClass(); c != null; c = c.getSuperclass()) {
 			try {
 				Field f = c.getDeclaredField(name);
