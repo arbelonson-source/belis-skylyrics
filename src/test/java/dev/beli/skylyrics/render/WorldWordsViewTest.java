@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.minecraft.client.Camera;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 
@@ -20,6 +21,8 @@ class WorldWordsViewTest {
 		WorldWords words;
 		int mostPieces;
 		float highestStart = Float.NEGATIVE_INFINITY;
+		/** How far down each line's lowest word reaches (its pitch plus its half height), as the words landed. */
+		final java.util.Map<WorldWords.Sentence, Float> lowest = new java.util.IdentityHashMap<>();
 	}
 
 	/** A long flowing line written a piece at a time while looking at {@code pitch}, on a screen {@code halfViewDeg} degrees tall either way (0: none captured). */
@@ -42,9 +45,22 @@ class WorldWordsViewTest {
 			}
 			java.lang.reflect.Field sentence = WorldWords.class.getDeclaredField("sentence");
 			sentence.setAccessible(true);
+			java.lang.reflect.Field cards = WorldWords.class.getDeclaredField("cards");
+			cards.setAccessible(true);
+			java.util.Set<Object> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
 			for (int k = 1; k <= frames; k++) {
 				// A fixed yaw with a fixed pitch: the words gather round that pitch whatever the camera does
 				run.words.update(0, text.toString(), (k - 1) * 3f, false, 0f, pitch, camera, null, null, net.minecraft.network.chat.Style.EMPTY, k * 100_000_000L);
+				for (Object card : (java.util.List<?>) cards.get(run.words)) {
+					if (seen.add(card)) {
+						WorldWords.Sentence of = (WorldWords.Sentence) field(card, "of");
+						Vec3 pos = (Vec3) field(card, "pos");
+						float bottom = (float) Math.toDegrees(-Math.asin(pos.y / pos.length())) + WorldWords.halfAngle(5 * (float) field(card, "size"), pos.length());
+						if (of != null) {
+							run.lowest.merge(of, bottom, Math::max);
+						}
+					}
+				}
 				WorldWords.Sentence now = (WorldWords.Sentence) sentence.get(run.words);
 				if (now != null) {
 					run.mostPieces = Math.max(run.mostPieces, now.pieces);
@@ -63,14 +79,26 @@ class WorldWordsViewTest {
 		}
 	}
 
+	private static Object field(Object o, String name) throws ReflectiveOperationException {
+		java.lang.reflect.Field f = o.getClass().getDeclaredField(name);
+		f.setAccessible(true);
+		return f.get(o);
+	}
+
 	@Test
 	void aNarrowScreenMakesLinesStartOverHigherThanTheDefaultOneDoes() throws Exception {
-		// 18 degrees either way, less the 2 degree margin: 16, where the default screen (35) would allow 33
+		// 18 degrees either way, less the 2 degree margin: 16, where the default screen (35) would allow 33. Judged by
+		// the old line's lowest word: a rising row's line starts lower at its left end than any word on it sits
 		for (long seed = 1; seed <= SEEDS; seed++) {
 			Run run = write(seed, 0, 18, 400);
 			assertFalse(run.words.earlierSentences().isEmpty(), "the line started over, seed " + seed);
 			for (WorldWords.Sentence old : run.words.earlierSentences()) {
-				assertTrue(old.rows < 1 || old.top <= 16.5f, "an old line's rows reach " + old.top + ", below 16, seed " + seed);
+				if (old.rows < 1) {
+					continue;
+				}
+				assertTrue(run.lowest.containsKey(old), "the old line's words were seen landing, seed " + seed);
+				float low = run.lowest.get(old);
+				assertTrue(low <= 16.5f, "an old line's words reach " + low + ", below 16, seed " + seed);
 			}
 		}
 	}

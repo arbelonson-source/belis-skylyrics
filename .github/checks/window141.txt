@@ -1,0 +1,172 @@
+# Unusual game windows, fix/window141: run it once at each size, on the branch and with -f mod_ref=main for the old code.
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/window141 -f script=.github/checks/window141.txt -f size=800x1000
+#   gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=main -f script=.github/checks/window141.txt -f size=800x1000
+# Sizes: 800x1000 (tall), 640x480 (the smallest GUI, 320x240), 3440x1440 and 2560x1080 (ultrawide), 3840x2160 (4K).
+# GUI scale Auto (guiscale 0) gives: 800x1000 -> 2 (400x500), 640x480 -> 2 (320x240), 3440x1440 -> 6 (574x240),
+# 2560x1080 -> 4 (640x270), 3840x2160 -> 9 (427x240). Minecraft never goes below 320x240: asking 1280x720 for GUI scale 4
+# gives 3 (426x240). The "-g2" shots are GUI scale 2 (3440x1440 -> 1720x720, 3840x2160 -> 1920x1080), "-g1" scale 1.
+#
+# 1. Top bar, top and bottom, with the clock and the frame rate: w141-bar-top-auto, w141-bar-bottom-auto, w141-bar-top-g2,
+#    w141-bar-top-g1, and a long made-up title as the song changes: w141-bar-title-auto (cut with "..."). The pill is
+#    never wider than 270 GUI units (at GUI scale 2 on 3440 wide that is 540 of 3440 pixels: a short bar in the middle,
+#    not stretched); on 640x480 it fits between the clock and the frame rate. The
+#    sung word's highlight sits on the word, the cover (or the note) is round, the text is cut before the equaliser.
+#    The bottom bar sits above the hotbar's hearts (creative: no hearts, 50 up), never over the hotbar.
+# 2. Record card with three lines in each corner (w141-card-tl, -tr, -bl, -br), and the top bar on: whole on the
+#    screen, its title and artist cut with "...", the bottom ones above the hotbar (on 640x480 lifted above it).
+# 3. Arc and Lines layouts: w141-arc, w141-lines (Auto) and w141-lines-g2: the lines inside the screen's width (they
+#    already wrap to the window's shape).
+# 4. Settings (Look tab and Display tab) at Auto, GUI scale 2 and 1: w141-settings-look-auto, -display-auto,
+#    -display-g2, -display-g1, then a search with a long description's tooltip: w141-settings-tip-auto/-g2. The panel
+#    is at most 440x272 GUI units, so at GUI scale 1 on 3440x1440 or 3840x2160 it is a small box in the middle (a
+#    design question, not a bug); rows never run past the panel, the tooltip stays on the screen.
+# 5. Song library (the demo's made-up songs): w141-lib-grid-auto, -shelf-auto, -carousel-auto, then -grid-g2 and
+#    -grid-g1: at most 460x300 GUI units; the grid's columns fill the panel's width, covers and names are not cut off.
+# 6. World words (last: the made-up lines replace the demo song's), looking level (look 0 0) at a long made-up line
+#    sung over 4 seconds: w141-world-a/-b/-c (the scatter, the default) and w141-flow-a/-b/-c (Flowing line on), Keep
+#    the middle clear on.
+#    Old code at 800x1000 (and less so 640x480): words at the left and right are cut by the screen's edge or missing,
+#      a flowing line's rows run off one side (they were spread up to 40 degrees out, the screen shows 29).
+#    Branch: every word whole on the screen, a little in from each edge. 3440x1440, 2560x1080, 3840x2160: the same
+#      pictures on both (the branch changes nothing on a wide screen).
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout LINES
+set worldFlow false
+set worldClearMiddle true
+guiscale 0
+look 0 -20
+sleep 8
+
+# 1. Top bar, paused on "Every word is written in the stars"
+music pause
+sleep 1
+seek 26
+sleep 3
+shot w141-bar-top-auto
+set barPosition BOTTOM
+sleep 2
+shot w141-bar-bottom-auto
+set barPosition TOP
+guiscale 2
+sleep 2
+shot w141-bar-top-g2
+guiscale 1
+sleep 2
+shot w141-bar-top-g1
+guiscale 0
+song A Very Long Made Up Song Title That Keeps Going Past The Bar | Mira Vale, The Glass Tide Orchestra & Friends
+sleep 1
+shot w141-bar-title-auto
+song Neon Skyline | SkyLyrics Demo
+sleep 5
+
+# 2. Record card, three lines, each corner
+set recordCard true
+set cardLines 3
+set cardCorner TOP_LEFT
+sleep 2
+shot w141-card-tl
+set cardCorner TOP_RIGHT
+sleep 2
+shot w141-card-tr
+set cardCorner BOTTOM_LEFT
+sleep 2
+shot w141-card-bl
+set cardCorner BOTTOM_RIGHT
+sleep 2
+shot w141-card-br
+set recordCard false
+music play
+
+# 3. Arc and Lines
+set layout ARC
+seek 20
+sleep 5
+shot w141-arc
+set layout LINES
+seek 20
+sleep 5
+shot w141-lines
+guiscale 2
+sleep 2
+shot w141-lines-g2
+guiscale 0
+sleep 1
+
+# 4. Settings
+gui 1
+sleep 3
+shot w141-settings-look-auto
+gui 3
+sleep 3
+shot w141-settings-display-auto
+guiscale 2
+sleep 2
+shot w141-settings-display-g2
+guiscale 1
+sleep 2
+shot w141-settings-display-g1
+guiscale 0
+sleep 2
+search underground
+sleep 2
+shot w141-settings-tip-auto
+guiscale 2
+sleep 2
+shot w141-settings-tip-g2
+guiscale 0
+close
+sleep 1
+
+# 5. Song library
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot w141-lib-grid-auto
+close
+set libraryView SHELF
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot w141-lib-shelf-auto
+close
+set libraryView CAROUSEL
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot w141-lib-carousel-auto
+close
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+guiscale 2
+sleep 3
+shot w141-lib-grid-g2
+guiscale 1
+sleep 3
+shot w141-lib-grid-g1
+guiscale 0
+close
+sleep 1
+
+# 6. World words: a long made-up line, one every 4 seconds, looking level
+set layout WORLD
+look 0 0
+lines lanterns drift over the harbour while the slow tide carries every little light away into the morning | quiet engines hum beneath the bridges as the city counts its windows one by one | paper boats remember every river that they never sailed upon
+seek 0
+sleep 2.5
+shot w141-world-a
+sleep 2
+shot w141-world-b
+sleep 3
+shot w141-world-c
+set worldFlow true
+seek 0
+sleep 2.5
+shot w141-flow-a
+sleep 2
+shot w141-flow-b
+sleep 3
+shot w141-flow-c
+set worldFlow false

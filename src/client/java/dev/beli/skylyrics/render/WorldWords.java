@@ -362,6 +362,8 @@ final class WorldWords {
 	private float seenLow = Sentence.ROW_LIMIT;
 	/** Half the height of the screen in degrees, as of the last card placed. */
 	private float seenHalf = 35f;
+	/** How far either side of where you look a word may reach on this screen, in degrees ({@link #sideView}), as of the last card placed. */
+	private float seenSide = Float.POSITIVE_INFINITY;
 	private @Nullable Sentence sentence;
 	/** The line written before it, which the next line of a verse goes under. */
 	private @Nullable Sentence last;
@@ -1512,6 +1514,7 @@ final class WorldWords {
 		seenHalf = halfView(ScreenLayer.tanHalfV(), sliderFov());
 		// The line is laid out round centre, so the bottom of what it may use is judged from there, as rowFits does
 		seenLow = lowestSeen(centre[1], seenHalf);
+		seenSide = sideView(ScreenLayer.tanHalfH());
 		for (boolean again = false;; again = true) {
 			spot = flow ? follow(centre, at, base, avoid, firm, now) : scatter(centre, at, base, avoid);
 			Vec3 dir = direction(spot[0], spot[1]);
@@ -1655,6 +1658,8 @@ final class WorldWords {
 			// Up high a card is closer to the axis it turns around, so it takes up more yaw
 			float halfW = halfAngle(at[at.length - 1] * fit * wordScale / 2, distance * Mth.cos(pitch * DEG)) + PAD_X;
 			float halfH = halfAngle(5 * fit * wordScale, distance) + PAD_Y;
+			// A spot out at the side of a narrow screen (a tall or square window) is brought in, so the word lands on it
+			yaw = inSide(yaw, centre[0], halfW - PAD_X, seenSide);
 			float cost = 0;
 			for (float[] o : taken) {
 				float w = halfW + o[2] - Math.abs(Mth.wrapDegrees(yaw - o[0])), h = halfH + o[3] - Math.abs(pitch - o[1]);
@@ -1704,7 +1709,8 @@ final class WorldWords {
 			// The whole line's box: as wide as it reads, or a full row, and as many rows deep as it will need
 			float wide = (float) Math.toDegrees(lineWidth * SIZE * wordScale * LINE_SPREAD / distance);
 			// Rows grow with the words, so a big Size still writes a few words across before starting the next row
-			float width = Math.min(Sentence.WIDTH * Mth.clamp(wordScale, 1, ROW_GROW), 2 * VIEW_HALF);
+			float room = rowSide(seenSide);
+			float width = Math.min(Sentence.WIDTH * Mth.clamp(wordScale, 1, ROW_GROW), 2 * room);
 			int rows = Math.max(1, Mth.ceil(wide / (width * ROW_FILL)));
 			float row = 2 * halfAngle(5 * SIZE * SIZE_LONG * (big && bigPiece >= 0 ? BIG : 1) * wordScale, distance) + Sentence.ROW_GAP;
 			// Under a line that sits over the kept-clear middle, the next one must still end above it
@@ -1721,7 +1727,7 @@ final class WorldWords {
 			for (int t = 0; t < TRIES && bestCost > 0; t++) {
 				// With the middle kept clear, a line goes just over it, or off to the left or the right of where you look
 				float roll = next(), side = !clearMiddle || roll < OVER_MIDDLE ? 0 : roll < (1 + OVER_MIDDLE) / 2 ? -SIDE_YAW : SIDE_YAW;
-				float left = onScreen(centre[0] + side - width / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X, width, centre[0]);
+				float left = onScreen(centre[0] + side - width / 2 + (next() * 2 - 1) * SENTENCE_SHIFT_X, width, centre[0], room);
 				float top = centre[1] - LIFT + (next() * 2 - 1) * SENTENCE_SHIFT_Y;
 				if (clearMiddle && side == 0) {
 					// All its rows end above the kept-clear part
@@ -1812,8 +1818,43 @@ final class WorldWords {
 		}
 	}
 
-	/** How far either side of where you look, in degrees, a line's rows may reach and still be on screen. */
+	/** How far either side of where you look, in degrees, a line's rows may reach and still be on screen (a 16:9 one shows 51 at FOV 70). */
 	static final float VIEW_HALF = 40f;
+
+	/** Degrees a word keeps from the left and right edges of the screen. */
+	static final float SIDE_MARGIN = 2f;
+	/** A flowing line's rows reach at least this far either side, however narrow the screen, so a row still holds a word or two. */
+	static final float MIN_SIDE = 8f;
+
+	/**
+	 * How far either side of where you look, in degrees, a word may reach and still be on screen: half the screen's width,
+	 * from the projection the world was drawn with ({@code tanHalfH}, see {@link ScreenLayer#tanHalfH}), less
+	 * {@link #SIDE_MARGIN}. A tall or square window (or a low FOV) shows far less than a 16:9 screen. Before the first
+	 * frame nothing is known: no limit then but the layout's own.
+	 */
+	static float sideView(float tanHalfH) {
+		if (!(tanHalfH > 0) || Float.isInfinite(tanHalfH)) {
+			return Float.POSITIVE_INFINITY;
+		}
+		return (float) Math.toDegrees(Math.atan(tanHalfH)) - SIDE_MARGIN;
+	}
+
+	/** How far either side a flowing line's rows may reach on a screen that shows {@code side} ({@link #sideView}): {@link #VIEW_HALF}, or less on a narrow one. */
+	static float rowSide(float side) {
+		return Math.max(MIN_SIDE, Math.min(VIEW_HALF, side));
+	}
+
+	/**
+	 * A scattered word's yaw, brought in towards where you look ({@code centre}) as far as it takes for all of it, {@code halfW}
+	 * either way, to stay within {@code side} ({@link #sideView}). One wider than the screen goes in the middle.
+	 */
+	static float inSide(float yaw, float centre, float halfW, float side) {
+		float off = Mth.wrapDegrees(yaw - centre), most = side - halfW;
+		if (Math.abs(off) <= most) {
+			return yaw;
+		}
+		return centre + (most <= 0 ? 0 : Math.copySign(most, off));
+	}
 
 	/** How far above where you look, in degrees, a line's highest word may reach: under the top of the screen, with room to float up. */
 	static final float VIEW_UP = 24f;
@@ -1877,9 +1918,14 @@ final class WorldWords {
 		return rowFits(foot + drop, wide, centre[1], halfView);
 	}
 
-	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on screen. */
+	/** Where a row starting at {@code left} must start instead so all of its {@code width} stays on a 16:9 screen. */
 	static float onScreen(float left, float width, float centre) {
-		return Mth.clamp(left, centre - VIEW_HALF, centre + VIEW_HALF - Math.min(width, 2 * VIEW_HALF));
+		return onScreen(left, width, centre, VIEW_HALF);
+	}
+
+	/** The same on a screen whose rows may reach {@code side} degrees either way ({@link #rowSide}). */
+	static float onScreen(float left, float width, float centre, float side) {
+		return Mth.clamp(left, centre - side, centre + side - Math.min(width, 2 * side));
 	}
 
 	/** How far below where a line would start, in degrees, the next lines of a verse may still go under it. */
