@@ -46,6 +46,11 @@ option clouds off
 option renderDistance 12
 hud off
 
+# Up on a slab at y 200, so no hill stands in front of the moon or the suns (the terrain differs between runs)
+cmd execute at @p run fill ~-2 199 ~-2 ~2 199 ~2 minecraft:stone
+cmd execute as @p at @s run tp @s ~ 200 ~
+sleep 4
+
 # 1. Moonlight: the moon left of where the lyrics face (yaw 148, 25 degrees up), the clouds low round the horizon
 set sky MOONLIGHT
 look 148 -18
