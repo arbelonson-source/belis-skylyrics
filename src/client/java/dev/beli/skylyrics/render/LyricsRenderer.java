@@ -193,6 +193,11 @@ public final class LyricsRenderer {
 	private final Map<String, float[]> offsetCacheRtl = new HashMap<>();
 	/** What depends only on a line's text and its rows (where rows start, word counts, direction); see {@link LineInfo}. */
 	private final Map<String, LineInfo> infoCache = new HashMap<>();
+	/**
+	 * The few colours the words are drawn in, as Styles built once and kept from frame to frame instead of per word,
+	 * copy and frame. Render thread only.
+	 */
+	private final ColorStyles colors = new ColorStyles();
 	/** Scratch for {@code Draw.line}, reused so a row doesn't allocate its per-character arrays every frame. Render thread only. */
 	private float[] scratchReveal = new float[64], scratchFlare = new float[64], scratchSpread = new float[65];
 	/** The instrumental song's note line, translated once per language. */
@@ -1427,9 +1432,16 @@ public final class LyricsRenderer {
 		}
 	}
 
+	/** The Style a run of a row was last drawn in, its colour and its letters' fill (one per run: the game walks it later). */
+	private static final class LastStyle {
+		@Nullable Style style;
+		int color;
+		float fill = Float.NaN;
+	}
+
 	/**
-	 * Styles of one base in a few colours, each built once. The depth copies share one colour for the whole frame and the
-	 * face colour repeats from word to word, so most words find theirs here. Render thread only; one per frame.
+	 * Styles of one base in a few colours, each built once. The depth copies share one colour and the face colour repeats
+	 * from word to word and frame to frame, so most words find theirs here. Render thread only.
 	 */
 	static final class ColorStyles {
 		private static final int SIZE = 16;
@@ -1450,7 +1462,14 @@ public final class LyricsRenderer {
 				}
 			}
 			Style made = base.withColor(rgb);
-			int at = count < SIZE ? count++ : next++ % SIZE;
+			int at;
+			if (count < SIZE) {
+				at = count++;
+			} else {
+				// Oldest first; kept in range, as this lives as long as the game
+				at = next;
+				next = (next + 1) % SIZE;
+			}
 			rgbs[at] = rgb;
 			styles[at] = made;
 			return made;
@@ -1464,8 +1483,6 @@ public final class LyricsRenderer {
 		final int color;
 		final float wrapWidth;
 		final Style base;
-		/** The few colours a frame's words are drawn in, as Styles built once instead of per word and copy. */
-		private final ColorStyles colors = new ColorStyles();
 		Draw(Canvas canvas, Font font, SkyLyricsConfig cfg, int color, float wrapWidth) {
 			this.canvas = canvas;
 			this.font = font;
@@ -1475,23 +1492,38 @@ public final class LyricsRenderer {
 			this.base = LyricsFont.sky(cfg);
 		}
 
+		// Looked up with get and put, not computeIfAbsent: its lambda captures, so it would be built on every hit too
+
 		List<String> rows(String text) {
-			return wrapCache.computeIfAbsent(text, t -> wrap(font, base, t, wrapWidth));
+			List<String> rows = wrapCache.get(text);
+			if (rows == null) {
+				rows = wrap(font, base, text, wrapWidth);
+				wrapCache.put(text, rows);
+			}
+			return rows;
 		}
 
 		float[] offsets(String row, Display d, boolean rtl) {
 			// The same row is laid out differently by line direction (and apart from the default Display.of(row)), so it is part of the key
-			return (rtl ? offsetCacheRtl : offsetCache).computeIfAbsent(row, r -> {
-				float[] at = new float[d.cps.length + 1];
+			Map<String, float[]> cache = rtl ? offsetCacheRtl : offsetCache;
+			float[] at = cache.get(row);
+			if (at == null) {
+				at = new float[d.cps.length + 1];
 				for (int v = 1; v <= d.cps.length; v++) {
 					at[v] = LyricsFont.width(font, base, new String(d.cps, 0, v));
 				}
-				return at;
-			});
+				cache.put(row, at);
+			}
+			return at;
 		}
 
 		LineInfo info(String text, List<String> rows) {
-			return infoCache.computeIfAbsent(text, t -> LineInfo.of(t, rows));
+			LineInfo info = infoCache.get(text);
+			if (info == null) {
+				info = LineInfo.of(text, rows);
+				infoCache.put(text, info);
+			}
+			return info;
 		}
 
 		/** How much bigger each character is drawn (1 = normal): the word being sung swells, then settles. */
@@ -1818,17 +1850,15 @@ public final class LyricsRenderer {
 						float fl = flare[from];
 						int start = charIndex;
 						int a0 = from, a1 = to;
-						// One-entry cache: a run mostly shares one colour, so build its Style once, not per glyph per frame
-						Style[] lastStyle = {null};
-						int[] lastColor = {0};
-						float[] lastFill = {Float.NaN};
+						// One-entry cache: a run mostly shares one colour, so find its Style once, not per glyph
+						LastStyle last = new LastStyle();
 						FormattedCharSequence seq = sink -> {
 							for (int v = a0; v < a1; v++) {
 								float fill = Mth.clamp(sungChars - (start + d.logical[v]), 0, 1);
 								Style st;
-								if (tone < 0 && lastStyle[0] != null && fill == lastFill[0]) {
+								if (tone < 0 && last.style != null && fill == last.fill) {
 									// Without a second tone the colour depends on the fill alone
-									st = lastStyle[0];
+									st = last.style;
 								} else {
 									int c = mix(mix(secondary, mix(dim, bright, fill), highlight), 0xFFFFFF, 0.35f * fl);
 									if (tone >= 0) {
@@ -1836,12 +1866,12 @@ public final class LyricsRenderer {
 										int shade = mix(mix(secondaryTo, mix(dimTo, brightTo, fill), highlight), 0xFFFFFF, 0.35f * fl);
 										c = mix(c, shade, t);
 									}
-									if (lastStyle[0] == null || c != lastColor[0]) {
-										lastStyle[0] = base.withColor(c);
-										lastColor[0] = c;
+									if (last.style == null || c != last.color) {
+										last.style = colors.of(base, c);
+										last.color = c;
 									}
-									lastFill[0] = fill;
-									st = lastStyle[0];
+									last.fill = fill;
+									st = last.style;
 								}
 								if (!sink.accept(v, st, d.cps[v])) {
 									return false;
@@ -1856,7 +1886,7 @@ public final class LyricsRenderer {
 								for (int v = a0; v < a1; v++) {
 									// Two-tone: the glow follows the letters into the second colour; only its strength comes from the copy
 									Style glowStyle = tone < 0 ? base
-											: base.withColor(mix(halo, haloTo, letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1)));
+											: colors.of(base, mix(halo, haloTo, letters < 2 ? 0 : (start + d.logical[v]) / (float) (letters - 1)));
 									if (!sink.accept(v, glowStyle, d.cps[v])) {
 										return false;
 									}
