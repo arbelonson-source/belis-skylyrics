@@ -58,6 +58,26 @@ jobs:
               sys.exit(1)
           PY
           done
+      - name: check the Mac script tests really ran
+        if: matrix.os == 'macos-15'
+        # The tests that run the real AppleScript through osascript skip themselves off a Mac (and when Music is open or
+        # Finder isn't running), so check by name that they really ran here
+        run: |
+          for pair in "MacMediaSourceTest:runsTheRealAppleScript musicPartLeavesAClosedMusicClosed limitedPartRunsOnAMac" \
+              "MacAppleScriptTest:mainWithNoAppsPrintsNothing mainLeavesAClosedMusicClosed aRealPollWhileMusicIsClosedShowsNothing mainCleansTheFieldsAPartReturns aPartThatFailsComesBackAsAnErrorLine theTimeLimitCutsAnAppThatIsSlowToAnswer theButtonScriptsCompileAndLeaveAClosedMusicClosed"; do
+            for report in versions/*/build/test-results/test/TEST-dev.beli.skylyrics.media.${pair%%:*}.xml; do
+              grep -o '<testsuite [^>]*>' "$report"
+              python3 - "$report" ${pair#*:} <<'PY'
+          import sys, xml.etree.ElementTree as ET
+          root = ET.parse(sys.argv[1]).getroot()
+          cases = {c.get('name').split('(')[0]: c for c in root.iter('testcase')}  # reports say "name()"
+          bad = [n for n in sys.argv[2:] if n not in cases or cases[n].find('skipped') is not None]
+          if bad:
+              print('not run:', bad)
+              sys.exit(1)
+          PY
+            done
+          done
       - name: show failed tests as annotations
         # The annotations can be read through GitHub's API, which is easier to reach than the full log
         if: failure()
