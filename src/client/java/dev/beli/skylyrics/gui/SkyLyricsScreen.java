@@ -995,17 +995,24 @@ public final class SkyLyricsScreen extends Screen {
 			focus = ring.stops().get(to);
 			focusAt = to;
 			focusVisible = true;
-			announcement = focus instanceof Row landed ? hintAnnouncement(landed) : null;
+			announcement = focus instanceof Row landed ? landing(landed) : null;
 			if (focus instanceof Row row && row != masterToggle) {
 				tabFocus[tab] = row;
-				int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
-				scrollTarget[tab] = Focus.scrollIntoView(scrollTarget[tab], top, top + row.height(), viewH, 14, maxScroll());
+				scrollIntoView(row);
 			}
 			afterKeyboardAction();
 		}
 	}
 
-	/** Keeps the focus on a row that can still be reached: a hidden row hands it to the next one, a row of another tab drops it. */
+	private void scrollIntoView(Row row) {
+		int top = row.y - (viewY + 2) + Math.round(scroll[tab]);
+		scrollTarget[tab] = Focus.scrollIntoView(scrollTarget[tab], top, top + row.height(), viewH, 14, maxScroll());
+	}
+
+	/**
+	 * Keeps the focus on a row that can still be reached: a row hidden under the keyboard hands it to the next row that
+	 * shows (see {@link Focus#afterHidden}), which the Narrator names; a row of another tab drops it.
+	 */
 	private void validateFocus() {
 		if (!(focus instanceof Row row) || row == masterToggle) {
 			return;
@@ -1016,11 +1023,20 @@ public final class SkyLyricsScreen extends Screen {
 			focusAt = at;
 			return;
 		}
-		int to = at < 0 ? -1 : Focus.next(ring.available(), at, 1);
+		int to = at < 0 ? -1 : Focus.afterHidden(rowsThatShow(ring), ring.available(), at);
 		focus = to < 0 ? null : ring.stops().get(to);
 		focusAt = Math.max(to, 0);
 		if (focus instanceof Row now && now != masterToggle) {
 			tabFocus[tab] = now;
+		}
+		if (to >= 0 && focusVisible) {
+			// The ring moved by itself (a song stopped, a sign-in finished): keep it in view and say where it is. After a
+			// click there is no ring, and the click's own words (like Settings reset) are said instead.
+			if (focus instanceof Row now && now != masterToggle) {
+				scrollIntoView(now);
+			}
+			announcement = focus instanceof Row now ? landing(now) : focusedNarration();
+			afterKeyboardAction();
 		}
 	}
 
@@ -1036,19 +1052,24 @@ public final class SkyLyricsScreen extends Screen {
 		mouseMovedYet = false;
 		mouseFromX = Double.NaN;
 		announcement = Narration.tab(tabName(to), Tr.t("tab"), Tr.t("%s of %s", to + 1, TAB_COUNT),
-				focus instanceof Row row ? Narration.hinted(rowNarration(row), row.hint()) : "");
+				focus instanceof Row row ? landing(row) : "");
 		afterKeyboardAction();
 	}
 
 	/** The row the keyboard goes back to on this tab: {@code remembered} while it shows, else the next row that does (see {@link Focus#backOnTab}). */
 	private @Nullable Row rowBackOnTab(@Nullable Row remembered) {
 		Ring ring = ring();
+		int at = Focus.backOnTab(rowsThatShow(ring), ring.stops().indexOf(remembered));
+		return at < 0 ? null : (Row) ring.stops().get(at);
+	}
+
+	/** Which stops of the ring are rows of the list that show (on this tab, or in the search results). */
+	private boolean[] rowsThatShow(Ring ring) {
 		boolean[] rows = new boolean[ring.stops().size()];
 		for (int i = 0; i < rows.length; i++) {
 			rows[i] = ring.available()[i] && ring.stops().get(i) instanceof Row row && row != masterToggle;
 		}
-		int at = Focus.backOnTab(rows, ring.stops().indexOf(remembered));
-		return at < 0 ? null : (Row) ring.stops().get(at);
+		return rows;
 	}
 
 	private void press(Chrome button) {
@@ -1098,6 +1119,11 @@ public final class SkyLyricsScreen extends Screen {
 		if (typing) {
 			return Narration.join(Tr.t("Search"), Tr.t("text box"), query, searchSaid);
 		}
+		return focusedNarration();
+	}
+
+	/** The words of the row or button the keyboard is on; nothing when it is on nothing. */
+	private String focusedNarration() {
 		if (focus instanceof Row row) {
 			return rowNarration(row);
 		}
@@ -1112,9 +1138,20 @@ public final class SkyLyricsScreen extends Screen {
 		return "";
 	}
 
-	/** What is said once when the keyboard lands on a row that has a hint; nothing for the others (their words speak as usual). */
-	private @Nullable String hintAnnouncement(Row row) {
-		return row.hint().isEmpty() ? null : Narration.hinted(rowNarration(row), row.hint());
+	/**
+	 * What is said once as the keyboard lands on a row: its words, then its place among the rows that show in the game's
+	 * own words ("Selected list row 3 out of 12", as vanilla lists say it), then its hint. A change of its value after that
+	 * says just the row's words.
+	 */
+	private String landing(Row row) {
+		return Narration.landed(rowNarration(row), placeText(row), row.hint());
+	}
+
+	/** The row's place among the rows that show, as vanilla's lists say it; nothing for the Lyrics switch or a lone row. */
+	private String placeText(Row row) {
+		Ring ring = ring();
+		Focus.Place place = Focus.place(rowsThatShow(ring), ring.stops().indexOf(row));
+		return place == null ? "" : Component.translatable("narrator.position.list", place.n(), place.of()).getString();
 	}
 
 	/** A row's words; in the search results a row that its tab is hiding right now says so. */
@@ -1201,10 +1238,15 @@ public final class SkyLyricsScreen extends Screen {
 		renderHeader(g, frame);
 		renderContent(g, frame);
 		renderFooter(g, frame);
-		if (focusVisible && focus instanceof Chrome button) {
+		if (ringShows() && focus instanceof Chrome button) {
 			int[] r = chromeRect(button);
 			Ui.outline(g, r[0] - 2, r[1] - 2, r[2] + 4, r[3] + 4, 6, Ui.TEXT);
 		}
+	}
+
+	/** Whether the keyboard's ring is drawn: after keys, and not while the search box has the keyboard (see {@link Focus#ringShows}). */
+	private boolean ringShows() {
+		return Focus.ringShows(focusVisible, typing);
 	}
 
 	private void renderSidebar(GuiGraphics g, Frame f) {
@@ -1239,7 +1281,7 @@ public final class SkyLyricsScreen extends Screen {
 
 		g.fill(px + 10, py + ph - 36, px + SIDEBAR_W - 10, py + ph - 35, Ui.DIVIDER);
 		masterToggle.render(f);
-		if (focusVisible && focus == masterToggle) {
+		if (ringShows() && focus == masterToggle) {
 			masterToggle.renderFocus(f);
 		}
 	}
@@ -1344,6 +1386,21 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
+	/**
+	 * Esc in the search box or its results: clears the search, then says so and where the keyboard is now (see
+	 * {@link Narration#searchCleared}), so it is clear the settings are still open before a second Esc closes them.
+	 */
+	private void escapeSearch() {
+		boolean typed = !query.isEmpty();
+		clearSearch();
+		layout();
+		validateFocus(); // a result from another tab lets go of the keyboard, one hidden on this tab hands it on
+		String where = focus instanceof Row row ? landing(row) : focusedNarration();
+		announcement = Narration.searchCleared(typed, Tr.t("Search cleared"), where,
+				Narration.tab(tabName(tab), Tr.t("tab"), Tr.t("%s of %s", tab + 1, TAB_COUNT), ""));
+		afterKeyboardAction();
+	}
+
 	private void renderHeader(GuiGraphics g, Frame f) {
 		int bw = font.width(Tr.t("Preview")) + 16;
 		int bx = px + pw - 12 - bw;
@@ -1446,7 +1503,7 @@ public final class SkyLyricsScreen extends Screen {
 					Ui.rect(g, row.x + 2, row.y + 1, row.w - 4, row.height() - 2, 4, Ui.CARD_HOVER);
 				}
 				row.render(inner);
-				if (focusVisible && row == focus) {
+				if (ringShows() && row == focus) {
 					row.renderFocus(inner);
 				}
 				List<String> cut = row.hovered(inner) ? row.cutTexts(font) : List.of();
@@ -1754,7 +1811,7 @@ public final class SkyLyricsScreen extends Screen {
 		}
 		if (typing) {
 			if (event.isEscape()) {
-				clearSearch();
+				escapeSearch();
 			} else if (event.isConfirmation()) {
 				typing = false;
 				if (!tabs.get(SEARCH_TAB).isEmpty()) {
@@ -1783,7 +1840,7 @@ public final class SkyLyricsScreen extends Screen {
 			return true;
 		}
 		if (tab == SEARCH_TAB && event.isEscape()) {
-			clearSearch();
+			escapeSearch();
 			return true;
 		}
 		KeyMapping open = mod.openSettingsKey();

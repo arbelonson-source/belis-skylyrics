@@ -1,0 +1,46 @@
+# Only one thing looks focused while typing in the settings search (fix/narr112). Compare each shot with the same
+# script on main.
+# - narr112-done: Shift+Tab from nothing puts the white focus ring on Done (the same on both).
+# - narr112-typing: then Ctrl+F. On the branch only the search box at the top of the sidebar is outlined (the purple
+#   outline of a box being typed in). On main the white ring also stays round Done, so two things look focused.
+# - narr112-results: "glow" typed. On the branch still only the search box's purple outline; on main the white ring is
+#   still round Done under the results.
+# - narr112-cleared: Esc. The search is cleared, the Look tab is back and the white ring is round Done again (both).
+# - narr112-row-typing: Tab three times (the Lyrics switch, Preview, then the first setting of the Look tab), then
+#   Ctrl+F. On the branch only the search box's purple outline; on main the white ring also stays round that setting.
+# What the Narrator says (Search cleared, a setting's place, a setting that disappears) can't be seen here: FocusTest and
+# NarrationTest check those rules.
+# Run it: gh workflow run screenshots.yml --ref main -f version=1.21.11 -f mod_ref=fix/narr112 -f script=.github/checks/narr112.txt
+
+cmd time set noon
+cmd weather clear
+look 0 -20
+sleep 6
+guiscale 3
+gui 1
+sleep 2
+key tab shift
+sleep 1
+shot narr112-done
+key f ctrl
+sleep 1
+shot narr112-typing
+type glow
+sleep 1
+shot narr112-results
+key escape
+sleep 1
+shot narr112-cleared
+key tab
+sleep 0.3
+key tab
+sleep 0.3
+key tab
+sleep 1
+key f ctrl
+sleep 1
+shot narr112-row-typing
+key escape
+sleep 0.3
+close
+guiscale 0
