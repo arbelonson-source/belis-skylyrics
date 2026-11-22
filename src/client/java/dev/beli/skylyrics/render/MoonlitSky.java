@@ -101,6 +101,12 @@ final class MoonlitSky {
 		}
 	}
 
+	/**
+	 * This sky right behind each constellation star, so they are drawn into it (see {@link Constellations#drawOver}). The
+	 * patterns all sit well above the clouds, so the clouds' drift never changes it.
+	 */
+	static final int[][] CONSTELLATIONS_BEHIND = Constellations.behind(MoonlitSky::background);
+
 	private final SkyFrame frame = new SkyFrame();
 	private final SkyMesh clouds = SkyMesh.dome(CLOUD_ROWS, CLOUD_COLUMNS, MoonlitSky::background);
 	private float drift;
