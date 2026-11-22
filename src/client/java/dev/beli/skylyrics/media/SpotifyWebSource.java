@@ -108,6 +108,18 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 	}
 
+	/**
+	 * Spotify answered with something that can't be read (a sign-in answer whose lifetime isn't a number). An IOException,
+	 * so a refresh backs off like any failed read instead of asking again at every poll, but with no sentence of its own:
+	 * like an answer Java can't read, each place says it its usual way ("Couldn't read your music player" on the Music
+	 * tab, "Something went wrong, try again" for a sign-in). What was wrong stays the cause, for the log.
+	 */
+	static final class Unreadable extends IOException {
+		Unreadable(String detail) {
+			super(null, new IOException(detail));
+		}
+	}
+
 	/** What to tell a player whose Spotify source can't ask yet: the first missing step. */
 	static NotSetUp notSetUp(String clientId) {
 		return new NotSetUp(validClientId(clientId) ? Tr.t("Sign in to Spotify below") : Tr.t("Paste your Client ID first"));
@@ -625,8 +637,7 @@ public final class SpotifyWebSource implements MediaSource {
 					new IOException("HTTP " + response.statusCode() + (why != null ? ": " + why : "")));
 		}
 		if (tokenSeconds(json) < 0) {
-			// Said in words, and as an IOException, so a refresh backs off like any failed one instead of asking at every poll
-			throw new IOException(Tr.t("Something went wrong, try again"), new IOException("Spotify's token answer has an expires_in that isn't a number"));
+			throw new Unreadable("Spotify's token answer has an expires_in that isn't a number");
 		}
 		return json;
 	}
