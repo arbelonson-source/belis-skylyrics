@@ -363,7 +363,7 @@ public final class MprisSource implements MediaSource {
 	private final Map<String, Remembered> lastGood = new HashMap<>();
 	/** How many polls in a row the followed player has answered with nothing (a blip between songs). */
 	private int emptyPolls;
-	/** Polls (about a second each) the followed player may answer with nothing before another player takes over. */
+	/** Polls (half a second apart, so about a second in all) the followed player may answer with nothing before another player takes over. */
 	static final int EMPTY_GRACE_POLLS = 2;
 
 	/** Held for the whole of a poll, which is the only code that touches {@link #asked} and {@link #lastGood}. */
