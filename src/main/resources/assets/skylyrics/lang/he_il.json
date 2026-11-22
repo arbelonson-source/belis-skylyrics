@@ -10,7 +10,7 @@
   "key.skylyrics.lyrics_early": "המילים מקדימות (בשיר הזה)",
   "key.skylyrics.lock_view": "נעילת המילים כאן",
   "key.skylyrics.library": "פתיחת ספריית השירים",
-  "skylyrics.timing.song": "תזמון לשיר הזה: %s",
+  "skylyrics.timing.song": "%s :תזמון לשיר הזה",
   "skylyrics.timing.none": "אין שיר מתנגן",
   "skylyrics.lock.on": "המילים ננעלו כאן",
   "skylyrics.lock.off": "המילים עוקבות שוב",

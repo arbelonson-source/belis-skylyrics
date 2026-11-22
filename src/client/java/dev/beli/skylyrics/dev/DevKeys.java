@@ -134,6 +134,20 @@ final class DevKeys {
 		return new Hold(mappingName(words[0]), ms);
 	}
 
+	/** A key binding by its full name ("key.skylyrics.lyrics_late") and the key to put on it, as options.txt writes it ("key.keyboard.period"). */
+	record Bind(String mapping, String key) {
+	}
+
+	/** "skylyrics.lyrics_late period": a mapping name (see {@link #mappingName}) and a key; a bare name like "period" is a keyboard key. */
+	static Bind parseBind(String arg) {
+		String[] words = arg.strip().split("\\s+");
+		if (words.length != 2 || words[0].isEmpty()) {
+			throw new IllegalArgumentException("expected: bind <mapping> <key>");
+		}
+		String key = words[1].toLowerCase(java.util.Locale.ROOT);
+		return new Bind(mappingName(words[0]), key.startsWith("key.") ? key : "key.keyboard." + key);
+	}
+
 	/** A mapping name as written in options.txt ("key_key.sneak"), as the KeyMapping's own name ("key.sneak") or short ("sneak"). */
 	static String mappingName(String raw) {
 		String name = raw.strip().toLowerCase(java.util.Locale.ROOT);
