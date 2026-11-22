@@ -5,7 +5,6 @@ import static dev.beli.skylyrics.render.TopBarLayout.ART_INSET;
 import static dev.beli.skylyrics.render.TopBarLayout.BARS;
 import static dev.beli.skylyrics.render.TopBarLayout.BAR_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.BAR_W;
-import static dev.beli.skylyrics.render.TopBarLayout.CLIP_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.CLOCK_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_INSET;
 import static dev.beli.skylyrics.render.TopBarLayout.EQ_W;
@@ -152,6 +151,8 @@ public final class NowPlayingHud {
 	private float width = -1, widthFrom, widthTo, widthSpeed;
 	/** The bar's scale and pivot this frame, for the clip box on versions whose scissor ignores the pose. */
 	private float clipSize = 1, clipPivotY, clipGuiWidth;
+	/** The text's clip box edges this frame, in the bar's own units, for the dev probe. */
+	private int textClipLeft, textClipRight;
 	private long resizedAt;
 	/** Where the bar's top edge is, eased: below any boss bars. */
 	private float top = -1;
@@ -300,7 +301,7 @@ public final class NowPlayingHud {
 		LyricsService.Snapshot snap = service.snapshot().forSong(track);
 		Content line = cfg.barLyrics ? currentLine(cfg, snap.lyrics()) : null;
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
-		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(cfg, snap.lyrics());
+		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(snap.lyrics(), lyricsTime(cfg));
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
 		*///?} else {
@@ -308,8 +309,8 @@ public final class NowPlayingHud {
 		//?}
 				&& (info || line != null)
 				&& !Visibility.hidden(mc, cfg)
-				// The debug screen (F3) fills the top corners and a bar at the top would be drawn over its text
-				&& !(cfg.barPosition != BarPosition.BOTTOM && f3Open(mc))
+				// The debug screen (F3) fills the top corners, and its text can reach down to a bar at the bottom
+				&& !f3HidesBar(mc, cfg, g, now)
 				// The player list (held Tab) is drawn after the bar, over it and see-through
 				&& !(cfg.barPosition != BarPosition.BOTTOM && tabListUp(mc))
 				&& (cfg.barShow == SkyLyricsConfig.BarShow.ALWAYS || !LyricsInView.onScreen())
@@ -345,15 +346,15 @@ public final class NowPlayingHud {
 
 		art.upload();
 		Font font = mc.font;
-		Style style = LyricsFont.base(cfg);
-		float textScale = cfg.smoothFont ? TEXT_SCALE : PIXEL_FONT_SCALE;
-		Style clockStyle = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
-		float clockScale = cfg.smoothFont ? CLOCK_SCALE : PIXEL_FONT_SCALE;
-
-		String clock = cfg.barClock ? clock() : "";
-		float clockW = clock.isEmpty() ? 0 : LyricsFont.cachedWidth(font, clockStyle, clock) * clockScale;
-		float statsW = statsWidth(cfg, font, style, textScale);
-		TopBarLayout.Fit fit = TopBarLayout.fit(g.guiWidth(), cfg.barSize, clockW, statsW);
+		Sizes sizes = sizes(mc, cfg, g.guiWidth());
+		Style style = sizes.style();
+		float textScale = sizes.textScale();
+		Style clockStyle = sizes.clockStyle();
+		float clockScale = sizes.clockScale();
+		String clock = sizes.clock();
+		float clockW = sizes.clockW();
+		float statsW = sizes.statsW();
+		TopBarLayout.Fit fit = sizes.fit();
 
 		float target = TopBarLayout.pillFor(contentWidth(font, style, textScale, next), fit.pill());
 		if (width < 0) {
@@ -372,8 +373,7 @@ public final class NowPlayingHud {
 
 		float x = (g.guiWidth() - width) / 2f;
 		float topTarget = cfg.barPosition == BarPosition.BOTTOM
-				? TopBarLayout.bottomTop(g.guiHeight(), mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc),
-						actionBarShowing(mc))
+				? bottomTopNow(mc, g.guiHeight())
 				: Math.max(Math.max(topBelowBossBars(mc, g.guiHeight()), effectsClear(mc, g.guiWidth(), cfg, fit, statsW)),
 						TopBarLayout.demoClear(mc.isDemo(), g.guiWidth(), demoTimerWidth(mc),
 								TopBarLayout.barRight(g.guiWidth(), cfg.barSize, fit.pill(), statsW, fit.stats())));
@@ -407,6 +407,64 @@ public final class NowPlayingHud {
 		} finally {
 			g.pose().popMatrix();
 		}
+	}
+
+	/** The bar's text style and scale, the clock and its width, the stats' width, and what fits on this screen. */
+	private record Sizes(Style style, float textScale, Style clockStyle, float clockScale, String clock, float clockW, float statsW,
+			TopBarLayout.Fit fit) {}
+
+	private Sizes sizes(Minecraft mc, SkyLyricsConfig cfg, int guiWidth) {
+		Font font = mc.font;
+		Style style = LyricsFont.base(cfg);
+		float textScale = cfg.smoothFont ? TEXT_SCALE : PIXEL_FONT_SCALE;
+		Style clockStyle = cfg.smoothFont ? Style.EMPTY.withFont(LyricsFont.BOLD) : Style.EMPTY.withBold(true);
+		float clockScale = cfg.smoothFont ? CLOCK_SCALE : PIXEL_FONT_SCALE;
+		String clock = cfg.barClock ? clock() : "";
+		float clockW = clock.isEmpty() ? 0 : LyricsFont.cachedWidth(font, clockStyle, clock) * clockScale;
+		float statsW = statsWidth(cfg, font, style, textScale);
+		return new Sizes(style, textScale, clockStyle, clockScale, clock, clockW, statsW, TopBarLayout.fit(guiWidth, cfg.barSize, clockW, statsW));
+	}
+
+	/** Where a bar at the bottom heads for: above the hotbar, the hearts and armour, and any action bar message. */
+	private static float bottomTopNow(Minecraft mc, int guiHeight) {
+		return TopBarLayout.bottomTop(guiHeight, mc.gameMode == null || mc.gameMode.canHurtPlayer(), healthTopUp(mc), actionBarShowing(mc));
+	}
+
+	/**
+	 * Whether the open debug screen (F3) hides the bar now. A bar at the bottom is measured where it heads for, at the
+	 * widest this screen lets it be, against F3's text as the game drew it last.
+	 */
+	private boolean f3HidesBar(Minecraft mc, SkyLyricsConfig cfg, GuiGraphics g, long now) {
+		if (!f3Open(mc)) {
+			return false;
+		}
+		if (cfg.barPosition != BarPosition.BOTTOM) {
+			return f3Hides(false, true, null, null);
+		}
+		Sizes sizes = sizes(mc, cfg, g.guiWidth());
+		TopBarLayout.Fit fit = sizes.fit();
+		float[] box = TopBarLayout.barBox(g.guiWidth(), cfg.barSize, fit.pill(), sizes.clockW(), fit.clock(), sizes.statsW(), fit.stats(),
+				bottomTopNow(mc, g.guiHeight()));
+		return f3Hides(true, true, box, DebugText.recent(now));
+	}
+
+	/**
+	 * Whether the open debug screen (F3) hides the bar: at the top always, as F3 fills the top corners; at the bottom when
+	 * the bar would sit on F3's text (at GUI scale 3 it does, on a taller screen F3's text can end above it). Without F3's
+	 * text measured (a mod draws F3 its own way), a bottom bar hides when it reaches as high as F3's text usually does,
+	 * as a Record card in the bottom left does.
+	 *
+	 * @param barBox the bar's box (left, top, right, bottom) when it sits at the bottom
+	 * @param f3Lines F3's text lines' boxes as the game drew them last, null when it didn't lately
+	 */
+	static boolean f3Hides(boolean atBottom, boolean f3Open, float @Nullable [] barBox, float @Nullable [][] f3Lines) {
+		if (!f3Open) {
+			return false;
+		}
+		if (!atBottom || barBox == null) {
+			return true;
+		}
+		return f3Lines == null ? barBox[1] < RecordCard.F3_REACH : DebugText.covers(barBox, f3Lines);
 	}
 
 	/** Whether the resource loading screen is up. */
@@ -878,10 +936,12 @@ public final class NowPlayingHud {
 		float tx = x + ART_INSET + ART + TEXT_GAP;
 		float room = TopBarLayout.textRoom(width);
 		float p = Mth.clamp((now - swappedAt) / (float) SWAP_NS, 0, 1);
-		int clipLeft = Math.round(x + ART_INSET + ART + CLIP_GAP);
+		int clipLeft = TopBarLayout.textClipLeft(x);
 		// Words past the room stop where the highlight would, a little before the equaliser
-		int clipRight = Math.round(tx + room);
+		int clipRight = TopBarLayout.textClipRight(x, width);
 		int clipTop = Math.round(midY - PILL_H / 2f) + 1, clipBottom = Math.round(midY + PILL_H / 2f) - 1;
+		textClipLeft = clipLeft;
+		textClipRight = clipRight;
 		//? if <1.21.2 {
 		/*// 1.21.1's scissor ignores the pose, so give it the box already scaled like the bar is
 		int[] box = TopBarLayout.scaledClip(clipLeft, clipTop, clipRight, clipBottom, clipSize, clipGuiWidth, clipPivotY);
@@ -971,6 +1031,7 @@ public final class NowPlayingHud {
 
 		if (probe) {
 			BarProbe.line(c.text(), rtl, scale, start, shift, pad, wordGap, total, g);
+			BarProbe.clip(textClipLeft, textClipRight);
 		}
 		if (live) {
 			float left = Math.min(words.x[prev], words.x[current]), right = Math.max(words.x[prev] + words.w[prev], words.x[current] + words.w[current]);
@@ -1208,14 +1269,14 @@ public final class NowPlayingHud {
 	}
 
 	/**
-	 * The song is playing between its first and last line (it may be a gap between lines now). Paused, or in a
-	 * long outro after the last line, the bar goes back to hiding.
+	 * The song is between its first and last line (it may be a gap between lines now), playing or paused: the bar
+	 * bridges the gaps instead of blinking off and on, and a pause keeps it as it is, between lines as on a line (whose
+	 * line stays while paused). Before the first line, or in a long outro after the last line, the bar goes back to hiding.
 	 */
-	private boolean singing(SkyLyricsConfig cfg, Lyrics lyrics) {
-		if (!tracker.playing() || !lyrics.synced() || lyrics.isEmpty()) {
+	static boolean singing(Lyrics lyrics, long time) {
+		if (!lyrics.synced() || lyrics.isEmpty()) {
 			return false;
 		}
-		long time = lyricsTime(cfg);
 		return lyrics.indexAt(time) >= 0 && time <= lyrics.get(lyrics.lines().size() - 1).timeMs() + LAST_LINE_MS;
 	}
 

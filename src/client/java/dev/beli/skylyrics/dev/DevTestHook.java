@@ -84,8 +84,8 @@ import dev.beli.skylyrics.media.DemoSource;
  * "Test hook: meteor started". A star lasts about a second, so follow it with {@code burst}.
  * <p>
  * {@code barprobe} logs, at INFO with "Test hook: barprobe" in each line, the numbers the top bar used for its next
- * frame that draws a lyric line: the line's layout, each word's measured and drawn width and glyph edges, the
- * highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
+ * frame that draws a lyric line: the line's layout, the box its text and highlight are cut to, each word's measured and
+ * drawn width and glyph edges, the highlight box and the pose matrices (pose and glyph edges only where the game version offers them).
  * <p>
  * {@code song <title> | <artist>} has the demo song reported with that title and artist (the artist after the last "|"),
  * so a check can show odd song details in the bar and on the Record card; {@code \}{@code uXXXX} stands for that
@@ -108,6 +108,11 @@ import dev.beli.skylyrics.media.DemoSource;
  * saving options.txt: {@code option renderDistance 4} (chunks; the world and a server's view distance follow within a
  * tick), {@code option clouds off|fast|fancy}, {@code option cloudRange 32} (Cloud Distance in chunks, 1.21.6 and newer;
  * older versions only log that they have none). It logs "Test hook: option ... is now ...".
+ * <p>
+ * {@code music pause} and {@code music play} pause or play the music, as the play/pause key does, only when it isn't so
+ * already (it reads the player's last poll, so leave a moment after the song starts). The song stays where it is, and
+ * {@code seek} still moves a paused demo song, which stays paused. It logs "Test hook: music pause sent" (or play), or
+ * "Test hook: the music is already paused" (or playing).
  */
 public final class DevTestHook {
 	private final Path file = FabricLoader.getInstance().getGameDir().resolve("skylyrics-test.txt");
@@ -417,6 +422,22 @@ public final class DevTestHook {
 		long target = SeekArg.targetMs(arg.strip(), tracker.positionMs(), DemoSource.TRACK.lengthMs());
 		tracker.seek(target);
 		SkyLyricsClient.LOG.info("Test hook: seeking to {} s", String.format(java.util.Locale.ROOT, "%.2f", target / 1000.0));
+	}
+
+	/** "music pause" / "music play": the music's play/pause, as the play/pause key presses it, only when it isn't so already. */
+	private static void music(String arg) {
+		boolean play = switch (arg.strip()) {
+			case "play" -> true;
+			case "pause" -> false;
+			default -> throw new IllegalArgumentException("music needs play or pause: '" + arg + "'");
+		};
+		dev.beli.skylyrics.media.MediaTracker tracker = SkyLyricsClient.get().tracker();
+		if (tracker.playing() == play) {
+			SkyLyricsClient.LOG.info("Test hook: the music is already {}", play ? "playing" : "paused");
+		} else {
+			tracker.playPause();
+			SkyLyricsClient.LOG.info("Test hook: music {} sent", play ? "play" : "pause");
+		}
 	}
 
 	/** "where": logs the song position and the line the lyrics show there (the renderer's own time: offset and lead included). */
@@ -793,6 +814,7 @@ public final class DevTestHook {
 							String.format(java.util.Locale.ROOT, "%.1f", Math.max(0, ms) / 1000.0));
 				}
 				case "where" -> where();
+				case "music" -> music(arg);
 				case "meteor" -> {
 					String[] a = arg.isBlank() ? new String[0] : arg.split("\\s+");
 					float yaw = a.length > 0 ? Float.parseFloat(a[0]) : client.player != null ? client.player.getYRot() : 0;

@@ -50,6 +50,11 @@ public final class BarProbe {
 		log("pose (line level) {} guiScale={} guiWidth={}", pose(g), net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScale(), g.guiWidth());
 	}
 
+	/** The box the line's text and highlight are cut to, in the bar's own GUI units (before the bar's size is applied). */
+	static void clip(int left, int right) {
+		log("clip left={} right={}", left, right);
+	}
+
 	static void highlight(int current, float left, float right, float hlLeft, float hlRight, float x0) {
 		log("highlight current={} left={} right={} hlLeft={} hlRight={} x0={}", current, left, right, hlLeft, hlRight, x0);
 	}

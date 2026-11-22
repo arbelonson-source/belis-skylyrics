@@ -1,0 +1,119 @@
+# Top bar and Record card leftovers, fix/bar133 (1280x720, GUI scale 3 = 426x240 unless said; the demo song, paused on
+# a line for most shots so the pictures hold still; the test world is creative, so a bottom bar sits 50 above the bottom).
+# Run it on the branch, and with -f mod_ref=<the branch's first commit, the test hook alone> for the old code:
+#   gh workflow run screenshots.yml --ref fix/bar133 -f version=1.21.11 -f script=.github/checks/bar133.txt
+#   gh workflow run screenshots.yml --ref fix/bar133 -f version=1.21.11 -f mod_ref=4589eed5 -f script=.github/checks/bar133.txt
+# (and the same two with -f version=1.21.1: its debug screen is the old long one, and its clip box goes another way).
+#
+# 1. The highlight's round ends, Minecraft's letters (Font: Minecraft), top bar.
+#    bar133-pixel-first: "Neon skyline, can you hear it" with "Neon" on the violet highlight. Old code: the highlight's
+#      left end is cut straight up and down a pixel or so left of the "N" (0.5 to 3.5 screen pixels of its round end
+#      missing, depending on where the pill sits); its right end is round. Branch: both ends round.
+#      The log's "barprobe clip left=" (old: right of the highlight's "box left=", 134 against 133.5 in round 1;
+#      branch: at or left of it, 133).
+#    bar133-pixel-last: "Every word is written in the stars", "the stars" on the highlight: the old code cuts about a
+#      pixel off the right end ("clip right=302" against "box ... right=302.47"); the branch's is round (303).
+#    bar133-smooth-first: the same as -first with the smooth letters: its narrower margin was never cut (both round).
+# 2. Bottom bar with the debug screen (F3) open: bar133-f3-bottom (creative), bar133-f3-bottom-survival (hearts: the bar
+#    sits 14 higher), bar133-f3-bottom-gui2 (GUI scale 2, 640x360: the bar is lower down).
+#    Old code: the bar always shows, on F3's text at GUI scale 3 (1.21.11: its clock runs into "Off-Heap"; 1.21.1: it
+#    covers the "Local Difficulty" and "NoiseRouter" lines). Branch: no bar at GUI scale 3, creative and survival, on both
+#    versions. GUI scale 2: on 1.21.11 F3's text ends well above the bar and the bar shows; on 1.21.1 the right column
+#    (the tags of the sand block in view) runs on down past the bar and over its frame rate (round 1's old picture), so
+#    the bar hides there too. A bar showing at GUI scale 2 on 1.21.11 also proves F3's text was measured in game
+#    (unmeasured, the bar would hide there as it guesses F3 reaches 320 down).
+# 3. Record card with Minecraft's letters and three lines, bottom right: the times under the progress line (asked for at
+#    0.85 size) and the dimmed lines above and below the current one (0.8). Old code: their letters are uneven, each
+#    letter pixel 2 or 3 screen pixels wide by turns (GUI 3; 1 or 2 at GUI 2, 3 or 4 at GUI 4). Branch: every letter
+#    pixel the same width: bar133-card-pixel (GUI 3): the times as big as the artist line (3 pixels a letter pixel), the
+#    dimmed lines smaller (2); -gui2: both as big as the current line (2); -gui4: both at 3 pixels (the current line 4).
+#    bar133-card-smooth: the smooth letters, the same on both.
+# 4. Pausing, top bar, Song name only on change on (as at first):
+#    bar133-pause-line: paused during "Every word is written in the stars": the bar keeps the line (both).
+#    bar133-pause-gap: paused between lines (the break at 0:37): old code: no bar at all; branch: the song's name,
+#      "Neon Skyline  ·  SkyLyrics Demo  ·  Demo", with the equaliser resting.
+#    bar133-play-gap: playing again in the same break: the song's name (both), as the bar bridges a break while playing.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+guiscale 3
+sleep 8
+
+# 1: paused on the first word, then on the last two, Minecraft's letters, then the smooth ones
+set smoothFont false
+music pause
+sleep 1
+seek 20.25
+sleep 2
+where
+shot bar133-pixel-first
+barprobe
+sleep 1
+seek 27.6
+sleep 2
+where
+shot bar133-pixel-last
+barprobe
+sleep 1
+set smoothFont true
+seek 20.25
+sleep 2
+shot bar133-smooth-first
+barprobe
+sleep 1
+
+# 2: the bar at the bottom with F3 open, still paused on a line
+set barPosition BOTTOM
+seek 25.5
+debug on
+sleep 2
+shot bar133-f3-bottom
+cmd gamemode survival @p
+sleep 2
+shot bar133-f3-bottom-survival
+cmd gamemode creative @p
+guiscale 2
+sleep 2
+shot bar133-f3-bottom-gui2
+guiscale 3
+debug off
+set barPosition TOP
+sleep 1
+
+# 3: the Record card with three lines, Minecraft's letters at GUI 3, 2 and 4, then the smooth ones
+set recordCard true
+set cardLyrics true
+set cardLines 3
+set cardCorner BOTTOM_RIGHT
+set smoothFont false
+sleep 2
+shot bar133-card-pixel
+guiscale 2
+sleep 2
+shot bar133-card-pixel-gui2
+guiscale 4
+sleep 2
+shot bar133-card-pixel-gui4
+guiscale 3
+set smoothFont true
+sleep 2
+shot bar133-card-smooth
+set recordCard false
+set cardLines 1
+sleep 1
+
+# 4: paused on a line, paused between lines, then playing between lines
+seek 25.5
+sleep 2
+shot bar133-pause-line
+seek 37
+sleep 2
+where
+shot bar133-pause-gap
+music play
+sleep 0.5
+where
+shot bar133-play-gap

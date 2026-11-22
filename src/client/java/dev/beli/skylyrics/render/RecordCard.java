@@ -39,8 +39,8 @@ public final class RecordCard {
 	static final float LYRIC_H = 13;
 	/** A dimmed line above or below the current one, when the card shows three lines. */
 	static final float SIDE_H = 9;
-	/** The dimmed lines are drawn this much smaller than the current one. */
-	private static final float SIDE_SCALE = 0.8f;
+	/** The dimmed lines are drawn this much smaller than the current one, and the times under the progress line this much. */
+	static final float SIDE_SCALE = 0.8f, TIME_SCALE = 0.85f;
 	/** The title's bold style per letter kind, made once instead of every frame. */
 	private static final Style TITLE_SMOOTH = Style.EMPTY.withFont(LyricsFont.BOLD), TITLE_PIXEL = Style.EMPTY.withBold(true);
 	/** Space between the card and the edge of the screen. */
@@ -193,7 +193,7 @@ public final class RecordCard {
 			NowPlayingHud.roundRectGui(g, tx, lineY, lineW, 2, 1, ARGB.color(Math.round(alpha * 60), 0xFFFFFF));
 			NowPlayingHud.roundRectGui(g, tx, lineY, Math.max(2, lineW * done), 2, 1,
 					ARGB.color(Math.round(alpha * 255), accent));
-			float small = scale * 0.85f;
+			float small = smallSize(cfg.smoothFont, scale * TIME_SCALE, s);
 			String[] times = timesShown(played, length);
 			text(g, font, style, times[0], tx, lineY + 7, small, fade(SUB));
 			// Kept left to right in a Hebrew or Arabic game, where "-2:35" would read "2:35-"
@@ -232,7 +232,7 @@ public final class RecordCard {
 		NowPlayingHud.roundRectGui(g, left, top - 2, room, 1, 0, ARGB.color(Math.round(alpha * 40), 0xFFFFFF));
 		float a = alpha * lyricIn;
 		if (lines >= 3) {
-			float side = scale * SIDE_SCALE;
+			float side = smallSize(cfg.smoothFont, scale * SIDE_SCALE, (float) Minecraft.getInstance().getWindow().getGuiScale());
 			dimLine(g, font, style, above, x, top + SIDE_H / 2 - 1.5f, side, left, room, a);
 			dimLine(g, font, style, below, x, rowTop + LYRIC_H + SIDE_H / 2 - 1.5f, side, left, room, a);
 		}
@@ -377,6 +377,19 @@ public final class RecordCard {
 		} finally {
 			g.pose().popMatrix();
 		}
+	}
+
+	/**
+	 * The size small text on the card is drawn at, for {@code wanted} at this GUI scale. Minecraft's letters are pixel art:
+	 * drawn at, say, 0.85 at GUI scale 3, each letter pixel came out 2 or 3 screen pixels wide by turns, so the letters
+	 * looked uneven. They get the nearest size with a whole number of screen pixels per letter pixel (at least one). The
+	 * smooth letters are smoothed, so they keep the size asked for.
+	 */
+	static float smallSize(boolean smooth, float wanted, float guiScale) {
+		if (smooth || guiScale <= 0) {
+			return wanted;
+		}
+		return Math.max(1, Math.round(wanted * guiScale)) / guiScale;
 	}
 
 	/** Whether the corner is at the top of the screen, where the debug screen (F3) draws its text. */
