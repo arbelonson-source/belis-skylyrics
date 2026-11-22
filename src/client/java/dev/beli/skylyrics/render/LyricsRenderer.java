@@ -1135,7 +1135,10 @@ public final class LyricsRenderer {
 			float scale = Mth.lerp(highlight, SECONDARY, 1f) * (i == center ? popScale : 1);
 			int maxChars = -1;
 			if (cfg.animation == Animation.TYPEWRITER && i == center && clock.last() == center) {
-				maxChars = (int) ((now - clock.changedAt()) / 28_000_000L);
+				// How far the singing has got through the line (synced words only; breaks and the wait before the first line have none)
+				float singing = i >= 0 && !shown.get(i).isBreak() && shown.synced()
+						? progress(time, shown.get(i).timeMs(), shown.sungEnd(i)) : 0;
+				maxChars = typedChars(now - clock.changedAt(), singing, text.codePointCount(0, text.length()));
 			}
 			float wordsT = Float.NaN, flareT = Float.NaN;
 			if (i == center && clock.last() == center && clock.previous() != Integer.MIN_VALUE) {
@@ -1167,6 +1170,20 @@ public final class LyricsRenderer {
 			Item it = items.get(k);
 			draw.line(it.text, ys[k], it.scale, it.alpha, it.highlight, it.sung, it.maxChars, it.wordsT, it.flareT);
 		}
+	}
+
+	/** Type animation: one letter is typed this often. */
+	static final long TYPE_NS = 28_000_000L;
+
+	/**
+	 * Type animation: how many letters of a line {@code total} code points long are typed {@code sinceNs} after it came
+	 * in, with the singing {@code singing} of the way through it (0 to 1, 0 when the words have no timing). One letter
+	 * every {@link #TYPE_NS}, but never behind the singing: a line sung faster than it types keeps up with the words, so
+	 * it is all there by the time it is sung, and one joined halfway shows what has been sung already.
+	 */
+	static int typedChars(long sinceNs, float singing, int total) {
+		int typed = (int) Math.min(Integer.MAX_VALUE, Math.max(0, sinceNs) / TYPE_NS);
+		return Math.max(typed, (int) Math.ceil(Mth.clamp(singing, 0, 1) * total));
 	}
 
 	/** The wait before the first line shows its little notes only when it is at least this long. */
