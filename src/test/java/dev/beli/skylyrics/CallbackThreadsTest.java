@@ -112,11 +112,18 @@ class CallbackThreadsTest {
 		}
 	}
 
-	/** {@code (handler, client) -> client.execute(...)}: the handler's only work is to give the rest to the game thread. */
-	private static final Pattern HANDS_OFF = Pattern.compile("^\\s*\\(\\s*\\w+\\s*,\\s*(\\w+)\\s*\\)\\s*->\\s*\\1\\.execute\\(");
+	/**
+	 * {@code (handler, client) -> leaving.left()}: the handler only notes that the world was left, for the game thread to act
+	 * on at its next tick (or the next join). Not {@code client.execute(...)}: Minecraft.disconnect empties the game thread's
+	 * task queue before anything else, and when you leave (Save and Quit, Disconnect, a server transfer) the connection closes,
+	 * and Fabric calls the handler, just before the game thread gets there, so a task queued then is thrown away.
+	 */
+	private static final Pattern NOTES = Pattern.compile("^\\s*\\(\\s*\\w+\\s*,\\s*\\w+\\s*\\)\\s*->\\s*\\w+\\.left\\(\\)\\s*$");
+	/** Ways onto the game thread's task queue, which Minecraft.disconnect empties. */
+	private static final Pattern QUEUES = Pattern.compile("\\.(?:execute|executeIfPossible|executeBlocking|submit|submitAsync|tell|schedule)\\(");
 
 	@Test
-	void aHandlerCalledOffTheGameThreadHandsItsWorkToTheGameThread() throws IOException {
+	void aHandlerCalledOffTheGameThreadOnlyNotesItForTheGameThread() throws IOException {
 		boolean any = false;
 		for (Registration r : registrations()) {
 			Fired fired = EVENTS.get(r.event());
@@ -124,10 +131,14 @@ class CallbackThreadsTest {
 				continue;
 			}
 			any = true;
-			// The old leave handler cleared the World words' list of players (and the stars and the underground check) on
-			// Netty's thread while a frame could be walking it: an error, and those lyrics paused for 5 seconds
-			assertTrue(HANDS_OFF.matcher(r.handler()).find(), r.file() + ": " + r.event() + " is called from " + fired.where()
-					+ ", so its handler must be (handler, client) -> client.execute(...), not: " + r.handler().strip());
+			// Doing the leave itself, the handler cleared the World words' list of players (and the stars and the underground
+			// check) on Netty's thread while a frame could be walking it: an error, and those lyrics paused for 5 seconds.
+			// Handed to the game's task queue instead, the leave was lost about half the time (the old world stayed in memory)
+			assertFalse(QUEUES.matcher(r.handler()).find(), r.file() + ": " + r.event() + " is called from " + fired.where()
+					+ " just before Minecraft.disconnect empties the game thread's task queue, so its handler must not queue work there: "
+					+ r.handler().strip());
+			assertTrue(NOTES.matcher(r.handler()).find(), r.file() + ": " + r.event() + " is called from " + fired.where()
+					+ ", so its handler must only note it for the game thread, (handler, client) -> leaving.left(), not: " + r.handler().strip());
 		}
 		assertTrue(any, "no handler off the game thread was checked");
 		assertFalse(EVENTS.get("ClientPlayConnectionEvents.DISCONNECT").game());
