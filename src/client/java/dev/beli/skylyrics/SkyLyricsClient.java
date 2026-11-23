@@ -275,8 +275,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			renderer.onJoinWorld();
 			sky.onJoinWorld();
 		});
-		// Don't keep the old world's level alive on the title screen
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> renderer.onLeaveWorld());
+		// Don't keep the old world's level alive on the title screen. Fabric calls this on the network thread when the
+		// connection closes or drops, while a frame may still be drawing the old world's words and stars, so the renderer
+		// lets go on the game thread, between frames (CallbackThreadsTest)
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(renderer::onLeaveWorld));
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
