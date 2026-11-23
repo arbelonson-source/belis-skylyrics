@@ -199,6 +199,7 @@ public final class AlbumArt {
 			if (!wanted.getAsBoolean()) {
 				parked = track;
 				anyParked = true;
+				dropForParked(track);
 				return;
 			}
 			parked = null;
@@ -215,6 +216,46 @@ public final class AlbumArt {
 				anyParked = true;
 				loadedUrl = ""; // so the same address is loaded again, not taken as already there
 			}
+		}
+	}
+
+	/**
+	 * A song came while Lyrics are off: its cover waits for {@link #wake}, and the last song's goes now, with its colour, as
+	 * {@link #show} would drop it, so the Music tab's Now playing card doesn't show it beside this song's title. An album-mate
+	 * with the same cover, or the same song's corrected one, keeps what is on show. Called with {@link #accept} held.
+	 */
+	private void dropForParked(Track track) {
+		String url = track.artUrl();
+		String song = track.title() + "\n" + track.artist();
+		if (url.equals(loadedUrl)) {
+			loadedSong = song; // the cover on show is this song's too
+			return;
+		}
+		if (song.equals(loadedSong) && !url.isEmpty()) {
+			return;
+		}
+		loadedUrl = ""; // so wake() loads this song's cover, even the one dropped here when that song comes back
+		songStartGen = generation.incrementAndGet();
+		color = FALLBACK_COLOR;
+		stopLoading();
+	}
+
+	/** Stops the last cover's download or retry and drops a decoded one not yet on the GPU. Called with {@link #accept} held. */
+	private void stopLoading() {
+		Future<?> previous = job;
+		job = null;
+		if (previous != null) {
+			previous.cancel(true); // a stalled download of the last cover must not hold up this one
+		}
+		Future<?> oldRetry = retry;
+		retry = null;
+		if (oldRetry != null) {
+			oldRetry.cancel(false); // the last song's cover is no longer wanted
+		}
+		// A cover that finished decoding for the song we just left must not be shown on this one
+		Pending stale = pending.getAndSet(null);
+		if (stale != null) {
+			stale.image().close();
 		}
 	}
 
@@ -241,21 +282,7 @@ public final class AlbumArt {
 			if (newSong || url.isEmpty()) {
 				color = FALLBACK_COLOR;
 			}
-			Future<?> previous = job;
-			job = null;
-			if (previous != null) {
-				previous.cancel(true); // a stalled download of the last cover must not hold up this one
-			}
-			Future<?> oldRetry = retry;
-			retry = null;
-			if (oldRetry != null) {
-				oldRetry.cancel(false); // the last song's cover is no longer wanted
-			}
-			// A cover that finished decoding for the song we just left must not be shown on this one
-			Pending stale = pending.getAndSet(null);
-			if (stale != null) {
-				stale.image().close();
-			}
+			stopLoading();
 			if (!url.isEmpty()) {
 				job = executor.submit(task(track, url, gen, 0, keepOnFail)); // submit doesn't block, so job is set before any later load() looks
 			}

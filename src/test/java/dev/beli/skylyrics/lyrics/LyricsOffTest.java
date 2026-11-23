@@ -33,6 +33,8 @@ class LyricsOffTest {
 	private final List<String> asked = new CopyOnWriteArrayList<>();
 	/** The next this many lookups fail like a site that can't be reached. */
 	private final AtomicInteger failures = new AtomicInteger();
+	/** Whether the lyrics sites have nothing for the song (yet). */
+	private volatile boolean none;
 	private LyricsService service;
 
 	private final LyricsSource source = track -> {
@@ -40,7 +42,7 @@ class LyricsOffTest {
 		if (failures.getAndUpdate(n -> Math.max(0, n - 1)) > 0) {
 			throw new IOException("offline");
 		}
-		return new LrclibClient.Result(SYNCED, null, false);
+		return new LrclibClient.Result(none ? null : SYNCED, null, false);
 	};
 
 	@AfterEach
@@ -104,5 +106,69 @@ class LyricsOffTest {
 		service.wake();
 		waitFor(() -> service.state() == LyricsService.State.READY, "the lyrics");
 		assertFalse(service.lyrics().isEmpty());
+	}
+
+	@Test
+	void retryPressedWhileLyricsAreOffWaitsForThemAndThenAsksPastTheSavedAnswer() throws InterruptedException {
+		on.set(true);
+		none = true;
+		service = new LyricsService(source, cache, attempt -> 30, on::get);
+		service.load(SONG);
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND, "no lyrics");
+		assertEquals(1, asked.size());
+		on.set(false);
+		service.retry(); // the Music tab's Retry, still on offer for the song that had none
+		Thread.sleep(200);
+		assertEquals(1, asked.size(), "nothing asked while Lyrics are off");
+		// The Lyrics row says "Lyrics off" and the Retry button greys out, instead of a Retry that does nothing
+		assertEquals(LyricsService.State.IDLE, service.state());
+		none = false; // the lyrics site has them now
+		on.set(true);
+		service.wake();
+		waitFor(() -> asked.size() == 2, "the Retry's lookup once Lyrics are on");
+		waitFor(() -> service.state() != LyricsService.State.LOADING, "its answer");
+		assertEquals(LyricsService.State.READY, service.state(), "asked again, not the saved 'no lyrics'");
+	}
+
+	@Test
+	void aRetryWaitingOutAFailureWhenLyricsGoOffStillAsksPastTheSavedAnswer() throws InterruptedException {
+		on.set(true);
+		none = true;
+		service = new LyricsService(source, cache, attempt -> 30, on::get);
+		service.load(SONG);
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND, "no lyrics");
+		failures.set(1_000);
+		service.retry(); // pressed while the internet is down: it tries again every 30 ms
+		waitFor(() -> asked.size() >= 3, "the Retry's tries");
+		on.set(false);
+		waitFor(() -> service.state() == LyricsService.State.IDLE, "the Retry to wait for Lyrics");
+		failures.set(0);
+		none = false;
+		on.set(true);
+		service.wake();
+		waitFor(() -> service.state() == LyricsService.State.READY || service.state() == LyricsService.State.NOT_FOUND, "an answer");
+		assertEquals(LyricsService.State.READY, service.state(), "the Retry still forgets the saved 'no lyrics'");
+		assertFalse(service.lyrics().isEmpty());
+	}
+
+	@Test
+	void aNewSongDoesNotInheritARetryThatWaitedForLyrics() throws InterruptedException {
+		on.set(true);
+		none = true;
+		service = new LyricsService(source, cache, attempt -> 30, on::get);
+		Track other = new Track("Glass Harbour", "Nova Lane", "Night Roads", 200_000, "", "spotify");
+		service.load(other);
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND, "no lyrics for the other song");
+		service.load(SONG);
+		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND, "no lyrics");
+		on.set(false);
+		service.retry();
+		service.load(other); // another song while Lyrics are off
+		none = false;
+		on.set(true);
+		service.wake();
+		waitFor(() -> service.state() != LyricsService.State.LOADING && service.state() != LyricsService.State.IDLE, "an answer");
+		assertEquals(LyricsService.State.NOT_FOUND, service.state(), "its saved answer, as for any song that starts");
+		assertEquals(2, asked.size());
 	}
 }
