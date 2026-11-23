@@ -642,7 +642,10 @@ public final class Updater {
 					LOG.info("Downloaded update's fabric.mod.json is bigger than {} bytes", MAX_MOD_JSON);
 					return false;
 				}
-				JsonObject json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+				// Checked, not getAsJsonObject(): see UpdateCheck.parse
+				if (!(JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)) instanceof JsonObject json)) {
+					return false;
+				}
 				return SkyLyricsClient.MOD_ID.equals(string(json, "id"))
 						&& (expectedVersion == null || expectedVersion.equals(string(json, "version")));
 			}
@@ -661,7 +664,9 @@ public final class Updater {
 				if (bytes == null) {
 					throw new IOException("fabric.mod.json is bigger than " + MAX_MOD_JSON + " bytes");
 				}
-				JsonObject json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+				if (!(JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)) instanceof JsonObject json)) {
+					throw new IOException("fabric.mod.json isn't a JSON object");
+				}
 				return json.has("depends") && json.get("depends").isJsonObject() ? json.getAsJsonObject("depends") : null;
 			}
 		}

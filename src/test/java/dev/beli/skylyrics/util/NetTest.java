@@ -137,6 +137,31 @@ class NetTest {
 	}
 
 	@Test
+	void everyHopKeepsTheFirstRequestsHeaders() throws Exception {
+		// Java's own redirects kept them; the lyrics sites' User-Agent is what LRCLIB asks every app to send
+		List<String> agents = new java.util.concurrent.CopyOnWriteArrayList<>();
+		HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		s.createContext("/", ex -> {
+			agents.add(String.valueOf(ex.getRequestHeaders().getFirst("User-Agent")));
+			if (!ex.getRequestURI().getPath().equals("/end")) {
+				ex.getResponseHeaders().add("Location", "/end");
+			}
+			ex.sendResponseHeaders(ex.getRequestURI().getPath().equals("/end") ? 200 : 302, -1);
+			ex.close();
+		});
+		s.start();
+		try {
+			java.net.http.HttpRequest first = java.net.http.HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + s.getAddress().getPort() + "/start"))
+					.timeout(Duration.ofSeconds(5)).header("User-Agent", "BelisSkyLyrics/test").GET().build();
+			try (InputStream in = Net.getFollowing(client(), first, (from, to) -> true).body()) {
+				assertEquals(List.of("BelisSkyLyrics/test", "BelisSkyLyrics/test"), agents);
+			}
+		} finally {
+			s.stop(0);
+		}
+	}
+
+	@Test
 	void theHopLoopRefusesAClientThatFollowsByItself() {
 		HttpClient following = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
 		assertThrows(IllegalArgumentException.class, () -> Net.getFollowing(following, URI.create("http://127.0.0.1:1/"), Duration.ofSeconds(1)));

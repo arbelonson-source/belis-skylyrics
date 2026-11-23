@@ -158,18 +158,32 @@ public final class Net {
 
 	static HttpResponse<InputStream> getFollowing(HttpClient http, URI start, Duration timeout, BiPredicate<URI, URI> allowed)
 			throws IOException, InterruptedException {
+		return getFollowing(http, HttpRequest.newBuilder(start).timeout(timeout).GET().build(), allowed);
+	}
+
+	/**
+	 * A GET to a site on the internet with a fixed address (the lyrics sites), with its redirects followed by hand: never
+	 * into the local network, never from https down to http. The client must not follow redirects itself.
+	 */
+	public static HttpResponse<InputStream> getFromSite(HttpClient http, HttpRequest first) throws IOException, InterruptedException {
+		return getFollowing(http, first, (from, to) -> hopAllowed(false, from, to));
+	}
+
+	/** The GET {@code first} with up to {@link #MAX_HOPS} redirects followed by hand, each hop with its headers and time limit, as Java's own redirects keep them. */
+	static HttpResponse<InputStream> getFollowing(HttpClient http, HttpRequest first, BiPredicate<URI, URI> allowed)
+			throws IOException, InterruptedException {
 		if (http.followRedirects() != HttpClient.Redirect.NEVER) {
 			throw new IllegalArgumentException("the client must not follow redirects by itself");
 		}
-		URI uri = start;
+		HttpRequest request = first;
 		for (int hop = 0; hop <= MAX_HOPS; hop++) {
-			HttpResponse<InputStream> response = http.send(HttpRequest.newBuilder(uri).timeout(timeout).GET().build(),
-					HttpResponse.BodyHandlers.ofInputStream());
+			HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
 			int status = response.statusCode();
 			if (status != 301 && status != 302 && status != 303 && status != 307 && status != 308) {
 				return response;
 			}
 			response.body().close();
+			URI uri = request.uri();
 			String location = response.headers().firstValue("Location").orElse(null);
 			URI next;
 			try {
@@ -180,7 +194,7 @@ public final class Net {
 			if (next == null || !allowed.test(uri, next)) {
 				throw new IOException("Refused a redirect to " + (next == null ? "nowhere" : next.getHost()));
 			}
-			uri = next;
+			request = HttpRequest.newBuilder(first, (name, value) -> true).uri(next).build();
 		}
 		throw new IOException("Too many redirects");
 	}
@@ -263,6 +277,73 @@ public final class Net {
 		@Override
 		public void onComplete() {
 			inner.onComplete();
+		}
+	}
+
+	/**
+	 * The handler's body, but one that grows past {@code max} bytes fails the request (an IOException, like a dropped
+	 * connection) and drops the connection, before it fills the game's memory. For bodies read whole (ofString).
+	 */
+	public static <T> HttpResponse.BodyHandler<T> bodyAtMost(HttpResponse.BodyHandler<T> handler, long max) {
+		return info -> new AtMost<>(handler.apply(info), max);
+	}
+
+	private static final class AtMost<T> implements HttpResponse.BodySubscriber<T> {
+		private final HttpResponse.BodySubscriber<T> inner;
+		private final long max;
+		/** Only the thread handing over the body touches these: its calls come one at a time. */
+		private long seen;
+		private boolean over;
+		private java.util.concurrent.Flow.@org.jspecify.annotations.Nullable Subscription subscription;
+
+		AtMost(HttpResponse.BodySubscriber<T> inner, long max) {
+			this.inner = inner;
+			this.max = max;
+		}
+
+		@Override
+		public java.util.concurrent.CompletionStage<T> getBody() {
+			return inner.getBody();
+		}
+
+		@Override
+		public void onSubscribe(java.util.concurrent.Flow.Subscription s) {
+			subscription = s;
+			inner.onSubscribe(s);
+		}
+
+		@Override
+		public void onNext(java.util.List<java.nio.ByteBuffer> item) {
+			if (over) {
+				return;
+			}
+			for (java.nio.ByteBuffer b : item) {
+				seen += b.remaining();
+			}
+			if (seen > max) {
+				over = true;
+				java.util.concurrent.Flow.Subscription s = subscription;
+				if (s != null) {
+					s.cancel(); // closes the connection
+				}
+				inner.onError(new IOException("The reply is bigger than " + max + " bytes"));
+				return;
+			}
+			inner.onNext(item);
+		}
+
+		@Override
+		public void onError(Throwable failure) {
+			if (!over) {
+				inner.onError(failure);
+			}
+		}
+
+		@Override
+		public void onComplete() {
+			if (!over) {
+				inner.onComplete();
+			}
 		}
 	}
 
