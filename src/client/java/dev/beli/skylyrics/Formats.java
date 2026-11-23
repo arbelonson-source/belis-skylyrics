@@ -85,12 +85,57 @@ public final class Formats {
 	/**
 	 * {@link String#format} for a number shown to the player: plain digits, with the game language's decimal mark ("1.50×"
 	 * in English, "1,50×" in German, French, Russian, Ukrainian, Portuguese and most Spanish). The pattern itself must have
-	 * no other dot.
+	 * no other dot. The settings screen asks for each slider's number (and its two ends) every frame: the same number in
+	 * the same language gives the text made before ({@link #MADE}), so a frame builds nothing.
 	 */
-	public static String number(String pattern, Object... args) {
-		String text = String.format(Locale.ROOT, pattern, args);
+	public static String number(String pattern, double value) {
 		char mark = picked().decimalMark();
-		return mark == '.' ? text : text.replace('.', mark);
+		long bits = Double.doubleToRawLongBits(value);
+		int slot = (int) ((pattern.hashCode() * 0x9E3779B97F4A7C15L ^ bits) * 0xBF58476D1CE4E5B9L >>> 58);
+		Made[] made = MADE;
+		for (int i = 0; i < made.length; i++) {
+			Made m = made[(slot + i) & (made.length - 1)];
+			if (m == null) {
+				break;
+			}
+			if (m.bits() == bits && m.mark() == mark && m.pattern().equals(pattern)) {
+				return m.text();
+			}
+		}
+		String text = String.format(Locale.ROOT, pattern, value);
+		if (mark != '.') {
+			text = text.replace('.', mark);
+		}
+		keep(new Made(pattern, bits, mark, text), slot);
+		return text;
+	}
+
+	/** A text {@link #number} made, with what it was made from. */
+	private record Made(String pattern, long bits, char mark, String text) {
+	}
+
+	/**
+	 * The texts {@link #number} made, each in the first free slot from its own (64: a settings tab shows a few dozen
+	 * numbers). Emptied when three quarters full, as a slider dragged through its values fills it. A slot only ever holds a
+	 * whole, unchanging entry, so a race between threads costs at most a text made again.
+	 */
+	private static final Made[] MADE = new Made[64];
+	private static int madeCount;
+
+	private static void keep(Made entry, int slot) {
+		Made[] made = MADE;
+		if (madeCount >= made.length * 3 / 4) {
+			java.util.Arrays.fill(made, null);
+			madeCount = 0;
+		}
+		for (int i = 0; i < made.length; i++) {
+			int at = (slot + i) & (made.length - 1);
+			if (made[at] == null) {
+				made[at] = entry;
+				madeCount++;
+				return;
+			}
+		}
 	}
 
 	/**
