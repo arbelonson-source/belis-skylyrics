@@ -1,0 +1,56 @@
+# World words' white flash at a fast line, fix/a11y177 (Minecraft 1.21.11, the workflow's usual 1280x720; the demo song
+# with made-up test lines in place of its own). Run it on the branch, and with -f mod_ref=main for the old code (the
+# script then comes from the branch):
+#   gh workflow run screenshots.yml --ref fix/a11y177 -f version=1.21.11 -f script=.github/checks/a11y177.txt
+#   gh workflow run screenshots.yml --ref fix/a11y177 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/a11y177.txt
+# World layout, Flowing line on, at midnight, the lyrics a deep blue (2626FF) so the white flash a word lands with shows
+# well: it lands pale, nearly white, and turns blue over 0.7 s.
+#
+# What to look for (old code / branch):
+# 1. a11y177-fast_00.._29: a line of 12 words in 2 s (6 words a second), 40 ms apart from the line's start (1.2 s).
+#    Main: every new word lands pale and fades to blue, so two or three pale words show in most frames. Branch: only
+#    every second or third word lands pale (at most three in any second, about a third of a second apart); the words in
+#    between land blue straight away. Every word still comes in, pops and glows the same way on both.
+# 2. a11y177-slow_00.._29: a line of 6 words in 6 s (1 word a second), 40 ms apart over 1.2 s: the same on both, each
+#    new word lands pale and turns blue (a word a second is under the limit).
+# 3. a11y177-fast-default_00.._29: 1 with the default lyrics colour (pale periwinkle): the same difference as 1, fainter.
+# Not in a game here: the Narrator (no speech in the test game), the flash of a word you hit (unit tests), and the song
+# name's time with Notification Time (the hook can't set that option; unit tests).
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout WORLD
+set worldFlow true
+set colorMode FIXED
+set color 2500351
+cmd execute as @p at @p run fill ~-14 ~40 ~-14 ~14 ~40 ~14 minecraft:smooth_stone
+cmd execute as @p at @p run tp @s ~ ~41 ~
+sleep 3
+look 0 0
+
+# 1. A fast line: 12 words in 2 s
+fastlines 2000 lanterns drift over harbour lights while slow tides carry every little lamp away | quiet engines hum below bridges as cities count windows one by one again | paper boats remember rivers they never sailed upon under copper moons tonight
+seek 0
+sleep 1
+burstat a11y177-fast 30 40
+wait burst a11y177-fast wrote
+where
+
+# 2. A slow line: 6 words in 6 s
+fastlines 6000 lanterns drift over harbour lights tonight | quiet engines hum below bridges | paper boats remember copper moons
+seek 0
+sleep 1
+burstat a11y177-slow 30 40
+wait burst a11y177-slow wrote
+where
+
+# 3. The fast line in the default colour
+set color 13095156
+fastlines 2000 lanterns drift over harbour lights while slow tides carry every little lamp away | quiet engines hum below bridges as cities count windows one by one again | paper boats remember rivers they never sailed upon under copper moons tonight
+seek 0
+sleep 1
+burstat a11y177-fast-default 30 40
+wait burst a11y177-fast-default wrote
+where
