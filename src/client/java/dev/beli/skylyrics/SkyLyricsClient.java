@@ -95,6 +95,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private AlbumArt art;
 	private CoverCache covers;
 	private LyricsRenderer renderer;
+	/** A world left on any thread, let go of on the game thread. */
+	private WorldLeave leaving;
 	private boolean attackHeld;
 	// Held keys repeat their click; how each of our keys takes that (see KeyPresses.of)
 	private final java.util.Map<KeyMapping, KeyPresses> presses = new java.util.HashMap<>();
@@ -180,6 +182,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		art = new AlbumArt(() -> SkyLyricsConfig.get().enabled);
 		covers = new CoverCache(cache.resolve("covers"));
 		renderer = new LyricsRenderer(tracker, lyrics, art);
+		leaving = new WorldLeave(renderer::onLeaveWorld);
 		hud = new NowPlayingHud(tracker, lyrics, art);
 		card = new RecordCard(tracker, art, hud);
 
@@ -269,16 +272,17 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
-		// A locked view pins wherever you look first in a new world, never a stale spot from the last one
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+		// A locked view pins wherever you look first in a new world, never a stale spot from the last one. A leave the game
+		// thread hasn't applied yet goes first, so it can't clear the new world's fresh state
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> leaving.joined(() -> {
 			ViewLock.joined();
 			renderer.onJoinWorld();
 			sky.onJoinWorld();
-		});
+		}));
 		// Don't keep the old world's level alive on the title screen. Fabric calls this on the network thread when the
-		// connection closes or drops, while a frame may still be drawing the old world's words and stars, so the renderer
-		// lets go on the game thread, between frames (CallbackThreadsTest)
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> client.execute(renderer::onLeaveWorld));
+		// connection closes or drops, while a frame may still be drawing the old world's words and stars, and just before
+		// Minecraft empties the game thread's task queue: it is only noted here, and the next tick lets go (WorldLeave)
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> leaving.left());
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
@@ -402,6 +406,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private Component updateLine;
 
 	private void tick(Minecraft client) {
+		// Its own part, so a paused client tick doesn't keep the old world in memory meanwhile
+		Guard.run("leaving a world", leaving::apply);
 		Guard.run("client tick", () -> doTick(client));
 	}
 
