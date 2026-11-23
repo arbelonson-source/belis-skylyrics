@@ -562,5 +562,6 @@
   "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "The Windows music reader is missing from the mod. Download SkyLyrics again",
   "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify needs Premium on the account that created your Spotify app",
   "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "If Spotify shows INVALID_CLIENT, check the Client ID and that your app has the Redirect URI above, exactly as shown",
-  "skylyrics.ui.ctrl_f": "Ctrl+F"
+  "skylyrics.ui.ctrl_f": "Ctrl+F",
+  "skylyrics.ui.local_files_and_podcasts_don_t_show_here": "Local files and podcasts don't show here"
 }

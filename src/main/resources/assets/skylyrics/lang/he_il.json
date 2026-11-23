@@ -562,5 +562,6 @@
   "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "קורא המוזיקה של Windows חסר במוד. הורידו את SkyLyrics מחדש",
   "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "ספוטיפיי דורש פרימיום בחשבון שיצר את אפליקציית הספוטיפיי שלכם",
   "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "אם ספוטיפיי מציג INVALID_CLIENT, בדקו את ה-Client ID ושבאפליקציה שלכם מוגדר ה-Redirect URI שלמעלה, בדיוק כפי שהוא מופיע",
-  "skylyrics.ui.ctrl_f": "Ctrl+F"
+  "skylyrics.ui.ctrl_f": "Ctrl+F",
+  "skylyrics.ui.local_files_and_podcasts_don_t_show_here": "קבצים מקומיים ופודקאסטים לא מוצגים כאן"
 }

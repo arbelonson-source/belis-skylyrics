@@ -246,6 +246,10 @@ public final class LibraryScreen extends Screen {
 		float retryAt;
 		/** Failed loads in a row. */
 		int failures;
+		/** Entries Spotify sent that got no card: local files, podcast episodes, gaps. */
+		int skipped;
+		/** Spotify refused to list this playlist's songs for this account (see {@link SpotifyLibrary.SongsHidden}). */
+		boolean hidden;
 		float scroll;
 		float scrollTarget;
 
@@ -292,9 +296,11 @@ public final class LibraryScreen extends Screen {
 				}
 				next = page.next();
 				total = page.total();
+				skipped += Math.max(0, page.raw() - page.items().size());
 				failures = 0;
 			} catch (CompletionException e) {
 				error = message(e.getCause());
+				hidden = e.getCause() instanceof SpotifyLibrary.SongsHidden;
 				retryAt = clock + RETRY_AFTER;
 				failures++;
 			}
@@ -305,6 +311,15 @@ public final class LibraryScreen extends Screen {
 		/** How many cards the list has with the pages still to come, not just the ones loaded so far. */
 		int size() {
 			return LibraryGrid.listSize(items.size(), next, total);
+		}
+
+		/**
+		 * An empty list shows Loading, not its empty text, while a page is on its way: the first one, one tried again after
+		 * a failure, or the next one after pages with nothing to show (a playlist starting with local files). As the
+		 * Narrator says it ({@link Narration#shelfState}).
+		 */
+		boolean waiting() {
+			return error.isEmpty() && (!loaded || pending != null);
 		}
 	}
 
@@ -593,6 +608,12 @@ public final class LibraryScreen extends Screen {
 			selected = -1;
 		}
 		pollPlaying();
+		if (opened != null) {
+			opened.poll();
+			if (opened.hidden) {
+				openedWasHidden();
+			}
+		}
 		mod.covers().upload();
 		layout();
 		boolean followPick = picks.follow(width, height);
@@ -906,7 +927,7 @@ public final class LibraryScreen extends Screen {
 			return;
 		}
 		if (shelf.items.isEmpty()) {
-			if (shelf.error.isEmpty() && !shelf.loaded) {
+			if (shelf.waiting()) {
 				searching(g, searchView ? Tr.t("Searching") : Tr.t("Loading"));
 				return;
 			}
@@ -915,7 +936,14 @@ public final class LibraryScreen extends Screen {
 				return;
 			}
 			if (shelf.error.isEmpty()) {
-				g.drawCenteredString(font, Ui.visual(Ui.clip(font, emptyText(), viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+				String empty = emptyText();
+				if (opened != null) {
+					// Why an open playlist shows nothing can take two lines in a small window, like why it didn't load
+					List<String> lines = errorLines(empty);
+					drawLines(g, lines, empty, errorTop(viewY + viewH / 2, lines.size()));
+				} else {
+					g.drawCenteredString(font, Ui.visual(Ui.clip(font, empty, viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+				}
 				return;
 			}
 			// Why it failed, on as many lines as it needs, above the button that tries again
@@ -1219,13 +1247,21 @@ public final class LibraryScreen extends Screen {
 
 	private String emptyText() {
 		if (opened != null) {
-			return Tr.t("This playlist is empty");
+			return playlistEmptyText(opened);
 		}
 		return switch (section) {
 			case SEARCH -> query.isBlank() ? Tr.t("Type to find a song") : Tr.t("Nothing found for “%s”", query.strip());
 			case LIKED -> heardMode() ? Tr.t("Songs you play will show up here") : Tr.t("No liked songs yet");
 			case PLAYLISTS -> Tr.t("No playlists yet");
 		};
+	}
+
+	/**
+	 * What an open playlist with no song cards says. One made only of local files or podcast episodes isn't empty (its
+	 * card counts them, and Spotify's app shows them): the library just has no card for those.
+	 */
+	static String playlistEmptyText(Shelf playlist) {
+		return playlist.skipped > 0 ? Tr.t("Local files and podcasts don't show here") : Tr.t("This playlist is empty");
 	}
 
 	private void renderCard(GuiGraphics g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen,
@@ -1510,11 +1546,7 @@ public final class LibraryScreen extends Screen {
 		if (entry instanceof LibraryPlaylist list) {
 			if (!list.openable()) {
 				// Spotify won't list the songs of someone else's playlist, but it will still play it
-				if (playing == null) {
-					playingTitle = list.name();
-					say(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"));
-					playing = library.playPlaylist(list);
-				}
+				playFromTheTop(list);
 				return;
 			}
 			Library lib = library;
@@ -1549,6 +1581,36 @@ public final class LibraryScreen extends Screen {
 		say(Tr.t("Starting %s…", item.title()));
 		toastAge = 0;
 		playing = library.play(item, after);
+	}
+
+	/** Plays a playlist whose songs Spotify keeps hidden from its first song, saying so; not while another song is starting. */
+	private void playFromTheTop(LibraryPlaylist list) {
+		if (playing == null && library != null) {
+			playingTitle = list.name();
+			say(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"));
+			playing = library.playPlaylist(list);
+		}
+	}
+
+	/**
+	 * The open playlist turned out to be one Spotify won't list for this account (a collaborative one you only follow, or
+	 * anyone's when Spotify didn't say who you are): back to the playlists, and it plays from the top, as a click on a
+	 * playlist Spotify said that of does. A later click on it plays it straight away.
+	 */
+	private void openedWasHidden() {
+		LibraryPlaylist list = openedList;
+		closeOpened();
+		restorePlace();
+		sayNewSection = true;
+		if (list == null) {
+			return;
+		}
+		Shelf back = shelf();
+		int at = back == null ? -1 : back.items.indexOf(list);
+		if (at >= 0) {
+			back.items.set(at, new LibraryPlaylist(list.id(), list.uri(), list.name(), list.coverUrl(), list.songs(), false));
+		}
+		playFromTheTop(list);
 	}
 
 	/** After a playlist closes: scroll back to where it was, and put the keyboard on it only if the keyboard was used last. */
