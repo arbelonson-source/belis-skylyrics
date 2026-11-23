@@ -3,7 +3,9 @@ package dev.beli.skylyrics.render;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Culling must drop vertices nobody can see and change nothing else. */
@@ -103,10 +105,11 @@ class SkyCullTest {
 						assertTrue(next < all.quads.size(), "a quad changed or moved at view " + yaw + "/" + pitch);
 						next++;
 					}
-					// Nothing that is on screen was dropped
+					// Nothing that is on screen was dropped (looked up in a set: a list's contains made this check take seconds)
+					Set<String> drawn = new HashSet<>(cut.quads);
 					for (int i = 0; i < all.quads.size(); i++) {
 						if (onScreen(all.corners.get(i), yaw, pitch)) {
-							assertTrue(cut.quads.contains(all.quads.get(i)), "dropped a visible quad at view " + yaw + "/" + pitch);
+							assertTrue(drawn.contains(all.quads.get(i)), "dropped a visible quad at view " + yaw + "/" + pitch);
 						}
 					}
 				}

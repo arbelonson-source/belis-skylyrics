@@ -469,7 +469,8 @@ class UpdaterTest {
 			Files.createFile(part);
 			String url = "http://" + server.getAddress().getHostString() + ":" + server.getAddress().getPort() + "/jar";
 			long start = System.nanoTime();
-			assertThrows(IOException.class, () -> Updater.fetch(http, url, part, 1_000_000, u -> true, java.time.Duration.ofSeconds(1)));
+			// Cut off after 300 ms (the game's limit is longer; the cut works the same): an IOException, however slow this machine
+			assertThrows(IOException.class, () -> Updater.fetch(http, url, part, 1_000_000, u -> true, java.time.Duration.ofMillis(300)));
 			assertTrue(System.nanoTime() - start < java.util.concurrent.TimeUnit.SECONDS.toNanos(15), "should give up soon");
 			assertFalse(Files.exists(part));
 		} finally {

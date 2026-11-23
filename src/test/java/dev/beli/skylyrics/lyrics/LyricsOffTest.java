@@ -60,22 +60,30 @@ class LyricsOffTest {
 		}
 	}
 
+	/**
+	 * Lets everything the worker has running, queued or scheduled run out, so a check that nothing was asked needs no
+	 * guess at how long a lookup takes to start. A worker that never goes idle (retries) shows in the checks that follow.
+	 */
+	private void settle() throws Exception {
+		service.awaitIdle(10, TimeUnit.SECONDS);
+	}
+
 	@Test
-	void aSongThatStartsWhileLyricsAreOffIsNotLookedUp() throws InterruptedException {
+	void aSongThatStartsWhileLyricsAreOffIsNotLookedUp() throws Exception {
 		service = new LyricsService(source, cache, attempt -> 30, on::get);
 		service.load(SONG);
-		Thread.sleep(400); // a lookup starts within milliseconds
+		settle(); // a lookup queued on the worker has asked by the time it is idle
 		assertEquals(List.of(), asked, "nothing went to the lyrics sites");
 		assertEquals(SONG, service.track(), "the song is still known, for when Lyrics are turned on");
 		assertEquals(LyricsService.State.IDLE, service.state());
 	}
 
 	@Test
-	void turningLyricsOnLooksUpTheSongPlayingThen() throws InterruptedException {
+	void turningLyricsOnLooksUpTheSongPlayingThen() throws Exception {
 		service = new LyricsService(source, cache, attempt -> 30, on::get);
 		service.load(SONG);
 		service.wake(); // still off: nothing
-		Thread.sleep(200);
+		settle();
 		assertEquals(List.of(), asked);
 		on.set(true);
 		service.wake();
@@ -83,12 +91,12 @@ class LyricsOffTest {
 		assertEquals(List.of(SONG.key()), asked);
 		assertFalse(service.lyrics().isEmpty());
 		service.wake(); // found already: not asked again
-		Thread.sleep(200);
+		settle();
 		assertEquals(1, asked.size());
 	}
 
 	@Test
-	void retriesStopWhenLyricsAreTurnedOffAndGoOnWhenTurnedOn() throws InterruptedException {
+	void retriesStopWhenLyricsAreTurnedOffAndGoOnWhenTurnedOn() throws Exception {
 		on.set(true);
 		failures.set(1_000);
 		service = new LyricsService(source, cache, attempt -> 30, on::get);
@@ -100,7 +108,7 @@ class LyricsOffTest {
 		waitFor(() -> service.state() == LyricsService.State.IDLE, "the retries to stop");
 		int parked = asked.size();
 		assertTrue(parked <= before + 1, "at most the try already on its way, then none: " + parked + " after " + before);
-		Thread.sleep(200); // retries every 30 ms while on
+		settle(); // retries every 30 ms while on, and the worker isn't idle while one waits
 		assertEquals(parked, asked.size(), "no more tries while Lyrics are off");
 		failures.set(0);
 		on.set(true);
@@ -110,7 +118,7 @@ class LyricsOffTest {
 	}
 
 	@Test
-	void retryPressedWhileLyricsAreOffWaitsForThemAndThenAsksPastTheSavedAnswer() throws InterruptedException {
+	void retryPressedWhileLyricsAreOffWaitsForThemAndThenAsksPastTheSavedAnswer() throws Exception {
 		on.set(true);
 		none = true;
 		service = new LyricsService(source, cache, attempt -> 30, on::get);
@@ -119,7 +127,7 @@ class LyricsOffTest {
 		assertEquals(1, asked.size());
 		on.set(false);
 		service.retry(); // the Music tab's Retry, still on offer for the song that had none
-		Thread.sleep(200);
+		settle();
 		assertEquals(1, asked.size(), "nothing asked while Lyrics are off");
 		// The Lyrics row says "Lyrics off" and the Retry button greys out, instead of a Retry that does nothing
 		assertEquals(LyricsService.State.IDLE, service.state());

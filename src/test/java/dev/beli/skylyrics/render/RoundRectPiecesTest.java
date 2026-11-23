@@ -77,6 +77,54 @@ class RoundRectPiecesTest {
 		return out.toString();
 	}
 
+	/**
+	 * What {@link #picture} reads for each pixel, as numbers: how many pieces cover it, and whether the last one shows
+	 * nothing, flat or the disc at which point. Pixels with the same numbers write the same part of the picture, so only
+	 * shapes where some pixel differs are written out and compared as pictures (writing every picture took seconds).
+	 */
+	private static double[] samples(List<Piece> pieces, int x0, int y0, int x1, int y1) {
+		double[] out = new double[(y1 - y0 + 2) * (x1 - x0 + 2) * 4];
+		int k = 0;
+		for (int py = y0 - 1; py <= y1; py++) {
+			for (int px = x0 - 1; px <= x1; px++) {
+				int covered = 0;
+				double kind = 0, u = 0, v = 0;
+				for (Piece p : pieces) {
+					if (px >= p.x && px < p.x + p.w && py >= p.y && py < p.y + p.h) {
+						covered++;
+						kind = p.flat() ? 1 : 2;
+						u = p.flat() ? 0 : p.u + (px + 0.5 - p.x) * p.uw / p.w;
+						v = p.flat() ? 0 : p.v + (py + 0.5 - p.y) * p.vh / p.h;
+					}
+				}
+				out[k++] = covered;
+				out[k++] = kind;
+				out[k++] = u;
+				out[k++] = v;
+			}
+		}
+		return out;
+	}
+
+	/** Whether every pixel writes the same in both pictures: the same numbers, or disc points written the same. */
+	private static boolean samePixels(double[] a, double[] b) {
+		if (a.length != b.length) {
+			return false;
+		}
+		for (int k = 0; k < a.length; k += 4) {
+			if (a[k] != b[k] || a[k + 1] != b[k + 1]) {
+				return false;
+			}
+			for (int i = k + 2; i < k + 4; i++) {
+				if (Double.doubleToLongBits(a[i]) != Double.doubleToLongBits(b[i])
+						&& !String.format(Locale.ROOT, "%.6f", a[i]).equals(String.format(Locale.ROOT, "%.6f", b[i]))) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
 	@Test
 	void everyShapeLooksTheSameWithNoMorePiecesThanBefore() {
 		int shapes = 0;
@@ -91,7 +139,9 @@ class RoundRectPiecesTest {
 					int x0 = 7, y0 = 3, x1 = x0 + w, y1 = y0 + h;
 					List<Piece> now = pieces(x0, y0, x1, y1, c, q), old = before(x0, y0, x1, y1, c, q);
 					String box = w + "x" + h + " corner " + c;
-					assertEquals(picture(old, x0, y0, x1, y1), picture(now, x0, y0, x1, y1), box);
+					if (!samePixels(samples(old, x0, y0, x1, y1), samples(now, x0, y0, x1, y1))) {
+						assertEquals(picture(old, x0, y0, x1, y1), picture(now, x0, y0, x1, y1), box);
+					}
 					assertTrue(now.size() <= old.size(), box + ": " + now.size() + " pieces, " + old.size() + " before");
 					shapes++;
 				}
