@@ -167,7 +167,13 @@ public final class AlbumArt {
 		uploadedGen = gen;
 	}
 
-	/** The song whose cover waits for Lyrics to be turned on, or null. Guarded by this. */
+	/*
+	 * Locks: accept guards the song change (show, the parked song) and the hand-over of a finished cover. It may be held
+	 * while this is taken (booking a retry on the timer, the HTTP client made on first use), never the other way round:
+	 * nothing holding this may wait for accept, or a song change and a failing download lock each other up.
+	 */
+
+	/** The song whose cover waits for Lyrics to be turned on, or null. Guarded by {@link #accept}. */
 	private @Nullable Track parked;
 	/** Whether {@link #parked} holds a song, read without the lock by {@link #wake} on every tick. */
 	private volatile boolean anyParked;
@@ -177,7 +183,7 @@ public final class AlbumArt {
 		if (!anyParked || !wanted.getAsBoolean()) {
 			return;
 		}
-		synchronized (this) {
+		synchronized (accept) {
 			Track t = parked;
 			parked = null;
 			anyParked = false;
@@ -188,27 +194,31 @@ public final class AlbumArt {
 	}
 
 	/** The song changed (or its cover did). While Lyrics are off nothing shows a cover, so none is downloaded until {@link #wake}. */
-	public synchronized void load(Track track) {
-		if (!wanted.getAsBoolean()) {
-			parked = track;
-			anyParked = true;
-			return;
+	public void load(Track track) {
+		synchronized (accept) {
+			if (!wanted.getAsBoolean()) {
+				parked = track;
+				anyParked = true;
+				return;
+			}
+			parked = null;
+			anyParked = false;
+			show(track);
 		}
-		parked = null;
-		anyParked = false;
-		show(track);
 	}
 
 	/** A cover task found Lyrics off: the song waits for {@link #wake}, which starts its cover again. */
-	private synchronized void parkAgain(Track track, long gen) {
-		if (generation.get() == gen && parked == null) {
-			parked = track;
-			anyParked = true;
-			loadedUrl = ""; // so the same address is loaded again, not taken as already there
+	private void parkAgain(Track track, long gen) {
+		synchronized (accept) {
+			if (generation.get() == gen && parked == null) {
+				parked = track;
+				anyParked = true;
+				loadedUrl = ""; // so the same address is loaded again, not taken as already there
+			}
 		}
 	}
 
-	/** Called with this held. */
+	/** Called with {@link #accept} held (and never with this held, see the lock note above). */
 	private void show(Track track) {
 		String url = track.artUrl();
 		String song = track.title() + "\n" + track.artist();
