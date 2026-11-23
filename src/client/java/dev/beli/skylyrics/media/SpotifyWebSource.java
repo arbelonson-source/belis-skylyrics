@@ -326,7 +326,52 @@ public final class SpotifyWebSource implements MediaSource {
 			signOutInMemory();
 		}
 		pollNow = true; // the reader says to sign in at its next read, not once its pace or a failure's wait is up
-		flush();
+		// Not removed here: this is a click on the settings screen, and on a slow or network drive (or a game folder OneDrive
+		// keeps) the game's frame would wait for the file to go
+		try {
+			saver.execute(this::flush);
+		} catch (java.util.concurrent.RejectedExecutionException e) {
+			flush();
+		}
+	}
+
+	/** Removes the file for a sign-out, off the thread that clicked; its one thread ends when it has been idle a while. */
+	private final java.util.concurrent.ThreadPoolExecutor saver = savingThread();
+
+	private static java.util.concurrent.ThreadPoolExecutor savingThread() {
+		java.util.concurrent.ThreadPoolExecutor pool = new java.util.concurrent.ThreadPoolExecutor(1, 1, 30, java.util.concurrent.TimeUnit.SECONDS,
+				new java.util.concurrent.LinkedBlockingQueue<>(), r -> {
+					Thread t = new Thread(r, "SkyLyrics Spotify sign-in save");
+					t.setDaemon(true);
+					return t;
+				});
+		pool.allowCoreThreadTimeOut(true);
+		return pool;
+	}
+
+	/**
+	 * For the game closing (and tests): waits, at most {@code timeoutMs}, until what a sign-out handed to its thread is on
+	 * the disk, so signing out just before quitting still leaves the next game signed out. True when it is.
+	 */
+	public boolean awaitSaved(long timeoutMs) {
+		java.util.concurrent.Future<?> done;
+		try {
+			done = saver.submit(() -> { });
+		} catch (java.util.concurrent.RejectedExecutionException e) {
+			return true;
+		}
+		try {
+			done.get(Math.max(0, timeoutMs), java.util.concurrent.TimeUnit.MILLISECONDS);
+			return true;
+		} catch (java.util.concurrent.TimeoutException e) {
+			LOG.warn("The Spotify sign-out was still being saved after {} ms; closing without waiting longer", timeoutMs);
+			return false;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
+		} catch (java.util.concurrent.ExecutionException e) {
+			return true; // an empty task doesn't fail
+		}
 	}
 
 	/** The in-memory half of a sign-out; the file goes through {@link #flush} once the lock is free. */
@@ -869,7 +914,7 @@ public final class SpotifyWebSource implements MediaSource {
 	private @Nullable Write pendingWrite;
 	/** True while one thread is writing the login file; the others leave their change in {@link #pendingWrite} for it. */
 	private final java.util.concurrent.atomic.AtomicBoolean writing = new java.util.concurrent.atomic.AtomicBoolean();
-	/** The tests' way to hold a save on its way to the disk. */
+	/** The tests' way to hold a save, or a sign-out's removal, on its way to the disk (a slow or network drive). */
 	volatile Runnable beforeSave = () -> { };
 
 	/** Call with the main lock held. */
@@ -891,9 +936,9 @@ public final class SpotifyWebSource implements MediaSource {
 
 	/**
 	 * Writes the pending file change without holding the main lock. One writer at a time, in the order the changes
-	 * were made; a thread that finds a write running leaves its change to that writer and returns at once (so the
-	 * render thread never waits for a slow disk). A sign-out's removal is queued like any save, so it always lands
-	 * after a save that was already on its way.
+	 * were made; a thread that finds a write running leaves its change to that writer and returns at once. A sign-out's
+	 * removal is queued like any save, so it always lands after a save that was already on its way; it is made on its own
+	 * thread (see {@link #signOut}), so the render thread never waits for a slow disk.
 	 */
 	private void flush() {
 		while (writing.compareAndSet(false, true)) {
@@ -904,6 +949,7 @@ public final class SpotifyWebSource implements MediaSource {
 					pendingWrite = null;
 				}
 				if (w != null) {
+					beforeSave.run();
 					if (w.json() == null) {
 						try {
 							Files.deleteIfExists(loginFile);
@@ -911,7 +957,6 @@ public final class SpotifyWebSource implements MediaSource {
 							LOG.warn("Couldn't remove the Spotify sign-in: {}", dev.beli.skylyrics.util.LogText.of(e));
 						}
 					} else {
-						beforeSave.run();
 						writeFile(w.json());
 					}
 				}

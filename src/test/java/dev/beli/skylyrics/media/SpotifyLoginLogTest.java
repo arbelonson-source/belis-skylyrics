@@ -82,6 +82,7 @@ class SpotifyLoginLogTest {
 			try (LogCapture log = new LogCapture()) {
 				SpotifyWebSource source = new SpotifyWebSource(() -> ID, login, () -> true, f -> "");
 				source.signOut();
+				assertTrue(source.awaitSaved(30_000)); // the removal is tried on the sign-out's own thread
 				assertNoHome(log.lines(), dir.toString(), "Couldn't remove the Spotify sign-in");
 			}
 		});
