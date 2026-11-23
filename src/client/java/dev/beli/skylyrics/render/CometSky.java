@@ -182,13 +182,16 @@ final class CometSky {
 			}
 		}
 		c.fadeBelowHorizon(HORIZON_FADE);
-		if (!KeptQuads.same(baseYaw, keptYaw) || !KeptQuads.same(radius, keptRadius) || !KeptQuads.same(c.horizonFade(), dust.fade())) {
-			keptYaw = baseYaw;
-			keptRadius = radius;
+		// All three are placed together, so each one's fade counts: one left half placed by an error places the lot again
+		float fade = c.horizonFade();
+		if (!KeptQuads.same(baseYaw, keptYaw) || !KeptQuads.same(radius, keptRadius) || !KeptQuads.same(fade, dust.fade())
+				|| !KeptQuads.same(fade, ion.fade()) || !KeptQuads.same(fade, head.fade())) {
 			float[] r = radii(radius, LAYERED);
 			place(dust, c, r[0], DUST_A, DUST_B, STEPS, DUST_ACROSS);
 			place(ion, c, r[1], ION_A, ION_B, STEPS, ION_ACROSS);
 			place(head, c, r[2], HEAD_A, HEAD_B, RINGS, SEGMENTS);
+			keptYaw = baseYaw;
+			keptRadius = radius;
 		}
 		// Every corner takes the same alpha
 		int alpha = SkyColors.argb(0, level);

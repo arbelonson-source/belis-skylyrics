@@ -312,9 +312,6 @@ final class MoonlitSky {
 	 * across, so they only move when the direction, the size of a pixel (the field of view, the window) or the distance does.
 	 */
 	private void placeStars(SkyCanvas c, float r, float baseYaw, float pixel) {
-		starsYaw = baseYaw;
-		starsPixel = pixel;
-		starsRadius = r;
 		starQuads.begin(c.horizonFade());
 		for (int i = 0; i < STAR_COUNT; i++) {
 			float s = STAR_SIZE[i] * pixel;
@@ -324,5 +321,9 @@ final class MoonlitSky {
 			starQuads.at(frame, s, s, r, i);
 			starQuads.at(frame, -s, s, r, i);
 		}
+		// Only once every star is in, so a placing cut short by an error is done again next frame
+		starsYaw = baseYaw;
+		starsPixel = pixel;
+		starsRadius = r;
 	}
 }

@@ -2,6 +2,7 @@ package dev.beli.skylyrics.util;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 
@@ -49,6 +50,9 @@ public final class Guard {
 		}
 	});
 
+	/** Runs a plain body through the two-value {@link #attempt}. */
+	private static final BiConsumer<Runnable, Object> RUN = (body, unused) -> body.run();
+
 	private final LongSupplier clock;
 	private final Sink sink;
 	private final Map<String, State> states = new HashMap<>();
@@ -63,6 +67,14 @@ public final class Guard {
 		SHARED.attempt(what, body);
 	}
 
+	/**
+	 * Like {@link #run}, handing {@code body} two values: a body kept from frame to frame (made once, not written as a
+	 * lambda where it runs) with its values passed here makes no new object per call.
+	 */
+	public static <A, B> void run(String what, BiConsumer<A, B> body, A a, B b) {
+		SHARED.attempt(what, body, a, b);
+	}
+
 	/** Like {@link #run}, for a body that answers; false when it threw or was muted. */
 	public static boolean test(String what, BooleanSupplier body) {
 		boolean[] result = {false};
@@ -72,6 +84,11 @@ public final class Guard {
 
 	/** True if the body ran without throwing. */
 	public boolean attempt(String what, Runnable body) {
+		return attempt(what, RUN, body, null);
+	}
+
+	/** {@link #attempt(String, Runnable)} for a body that takes two values. */
+	public <A, B> boolean attempt(String what, BiConsumer<A, B> body, A a, B b) {
 		State state;
 		synchronized (states) {
 			state = states.computeIfAbsent(what, k -> new State());
@@ -81,7 +98,7 @@ public final class Guard {
 			state.muted = false;
 		}
 		try {
-			body.run();
+			body.accept(a, b);
 			return true;
 		} catch (RuntimeException | LinkageError e) {
 			failed(what, state, e);

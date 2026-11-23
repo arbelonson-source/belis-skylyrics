@@ -296,9 +296,6 @@ final class SynthwaveSky {
 	 * across, so they only move when the direction, the size of a pixel (the field of view, the window) or the distance does.
 	 */
 	private void placeStars(SkyCanvas c, float r, float baseYaw, float pixel) {
-		starsYaw = baseYaw;
-		starsPixel = pixel;
-		starsRadius = r;
 		starQuads.begin(c.horizonFade());
 		for (int i = 0; i < STAR_COUNT; i++) {
 			float s = STAR_SIZE[i] * pixel;
@@ -308,6 +305,10 @@ final class SynthwaveSky {
 			starQuads.at(frame, s, s, r, i);
 			starQuads.at(frame, -s, s, r, i);
 		}
+		// Only once every star is in, so a placing cut short by an error is done again next frame
+		starsYaw = baseYaw;
+		starsPixel = pixel;
+		starsRadius = r;
 	}
 
 	/** How many face rows are drawn (the rest are gaps). */
@@ -324,8 +325,6 @@ final class SynthwaveSky {
 	/** The striped face: one trapezoid per row, gaps left open so the glow behind shows through. {@link #frame} is on the sun. */
 	private void face(SkyCanvas c, float r, float baseYaw, float level) {
 		if (!KeptQuads.same(baseYaw, faceYaw) || !KeptQuads.same(r, faceRadius) || !KeptQuads.same(c.horizonFade(), faceQuads.fade())) {
-			faceYaw = baseYaw;
-			faceRadius = r;
 			faceQuads.begin(c.horizonFade());
 			for (int i = 0; i < FACE_FILL.length; i++) {
 				if (!FACE_FILL[i]) {
@@ -338,6 +337,9 @@ final class SynthwaveSky {
 				faceQuads.at(frame, w1 * TAN_SUN, b1 * TAN_SUN, r, i + 1);
 				faceQuads.at(frame, -w1 * TAN_SUN, b1 * TAN_SUN, r, i + 1);
 			}
+			// Only once every row is in, so a placing cut short by an error is done again next frame
+			faceYaw = baseYaw;
+			faceRadius = r;
 		}
 		int alpha = SkyColors.argb(0, level);
 		for (int q = 0; q < FACE_STRIPES; q++) {
