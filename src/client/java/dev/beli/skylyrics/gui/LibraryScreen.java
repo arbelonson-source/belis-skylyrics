@@ -93,6 +93,8 @@ public final class LibraryScreen extends Screen {
 	private @Nullable LibraryPlaylist openedList;
 	/** The last input was a key, not a click. */
 	private boolean keyboardLast;
+	/** The wheel scrolled the shelf since the last key: the cover under the mouse is the chosen one even while the mouse stays put. */
+	private boolean wheelPick;
 	/** Brings the card the keys picked back into view when the window is resized. */
 	private final PickInView picks = new PickInView();
 	/** A recent search was just picked, so the Narrator says how many results it found; any later key or click ends that. */
@@ -587,6 +589,16 @@ public final class LibraryScreen extends Screen {
 			}
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget, 0, maxScroll(shelf));
 			shelf.scroll = Ui.approach(shelf.scroll, shelf.scrollTarget, dt, 18);
+			if (view() == SkyLyricsConfig.LibraryView.SHELF && Ui.inside(mouseX, mouseY, viewX, viewY, viewW, viewH)) {
+				// The wheel slides the shelf under a mouse that stays put: the cover now under it is chosen, as if it had moved there
+				int hit = shelfHitAt(shelf, mouseX, mouseY);
+				int was = selected;
+				selected = LibraryKeys.afterShelfFrame(selected, hit, wheelPick);
+				if (selected != was) {
+					footer = false;
+					picks.scrolledAway();
+				}
+			}
 			boolean nearEnd = switch (view()) {
 				case SHELF -> shelf.scrollTarget + shelfStride * 2 > maxScroll(shelf);
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
@@ -1772,6 +1784,7 @@ public final class LibraryScreen extends Screen {
 			return true;
 		}
 		if (shelf != null) {
+			wheelPick = view() == SkyLyricsConfig.LibraryView.SHELF;
 			double amount = view() == SkyLyricsConfig.LibraryView.SHELF ? along : scrollY;
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) amount * 30, 0, maxScroll(shelf));
 			return true;
@@ -1784,6 +1797,7 @@ public final class LibraryScreen extends Screen {
 	//?}
 	public boolean keyPressed(KeyEvent event) {
 		keyboardLast = true;
+		wheelPick = false;
 		picks.keyPicked();
 		sayNewSection = false;
 		sayResults = false;

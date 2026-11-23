@@ -160,4 +160,20 @@ class LibraryKeysTest {
 		assertEquals(-1, LibraryKeys.sectionAt(206, 10, tabs, 4, never), "after the last tab");
 		assertEquals(-1, LibraryKeys.sectionAt(9.5, 10, tabs, 4, never), "before the first");
 	}
+
+	@Test
+	void theWheelSlidingTheShelfUnderAStillMouseChoosesTheCoverUnderIt() {
+		// Hovering cover 2 chose it and showed its name; the wheel then slid cover 5 under the mouse, which stayed put:
+		// cover 5 lifted for the mouse while cover 2 kept the name, and a click played cover 5, not the named one
+		assertEquals(5, LibraryKeys.afterShelfFrame(2, 5, true));
+		assertEquals(2, LibraryKeys.afterShelfFrame(2, -1, true), "the gap between two covers keeps the choice, as hovering does");
+	}
+
+	@Test
+	void aStillMouseLeavesTheKeyboardsChoiceAlone() {
+		// Without the wheel (the library just opened under the mouse, or the keys moved on) the cover under a mouse that
+		// hasn't moved doesn't take the choice
+		assertEquals(2, LibraryKeys.afterShelfFrame(2, 5, false));
+		assertEquals(-1, LibraryKeys.afterShelfFrame(-1, 5, false));
+	}
 }

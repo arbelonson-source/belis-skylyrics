@@ -26,6 +26,16 @@ final class LibraryKeys {
 		return hit >= 0 ? hit : selected;
 	}
 
+	/**
+	 * The chosen cover on the shelf after a frame, {@code hit} being the one under the mouse (-1 for none) and
+	 * {@code wheeled} whether the wheel has scrolled the shelf since the last key. Once the wheel has slid the shelf under
+	 * a mouse that stays put, the cover under it is chosen (its name shows), as if the mouse had moved there
+	 * ({@link #afterHover}); before that a still mouse leaves the keyboard's choice alone.
+	 */
+	static int afterShelfFrame(int selected, int hit, boolean wheeled) {
+		return wheeled ? afterHover(selected, hit) : selected;
+	}
+
 	/** How long after a click opened a playlist a second click is still part of the same double-click. */
 	static final long DOUBLE_CLICK_NS = 400_000_000L;
 
