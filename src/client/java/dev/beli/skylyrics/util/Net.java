@@ -221,14 +221,19 @@ public final class Net {
 					body.complete(value);
 				}
 			});
-			CompletableFuture.delayedExecutor(limit.toMillis(), TimeUnit.MILLISECONDS).execute(() -> {
-				if (body.completeExceptionally(new java.net.http.HttpTimeoutException("The answer didn't come in within " + limit.toMillis() + " ms"))) {
+			// The limit's timer goes once the body is in (or failed): a finished answer isn't kept until the limit would
+			// have run out, nor a time-out built for it then (Spotify is asked every second, each answer had 20 s)
+			CompletableFuture<Void> timer = new CompletableFuture<Void>().orTimeout(limit.toMillis(), TimeUnit.MILLISECONDS);
+			timer.whenComplete((ignored, late) -> {
+				if (late != null
+						&& body.completeExceptionally(new java.net.http.HttpTimeoutException("The answer didn't come in within " + limit.toMillis() + " ms"))) {
 					java.util.concurrent.Flow.Subscription s = subscription;
 					if (s != null) {
 						s.cancel(); // closes the connection
 					}
 				}
 			});
+			body.whenComplete((value, failure) -> timer.complete(null));
 		}
 
 		@Override
