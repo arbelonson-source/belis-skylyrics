@@ -82,15 +82,20 @@ public final class PrivateFile {
 			}
 			warn(file, "it would lock you out of it");
 		} catch (IOException | RuntimeException e) {
-			warn(file, e.toString());
+			warn(file, LogText.of(e)); // Windows' error names the whole path, home folder and all
 		}
 		try {
 			Files.deleteIfExists(file);
 			Files.createFile(file);
 		} catch (IOException | RuntimeException e) {
-			warn(file, e.toString());
+			warn(file, LogText.of(e)); // Windows' error names the whole path, home folder and all
 		}
 		return false;
+	}
+
+	/** Test seam: lets the next problem be logged, as at the start of a game. */
+	static void warnAgain() {
+		WARNED.set(false);
 	}
 
 	private static void warn(Path file, String why) {

@@ -115,6 +115,11 @@ public final class LyricsService {
 	 * generation sets {@link #pendingFetch}: a late retry or re-check can't take it over from the next song's fetch.
 	 */
 	private final Object fetchLock = new Object();
+	/**
+	 * Whether the song waiting for {@link #wake} had a Retry pressed or under way, so it is asked about past its saved
+	 * answer, as that Retry would. Guarded by {@link #fetchLock}.
+	 */
+	private boolean parkedRetry;
 
 	public LyricsService(LyricsSource client, Path cacheDir) {
 		this(client, cacheDir, () -> true);
@@ -177,6 +182,7 @@ public final class LyricsService {
 			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
+			parkedRetry = false; // another song: a Retry pressed for the last one isn't this one's
 			if (newTrack.isNone()) {
 				current = new Snapshot(newTrack, Lyrics.NONE, State.IDLE);
 				return;
@@ -227,20 +233,26 @@ public final class LyricsService {
 			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
+			boolean skipCache = parkedRetry;
+			parkedRetry = false;
 			current = new Snapshot(t, now.lyrics, State.LOADING);
 			try {
-				pendingFetch = executor.submit(() -> fetch(t, gen, false, 0));
+				pendingFetch = executor.submit(() -> fetch(t, gen, skipCache, 0));
 			} catch (RejectedExecutionException ignored) {
 				// shutting down
 			}
 		}
 	}
 
-	/** Lyrics went off before this song's lookup or retry ran: it waits, asking nothing, for {@link #wake}. */
-	private void park(long gen) {
+	/**
+	 * Lyrics went off before this song's lookup or retry ran: it waits, asking nothing, for {@link #wake}, which then asks
+	 * past the saved answer when this was a Retry's ({@code skipCache}).
+	 */
+	private void park(long gen, boolean skipCache) {
 		synchronized (fetchLock) {
 			if (generation.get() == gen) {
 				current = new Snapshot(current.track, current.lyrics, State.IDLE);
+				parkedRetry = skipCache;
 			}
 		}
 	}
@@ -250,11 +262,18 @@ public final class LyricsService {
 		synchronized (fetchLock) {
 			Snapshot now = current;
 			Track t = now.track; // read under the lock: a load() in between can't leave us asking about the old song
-			if (t.isNone() || DemoSource.PLAYER.equals(t.player()) || !lookUp.getAsBoolean()) {
+			if (t.isNone() || DemoSource.PLAYER.equals(t.player())) {
 				return;
 			}
 			long gen = generation.incrementAndGet();
 			cancelRetry();
+			if (!lookUp.getAsBoolean()) {
+				// Lyrics are off, so nothing is asked now: the song waits for wake(), which then asks as this Retry would, and
+				// the Lyrics row says "Lyrics off" meanwhile instead of offering a Retry that does nothing
+				current = new Snapshot(t, now.lyrics, State.IDLE);
+				parkedRetry = true;
+				return;
+			}
 			current = new Snapshot(t, now.lyrics, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(t, gen, true, 0));
 		}
@@ -302,7 +321,7 @@ public final class LyricsService {
 			return; // skipped past this song while it waited in the queue
 		}
 		if (!lookUp.getAsBoolean()) {
-			park(gen); // Lyrics were turned off while this waited (a retry, say)
+			park(gen, skipCache); // Lyrics were turned off while this waited (a retry, say)
 			return;
 		}
 		Path file = cacheFile(t);

@@ -19,9 +19,16 @@ public final class LogCapture implements AutoCloseable {
 	private final org.apache.logging.log4j.core.Logger logger;
 	private final Level oldLevel;
 	private final AbstractAppender appender;
+	private final String name;
 
 	public LogCapture() {
-		logger = (org.apache.logging.log4j.core.Logger) LogManager.getLogger("SkyLyrics");
+		this("SkyLyrics");
+	}
+
+	/** Collects what the logger of this name writes (PrivateFile's is "skylyrics", in small letters). */
+	public LogCapture(String name) {
+		this.name = name;
+		logger = (org.apache.logging.log4j.core.Logger) LogManager.getLogger(name);
 		oldLevel = logger.getLevel();
 		appender = new AbstractAppender("SkyLyricsTestCapture" + System.nanoTime(), null, null, true, Property.EMPTY_ARRAY) {
 			@Override
@@ -35,7 +42,7 @@ public final class LogCapture implements AutoCloseable {
 		};
 		appender.start();
 		logger.addAppender(appender);
-		Configurator.setLevel("SkyLyrics", Level.ALL); // the test setup's default would drop everything below ERROR
+		Configurator.setLevel(name, Level.ALL); // the test setup's default would drop everything below ERROR
 	}
 
 	/** Every line so far, as "LEVEL message", with any exception's text after " | ". */
@@ -46,7 +53,7 @@ public final class LogCapture implements AutoCloseable {
 	@Override
 	public void close() {
 		logger.removeAppender(appender);
-		Configurator.setLevel("SkyLyrics", oldLevel);
+		Configurator.setLevel(name, oldLevel);
 		appender.stop();
 	}
 }

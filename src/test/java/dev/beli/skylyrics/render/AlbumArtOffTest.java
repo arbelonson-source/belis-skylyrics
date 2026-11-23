@@ -1,8 +1,11 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -101,6 +104,91 @@ class AlbumArtOffTest {
 		assertNotNull(art.takeIfCurrent());
 		art.wake();
 		assertEquals(1, fetched.size(), "a wake with nothing waiting asks for nothing");
+	}
+
+	/** A cover of one colour, so the colour picked from it is not the one used without a cover. */
+	private static BufferedImage red() {
+		BufferedImage image = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+		for (int x = 0; x < 8; x++) {
+			for (int y = 0; y < 8; y++) {
+				image.setRGB(x, y, 0xE02020);
+			}
+		}
+		return image;
+	}
+
+	/** Loads a song's cover with Lyrics on and puts it on show, as the render thread's upload does. */
+	private static void shown(AlbumArt art, Track track) {
+		art.load(track);
+		AlbumArt.Pending cover = art.takeIfCurrent();
+		assertNotNull(cover);
+		art.markUploaded(cover.gen());
+		assertTrue(art.hasTexture());
+	}
+
+	@Test
+	void theLastSongsCoverIsNotShownBesideASongThatStartsWhileLyricsAreOff() {
+		on.set(true);
+		AlbumArt art = art();
+		art.fetcher = url -> {
+			fetched.add(url);
+			return red();
+		};
+		shown(art, song("T", "https://img.example/a.jpg"));
+		assertNotEquals(AlbumArt.FALLBACK_COLOR, art.color());
+		on.set(false);
+		art.load(song("U", "https://img.example/b.jpg"));
+		// The Music tab's Now playing card shows U's title: with T's cover beside it (and T's colour on its dot and the
+		// Album colour row) it would name the wrong album
+		assertFalse(art.hasTexture(), "no cover rather than the last song's");
+		assertEquals(AlbumArt.FALLBACK_COLOR, art.color());
+		assertEquals(1, fetched.size(), "and still nothing asked");
+		on.set(true);
+		art.wake();
+		assertEquals(List.of("https://img.example/a.jpg", "https://img.example/b.jpg"), fetched);
+		shown(art, song("U", "https://img.example/b.jpg"));
+	}
+
+	@Test
+	void theDemoSongWhileLyricsAreOffShowsNoCoverEither() {
+		on.set(true);
+		AlbumArt art = art();
+		shown(art, song("T", "https://img.example/a.jpg"));
+		on.set(false);
+		art.load(dev.beli.skylyrics.media.DemoSource.TRACK);
+		assertFalse(art.hasTexture(), "the demo song has no cover");
+	}
+
+	@Test
+	void anAlbumMateOrTheSameSongKeepsItsCoverWhileLyricsAreOff() {
+		on.set(true);
+		AlbumArt art = art();
+		shown(art, song("T", "https://img.example/a.jpg"));
+		on.set(false);
+		art.load(song("T2", "https://img.example/a.jpg"));
+		assertTrue(art.hasTexture(), "the same cover is still the right one");
+		art.load(song("T2", "https://img.example/a-large.jpg"));
+		assertTrue(art.hasTexture(), "a corrected cover of the same song: the one on show stays until it comes");
+		on.set(true);
+		art.wake();
+		assertEquals(List.of("https://img.example/a.jpg", "https://img.example/a-large.jpg"), fetched);
+	}
+
+	@Test
+	void aSongThatComesBackWhileLyricsAreOffGetsItsCoverAgainWhenTheyAreOn() {
+		on.set(true);
+		AlbumArt art = art();
+		shown(art, song("T", "https://img.example/a.jpg"));
+		on.set(false);
+		art.load(song("U", "https://img.example/b.jpg"));
+		art.load(song("T", "https://img.example/a.jpg"));
+		on.set(true);
+		art.wake();
+		AlbumArt.Pending cover = art.takeIfCurrent(); // the render thread's upload
+		if (cover != null) {
+			art.markUploaded(cover.gen());
+		}
+		assertTrue(art.hasTexture(), "T's cover is on show again");
 	}
 
 	@Test
