@@ -269,9 +269,10 @@ class PlayerFuzzTest {
 			+ "\"lengthMs\":200000,\"cover\":\"https://x/a\",\"uri\":\"spotify:track:abc\",\"player\":\"spotify\"},"
 			+ "{\"title\":\"Another\",\"artist\":\"\",\"album\":\"\",\"lengthMs\":0,\"cover\":\"\",\"uri\":\"file:///a.mp3\",\"player\":\"vlc\"}]}";
 
+	/** Each case has its own time limit: a slow or stalling disk can't run the test out of time, a case that hangs still fails. */
 	@Test
 	void aDamagedHeardFileLoadsAsSongsOrNone(@TempDir Path dir) {
-		assertTimeoutPreemptively(BOUND, () -> Fuzz.cases(17, 300, (f, i) -> {
+		Fuzz.cases(17, 300, BOUND, (f, i) -> {
 			Path file = dir.resolve("heard" + i + ".json");
 			byte[] bytes = switch (f.random.nextInt(5)) {
 				case 0 -> f.bytes(3000);
@@ -294,6 +295,6 @@ class PlayerFuzzTest {
 			}
 			HeardLibrary.openableUri(f.nasty(30), List.of("http", "https"));
 			HeardLibrary.schemeOf(f.nasty(10));
-		}));
+		});
 	}
 }

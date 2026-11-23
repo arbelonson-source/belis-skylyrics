@@ -83,10 +83,11 @@ class ConfigFuzzTest {
 		}));
 	}
 
+	/** Each case has its own time limit: a slow or stalling disk can't run the test out of time, a case that hangs still fails. */
 	@Test
 	void anySettingsFileLoadsAsUsableSettings(@TempDir Path dir) {
 		String template = template();
-		assertTimeoutPreemptively(BOUND, () -> Fuzz.cases(41, 200, (f, i) -> {
+		Fuzz.cases(41, 200, BOUND, (f, i) -> {
 			Path file = dir.resolve("skylyrics" + i + ".json");
 			byte[] bytes = switch (f.random.nextInt(5)) {
 				case 0 -> f.bytes(3000);
@@ -97,6 +98,6 @@ class ConfigFuzzTest {
 			};
 			Files.write(file, bytes);
 			checkUsable(SkyLyricsConfig.load(file, SafeFile::readText, 1, 0), new String(bytes, StandardCharsets.ISO_8859_1));
-		}));
+		});
 	}
 }

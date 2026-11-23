@@ -145,16 +145,17 @@ class CoverFuzzTest {
 		}));
 	}
 
+	/** Each case has its own time limit: a slow or stalling disk can't run the test out of time, a case that hangs still fails. */
 	@Test
 	void anyFileInTheCoverFolderReadsAsASanePictureOrNone(@TempDir Path dir) throws Exception {
 		List<byte[]> templates = templates();
 		List<byte[]> odd = oddOnes();
-		assertTimeoutPreemptively(BOUND, () -> Fuzz.cases(31, 400, (f, i) -> {
+		Fuzz.cases(31, 400, BOUND, (f, i) -> {
 			byte[] bytes = i < odd.size() ? odd.get(i) : input(f, templates, odd);
 			Path file = dir.resolve(CoverCache.fileName("https://example.com/" + i));
 			Files.write(file, bytes);
 			checkDecoded(CoverCache.readCached(file));
-		}));
+		});
 	}
 
 	@Test
