@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.media;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -136,5 +137,7 @@ class SpotifySetupChangeTest {
 		read(source);
 		assertEquals(SpotifyWebSource.notSetUp(ID).getMessage(), statusLine(source),
 				"the Status line doesn't say to sign in until the next read is due");
+		// The file goes on the sign-out's own thread: wait for it, or on Windows the test folder can't be removed while it's open
+		assertTrue(source.awaitSaved(30_000));
 	}
 }

@@ -766,6 +766,7 @@ class SpotifyWebSourceTest {
 		// Between polls the tracker is handed the stored reading: it must be empty too
 		source.settle(System.nanoTime());
 		assertTrue(source.poll().track().isNone());
+		assertTrue(source.awaitSaved(30_000)); // the file goes on the sign-out's own thread
 	}
 
 	@Test

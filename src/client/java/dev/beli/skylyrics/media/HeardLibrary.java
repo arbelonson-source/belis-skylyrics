@@ -116,6 +116,8 @@ public final class HeardLibrary implements Library {
 	private final SafeFile.Reader reader;
 	private final SafeFile.Mover mover;
 	private volatile boolean blockedLogged;
+	/** A save that fails is logged once (a read-only game folder fails on every song), again only after one works. */
+	private final dev.beli.skylyrics.util.OnceGate saveLog = new dev.beli.skylyrics.util.OnceGate();
 
 	public HeardLibrary(Path file, BooleanSupplier enabled, Opener opener) {
 		this(file, enabled, opener, SafeFile::readText);
@@ -301,9 +303,10 @@ public final class HeardLibrary implements Library {
 			return;
 		}
 		List<Entry> copy = snapshot();
-		if (!write(file, copy, mover)) {
+		if (!write(file, copy, mover, saveLog)) {
 			return; // the file kept its old songs, so the baseline must too: what we removed stays removed on the next save
 		}
+		saveLog.reset();
 		baseline.clear();
 		for (Entry e : copy) {
 			baseline.add(e.key());
@@ -317,6 +320,11 @@ public final class HeardLibrary implements Library {
 
 	/** False when it couldn't be written (after SafeFile's retries); the file is then as it was. */
 	static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover) {
+		return write(file, entries, mover, new dev.beli.skylyrics.util.OnceGate());
+	}
+
+	/** Like {@link #write(Path, List, SafeFile.Mover)}; a failure is logged only when {@code log} lets it. */
+	private static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover, dev.beli.skylyrics.util.OnceGate log) {
 		try {
 			Files.createDirectories(file.toAbsolutePath().getParent());
 			Path target = SafeFile.writeTarget(file.toAbsolutePath()); // a list shared through a link stays linked
@@ -329,7 +337,9 @@ public final class HeardLibrary implements Library {
 			}
 			return true;
 		} catch (IOException e) {
-			LOG.warn("Couldn't save the recently heard songs: {}", LogText.of(e));
+			if (log.shouldLog()) {
+				LOG.warn("Couldn't save the recently heard songs (not logged again until a save works): {}", LogText.of(e));
+			}
 			return false;
 		}
 	}

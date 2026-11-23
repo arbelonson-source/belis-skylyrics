@@ -133,9 +133,15 @@ public final class MediaTracker {
 		return message == null || message.isBlank() ? fallback : message.strip();
 	}
 
-	/** Whether the read failed because the network is down or slow, not because of the player. */
+	/**
+	 * Whether the read failed because the network is down or slow, not because of the player. A Linux session bus that
+	 * refuses the connection is not the network, whatever socket error the library carries inside.
+	 */
 	static boolean networkFailure(@Nullable Throwable e) {
 		for (int depth = 0; e != null && depth < 8; depth++, e = e.getCause()) {
+			if (e instanceof MprisSource.BusFailure) {
+				return false;
+			}
 			if (e instanceof java.net.UnknownHostException || e instanceof java.net.ConnectException
 					|| e instanceof java.net.NoRouteToHostException || e instanceof java.net.SocketTimeoutException
 					|| e instanceof java.net.http.HttpTimeoutException

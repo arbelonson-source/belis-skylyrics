@@ -158,12 +158,22 @@ public final class MprisSource implements MediaSource {
 			} catch (Exception e) {
 				connectFailures++;
 				retryAt = nanos.getAsLong() + retryDelayNs(connectFailures);
-				IOException failure = new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				IOException failure = new BusFailure(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
 				lastConnectFailure = failure;
 				throw failure; // the local: close() may clear the field in between
 			}
 		}
 		return connection;
+	}
+
+	/**
+	 * The session bus couldn't be opened. Never the internet's fault, though the library's failure can hold a
+	 * java.net.ConnectException ("Connection refused" from a bus socket nobody listens on any more).
+	 */
+	static final class BusFailure extends IOException {
+		BusFailure(String message, Throwable cause) {
+			super(message, cause);
+		}
 	}
 
 	/**
@@ -331,6 +341,11 @@ public final class MprisSource implements MediaSource {
 			this(busName, track, positionMs, playing, trackId, 1.0);
 		}
 
+		/** The same reading, not playing. */
+		Reading halted() {
+			return new Reading(busName, track, positionMs, false, trackId, rate);
+		}
+
 		/** The same reading {@code ms} later (a playing song has moved on). */
 		Reading advancedBy(long ms) {
 			long pos = playing ? positionMs + (long) (ms * rate) : positionMs;
@@ -466,6 +481,13 @@ public final class MprisSource implements MediaSource {
 						lastGood.remove(name);
 						continue;
 					}
+					if (reading != null && !reading.playing) {
+						// It said it stopped (or paused with no song): the song kept for the blink stands still where
+						// it got to instead of running on
+						Remembered kept = lastGood.get(name);
+						long ageMs = (System.nanoTime() - kept.atNanos) / 1_000_000;
+						lastGood.put(name, new Remembered(kept.reading.advancedBy(ageMs).halted(), System.nanoTime()));
+					}
 				} else {
 					if (name.equals(current)) {
 						emptyPolls = 0;
@@ -490,7 +512,10 @@ public final class MprisSource implements MediaSource {
 			}
 		}
 
-		Reading chosen = PlayerPicker.choose(readings, Reading::busName, r -> r.track.player(), Reading::playing,
+		// The followed player's song kept through a blink still counts as playing here, also when the blink said Stopped or
+		// Paused with no song (kept standing still): else a browser tab that plays too took over and kept the lyrics
+		String held = emptyPolls > 0 ? current : null;
+		Reading chosen = PlayerPicker.choose(readings, Reading::busName, r -> r.track.player(), r -> r.playing || r.busName.equals(held),
 				preferredPlayer.get(), current);
 		if (chosen == null) {
 			current = null;
@@ -534,10 +559,13 @@ public final class MprisSource implements MediaSource {
 		return reading(busName, props.GetAll(PLAYER_IFACE), () -> props.Get(PLAYER_IFACE, "Position"));
 	}
 
-	/** What a player's properties say it plays, or null when it is stopped or names no song (apart from D-Bus for tests). */
+	/**
+	 * What a player's properties say it plays, or null when it names no song (apart from D-Bus for tests). A stopped player
+	 * gives a reading with no song that doesn't play: it may keep its old song's data, but that isn't playing anything.
+	 */
 	static @Nullable Reading reading(String busName, Map<String, Variant<?>> all, Callable<Object> getPosition) {
 		if (stopped(all)) {
-			return null; // a stopped player may keep its old song's data: that isn't playing anything
+			return new Reading(busName, Track.NONE, 0, false, "");
 		}
 		boolean playing = "Playing".equals(value(all.get("PlaybackStatus")));
 		long positionUs = positionMicros(all, getPosition);

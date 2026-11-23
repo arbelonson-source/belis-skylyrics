@@ -400,6 +400,10 @@ public final class WindowsMediaSource implements MediaSource {
 		return name.endsWith(".exe") ? name.substring(0, name.length() - 4) : name;
 	}
 
+	/**
+	 * The player's name as the Music tab shows it. The key is in small letters, so a player not named here shows with only
+	 * its first letter raised ("Someplayer"): fine for most, wrong for a name with its own capitals, so those are listed.
+	 */
 	static String prettyName(String player) {
 		return switch (player) {
 			case "spotify" -> "Spotify";
@@ -412,6 +416,8 @@ public final class WindowsMediaSource implements MediaSource {
 			case "tidal" -> "TIDAL";
 			case "musicbee" -> "MusicBee";
 			case "aimp" -> "AIMP";
+			case "itunes" -> "iTunes";
+			case "foobar2000" -> "foobar2000";
 			case "" -> "";
 			default -> Character.toUpperCase(player.charAt(0)) + player.substring(1);
 		};
