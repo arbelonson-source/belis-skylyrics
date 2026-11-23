@@ -727,31 +727,39 @@ public final class SkyLyricsConfig {
 	 * Version 0.8.0 kept a song's whole artist and title in its timing key; today each is cut at {@link Track#MAX_TEXT} (see
 	 * {@link Track#cap}). A key no artist and title of today's length can make (every " - " in it leaves a side that is too
 	 * long) is cut the same way at its first " - ", so the timing is still found. Any other key stays as it is.
+	 * <p>
+	 * The names are cut before the key is put in lower case, which makes each Turkish capital dotted I two letters (an i
+	 * and a combining dot), so the sides are measured and cut with each such pair counted as the one letter it was: a key
+	 * today's names make is never cut again, and a cut key is the one today's names make.
 	 */
 	static String cutLikeToday(String key) {
 		int max = Track.MAX_TEXT;
 		if (key.length() <= max) {
 			return key; // both sides fit wherever it splits
 		}
-		boolean noArtist = key.startsWith("- "); // "- title": a song with no artist
-		int first = noArtist ? -1 : key.indexOf(" - ");
+		String named = key.replace("i̇", "İ"); // as long as the names were before lower case
+		if (named.length() <= max) {
+			return key;
+		}
+		boolean noArtist = named.startsWith("- "); // "- title": a song with no artist
+		int first = noArtist ? -1 : named.indexOf(" - ");
 		if (!noArtist && first < 0) {
 			return key; // not "artist - title": nothing to cut by
 		}
 		// Each place the key could split into artist and title; where both sides fit, today's names can make it
 		for (int at = first; ; ) {
-			int artist = Math.max(0, at), title = key.length() - (at < 0 ? 2 : at + 3);
+			int artist = Math.max(0, at), title = named.length() - (at < 0 ? 2 : at + 3);
 			if (artist <= max && title <= max) {
 				return key;
 			}
-			int next = key.indexOf(" - ", at + 1);
+			int next = named.indexOf(" - ", at + 1);
 			if (next < 0) {
 				break;
 			}
 			at = next;
 		}
-		return noArtist ? "- " + Track.cap(key.substring(2), max)
-				: Track.cap(key.substring(0, first), max) + " - " + Track.cap(key.substring(first + 3), max);
+		return (noArtist ? "- " + Track.cap(named.substring(2), max)
+				: Track.cap(named.substring(0, first), max) + " - " + Track.cap(named.substring(first + 3), max)).toLowerCase(Locale.ROOT);
 	}
 
 	/**
