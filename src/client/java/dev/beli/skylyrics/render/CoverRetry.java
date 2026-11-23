@@ -24,9 +24,12 @@ final class CoverRetry {
 		return DELAYS_MS[Math.min(Math.max(attempt, 1), DELAYS_MS.length) - 1];
 	}
 
-	/** An HTTP status that may pass: 5xx, 429, 408. A 404 or other 4xx never will. */
+	/**
+	 * An HTTP status that may pass: 5xx, 429, 408, and 407 (a work or school proxy that wants a password, which Java hands
+	 * back as an answer: it says nothing about the cover, as for the lyrics). A 404 or other 4xx never will.
+	 */
 	static boolean temporaryStatus(int status) {
-		return status >= 500 || status == 429 || status == 408;
+		return status >= 500 || status == 429 || status == 408 || status == 407;
 	}
 
 	/** A failure that says the network or the server is the problem right now, not the cover. */

@@ -354,6 +354,12 @@ class CoverCacheTest {
 		assertFalse(CoverCache.countsAsFailure(408));
 	}
 
+	/** A proxy that wants a password (407) is the network's trouble, not the cover's: tried again later, never given up for it. */
+	@Test
+	void aProxyWantingAPasswordDoesNotCountAgainstACover() {
+		assertFalse(CoverCache.countsAsFailure(407));
+	}
+
 	@Test
 	void aCoverThatDownloadsButWontDecodeIsGivenUp(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
 		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
