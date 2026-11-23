@@ -20,11 +20,24 @@ final class Needs {
 	private static final String[][] CHECKED = {
 			{"minecraft", "Minecraft"}, {"fabric-api", "Fabric API"}, {"fabricloader", "Fabric Loader"}, {"java", "Java"}};
 
-	/** What the jar needs that this game doesn't have: the thing's name, and what is needed in plain words. */
-	record Unmet(String name, String needs) {
+	/**
+	 * What the jar needs that this game doesn't have: the thing's name, and the jar's own constraints for it. The plain
+	 * words are made when asked, so they are in the game's language when the player is told, not in the one it had when
+	 * the update was checked (the check runs before the loading screen has loaded the player's language).
+	 */
+	record Unmet(String name, List<String> constraints) {
+		Unmet {
+			constraints = List.copyOf(constraints);
+		}
+
+		/** What is needed in plain words, for example "0.137.0 or newer". */
+		String needs() {
+			return describe(constraints);
+		}
+
 		/** For example "Fabric API 0.137.0 or newer". */
 		String text() {
-			return name + " " + needs;
+			return name + " " + needs();
 		}
 	}
 
@@ -47,7 +60,7 @@ final class Needs {
 			List<String> constraints = constraints(depends.get(entry[0]));
 			String have = running.apply(entry[0]);
 			if (!met(constraints, have)) {
-				return new Unmet(entry[1], describe(constraints));
+				return new Unmet(entry[1], constraints);
 			}
 		}
 		return null;
