@@ -300,6 +300,7 @@
 - **Rainbow colour on a computer that stays on.** The **Rainbow** colour and the Rainbow tile under **Themes** now flow smoothly however long the computer has been on since it was last restarted. Before, the colour changed in small jumps instead of every frame after a few days: after a month, five jumps a second on the lyrics and bigger, coarser ones on the tile.
 - **Sky and hat errors on 1.21.9 and newer.** On Minecraft 1.21.9 and newer, a SkyLyrics error while drawing the sky effects or your hat no longer ends the game: that effect pauses for a few seconds and the error is written to the game log once, as on older versions.
 - **Errors in the settings, the song library and the tour.** An error in one of the mod's screens (while it is drawn, read out by the Narrator, or when you press a key or click) no longer closes Minecraft with a crash report. The screen goes back to the one you opened it from, a pop-up says "Something went wrong, try again", and the error is written to the game log. A tour that hit an error doesn't open again over the title screen until you restart the game.
+- **"Loading" in the song library.** When you click **Try again** after the song library couldn't load a list, or open a Spotify playlist that starts with local files or podcasts, the library now shows "Loading" until the songs come. Before, it said "No liked songs yet", "No playlists yet" or "This playlist is empty" meanwhile, for up to half a minute when Spotify was busy.
 
 ### Faster
 

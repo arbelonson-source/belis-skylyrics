@@ -306,6 +306,15 @@ public final class LibraryScreen extends Screen {
 		int size() {
 			return LibraryGrid.listSize(items.size(), next, total);
 		}
+
+		/**
+		 * An empty list shows Loading, not its empty text, while a page is on its way: the first one, one tried again after
+		 * a failure, or the next one after pages with nothing to show (a playlist starting with local files). As the
+		 * Narrator says it ({@link Narration#shelfState}).
+		 */
+		boolean waiting() {
+			return error.isEmpty() && (!loaded || pending != null);
+		}
 	}
 
 	private @Nullable Shelf shelf() {
@@ -906,7 +915,7 @@ public final class LibraryScreen extends Screen {
 			return;
 		}
 		if (shelf.items.isEmpty()) {
-			if (shelf.error.isEmpty() && !shelf.loaded) {
+			if (shelf.waiting()) {
 				searching(g, searchView ? Tr.t("Searching") : Tr.t("Loading"));
 				return;
 			}
