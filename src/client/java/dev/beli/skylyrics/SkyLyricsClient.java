@@ -406,12 +406,15 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	}
 
 	private void doTick(Minecraft client) {
-		// First, so nothing failing below can leave a joined world counted as still loading (it holds the World title back)
 		//? if >=26.2 {
-		/*ViewLock.tick(client.gui.screen() != null);
+		/*Screen screen = client.gui.screen();
 		*///?} else {
-		ViewLock.tick(client.screen != null);
+		Screen screen = client.screen;
 		//?}
+		// First, so nothing failing below can leave a joined world counted as still loading (it holds the World title back),
+		// or the song readers' threads with an old answer to whether a song screen is open
+		ViewLock.tick(screen != null);
+		songScreen(isSongScreen(screen));
 		// Lyrics just turned back on (key, settings, or the file): the song that came while they were off is looked up now
 		lyrics.wake();
 		art.wake();
@@ -577,17 +580,28 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	 * render thread; a stale read only costs one poll.
 	 */
 	private static boolean anyoneLooking() {
-		net.minecraft.client.gui.screens.Screen screen = screenOpen();
-		return SpotifyPace.looking(SkyLyricsConfig.get().enabled, screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen
-				|| screen instanceof dev.beli.skylyrics.gui.LibraryScreen || screen instanceof dev.beli.skylyrics.gui.IntroScreen);
+		return looking(SkyLyricsConfig.get().enabled);
 	}
 
-	private static net.minecraft.client.gui.screens.@org.jspecify.annotations.Nullable Screen screenOpen() {
-		//? if >=26.2 {
-		/*return Minecraft.getInstance().gui.screen();
-		*///?} else {
-		return Minecraft.getInstance().screen;
-		//?}
+	/**
+	 * The same for a given Lyrics setting. The readers ask on their own thread, so the screen is the one the last game tick
+	 * saw ({@link #songScreen}), never the game's own: the first read runs as the mod starts, and on 26.2 and later the
+	 * game builds the GUI that holds its screen only after that.
+	 */
+	static boolean looking(boolean lyricsOn) {
+		return SpotifyPace.looking(lyricsOn, songScreenOpen);
+	}
+
+	/** Whether one of the mod's screens (settings, song library, tour) was open at the last game tick; see {@link #looking}. */
+	private static volatile boolean songScreenOpen;
+
+	/** Called on the game thread each tick, with whether one of the mod's screens is open. */
+	static void songScreen(boolean open) {
+		songScreenOpen = open;
+	}
+
+	private static boolean isSongScreen(@org.jspecify.annotations.Nullable Screen screen) {
+		return screen instanceof SkyLyricsScreen || screen instanceof LibraryScreen || screen instanceof IntroScreen;
 	}
 
 	public SpotifyWebSource spotify() {
