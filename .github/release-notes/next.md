@@ -68,7 +68,7 @@
   - When a launcher hides your session from the game, the mod now still finds your music players instead of saying it can't reach them. In a Flatpak (for example the Prism Launcher), when it isn't allowed to talk to music players and none show up, the mod now shows the Flatpak hint instead of just "nothing playing".
   - On Linux, players such as Amberol are now shown by their own name, and songs from the library open in the right player.
   - Clicking the progress bar now also moves the song on Linux music players that don't name their tracks the usual way, or don't name them at all.
-  - On Linux, a player that is stopped (not just paused) but still remembers its last song (Rhythmbox, VLC) no longer keeps that song in the bar.
+  - On Linux, a player that is stopped (not just paused) but still remembers its last song (Rhythmbox, VLC) no longer keeps that song in the bar. The lyrics stop with the music the moment you press Stop, and the song leaves the bar about 2 seconds later.
   - On Linux, when your music player shows nothing for a moment (about a second) between songs, SkyLyrics no longer jumps to a browser tab and keeps showing its song.
 - **Windows music player.** The Windows music player link is steadier.
   - The lyrics no longer stand still until the player's next update when Windows has only just started.
