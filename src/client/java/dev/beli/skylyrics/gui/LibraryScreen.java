@@ -246,6 +246,8 @@ public final class LibraryScreen extends Screen {
 		float retryAt;
 		/** Failed loads in a row. */
 		int failures;
+		/** Entries Spotify sent that got no card: local files, podcast episodes, gaps. */
+		int skipped;
 		float scroll;
 		float scrollTarget;
 
@@ -292,6 +294,7 @@ public final class LibraryScreen extends Screen {
 				}
 				next = page.next();
 				total = page.total();
+				skipped += Math.max(0, page.raw() - page.items().size());
 				failures = 0;
 			} catch (CompletionException e) {
 				error = message(e.getCause());
@@ -924,7 +927,14 @@ public final class LibraryScreen extends Screen {
 				return;
 			}
 			if (shelf.error.isEmpty()) {
-				g.drawCenteredString(font, Ui.visual(Ui.clip(font, emptyText(), viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+				String empty = emptyText();
+				if (opened != null) {
+					// Why an open playlist shows nothing can take two lines in a small window, like why it didn't load
+					List<String> lines = errorLines(empty);
+					drawLines(g, lines, empty, errorTop(viewY + viewH / 2, lines.size()));
+				} else {
+					g.drawCenteredString(font, Ui.visual(Ui.clip(font, empty, viewW - 20)), px + pw / 2, viewY + viewH / 2 - 10, Ui.MUTED);
+				}
 				return;
 			}
 			// Why it failed, on as many lines as it needs, above the button that tries again
@@ -1228,13 +1238,21 @@ public final class LibraryScreen extends Screen {
 
 	private String emptyText() {
 		if (opened != null) {
-			return Tr.t("This playlist is empty");
+			return playlistEmptyText(opened);
 		}
 		return switch (section) {
 			case SEARCH -> query.isBlank() ? Tr.t("Type to find a song") : Tr.t("Nothing found for “%s”", query.strip());
 			case LIKED -> heardMode() ? Tr.t("Songs you play will show up here") : Tr.t("No liked songs yet");
 			case PLAYLISTS -> Tr.t("No playlists yet");
 		};
+	}
+
+	/**
+	 * What an open playlist with no song cards says. One made only of local files or podcast episodes isn't empty (its
+	 * card counts them, and Spotify's app shows them): the library just has no card for those.
+	 */
+	static String playlistEmptyText(Shelf playlist) {
+		return playlist.skipped > 0 ? Tr.t("Local files and podcasts don't show here") : Tr.t("This playlist is empty");
 	}
 
 	private void renderCard(GuiGraphics g, Object entry, int x, int y, float scale, float alpha, float lift, boolean chosen,

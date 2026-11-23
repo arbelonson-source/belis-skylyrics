@@ -301,6 +301,7 @@
 - **Sky and hat errors on 1.21.9 and newer.** On Minecraft 1.21.9 and newer, a SkyLyrics error while drawing the sky effects or your hat no longer ends the game: that effect pauses for a few seconds and the error is written to the game log once, as on older versions.
 - **Errors in the settings, the song library and the tour.** An error in one of the mod's screens (while it is drawn, read out by the Narrator, or when you press a key or click) no longer closes Minecraft with a crash report. The screen goes back to the one you opened it from, a pop-up says "Something went wrong, try again", and the error is written to the game log. A tour that hit an error doesn't open again over the title screen until you restart the game.
 - **"Loading" in the song library.** When you click **Try again** after the song library couldn't load a list, or open a Spotify playlist that starts with local files or podcasts, the library now shows "Loading" until the songs come. Before, it said "No liked songs yet", "No playlists yet" or "This playlist is empty" meanwhile, for up to half a minute when Spotify was busy.
+- **Playlists of local files or podcasts.** A Spotify playlist made only of local files or podcast episodes, which the song library can't show, now says "Local files and podcasts don't show here" when you open it, instead of "This playlist is empty" under a card that counts its songs.
 
 ### Faster
 

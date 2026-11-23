@@ -43,6 +43,20 @@ class LibraryShelfTest {
 	}
 
 	@Test
+	void aPlaylistOfOnlyLocalFilesOrPodcastsDoesNotSayItIsEmpty() {
+		// Spotify sent all three of the playlist's entries, but they are local files and podcast episodes: no card for any
+		LibraryScreen.Shelf shelf = new LibraryScreen.Shelf(offset -> CompletableFuture.completedFuture(
+				new SpotifyLibrary.Page<LibraryItem>(List.of(), 3, 0, 3)), () -> 0);
+		shelf.more();
+		assertTrue(shelf.items.isEmpty());
+		assertEquals(dev.beli.skylyrics.Tr.t("Local files and podcasts don't show here"), LibraryScreen.playlistEmptyText(shelf));
+		// A playlist with nothing in it is still empty
+		LibraryScreen.Shelf empty = new LibraryScreen.Shelf(offset -> CompletableFuture.completedFuture(SpotifyLibrary.Page.<LibraryItem>empty()), () -> 0);
+		empty.more();
+		assertEquals(dev.beli.skylyrics.Tr.t("This playlist is empty"), LibraryScreen.playlistEmptyText(empty));
+	}
+
+	@Test
 	void aPlaylistThatStartsWithLocalFilesIsLoadingWhileItsSongsAreOnTheirWay() {
 		// The first 50 entries are all local files; the songs come on the next page, which hasn't come yet
 		CompletableFuture<SpotifyLibrary.Page<LibraryItem>> second = new CompletableFuture<>();
