@@ -106,12 +106,17 @@ public final class NowPlayingHud {
 	private static final int BORDER = 0x4B4665;
 	/** The border: two screen pixels at GUI scale 3. */
 	private static final float BORDER_W = 2 / 3f;
-	private static final int SUNG = 0xFCF8FF;
+	static final int SUNG = 0xFCF8FF;
 	private static final int UPCOMING = 0x8C879E;
 	private static final int HIGHLIGHT = 0x926CDE;
 	private static final int EQ_COLOR = 0xA076F4;
-	private static final int CLOCK = 0xF0F0F0;
-	private static final int STAT_TEXT = 0x8A8699;
+	static final int CLOCK = 0xF0F0F0;
+	static final int STAT_TEXT = 0x8A8699;
+	/**
+	 * The clock and the frame rate stand on the world itself, beside the pill: like the game's own words over the world
+	 * (the action bar, titles), they get its drop shadow, or they vanish on a bright sky or snow.
+	 */
+	static final boolean ON_WORLD_SHADOW = true;
 	private static final int SIGNAL_OFF = 0x4E3C62;
 	/** The cover's stand-in when the song has none. */
 	private static final int NO_ART = 0x3A2E5C;
@@ -440,7 +445,7 @@ public final class NowPlayingHud {
 			drawPill(g, mc, x, y, now, dt);
 			float midY = y + PILL_H / 2f;
 			if (fit.clock()) {
-				text(g, font, clockStyle, clock, x - CLOCK_GAP - clockW, midY, clockScale, fade(alpha, CLOCK));
+				text(g, font, visual(clock, clockStyle), x - CLOCK_GAP - clockW, midY, clockScale, fade(alpha, CLOCK), ON_WORLD_SHADOW);
 			}
 			if (fit.stats()) {
 				drawStats(g, mc, font, style, textScale, x + width + STATS_GAP, midY);
@@ -1077,7 +1082,7 @@ public final class NowPlayingHud {
 				fpsShown = fps;
 				fpsText = fps + FPS;
 			}
-			text(g, font, style, fpsText, tx, midY, textScale, fade(a, STAT_TEXT));
+			text(g, font, visual(fpsText, style), tx, midY, textScale, fade(a, STAT_TEXT), ON_WORLD_SHADOW);
 		}
 		if (!cfg.barPing) {
 			return;
@@ -1225,7 +1230,7 @@ public final class NowPlayingHud {
 				BarProbe.highlight(current, left, right, hlLeft, hlRight, x0);
 			}
 			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS,
-					ARGB.color(Math.round(a * 255), accent(SkyLyricsConfig.get())));
+					ARGB.color(Math.round(a * 255), highlight(accent(SkyLyricsConfig.get()))));
 		}
 
 		int sung = fade(a, SUNG), upcoming = fade(a, UPCOMING);
@@ -1342,6 +1347,10 @@ public final class NowPlayingHud {
 	}
 
 	private static void text(GuiGraphics g, Font font, FormattedCharSequence seq, float x, float midY, float scale, int color) {
+		text(g, font, seq, x, midY, scale, color, false);
+	}
+
+	private static void text(GuiGraphics g, Font font, FormattedCharSequence seq, float x, float midY, float scale, int color, boolean shadow) {
 		g.pose().pushMatrix();
 		try {
 			g.pose().translate(x, midY);
@@ -1349,7 +1358,7 @@ public final class NowPlayingHud {
 			if (BarProbe.on()) {
 				BarProbe.wordPose(g);
 			}
-			g.drawString(font, seq, 0, -4, color, false);
+			g.drawString(font, seq, 0, -4, color, shadow);
 		} finally {
 			g.pose().popMatrix();
 		}
@@ -1387,6 +1396,14 @@ public final class NowPlayingHud {
 
 	private static int fade(float a, int rgb) {
 		return ARGB.color(Math.max(4, Math.round(a * 255)), rgb);
+	}
+
+	/**
+	 * The highlight under the last two sung words for the bar's accent colour: a light accent (a pale album or lyrics
+	 * colour, most of the colours to pick) is deepened just enough for the white words on it to read.
+	 */
+	static int highlight(int accent) {
+		return Contrast.deepen(accent, SUNG, Contrast.FLOOR);
 	}
 
 	private static int accent(SkyLyricsConfig cfg) {
