@@ -27,6 +27,18 @@ class SettingsRowsTest {
 	}
 
 	@Test
+	void theNarratorNamesTheSearchKeyOfTheComputer() throws Exception {
+		// The settings search opens with Cmd+F on a Mac (hasControlDownWithQuirk), where Ctrl+F does nothing; Ctrl+Tab
+		// is the real Ctrl key everywhere
+		assertTrue(SkyLyricsScreen.keysHint(true).endsWith("Ctrl+Tab for the next tab, Cmd+F to search"), SkyLyricsScreen.keysHint(true));
+		assertTrue(SkyLyricsScreen.keysHint(false).endsWith("Ctrl+Tab for the next tab, Ctrl+F to search"), SkyLyricsScreen.keysHint(false));
+		try (dev.beli.skylyrics.InLanguage de = dev.beli.skylyrics.InLanguage.of("de_de")) {
+			assertTrue(SkyLyricsScreen.keysHint(false).endsWith("Strg+Tab für den nächsten Reiter, Strg+F zum Suchen"), SkyLyricsScreen.keysHint(false));
+			assertTrue(SkyLyricsScreen.keysHint(true).endsWith("Strg+Tab für den nächsten Reiter, Cmd+F zum Suchen"), SkyLyricsScreen.keysHint(true));
+		}
+	}
+
+	@Test
 	void flatOnlyRowsAreHiddenInWorld() {
 		assertFalse(SkyLyricsScreen.flatLayout(Layout.WORLD));
 		assertTrue(SkyLyricsScreen.flatLayout(Layout.ARC));

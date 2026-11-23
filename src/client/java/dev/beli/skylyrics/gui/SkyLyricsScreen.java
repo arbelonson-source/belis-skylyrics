@@ -1197,12 +1197,20 @@ public final class SkyLyricsScreen extends Screen {
 	protected void updateNarrationState(NarrationElementOutput output) {
 		output.add(NarratedElementType.TITLE, getNarrationMessage());
 		// Vanilla's own hint talks about Tab and arrows moving over widgets, which this screen doesn't have
-		output.add(NarratedElementType.USAGE, Component.literal(
-				Tr.t("Tab or Up and Down to move, Left and Right to change, Enter to press, Page Up and Page Down to scroll, Ctrl+Tab for the next tab, Ctrl+F to search")));
+		output.add(NarratedElementType.USAGE, Component.literal(keysHint(SkyLyricsClient.mac())));
 		String now = focusNarration();
 		if (!now.isEmpty()) {
 			output.nest().add(NarratedElementType.TITLE, Component.literal(now));
 		}
+	}
+
+	/**
+	 * What the Narrator says the keys do here. The search is Cmd+F on a Mac (as Minecraft's own text boxes take Cmd
+	 * there), where Ctrl+F does nothing; Ctrl+Tab is the real Ctrl key everywhere.
+	 */
+	static String keysHint(boolean mac) {
+		return Tr.t("Tab or Up and Down to move, Left and Right to change, Enter to press, Page Up and Page Down to scroll, Ctrl+Tab for the next tab, %s to search",
+				mac ? "Cmd+F" : Tr.t("Ctrl+F"));
 	}
 
 	// ---- Drawing ----------------------------------------------------------------------------------
