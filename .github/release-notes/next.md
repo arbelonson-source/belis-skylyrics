@@ -291,6 +291,7 @@
 - **Sideways scrolling in the song library.** The shelf and the carousel, which run sideways, now also move with a sideways scroll: a trackpad swiped left or right, a mouse wheel that tilts, or Shift and the wheel on a Mac. Before, only scrolling up and down moved them.
 - **Scrolling the shelf under the mouse.** In the song library's shelf, scrolling with the mouse resting on the covers now chooses the cover that slides under it, so the name shown is the one a click plays. Before, the name of the cover the mouse was on before the scroll stayed, while a click played the new one.
 - **Top bar highlight in light colours.** With a light accent colour on the top bar (any of the colours to pick, a pale album colour with **Accent colour** set to **Album**, or the lyrics colour with **Lyrics**), the two sung words on the highlight were white on almost white and hard to read. The highlight now turns a deeper shade of that colour, just enough for the words to stand out. The default violet looks as before.
+- **Top bar clock and FPS on a bright sky.** The clock and the frame rate beside the top bar now have the game's text shadow, like its own words over the world, so they no longer vanish against a bright sky, clouds or snow.
 
 ### Faster
 
