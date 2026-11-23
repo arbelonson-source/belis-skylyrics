@@ -6,6 +6,26 @@ package dev.beli.skylyrics.gui;
  * time) add up to a step a notch's worth, instead of a step each.
  */
 final class ScrollSteps {
+	/** Whether the game's sideways scroll is above 0 to the right (26.3, SDL) or to the left (before, GLFW). */
+	//? if >=26.3 {
+	/*static final boolean RIGHT_IS_POSITIVE = true;
+	*///?} else {
+	static final boolean RIGHT_IS_POSITIVE = false;
+	//?}
+
+	/**
+	 * The scroll along a list that runs sideways (the shelf, the carousel), in the up-and-down wheel's sense: above 0
+	 * towards the start. That is the up-and-down amount, or the sideways one (a trackpad swiped sideways, a tilting wheel,
+	 * Shift and the wheel on a Mac) when that is the larger, so a sideways swipe that wobbles a little still goes sideways.
+	 * The game gives a scroll to the left as above 0 up to 26.2 (GLFW) and as below 0 from 26.3 (SDL): {@code rightIsPositive}.
+	 */
+	static double along(double scrollX, double scrollY, boolean rightIsPositive) {
+		if (Math.abs(scrollX) <= Math.abs(scrollY)) {
+			return scrollY;
+		}
+		return rightIsPositive ? -scrollX : scrollX;
+	}
+
 	/** What has been scrolled one way and not used for a step yet. */
 	private double sum;
 

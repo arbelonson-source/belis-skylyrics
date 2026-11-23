@@ -1762,15 +1762,18 @@ public final class LibraryScreen extends Screen {
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
 		picks.scrolledAway();
 		Shelf shelf = shelf();
+		// The shelf and the carousel run sideways: a sideways swipe moves them too
+		double along = ScrollSteps.along(scrollX, scrollY, ScrollSteps.RIGHT_IS_POSITIVE);
 		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
-			int step = carouselSteps.step(scrollY);
+			int step = carouselSteps.step(along);
 			if (!shelf.items.isEmpty() && step != 0) {
 				selected = Mth.clamp(Math.max(0, selected) + step, 0, shelf.items.size() - 1);
 			}
 			return true;
 		}
 		if (shelf != null) {
-			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) scrollY * 30, 0, maxScroll(shelf));
+			double amount = view() == SkyLyricsConfig.LibraryView.SHELF ? along : scrollY;
+			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) amount * 30, 0, maxScroll(shelf));
 			return true;
 		}
 		return super.mouseScrolled(mx, my, scrollX, scrollY);

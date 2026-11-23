@@ -35,6 +35,25 @@ class ScrollStepsTest {
 	}
 
 	@Test
+	void aSidewaysSwipeMovesTheShelfAndTheCarousel() {
+		// A trackpad swiped sideways, a tilting wheel, or Shift and the wheel on a Mac only scroll sideways: the shelf and
+		// the carousel, which run sideways, didn't move at all
+		assertEquals(0.5, ScrollSteps.along(0.5, 0, false), "up to 26.2 (GLFW) a scroll to the left is above 0: towards the start");
+		assertEquals(-0.5, ScrollSteps.along(-0.5, 0, false), "and to the right towards the end");
+		assertEquals(-0.5, ScrollSteps.along(0.5, 0, true), "26.3 (SDL): to the right is above 0, towards the end");
+		assertEquals(0.5, ScrollSteps.along(-0.5, 0, true));
+	}
+
+	@Test
+	void theLargerWayOfAScrollCounts() {
+		// A sideways swipe wobbles up and down a little, an up-and-down one sideways
+		assertEquals(-2, ScrollSteps.along(-2, 0.25, false));
+		assertEquals(-1, ScrollSteps.along(0.125, -1, false));
+		assertEquals(1, ScrollSteps.along(0, 1, true), "the wheel alone, as before");
+		assertEquals(-1, ScrollSteps.along(1, -1, false), "up and down when both are as large");
+	}
+
+	@Test
 	void turningBackDoesNotUseWhatWasLeftTheOtherWay() {
 		ScrollSteps steps = new ScrollSteps();
 		assertEquals(0, moved(steps, -0.25, 3), "three quarters of a notch on is not a cover yet");

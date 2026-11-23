@@ -72,7 +72,9 @@ import dev.beli.skylyrics.media.DemoSource;
  * (so the first frame is the crosshair flash's peak, the start of a slide), and gives up after 10 s. One burst at a time.
  * <p>
  * {@code click <x> <y>} left-clicks and releases at that spot of the open screen, in scaled GUI pixels. {@code scroll <amount>}
- * scrolls the open screen's centre by that much (negative scrolls the other way). {@code search <text>} types into the
+ * scrolls the open screen's centre by that much (negative scrolls the other way; fractions like 0.1 are a trackpad's small
+ * steps), and {@code scroll <x> <y>} scrolls sideways by {@code x} too, as the game gives it (up to 26.2 above 0 is to the
+ * left, from 26.3 to the right). {@code search <text>} types into the
  * settings screen's search box. {@code screen <class name>} opens another mod's screen by class name (e.g. Mod Menu's list).
  * {@code title} opens the title screen, which {@code screen} can't in the production client. {@code set <field> <value>} changes
  * one config field without saving it (the settings screen saves everything when it closes). {@code fastlines <ms> <a | b | c>} is {@code lines} with one line every
@@ -427,6 +429,17 @@ public final class DevTestHook {
 		SkyLyricsClient.get().lyrics().swapLyricsForTest(lyrics);
 	}
 
+	/** "scroll -1": up and down only; "scroll 0.5 0": sideways by 0.5 and not up or down. */
+	private static double scrollX(String arg) {
+		String[] xy = arg.strip().split("\\s+");
+		return xy.length > 1 ? Double.parseDouble(xy[0]) : 0;
+	}
+
+	private static double scrollY(String arg) {
+		String[] xy = arg.strip().split("\\s+");
+		return Double.parseDouble(xy[xy.length > 1 ? 1 : 0]);
+	}
+
 	/** "seek 12.5" / "seek -3": moves the demo song through the tracker, as the Now playing bar's click does. */
 	private static void seek(String arg) {
 		dev.beli.skylyrics.media.MediaTracker tracker = SkyLyricsClient.get().tracker();
@@ -757,10 +770,10 @@ public final class DevTestHook {
 				case "scroll" -> {
 					//? if >=26.2 {
 					/*if (client.gui.screen() != null) {
-						client.gui.screen().mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
+						client.gui.screen().mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, scrollX(arg), scrollY(arg));
 					*///?} else {
 					if (client.screen != null) {
-						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, 0, Double.parseDouble(arg));
+						client.screen.mouseScrolled(client.getWindow().getGuiScaledWidth() / 2.0, client.getWindow().getGuiScaledHeight() / 2.0, scrollX(arg), scrollY(arg));
 					//?}
 					}
 				}
