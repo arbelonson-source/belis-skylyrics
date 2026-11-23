@@ -334,6 +334,8 @@ final class WorldWords {
 	private @Nullable Style shadowBase, shadowStyle;
 
 	private final List<Card> cards = new ArrayList<>();
+	/** Minecraft's Notification Display Time (see {@link #notices(double)}). */
+	private double notices = 1;
 	/** When the last white flash of a word landing or being hit began (see {@link #flashStarts}); long ago at first. */
 	private long flashAt = Long.MIN_VALUE / 2;
 	/** Reused for each card's turn while drawing, which only happens on the render thread. */
@@ -1151,10 +1153,20 @@ final class WorldWords {
 		expire(camera.position(), now);
 	}
 
+	/** Minecraft's Notification Display Time, which a song's title in the World stays up for {@link #TITLE_HOLD} times. */
+	void notices(double multiplier) {
+		notices = multiplier;
+	}
+
+	/** How long a song's title stays in the World before it fades: {@link #TITLE_HOLD} seconds times {@code notices}. */
+	static long titleHoldNs(double notices) {
+		return (long) (dev.beli.skylyrics.gui.ToastTime.shownFor(TITLE_HOLD, notices) * 1e9);
+	}
+
 	/** Starts the fade of a title that has had its time and of a card out of reach, and drops the ones that have faded. */
 	void expire(Vec3 eye, long now) {
 		for (Card c : cards) {
-			if (c.title && c.goneAt < 0 && now - c.born > TITLE_HOLD * 1e9f
+			if (c.title && c.goneAt < 0 && now - c.born > titleHoldNs(notices)
 					|| c.goneAt < 0 && c.pos.distanceTo(eye) > GONE_DISTANCE) {
 				c.goneAt = now;
 			}

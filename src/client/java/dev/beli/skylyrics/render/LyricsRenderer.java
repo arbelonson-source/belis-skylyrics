@@ -735,6 +735,7 @@ public final class LyricsRenderer {
 		worldWords.curve(cfg.worldCurve);
 		worldWords.tune(cfg.worldWords, cfg.worldFade, cfg.worldDistance, cfg.worldTilt, cfg.worldRise, cfg.worldFlow, cfg.worldHold, cfg.uppercase, cfg.size);
 		worldWords.travel(cfg.worldGlide);
+		worldWords.notices(dev.beli.skylyrics.gui.ToastTime.multiplier());
 		worldWords.glide(camera.position(), camera.yRot(), camera.xRot(), mc.player != null
 				&& (mc.player.isFallFlying() || mc.player.isAutoSpinAttack() || mc.player.isPassenger() || mc.player.getAbilities().flying), now);
 		if (mc.level != wordsLevel) {
