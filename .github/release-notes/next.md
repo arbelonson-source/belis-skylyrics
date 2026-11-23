@@ -296,6 +296,7 @@
 - **Top bar clock and FPS on a bright sky.** The clock and the frame rate beside the top bar now have the game's text shadow, like its own words over the world, so they no longer vanish against a bright sky, clouds or snow.
 - **Record card's lines before and after.** With **Card lines** at **3 lines**, the lines before and after the one being sung were faded so far on the **Record card** that they were hard to make out. They are now just a little dimmer than the artist's name.
 - **Record card in deep blue album colours.** With the lyrics in the album's colour, a deep blue or violet album no longer leaves the line being sung on the **Record card** too dark to read on the dark card: there it is lightened just enough to stand out (the lyrics in the sky keep the album's colour).
+- **"Nothing playing" hint.** On the Music tab, when nothing plays, the line under "Nothing playing" on the **Now playing** card that says where to play a song now shows in full in a tooltip when you point at the card, if it ends in "…". In most languages it is too long for the card and was cut off with no way to read the rest.
 - **Signing out of Spotify.** Clicking **Sign out** on the Music tab no longer makes the game pause while the saved sign-in is removed (it could on a slow or network drive, or a game folder OneDrive keeps). Signing out just before you quit still leaves the next game signed out.
 
 ### Faster
