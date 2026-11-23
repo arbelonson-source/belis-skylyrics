@@ -18,6 +18,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 import dev.beli.skylyrics.util.SafeFile;
 
@@ -69,22 +70,41 @@ record Refusal(String asset, String sha256, Map<String, String> running, String 
 			if (!Files.isRegularFile(file) || Files.size(file) > 16 * 1024) {
 				return null;
 			}
-			JsonObject o = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
-			JsonObject r = o.getAsJsonObject("running");
+			// Checked, never getAsJsonObject() or getAsJsonPrimitive() on an element that may be something else: on Minecraft
+			// 1.21.1 to 1.21.10 (older Gson) their error writes the element out by recursion, so a file nested thousands of
+			// lists deep was a StackOverflowError, which ended the update check (see UpdateCheck.parse)
+			if (!(JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)) instanceof JsonObject o)
+					|| !(o.get("running") instanceof JsonObject r) || !(o.get("constraints") instanceof JsonArray list)) {
+				return null;
+			}
 			Map<String, String> running = new LinkedHashMap<>();
 			for (String id : IDS) {
-				running.put(id, r.get(id).getAsString());
+				String v = text(r, id);
+				if (v == null) {
+					return null;
+				}
+				running.put(id, v);
 			}
 			List<String> constraints = new ArrayList<>();
-			for (JsonElement c : o.getAsJsonArray("constraints")) {
-				constraints.add(c.getAsJsonPrimitive().getAsString());
+			for (JsonElement c : list) {
+				if (!(c instanceof JsonPrimitive p)) {
+					return null;
+				}
+				constraints.add(p.getAsString());
 			}
-			Refusal out = new Refusal(o.get("asset").getAsString(), o.get("sha256").getAsString(), running,
-					o.get("name").getAsString(), constraints);
-			return out.name.isEmpty() ? null : out;
+			String asset = text(o, "asset"), sha256 = text(o, "sha256"), name = text(o, "name");
+			if (asset == null || sha256 == null || name == null || name.isEmpty()) {
+				return null;
+			}
+			return new Refusal(asset, sha256, running, name, constraints);
 		} catch (IOException | RuntimeException e) {
 			return null;
 		}
+	}
+
+	/** The member as text when it is a plain value (a string, number or flag), else null. */
+	private static String text(JsonObject o, String key) {
+		return o.get(key) instanceof JsonPrimitive p ? p.getAsString() : null;
 	}
 
 	/** Writes the file all at once; never throws (a failure only means the next start downloads again). */
