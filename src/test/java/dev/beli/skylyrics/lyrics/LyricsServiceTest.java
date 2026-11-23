@@ -138,7 +138,7 @@ class LyricsServiceTest {
 
 	@Test
 	void redirectsForbiddenAndBusyAreTemporary() {
-		for (int status : new int[] {301, 302, 307, 403, 408, 429, 500, 503}) {
+		for (int status : new int[] {301, 302, 307, 403, 407, 408, 429, 500, 503, 511}) {
 			assertTrue(LyricsService.temporary(new LrclibClient.StatusException(status)), "status " + status);
 		}
 		for (int status : new int[] {400, 401, 410}) {
@@ -192,6 +192,31 @@ class LyricsServiceTest {
 		try (var files = Files.list(cache)) {
 			assertEquals(0, files.count());
 		}
+	}
+
+	/**
+	 * A work or school proxy that wants a password answers every request 407 (Java's HttpClient hands that answer back
+	 * as it is when it has no login to give). That is the network in the way, not a song without lyrics: the Lyrics row
+	 * must say the sites can't be reached and keep asking, so the lyrics come once the proxy lets the mod through.
+	 */
+	@Test
+	void aProxyAskingForAPasswordIsRetriedNotNoLyrics() throws InterruptedException, IOException {
+		fastRetries();
+		getAnswer = "{\"syncedLyrics\":\"" + SYNCED + "\"}";
+		failCode = 407;
+		failures.set(Integer.MAX_VALUE);
+		service.load(track("Song One", 200_000));
+		waitFor(() -> service.state() != LyricsService.State.LOADING);
+		assertEquals(LyricsService.State.ERROR, service.state(), "the proxy's answer is shown as no lyrics for the song");
+		int first = asked.size();
+		waitFor(() -> asked.size() > first);
+		try (var files = Files.list(cache)) {
+			assertEquals(0, files.count(), "nothing is saved for the song while the proxy is in the way");
+		}
+
+		failures.set(0); // the proxy lets the mod through now
+		waitFor(() -> service.state() == LyricsService.State.READY);
+		assertFalse(service.lyrics().isEmpty());
 	}
 
 	@Test
