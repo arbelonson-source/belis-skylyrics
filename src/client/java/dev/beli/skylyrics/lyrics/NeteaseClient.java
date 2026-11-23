@@ -78,7 +78,7 @@ public final class NeteaseClient implements LyricsSource {
 				if (c == null) {
 					httpClient = c = HttpClient.newBuilder()
 							.connectTimeout(Duration.ofSeconds(6))
-							.followRedirects(HttpClient.Redirect.NORMAL)
+							.followRedirects(HttpClient.Redirect.NEVER) // followed by hand: see get()
 							.build();
 				}
 			}
@@ -275,7 +275,9 @@ public final class NeteaseClient implements LyricsSource {
 				.header("Accept", "application/json")
 				.GET()
 				.build();
-		HttpResponse<java.io.InputStream> response = http().send(request, HttpResponse.BodyHandlers.ofInputStream());
+		// Redirects are followed by hand, like the covers': NetEase is on the internet, so one must not lead into the player's own
+		// network (a router's or a printer's page)
+		HttpResponse<java.io.InputStream> response = dev.beli.skylyrics.util.Net.getFromSite(http(), request);
 		String body;
 		try (java.io.InputStream in = response.body()) {
 			if (response.statusCode() / 100 != 2) {

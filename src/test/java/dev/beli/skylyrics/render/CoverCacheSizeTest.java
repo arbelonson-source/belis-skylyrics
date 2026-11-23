@@ -1,7 +1,9 @@
 package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
@@ -111,6 +113,16 @@ class CoverCacheSizeTest {
 		Path jpg = dir.resolve("old2.img");
 		Files.write(jpg, encode(gradient(500, 500, BufferedImage.TYPE_INT_RGB), "jpg"));
 		assertNotNull(CoverCache.readCached(jpg));
+	}
+
+	@Test
+	void aSavedCoverBiggerThanAnyDownloadIsDroppedNotDecoded(@TempDir Path dir) throws IOException {
+		// A download over 4096 px on a side is refused from its header; the same picture in the cover folder was decoded whole
+		Path file = dir.resolve("wide.img");
+		Files.write(file, encode(gradient(5000, 2, BufferedImage.TYPE_INT_RGB), "png"));
+		assertFalse(CoverCache.dimensionsOk(Files.readAllBytes(file)), "setup: a download this size is refused");
+		assertNull(CoverCache.readCached(file));
+		assertFalse(Files.exists(file), "dropped like a damaged one, so the cover downloads again");
 	}
 
 	@Test
