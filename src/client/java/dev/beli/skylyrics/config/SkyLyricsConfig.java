@@ -708,7 +708,7 @@ public final class SkyLyricsConfig {
 	private static Map<String, Integer> rekeyed(Map<String, Integer> old) {
 		Map<String, Integer> out = new LinkedHashMap<>();
 		for (var e : old.entrySet()) {
-			String key = Track.clean(e.getKey()).toLowerCase(Locale.ROOT).strip();
+			String key = cleanKey(e.getKey());
 			if (key.isEmpty()) {
 				continue;
 			}
@@ -718,18 +718,56 @@ public final class SkyLyricsConfig {
 		return out;
 	}
 
-	/** {@link #rekeyed(Map)} for the timings as they are in the file. */
-	private static JsonObject rekeyed(JsonObject old) {
-		JsonObject out = new JsonObject();
-		for (var e : old.entrySet()) {
-			String key = Track.clean(e.getKey()).toLowerCase(Locale.ROOT).strip();
-			if (key.isEmpty()) {
-				continue;
-			}
-			out.remove(key); // the later entry wins and takes the later place
-			out.add(key, e.getValue());
+	/** A saved timing key as today's title cleaning and length cut make it (what {@link #makeKey} gives for that song now). */
+	private static String cleanKey(String saved) {
+		return cutLikeToday(Track.clean(saved).toLowerCase(Locale.ROOT).strip());
+	}
+
+	/**
+	 * Version 0.8.0 kept a song's whole artist and title in its timing key; today each is cut at {@link Track#MAX_TEXT} (see
+	 * {@link Track#cap}). A key no artist and title of today's length can make (every " - " in it leaves a side that is too
+	 * long) is cut the same way at its first " - ", so the timing is still found. Any other key stays as it is.
+	 */
+	static String cutLikeToday(String key) {
+		int max = Track.MAX_TEXT;
+		if (key.length() <= max) {
+			return key; // both sides fit wherever it splits
 		}
-		return out;
+		boolean noArtist = key.startsWith("- "); // "- title": a song with no artist
+		int first = noArtist ? -1 : key.indexOf(" - ");
+		if (!noArtist && first < 0) {
+			return key; // not "artist - title": nothing to cut by
+		}
+		// Each place the key could split into artist and title; where both sides fit, today's names can make it
+		for (int at = first; ; ) {
+			int artist = Math.max(0, at), title = key.length() - (at < 0 ? 2 : at + 3);
+			if (artist <= max && title <= max) {
+				return key;
+			}
+			int next = key.indexOf(" - ", at + 1);
+			if (next < 0) {
+				break;
+			}
+			at = next;
+		}
+		return noArtist ? "- " + Track.cap(key.substring(2), max)
+				: Track.cap(key.substring(0, first), max) + " - " + Track.cap(key.substring(first + 3), max);
+	}
+
+	/**
+	 * Removes {@code key} from the file's {@code map} and gives the keys it was saved under, in the file's order. For the song
+	 * timings ({@code timings}) that is every spelling that cleans to the key: its own, or an older version's with direction
+	 * marks or an emoji's style selector.
+	 */
+	private static java.util.List<String> removeSpellings(JsonObject map, String key, boolean timings) {
+		java.util.List<String> found = new java.util.ArrayList<>();
+		for (String saved : map.keySet()) {
+			if (timings ? cleanKey(saved).equals(key) : saved.equals(key)) {
+				found.add(saved);
+			}
+		}
+		found.forEach(map::remove);
+		return found;
 	}
 
 	/** How many recent library searches are kept, here and when the library remembers a new one. */
@@ -1098,11 +1136,10 @@ public final class SkyLyricsConfig {
 		} catch (RuntimeException e) {
 			return null; // damaged: nothing worth keeping
 		}
-		// The file can still hold song timings under keys from before a title-cleaning change; this game's base and its own
-		// timings use the cleaned keys, so merge against cleaned keys too (else a reset timing would come back from the old key)
-		if (theirs.get("songOffsets") instanceof JsonObject offsets) {
-			theirs.add("songOffsets", rekeyed(offsets));
-		}
+		// The file can still hold song timings under keys from before a title-cleaning change (v0.8.0 kept direction marks
+		// and an emoji's style selector in them). This game's base and its own timings use the cleaned keys, so the timings
+		// are merged by cleaned key (else a reset timing would come back from the old key), but each keeps the file's
+		// spelling: v0.8.0, started again, finds a timing only under the key it made.
 		JsonObject base = baseOrNull != null ? baseOrNull : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
 		// A wrong-typed value loads as the default, so it looks unchanged and would be kept for ever: write this game's value over it.
 		// Only fields this version knows are named here, so a newer version's fields still survive.
@@ -1125,15 +1162,21 @@ public final class SkyLyricsConfig {
 			if (now.isJsonObject() && there != null && there.isJsonObject() && then != null && then.isJsonObject()) {
 				JsonObject merged = there.getAsJsonObject();
 				JsonObject before = then.getAsJsonObject();
+				boolean timings = name.equals("songOffsets");
 				for (String key : new java.util.ArrayList<>(before.keySet())) {
 					if (!now.getAsJsonObject().has(key)) {
-						merged.remove(key);
+						removeSpellings(merged, key, timings);
 					}
 				}
 				for (var e : now.getAsJsonObject().entrySet()) {
 					if (!e.getValue().equals(before.get(e.getKey()))) {
-						merged.remove(e.getKey()); // re-adding moves it to the end, like setSongOffset
-						merged.add(e.getKey(), e.getValue());
+						java.util.List<String> spellings = removeSpellings(merged, e.getKey(), timings);
+						if (spellings.isEmpty()) {
+							spellings = java.util.List.of(e.getKey());
+						}
+						for (String saved : spellings) {
+							merged.add(saved, e.getValue()); // re-adding moves it to the end, like setSongOffset
+						}
 					}
 				}
 			} else {

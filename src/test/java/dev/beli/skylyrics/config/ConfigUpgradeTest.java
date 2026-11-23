@@ -67,7 +67,7 @@ class ConfigUpgradeTest {
 		SkyLyricsConfig again = open(file);
 		assertEquals(0, again.songOffset(track("שיר", "Shir")), Files.readString(file));
 		assertEquals(40, again.songOffset(track("song", "other")));
-		// A save with the timings untouched writes them back under the clean keys
+		// The reset timing is gone from the file under its marked key too
 		assertTrue(!Files.readString(file).contains("‏"), Files.readString(file));
 	}
 
