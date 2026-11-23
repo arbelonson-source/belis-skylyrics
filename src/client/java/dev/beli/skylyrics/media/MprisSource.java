@@ -512,7 +512,10 @@ public final class MprisSource implements MediaSource {
 			}
 		}
 
-		Reading chosen = PlayerPicker.choose(readings, Reading::busName, r -> r.track.player(), Reading::playing,
+		// The followed player's song kept through a blink still counts as playing here, also when the blink said Stopped or
+		// Paused with no song (kept standing still): else a browser tab that plays too took over and kept the lyrics
+		String held = emptyPolls > 0 ? current : null;
+		Reading chosen = PlayerPicker.choose(readings, Reading::busName, r -> r.track.player(), r -> r.playing || r.busName.equals(held),
 				preferredPlayer.get(), current);
 		if (chosen == null) {
 			current = null;
