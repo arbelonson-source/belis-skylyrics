@@ -297,6 +297,7 @@
 - **Record card's lines before and after.** With **Card lines** at **3 lines**, the lines before and after the one being sung were faded so far on the **Record card** that they were hard to make out. They are now just a little dimmer than the artist's name.
 - **Record card in deep blue album colours.** With the lyrics in the album's colour, a deep blue or violet album no longer leaves the line being sung on the **Record card** too dark to read on the dark card: there it is lightened just enough to stand out (the lyrics in the sky keep the album's colour).
 - **"Nothing playing" hint.** On the Music tab, when nothing plays, the line under "Nothing playing" on the **Now playing** card that says where to play a song now shows in full in a tooltip when you point at the card, if it ends in "…". In most languages it is too long for the card and was cut off with no way to read the rest.
+- **Hide in the Nether and the End on servers.** **Hide in the Nether** and **Hide in the End** now also work in the extra Nether and End worlds many servers make (a resource Nether, or worlds made with Multiverse on Paper and Spigot), and in a data pack's or mod's world of the Nether's or the End's kind. Before, the lyrics, the top bar, the **Record card** and the night sky stayed up there, because only the main Nether and End counted.
 
 ### Faster
 
