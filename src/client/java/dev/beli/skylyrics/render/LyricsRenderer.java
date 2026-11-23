@@ -205,6 +205,8 @@ public final class LyricsRenderer {
 	private float wrapCacheWidth;
 	/** How far left or right an Arc line may reach and stay on the screen (see {@link #arcRoom}); the arc lines were placed for it. */
 	private float arcFitRoom = Float.POSITIVE_INFINITY;
+	/** How tall the screen is where an Arc line sits this frame (see {@link #arcView}); a taller line scrolls. */
+	private float arcViewTall = Float.POSITIVE_INFINITY;
 	private Style wrapCacheStyle = Style.EMPTY;
 	/** Width of a few letters when the caches were filled; changes when fonts are reloaded. */
 	private float wrapCacheProbe;
@@ -459,6 +461,8 @@ public final class LyricsRenderer {
 				arcFitRoom = room;
 				arcCache.clear();
 			}
+			// And a line taller than the screen scrolls to the words being sung
+			arcViewTall = arcView(sky, cfg.size, mc.options.fov().get());
 		}
 		float distance = sky
 				? skyDistance(cfg.distance, mc.options.getEffectiveRenderDistance(),
@@ -546,6 +550,18 @@ public final class LyricsRenderer {
 		double unit = ARC_SIZE * Math.tan(rowAngle(sky, size) * DEG) / ROW_H;
 		double room = FIT_SHARE * Math.tan(Math.max(0, side)) / unit;
 		return Double.isNaN(room) ? Float.POSITIVE_INFINITY : (float) room;
+	}
+
+	/**
+	 * How tall the screen is where an Arc line sits, in the line's own units, for {@link ArcLayout#focus(List, float, float)}:
+	 * the line's middle is up to {@link #ARC_ABOVE_MAX} degrees above where you look, so its upper half has the rest of the
+	 * view's upper half, and like {@link #arcRoom} it keeps to {@link #FIT_SHARE} of that. {@code fovDeg} is the FOV slider
+	 * (vertical).
+	 */
+	static float arcView(boolean sky, float size, double fovDeg) {
+		double unit = ARC_SIZE * Math.tan(rowAngle(sky, size) * DEG) / ROW_H;
+		double view = 2 * FIT_SHARE * Math.tan(Math.max(0, fovDeg / 2 - ARC_ABOVE_MAX) * DEG) / unit;
+		return Double.isNaN(view) ? Float.POSITIVE_INFINITY : (float) view;
 	}
 
 	/**
@@ -1658,7 +1674,7 @@ public final class LyricsRenderer {
 			} else {
 				sungWord = Math.min(words - 1, since / WORD_STAGGER);
 			}
-			float focus = ArcLayout.focus(arc.groups(), sungWord);
+			float focus = ArcLayout.focus(arc.groups(), sungWord, arcViewTall);
 			for (ArcLayout.Group g : arc.groups()) {
 				if (!ArcLayout.worthDrawing(g, reach, focus)) {
 					continue;

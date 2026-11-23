@@ -97,6 +97,15 @@ final class ArcLayout {
 	 * hundreds of words would be sung above the view, with only its middle in front of you.
 	 */
 	static float focus(List<Group> groups, float word) {
+		return focus(groups, word, Float.POSITIVE_INFINITY);
+	}
+
+	/**
+	 * {@link #focus(List, float)} for a view {@code view} units tall (see {@code LyricsRenderer#arcView}): with a big Size
+	 * or a low FOV fewer rows than {@link #TALL} fill the screen, and a block taller than the view scrolls too, or the
+	 * words at its top would be sung above the screen's top edge.
+	 */
+	static float focus(List<Group> groups, float word, float view) {
 		if (groups.size() < 2) {
 			return 0;
 		}
@@ -105,7 +114,8 @@ final class ArcLayout {
 			top = Math.min(top, g.y());
 			bottom = Math.max(bottom, g.y());
 		}
-		if (bottom - top <= TALL) {
+		// The middles of the top and bottom groups, and their letters above and below them
+		if (bottom - top <= TALL && !(bottom - top + 2 * HALF_HEIGHT * MAX_SCALE > view)) {
 			return 0;
 		}
 		int whole = (int) Math.floor(word);
