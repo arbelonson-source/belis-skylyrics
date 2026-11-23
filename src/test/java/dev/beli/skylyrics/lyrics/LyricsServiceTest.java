@@ -75,9 +75,10 @@ class LyricsServiceTest {
 	}
 
 	@AfterEach
-	void stop() {
+	void stop() throws InterruptedException {
 		release.countDown();
-		service.shutdown();
+		// Waits for the worker: a cache file it still had open would keep Windows from deleting the test's folder
+		service.shutdownAndWait(10, TimeUnit.SECONDS);
 		server.stop(0);
 	}
 
