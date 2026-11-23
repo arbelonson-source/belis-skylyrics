@@ -71,8 +71,9 @@ class LyricsRaceTest {
 	}
 
 	@AfterEach
-	void stop() {
-		service.shutdown();
+	void stop() throws InterruptedException {
+		// Waits for the worker: a cache file it still had open would keep Windows from deleting the test's folder
+		service.shutdownAndWait(10, TimeUnit.SECONDS);
 	}
 
 	/** Loads A, parks its worker at the publish point, loads B from this thread, then lets A's worker go on. */

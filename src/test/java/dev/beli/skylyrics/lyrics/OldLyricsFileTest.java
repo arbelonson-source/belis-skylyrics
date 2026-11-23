@@ -72,7 +72,8 @@ class OldLyricsFileTest {
 			assertEquals("A made-up line", service.lyrics().lines().get(0).text());
 		} finally {
 			answer.countDown();
-			service.shutdown();
+			// Waits for the worker: a cache file it still had open would keep Windows from deleting the test's folder
+			service.shutdownAndWait(10, TimeUnit.SECONDS);
 		}
 	}
 }

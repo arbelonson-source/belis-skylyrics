@@ -18,6 +18,12 @@ import dev.beli.skylyrics.util.SafeFile;
 
 /** The game waits for the Recently heard list's last write as it closes, but a write that never ends must not keep it open. */
 class HeardShutdownTest {
+	/**
+	 * The wait's limit here. The game gives 2 s (SkyLyricsClient), but the limit works the same at any length, and these
+	 * tests waited it out in full.
+	 */
+	private static final long LIMIT_MS = 300;
+
 	@TempDir
 	Path dir;
 
@@ -43,11 +49,11 @@ class HeardShutdownTest {
 		try {
 			lib.record(song("Paper Moon"));
 			long start = System.nanoTime();
-			boolean done = assertTimeoutPreemptively(Duration.ofSeconds(20), () -> lib.flush(2_000),
+			boolean done = assertTimeoutPreemptively(Duration.ofSeconds(20), () -> lib.flush(LIMIT_MS),
 					"the game waits for ever for the Recently heard write");
 			long waitedMs = (System.nanoTime() - start) / 1_000_000L;
 			assertFalse(done);
-			assertTrue(waitedMs >= 1_900 && waitedMs < 10_000, "waited " + waitedMs + " ms");
+			assertTrue(waitedMs >= LIMIT_MS - 20 && waitedMs < 10_000, "waited " + waitedMs + " ms");
 			assertEquals(before, Files.readString(file), "the file is as it was, never half written");
 		} finally {
 			answers.countDown();
@@ -63,10 +69,10 @@ class HeardShutdownTest {
 	@Test
 	void aNormalLastWriteIsStillOnDiskWhenTheGameCloses() throws Exception {
 		Path file = dir.resolve("heard.json");
-		// A slow disk, or an antivirus looking at the file: a moment, not for ever
+		// A slow disk, or an antivirus looking at the file: a moment, not for ever (the file is read back at once, far sooner)
 		HeardLibrary lib = new HeardLibrary(file, () -> true, HeardLibrary.NO_OPENER, SafeFile::readText, (from, to, options) -> {
 			try {
-				Thread.sleep(300);
+				Thread.sleep(100);
 			} catch (InterruptedException e) {
 				throw new IOException(e);
 			}
