@@ -77,6 +77,12 @@ public final class SpotifyWebSource implements MediaSource {
 	static final Duration BODY_LIMIT = Duration.ofSeconds(20);
 	/** {@link #BODY_LIMIT}; a seam for tests. */
 	Duration bodyLimit = BODY_LIMIT;
+	/**
+	 * The most an answer may weigh. The biggest one asked for, a page of 50 songs, is a few hundred KB and a token answer
+	 * under 1 KB; the lyrics sites get 2 MB. A bigger one isn't Spotify's (a broken proxy, a captive portal), and it was
+	 * all read into memory.
+	 */
+	static final int MAX_REPLY = 4 * 1024 * 1024;
 	private static final int MAX_CONNECTIONS = 8;
 	/** Asked for the access token a little early, so it never runs out halfway through a request. */
 	private static final long EARLY_NS = 60_000_000_000L;
@@ -1220,8 +1226,10 @@ public final class SpotifyWebSource implements MediaSource {
 	private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
 		try {
 			// The request's own time limit ends at the headers: an answer that stops half way (Wi-Fi dropped, a stalled proxy)
-			// would hold this thread, and with it every song change and button, until the server gave up, or for ever
-			return http().send(request, dev.beli.skylyrics.util.Net.bodyWithin(HttpResponse.BodyHandlers.ofString(), bodyLimit));
+			// would hold this thread, and with it every song change and button, until the server gave up, or for ever.
+			// Too big counts like a dropped connection, as for the lyrics sites
+			return http().send(request, dev.beli.skylyrics.util.Net.bodyWithin(
+					dev.beli.skylyrics.util.Net.bodyAtMost(HttpResponse.BodyHandlers.ofString(), MAX_REPLY), bodyLimit));
 		} catch (IOException e) {
 			throw new Unreachable(e);
 		}

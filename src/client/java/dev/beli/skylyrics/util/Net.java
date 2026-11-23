@@ -266,6 +266,73 @@ public final class Net {
 		}
 	}
 
+	/**
+	 * The handler's body, but one that grows past {@code max} bytes fails the request (an IOException, like a dropped
+	 * connection) and drops the connection, before it fills the game's memory. For bodies read whole (ofString).
+	 */
+	public static <T> HttpResponse.BodyHandler<T> bodyAtMost(HttpResponse.BodyHandler<T> handler, long max) {
+		return info -> new AtMost<>(handler.apply(info), max);
+	}
+
+	private static final class AtMost<T> implements HttpResponse.BodySubscriber<T> {
+		private final HttpResponse.BodySubscriber<T> inner;
+		private final long max;
+		/** Only the thread handing over the body touches these: its calls come one at a time. */
+		private long seen;
+		private boolean over;
+		private java.util.concurrent.Flow.@org.jspecify.annotations.Nullable Subscription subscription;
+
+		AtMost(HttpResponse.BodySubscriber<T> inner, long max) {
+			this.inner = inner;
+			this.max = max;
+		}
+
+		@Override
+		public java.util.concurrent.CompletionStage<T> getBody() {
+			return inner.getBody();
+		}
+
+		@Override
+		public void onSubscribe(java.util.concurrent.Flow.Subscription s) {
+			subscription = s;
+			inner.onSubscribe(s);
+		}
+
+		@Override
+		public void onNext(java.util.List<java.nio.ByteBuffer> item) {
+			if (over) {
+				return;
+			}
+			for (java.nio.ByteBuffer b : item) {
+				seen += b.remaining();
+			}
+			if (seen > max) {
+				over = true;
+				java.util.concurrent.Flow.Subscription s = subscription;
+				if (s != null) {
+					s.cancel(); // closes the connection
+				}
+				inner.onError(new IOException("The reply is bigger than " + max + " bytes"));
+				return;
+			}
+			inner.onNext(item);
+		}
+
+		@Override
+		public void onError(Throwable failure) {
+			if (!over) {
+				inner.onError(failure);
+			}
+		}
+
+		@Override
+		public void onComplete() {
+			if (!over) {
+				inner.onComplete();
+			}
+		}
+	}
+
 	/** The whole stream as text; a reply over {@code max} bytes is an IOException, like a dropped connection. */
 	public static String readText(InputStream in, int max) throws IOException {
 		byte[] bytes = in.readNBytes(max + 1);
