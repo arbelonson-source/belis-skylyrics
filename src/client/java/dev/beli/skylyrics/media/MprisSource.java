@@ -223,9 +223,17 @@ public final class MprisSource implements MediaSource {
 		}
 	}
 
-	private static DBusConnectionBuilder sessionBus() {
-		String address = sessionBusAddress(System.getenv(), p -> Files.exists(Path.of(p)), currentUid());
-		return (address == null ? DBusConnectionBuilder.forSessionBus() : DBusConnectionBuilder.forAddress(address)).withShared(false);
+	/**
+	 * How long the D-Bus library may go on trying a bus that refuses the connection or whose socket is gone: under 1000 ms
+	 * is one try. Its default, 10 s, tries again every 500 ms, so a dead bus kept the media thread (the song, the play
+	 * buttons, a switch of player or to Spotify Web) waiting 9.5 s, 19 s with the runtime-dir try after it; the reader's
+	 * own back-off tries again 5 to 30 s later anyway. A living bus doesn't refuse: a slow one that answers late still
+	 * connects, however late.
+	 */
+	static final int CONNECT_TIMEOUT_MS = 500;
+
+	private static DBusConnection build(DBusConnectionBuilder bus) throws Exception {
+		return bus.withShared(false).transportConfig().withTimeout(CONNECT_TIMEOUT_MS).back().build();
 	}
 
 	/** The socket path of a {@code unix:path=} address (without {@code ,guid=} and the like), "" for anything else. */
@@ -238,21 +246,26 @@ public final class MprisSource implements MediaSource {
 		return comma < 0 ? rest : rest.substring(0, comma);
 	}
 
-	/** Connects to the session bus; when that fails (a stale address after a re-login) the runtime-dir socket is tried once. */
 	private static DBusConnection connectSession() throws Exception {
+		return connectSession(System.getenv(), p -> Files.exists(Path.of(p)), currentUid());
+	}
+
+	/**
+	 * Connects to the session bus {@code env} gives; when that fails (a stale address after a re-login) the runtime-dir
+	 * socket is tried once. When {@code env} gives no usable address the library looks it up in the real environment.
+	 */
+	static DBusConnection connectSession(Map<String, String> env, Predicate<String> exists, String uid) throws Exception {
+		String tried = sessionBusAddress(env, exists, uid);
 		try {
-			return sessionBus().build();
+			return build(tried == null ? DBusConnectionBuilder.forSessionBus() : DBusConnectionBuilder.forAddress(tried));
 		} catch (Exception first) {
-			Map<String, String> env = System.getenv();
-			Predicate<String> exists = p -> Files.exists(Path.of(p));
-			String tried = sessionBusAddress(env, exists, currentUid());
 			String effective = tried != null ? tried : env.get("DBUS_SESSION_BUS_ADDRESS");
-			String runtime = runtimeBusAddress(env, exists, currentUid());
+			String runtime = runtimeBusAddress(env, exists, uid);
 			if (runtime == null || socketPath(runtime).equals(socketPath(effective))) {
 				throw first;
 			}
 			try {
-				return DBusConnectionBuilder.forAddress(runtime).withShared(false).build();
+				return build(DBusConnectionBuilder.forAddress(runtime));
 			} catch (Exception second) {
 				first.addSuppressed(second);
 				throw first;
