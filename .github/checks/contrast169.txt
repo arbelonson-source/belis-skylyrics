@@ -1,0 +1,125 @@
+# Readable text on the top bar and the Record card, fix/contrast169 (Minecraft 1.21.11, 1280x720, GUI scale 3 = 426x240;
+# the demo song, paused on "Every word is written in the stars" with "the stars" on the highlight, so the shots hold still).
+# Run it on the branch, and with -f mod_ref=main for the old code (the script then comes from the branch):
+#   gh workflow run screenshots.yml --ref fix/contrast169 -f version=1.21.11 -f script=.github/checks/contrast169.txt
+#   gh workflow run screenshots.yml --ref fix/contrast169 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/contrast169.txt
+# Each picture is taken three times: in front of a snow wall at noon (the brightest the world gets: "-snow"), looking up
+# at the noon sky ("-sky"), and shut in a stone box (a dark place: "-dark").
+#
+# What to look for (old code / branch):
+# 1. contrast-*-default: the default look. The clock left of the bar and the FPS right of it: on main they have no
+#    shadow and the clock all but vanishes on the snow wall (about 1.1:1) and is faint on the sky (2.1:1), the grey FPS
+#    is faint on both. Branch: both have the game's text shadow (a dark edge down and right of each letter) and read on
+#    snow and sky; in the box they look as before. The bar itself, the violet highlight and its white words: the same.
+# 2. contrast-*-yellow: Accent colour picked Yellow. Main: "the stars" white on a bright yellow highlight, barely
+#    readable (1.2:1). Branch: the highlight is a deeper mustard of the same yellow and the white words read (3:1);
+#    the equaliser and the progress line stay bright yellow on both.
+# 3. contrast-*-lyrics: Accent colour Lyrics, the lyrics' periwinkle. Main: white on pale periwinkle (1.45:1). Branch:
+#    a deeper greyish blue under the words. contrast-*-white: Accent picked White: main white on white (1.05:1), branch
+#    mid grey.
+# 4. contrast-*-card: the Record card bottom left with Card lines at 3 (the line before and after the current one).
+#    Main: those two small lines are faded nearly into the card (2:1). Branch: they read, a little dimmer than the
+#    artist's name. The current line, the title, the artist and the times: the same on both.
+# 5. contrast-*-card-blue: the lyrics colour a deep blue (2626FF). Main: the card's current line dark blue on the dark
+#    card (2:1, hard to read). Branch: a lighter blue that reads; the lyrics in the sky stay deep blue on both.
+# 6. contrast-snow-pixel: 1 with Minecraft's own letters (Font: Minecraft): the clock's and FPS's shadow is the same
+#    one the game puts under its own words.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+guiscale 3
+sleep 8
+music pause
+sleep 1
+seek 27.6
+sleep 2
+where
+
+# A snow floor and a snow wall in front, lit by the noon sun
+cmd execute as @p at @p run fill ~-24 ~-1 ~-24 ~24 ~-1 ~24 minecraft:snow_block
+cmd execute as @p at @p run fill ~-24 ~ ~8 ~24 ~34 ~8 minecraft:snow_block
+look 0 -10
+sleep 4
+shot contrast-snow-default
+set barAccentColor 16769126
+sleep 1
+shot contrast-snow-yellow
+set barAccentColor 16777215
+sleep 1
+shot contrast-snow-white
+set barAccent LYRICS
+sleep 1
+shot contrast-snow-lyrics
+set barAccent FIXED
+set barAccentColor 9596126
+set recordCard true
+set cardLyrics true
+set cardLines 3
+set cardCorner BOTTOM_LEFT
+sleep 2
+shot contrast-snow-card
+set colorMode FIXED
+set color 2500351
+sleep 4
+shot contrast-snow-card-blue
+set color 13095156
+set recordCard false
+set smoothFont false
+sleep 4
+shot contrast-snow-pixel
+set smoothFont true
+sleep 1
+
+# The noon sky
+look 0 -60
+sleep 3
+shot contrast-sky-default
+set barAccentColor 16769126
+sleep 1
+shot contrast-sky-yellow
+set barAccentColor 16777215
+sleep 1
+shot contrast-sky-white
+set barAccent LYRICS
+sleep 1
+shot contrast-sky-lyrics
+set barAccent FIXED
+set barAccentColor 9596126
+set recordCard true
+sleep 2
+shot contrast-sky-card
+set color 2500351
+sleep 4
+shot contrast-sky-card-blue
+set color 13095156
+set recordCard false
+sleep 4
+
+# Shut in a stone box: a dark place
+cmd execute as @p at @p run fill ~-4 ~-1 ~-4 ~4 ~5 ~4 minecraft:stone hollow
+look 0 -10
+sleep 4
+shot contrast-dark-default
+set barAccentColor 16769126
+sleep 1
+shot contrast-dark-yellow
+set barAccentColor 16777215
+sleep 1
+shot contrast-dark-white
+set barAccent LYRICS
+sleep 1
+shot contrast-dark-lyrics
+set barAccent FIXED
+set barAccentColor 9596126
+set recordCard true
+sleep 2
+shot contrast-dark-card
+set color 2500351
+sleep 4
+shot contrast-dark-card-blue
+set color 13095156
+set recordCard false
+set cardLines 1
+sleep 1
