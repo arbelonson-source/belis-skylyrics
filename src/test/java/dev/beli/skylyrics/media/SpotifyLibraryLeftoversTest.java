@@ -249,6 +249,25 @@ class SpotifyLibraryLeftoversTest {
 	}
 
 	@Test
+	void aPlaylistSpotifyWontListForYouPlaysFromTheTopInsteadOfBlamingTheApp(@TempDir Path dir) throws Exception {
+		// Spotify lists a playlist's songs only for its owner and collaborators and answers 403 to anyone else
+		// (developer.spotify.com, Get Playlist Items): a collaborative playlist you only follow, or someone else's playlist
+		// when Spotify didn't say who you are. The app isn't blocked: the playlist list itself just loaded
+		String forbidden = "{\"error\":{\"status\":403,\"message\":\"Forbidden\"}}";
+		Net net = new Net(what -> what.contains("/items") ? new Reply(403, null, forbidden) : Reply.ok("{\"total\":0,\"items\":[]}"));
+		SpotifyLibrary lib = libraryWithScopes(dir, net, SpotifyWebSource.LIBRARY_SCOPES);
+		LibraryPlaylist together = new LibraryPlaylist("p3", "spotify:playlist:p3", "Together", "", 30, true);
+		Throwable refused = failure(lib.playlist(together, 0));
+		assertEquals(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"), SpotifyLibrary.errorText(refused));
+		// Told apart from other failures, so the library can play it from the top instead
+		assertInstanceOf(SpotifyLibrary.SongsHidden.class, refused);
+		// A missing Premium on the app maker's account is still said as such, for a playlist too
+		Net premium = new Net(what -> new Reply(403, null, "{\"error\":{\"status\":403,\"message\":\"Active premium subscription required for the owner of the app.\"}}"));
+		assertEquals(Tr.t("Spotify needs Premium on the account that created your Spotify app"),
+				SpotifyLibrary.errorText(failure(libraryWithScopes(dir, premium, SpotifyWebSource.LIBRARY_SCOPES).playlist(together, 0))));
+	}
+
+	@Test
 	void aSongLibraryWhoseAppMakerHasNoPremiumSaysPremium(@TempDir Path dir) throws Exception {
 		Net net = new Net(what -> new Reply(403, null, "{\"error\":{\"status\":403,\"message\":\"Active premium subscription required for the owner of the app.\"}}"));
 		String premium = Tr.t("Spotify needs Premium on the account that created your Spotify app");

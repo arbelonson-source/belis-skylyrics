@@ -74,6 +74,20 @@ class LibraryShelfTest {
 	}
 
 	@Test
+	void aPlaylistSpotifyRefusesToListIsToldApartSoItPlaysFromTheTop() {
+		// Spotify answered 403 to the songs of a playlist you neither own nor collaborate on: the library goes back to the
+		// playlists and plays it from the top, as for a playlist Spotify said that of in the list
+		LibraryScreen.Shelf refused = new LibraryScreen.Shelf(offset -> CompletableFuture.failedFuture(new SpotifyLibrary.SongsHidden()), () -> 0);
+		refused.more();
+		assertTrue(refused.hidden);
+		assertEquals(dev.beli.skylyrics.Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"), refused.error);
+		// Any other failure stays an error with Try again
+		LibraryScreen.Shelf failed = new LibraryScreen.Shelf(offset -> CompletableFuture.failedFuture(new java.io.IOException("Spotify didn't answer, try again")), () -> 0);
+		failed.more();
+		assertFalse(failed.hidden);
+	}
+
+	@Test
 	void tryAgainAfterAFailedFirstLoadIsLoadingNotAnEmptyList() {
 		// Liked songs failed to load; Try again asks once more, and a busy Spotify can take up to 30 s to answer: meanwhile
 		// the list must not say "No liked songs yet"

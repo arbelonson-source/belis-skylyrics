@@ -129,7 +129,18 @@ public final class SpotifyLibrary implements Library {
 
 	@Override
 	public CompletableFuture<Page<LibraryItem>> playlist(LibraryPlaylist playlist, int offset) {
-		return run(() -> parsePlaylistItems(get("/playlists/" + encode(playlist.id()) + "/items?limit=" + PAGE + "&offset=" + offset), playlist.uri()).at(offset));
+		return run(() -> parsePlaylistItems(get("/playlists/" + encode(playlist.id()) + "/items?limit=" + PAGE + "&offset=" + offset, true), playlist.uri()).at(offset));
+	}
+
+	/**
+	 * Spotify won't list this playlist's songs for this account, though it will play it. It lists them only for the
+	 * playlist's owner and collaborators and answers 403 to anyone else: a collaborative playlist you only follow, or
+	 * someone else's when Spotify didn't say who you are (so it looked like yours).
+	 */
+	public static final class SongsHidden extends IOException {
+		public SongsHidden() {
+			super(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"));
+		}
 	}
 
 	/**
@@ -257,6 +268,11 @@ public final class SpotifyLibrary implements Library {
 	}
 
 	private String get(String path) throws IOException, InterruptedException {
+		return get(path, false);
+	}
+
+	/** @param playlistSongs the songs of one playlist are asked for, which Spotify can refuse for that playlist alone */
+	private String get(String path, boolean playlistSongs) throws IOException, InterruptedException {
 		HttpResponse<String> response = caller.call("GET", path, null);
 		if (response.statusCode() == 429) {
 			long wait = waitSeconds(response.headers().firstValue("Retry-After").orElse(null));
@@ -265,6 +281,10 @@ public final class SpotifyLibrary implements Library {
 			}
 			pause(Math.max(1, wait) * 1000);
 			response = caller.call("GET", path, null);
+		}
+		if (response.statusCode() == 403 && playlistSongs && spotify.canBrowse() && !SpotifyWebSource.ownerNeedsPremium(response.body())) {
+			// The playlist list just loaded, so the app isn't blocked: it is this playlist Spotify won't list
+			throw new SongsHidden();
 		}
 		if (response.statusCode() >= 300) {
 			// With the library scopes granted a 403 is Spotify refusing this app or account (development mode), and signing in

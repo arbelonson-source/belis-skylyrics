@@ -248,6 +248,8 @@ public final class LibraryScreen extends Screen {
 		int failures;
 		/** Entries Spotify sent that got no card: local files, podcast episodes, gaps. */
 		int skipped;
+		/** Spotify refused to list this playlist's songs for this account (see {@link SpotifyLibrary.SongsHidden}). */
+		boolean hidden;
 		float scroll;
 		float scrollTarget;
 
@@ -298,6 +300,7 @@ public final class LibraryScreen extends Screen {
 				failures = 0;
 			} catch (CompletionException e) {
 				error = message(e.getCause());
+				hidden = e.getCause() instanceof SpotifyLibrary.SongsHidden;
 				retryAt = clock + RETRY_AFTER;
 				failures++;
 			}
@@ -605,6 +608,12 @@ public final class LibraryScreen extends Screen {
 			selected = -1;
 		}
 		pollPlaying();
+		if (opened != null) {
+			opened.poll();
+			if (opened.hidden) {
+				openedWasHidden();
+			}
+		}
 		mod.covers().upload();
 		layout();
 		boolean followPick = picks.follow(width, height);
@@ -1537,11 +1546,7 @@ public final class LibraryScreen extends Screen {
 		if (entry instanceof LibraryPlaylist list) {
 			if (!list.openable()) {
 				// Spotify won't list the songs of someone else's playlist, but it will still play it
-				if (playing == null) {
-					playingTitle = list.name();
-					say(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"));
-					playing = library.playPlaylist(list);
-				}
+				playFromTheTop(list);
 				return;
 			}
 			Library lib = library;
@@ -1576,6 +1581,36 @@ public final class LibraryScreen extends Screen {
 		say(Tr.t("Starting %s…", item.title()));
 		toastAge = 0;
 		playing = library.play(item, after);
+	}
+
+	/** Plays a playlist whose songs Spotify keeps hidden from its first song, saying so; not while another song is starting. */
+	private void playFromTheTop(LibraryPlaylist list) {
+		if (playing == null && library != null) {
+			playingTitle = list.name();
+			say(Tr.t("Spotify keeps this playlist's songs hidden, so it plays from the top"));
+			playing = library.playPlaylist(list);
+		}
+	}
+
+	/**
+	 * The open playlist turned out to be one Spotify won't list for this account (a collaborative one you only follow, or
+	 * anyone's when Spotify didn't say who you are): back to the playlists, and it plays from the top, as a click on a
+	 * playlist Spotify said that of does. A later click on it plays it straight away.
+	 */
+	private void openedWasHidden() {
+		LibraryPlaylist list = openedList;
+		closeOpened();
+		restorePlace();
+		sayNewSection = true;
+		if (list == null) {
+			return;
+		}
+		Shelf back = shelf();
+		int at = back == null ? -1 : back.items.indexOf(list);
+		if (at >= 0) {
+			back.items.set(at, new LibraryPlaylist(list.id(), list.uri(), list.name(), list.coverUrl(), list.songs(), false));
+		}
+		playFromTheTop(list);
 	}
 
 	/** After a playlist closes: scroll back to where it was, and put the keyboard on it only if the keyboard was used last. */
