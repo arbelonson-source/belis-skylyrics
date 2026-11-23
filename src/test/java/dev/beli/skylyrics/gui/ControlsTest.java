@@ -114,6 +114,60 @@ class ControlsTest {
 		row.release();
 	}
 
+	private static final KeyEvent LEFT = new KeyEvent(InputConstants.KEY_LEFT, 0, 0);
+	private static final KeyEvent RIGHT = new KeyEvent(InputConstants.KEY_RIGHT, 0, 0);
+
+	@Test
+	void theArrowsFromAValueBetweenTwoStepsGoToTheStepNextToItEachWay() {
+		// The Music tab's Timing moves in 0.05 s steps. Set to +0.12 s in a hand-edited settings file (or one shared from
+		// another computer), Left went to +0.05 s and Right from +0.13 s to +0.20 s: a step and a half, skipping the one
+		// beside it, as the value plus a step was rounded to the nearest step
+		double[] ms = {120};
+		Controls.Slider timing = new Controls.Slider("Timing", null, -5000, 5000, 50,
+				() -> ms[0], v -> ms[0] = v, SkyLyricsScreen::seconds);
+		assertTrue(timing.key(LEFT));
+		assertEquals(100, ms[0], 1e-9, "Left from +0.12 s");
+		ms[0] = 130;
+		assertTrue(timing.key(RIGHT));
+		assertEquals(150, ms[0], 1e-9, "Right from +0.13 s");
+		ms[0] = 125;
+		timing.key(RIGHT);
+		assertEquals(150, ms[0], 1e-9, "Right from halfway");
+		ms[0] = 125;
+		timing.key(LEFT);
+		assertEquals(100, ms[0], 1e-9, "Left from halfway");
+		ms[0] = -4990;
+		timing.key(LEFT);
+		assertEquals(-5000, ms[0], 1e-9, "the end is the last step");
+		timing.key(LEFT);
+		assertEquals(-5000, ms[0], 1e-9);
+	}
+
+	@Test
+	void theArrowsFromAStepMoveOneStep() {
+		// Size is a float in the settings: 0.35 comes back as 0.3499999940395355, still a step, not just under one
+		float[] size = {0.35f};
+		Controls.Slider row = new Controls.Slider("Size", null, 0.3, 3, 0.05,
+				() -> size[0], v -> size[0] = (float) v, v -> String.format(java.util.Locale.ROOT, "%.2f×", v));
+		row.key(RIGHT);
+		assertEquals(0.4f, size[0]);
+		row.key(LEFT);
+		assertEquals(0.35f, size[0]);
+		row.key(LEFT);
+		assertEquals(0.3f, size[0]);
+		row.key(LEFT);
+		assertEquals(0.3f, size[0], "the first step stays");
+		size[0] = 2.95f;
+		row.key(RIGHT);
+		assertEquals(3f, size[0]);
+		row.key(RIGHT);
+		assertEquals(3f, size[0], "the last step stays");
+		for (int i = 0; i < 54; i++) {
+			row.key(LEFT);
+		}
+		assertEquals(0.3f, size[0], "54 steps down from the top reach the bottom");
+	}
+
 	private static Controls.Info info(String label, String value, int rowW) {
 		Controls.Info row = new Controls.Info(label, null, () -> value);
 		row.x = 0;
