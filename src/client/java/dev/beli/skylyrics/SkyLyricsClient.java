@@ -423,11 +423,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 					: update.downloaded() ? Tr.t("SkyLyrics %s downloaded", update.version())
 					: Tr.t("SkyLyrics %s is out", update.version()));
 			Component body = Component.literal(blocked ? Tr.t("Update %s to get it", update.what()) : update.downloaded() ? Tr.t("Restart Minecraft to use it") : Tr.t("Get it from the GitHub page"));
-			//? if >=26.2 {
-			/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
-			*///?} else {
-			SystemToast.addOrUpdate(client.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
-			//?}
+			toast(client, title, body);
 			updateLine = Component.literal(blocked
 					? Tr.t("SkyLyrics %s needs %s: update %s to get it", update.version(), update.needs(), update.what())
 					: update.downloaded()
@@ -438,15 +434,12 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			KeyMapping settingsKey = openSettingsKey();
 			Component title = Component.literal(tracker.networkDown() ? Tr.t("SkyLyrics can't reach the internet or Spotify") : Tr.t("SkyLyrics can't read your music player"));
 			Component body = Component.literal(Tr.t("Open the settings (%s) → Music to see why", settingsKey == null ? "J" : settingsKey.getTranslatedKeyMessage().getString()));
-			//? if >=26.2 {
-			/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
-			*///?} else {
-			SystemToast.addOrUpdate(client.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
-			//?}
+			toast(client, title, body);
 		}
 		if (client.player != null && updateLine != null) {
 			Component line = updateLine;
 			updateLine = null;
+			// Read out too, like Minecraft's own lines in chat (the F3 key messages, Open to LAN)
 			//? if >=26.2 {
 			/*client.gui.hud.getChat().addClientSystemMessage(line);
 			*///?} else if >=26.1 {
@@ -454,6 +447,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			*///?} else {
 			client.gui.getChat().addMessage(line);
 			//?}
+			narrate(client, line, false);
 		}
 		// A fresh press of the attack key in the world may knock a World word under the crosshair
 		//? if >=26.2 {
@@ -494,11 +488,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			cfg.enabled = !cfg.enabled;
 			cfg.save();
 			String message = cfg.enabled ? "skylyrics.lyrics.on" : "skylyrics.lyrics.off";
-			//? if >=26.2 {
-			/*client.gui.hud.setOverlayMessage(Component.translatable(message), false);
-			*///?} else {
-			client.gui.setOverlayMessage(Component.translatable(message), false);
-			//?}
+			tell(client, Component.translatable(message));
 		}
 		for (int i = acts(showNowPlaying); i > 0; i--) {
 			hud.toggleForced();
@@ -522,11 +512,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			SkyLyricsConfig cfg = SkyLyricsConfig.get();
 			String message = ViewLock.press(cfg);
 			cfg.save();
-			//? if >=26.2 {
-			/*client.gui.hud.setOverlayMessage(Component.translatable(message), false);
-			*///?} else {
-			client.gui.setOverlayMessage(Component.translatable(message), false);
-			//?}
+			tell(client, Component.translatable(message));
 		}
 	}
 
@@ -536,21 +522,60 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private void nudgeTiming(Minecraft client, int ms) {
 		Track track = tracker.track();
 		if (track == Track.NONE) {
-			//? if >=26.2 {
-			/*client.gui.hud.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
-			*///?} else {
-			client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.none"), false);
-			//?}
+			tell(client, Component.translatable("skylyrics.timing.none"));
 			return;
 		}
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		cfg.setSongOffset(track, cfg.songOffset(track) + ms);
 		cfg.save();
+		tell(client, Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))));
+	}
+
+	/**
+	 * Says {@code message} above the hotbar, and to the Narrator, as Minecraft does with its own messages there ("Press
+	 * Shift to dismount", "Saved hotbar"); written there alone, a Narrator user heard nothing when a key turned the
+	 * lyrics off or moved their timing.
+	 */
+	private static void tell(Minecraft client, Component message) {
 		//? if >=26.2 {
-		/*client.gui.hud.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
+		/*client.gui.hud.setOverlayMessage(message, false);
 		*///?} else {
-		client.gui.setOverlayMessage(Component.translatable("skylyrics.timing.song", SkyLyricsScreen.seconds(cfg.songOffset(track))), false);
+		client.gui.setOverlayMessage(message, false);
 		//?}
+		narrate(client, message, true);
+	}
+
+	/**
+	 * A pop-up in the corner, also read out by the Narrator: Minecraft doesn't read pop-ups, and the one saying the music
+	 * player can't be read is told nowhere else.
+	 */
+	private static void toast(Minecraft client, Component title, Component body) {
+		//? if >=26.2 {
+		/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
+		*///?} else {
+		SystemToast.addOrUpdate(client.getToastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
+		//?}
+		narrate(client, title.copy().append(", ").append(body), false);
+	}
+
+	/**
+	 * Hands {@code words} to the Narrator: {@code now} cuts in, as Minecraft's messages above the hotbar do, else they wait
+	 * their turn like its lines in chat. Nothing is said with the Narrator off or set to chat only.
+	 */
+	private static void narrate(Minecraft client, Component words, boolean now) {
+		//? if >=1.21.6 {
+		if (now) {
+			client.getNarrator().saySystemNow(words);
+		} else {
+			client.getNarrator().saySystemQueued(words);
+		}
+		//?} else {
+		/*if (now) {
+			client.getNarrator().sayNow(words);
+		} else {
+			client.getNarrator().say(words);
+		}
+		*///?}
 	}
 
 	private void shutdown() {
