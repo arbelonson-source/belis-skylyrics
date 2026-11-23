@@ -1,0 +1,90 @@
+# Numbers and the clock in the game's language, fix/formats168 (1.21.11, the demo song, GUI scale 3). The test game's
+# computer is set to English, so main shows every language the English way. Each shot, the branch against main:
+# - formats168-<lang>-bar: the top bar's clock on the left of the bar. The time is the runner's own, so only its form
+#   counts. en: "9:07 PM" style on both. de, ru, he: 24 hours on the branch ("21:07", German and Russian with a
+#   leading zero before 10: "09:07"); main "9:07 PM" style. fr_ca: "21 h 07" style on the branch. es_mx: "9:07 p.m."
+#   style on the branch; main "9:07 PM".
+# - formats168-<lang>-lyrics: the Lyrics tab, Position card: Size reads "1,00×" on the branch in de and ru (main and he
+#   "1.00×"), and the Floating Distance row (placement set to Floating) "10,7 Blöcke" / "10,7 бл." (main "10.7").
+# - formats168-<lang>-timing: the settings searched for the Timing row (Timing set to +0.25 s): "+0,25 s" on the branch
+#   in de and ru, "+0.25 s" on main and in he.
+# - formats168-<lang>-key: the message above the hotbar after one press of Lyrics are late (put on "." by the script; ","
+#   is Lyrics are early and takes it back after each shot): "+0,10 s" on the branch in de and ru (main "+0.10 s"); he
+#   "+0.10 s" on both, the plus on the left, the "s" on the right.
+# Run it, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/formats168 -f version=1.21.11 -f script=.github/checks/formats168.txt
+#   gh workflow run screenshots.yml --ref fix/formats168 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/formats168.txt
+
+cmd weather clear
+cmd time set noon
+look 0 -20
+guiscale 3
+sleep 8
+set placement FLOATING
+set syncOffsetMs 250
+bind skylyrics.lyrics_late period
+bind skylyrics.lyrics_early comma
+sleep 1
+
+shot formats168-en-bar
+
+lang de_de
+sleep 15
+shot formats168-de-bar
+gui 0
+sleep 2
+shot formats168-de-lyrics
+search Timing
+sleep 2
+shot formats168-de-timing
+close
+sleep 1
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot formats168-de-key
+hold skylyrics.lyrics_early 60
+sleep 3
+
+lang ru_ru
+sleep 15
+shot formats168-ru-bar
+gui 0
+sleep 2
+shot formats168-ru-lyrics
+search Синхронизация
+sleep 2
+shot formats168-ru-timing
+close
+sleep 1
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot formats168-ru-key
+hold skylyrics.lyrics_early 60
+sleep 3
+
+lang he_il
+sleep 15
+shot formats168-he-bar
+gui 0
+sleep 2
+shot formats168-he-lyrics
+search תזמון
+sleep 2
+shot formats168-he-timing
+close
+sleep 1
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot formats168-he-key
+sleep 3
+
+lang fr_ca
+sleep 15
+shot formats168-frca-bar
+
+lang es_mx
+sleep 15
+shot formats168-esmx-bar
+
+lang en_us
+sleep 15
