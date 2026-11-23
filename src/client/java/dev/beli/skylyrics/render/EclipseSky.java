@@ -251,8 +251,6 @@ final class EclipseSky {
 		}
 		float r = radius * CORONA * DISC_LAYER;
 		if (!KeptQuads.same(baseYaw, discYaw) || !KeptQuads.same(r, discRadius) || !KeptQuads.same(c.horizonFade(), discQuads.fade())) {
-			discYaw = baseYaw;
-			discRadius = r;
 			discQuads.begin(c.horizonFade());
 			float tanR = (float) Math.tan(SUN_RADIUS * DEG);
 			for (int j = 0; j < SEGMENTS; j += DISC_STEP) {
@@ -262,6 +260,9 @@ final class EclipseSky {
 				discQuads.at(frame, tanR * RING_COS[k], tanR * RING_SIN[k], r, 0);
 				discQuads.at(frame, tanR * RING_COS[j], tanR * RING_SIN[j], r, 0);
 			}
+			// Only once every quad is in, so a placing cut short by an error is done again next frame
+			discYaw = baseYaw;
+			discRadius = r;
 		}
 		int alpha = SkyColors.argb(0, level);
 		for (int q = 0; q < SEGMENTS / DISC_STEP; q++) {
@@ -293,8 +294,6 @@ final class EclipseSky {
 
 	/** Places the corona's quads round the sun, which {@link #frame} is aimed at, and keeps them. */
 	private void placeCorona(SkyCanvas c, float r, float baseYaw) {
-		coronaYaw = baseYaw;
-		coronaRadius = r;
 		coronaQuads.begin(c.horizonFade());
 		float tanR = (float) Math.tan(SUN_RADIUS * DEG);
 		for (int i = 0; i + 1 < RINGS.length; i++) {
@@ -307,6 +306,9 @@ final class EclipseSky {
 				coronaQuads.at(frame, a1 * RING_COS[j], a1 * RING_SIN[j], r, row1 + j);
 			}
 		}
+		// Only once every quad is in, so a placing cut short by an error is done again next frame
+		coronaYaw = baseYaw;
+		coronaRadius = r;
 	}
 
 	private void band(SkyCanvas c, float r, float baseYaw, float level, SkyView view) {
@@ -335,8 +337,6 @@ final class EclipseSky {
 			return;
 		}
 		if (!KeptQuads.same(baseYaw, bandYaw) || !KeptQuads.same(r, bandRadius) || !KeptQuads.same(c.horizonFade(), bandQuads.fade())) {
-			bandYaw = baseYaw;
-			bandRadius = r;
 			bandQuads.begin(c.horizonFade());
 			for (int i = 0; i < BAND_ROWS; i++) {
 				for (int j = 0; j < BAND_SEGMENTS; j++) {
@@ -346,6 +346,9 @@ final class EclipseSky {
 					bandPoint(j, i + 1, r);
 				}
 			}
+			// Only once every quad is in, so a placing cut short by an error is done again next frame
+			bandYaw = baseYaw;
+			bandRadius = r;
 		}
 		if (!KeptQuads.same(level, bandLevel)) {
 			bandLevel = level;

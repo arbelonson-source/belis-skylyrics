@@ -86,9 +86,6 @@ final class SkyMesh {
 
 	/** Turns every quad's corners by the yaw (cosine and sine), pushes them out to {@code r} and keeps them, faded as a canvas with {@code horizonFade} fades them. */
 	private void turn(float cos, float sin, float r, float horizonFade) {
-		keptCos = cos;
-		keptSin = sin;
-		keptR = r;
 		kept.begin(horizonFade);
 		for (int i = 0; i + 1 < rows; i++) {
 			for (int j = 0; j + 1 < cols; j++) {
@@ -99,6 +96,10 @@ final class SkyMesh {
 				turnCorner(k + cols, cos, sin, r);
 			}
 		}
+		// Only once every quad is in, so a placing cut short by an error is done again next frame
+		keptCos = cos;
+		keptSin = sin;
+		keptR = r;
 	}
 
 	private void turnCorner(int k, float cos, float sin, float r) {
