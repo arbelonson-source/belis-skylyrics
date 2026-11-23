@@ -34,6 +34,26 @@ final class LibraryKeys {
 		return searchView && searchDirty;
 	}
 
+	/**
+	 * Which section tab a click at {@code mx} on the tabs' line picks: the tabs are {@code widths} wide, the first at
+	 * {@code left} and each {@code gap} from the next; -1 for none. None either for the second click of a double-click on
+	 * "‹ Playlists", which sits where the first tabs are: {@code sinceBackNs} after that button closed the playlist, the
+	 * click is still the same double-click (see {@link #tooSoonAfterOpen}), so it stays on the playlists.
+	 */
+	static int sectionAt(double mx, int left, int[] widths, int gap, long sinceBackNs) {
+		if (tooSoonAfterOpen(sinceBackNs)) {
+			return -1;
+		}
+		int x = left;
+		for (int i = 0; i < widths.length; i++) {
+			if (mx >= x && mx < x + widths[i]) {
+				return i;
+			}
+			x += widths[i] + gap;
+		}
+		return -1;
+	}
+
 	/** A click this soon after one opened a playlist is the double-click's second half and must not pick a song of it. */
 	static boolean tooSoonAfterOpen(long sinceOpenNs) {
 		return sinceOpenNs >= 0 && sinceOpenNs < DOUBLE_CLICK_NS;

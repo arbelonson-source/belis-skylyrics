@@ -286,6 +286,7 @@
 - **Spotify answers that stop halfway.** With Spotify signed in, an answer from Spotify that stops halfway (hotel Wi-Fi dropping for a moment, a phone hotspot or a proxy stalling) is now given up after 20 seconds and asked again, with "Can't reach the internet or Spotify" meanwhile. Before, the lyrics could stay on that song and play, pause and skip did nothing until you restarted the game.
 - **The carousel with a trackpad.** In the song library's carousel, a small swipe on a Mac trackpad or a turn of a smooth (free-spinning) mouse wheel no longer races through dozens of covers: it moves one cover for each notch's worth of scrolling, as the hotbar does. A normal mouse wheel still moves one cover a notch.
 - **Ctrl+click on a Mac.** On a Mac, Ctrl+click (the Mac's right click) in the settings and the song library no longer acts as a normal click a moment later: it no longer flips a switch, moves a slider or plays a song. Like a right click, it does nothing there.
+- **Double-clicking "‹ Playlists".** In the song library, double-clicking "‹ Playlists" in an open playlist now takes you back to your playlists. Before, the second click landed on the Search or Liked songs tab that appears in the button's place.
 
 ### Faster
 

@@ -133,4 +133,31 @@ class LibraryKeysTest {
 		assertTrue(LibraryKeys.triesAgain(false, true), "the empty list's Try again button");
 		assertFalse(LibraryKeys.triesAgain(false, false), "on a card Enter plays or opens it");
 	}
+
+	@Test
+	void aDoubleClickOnPlaylistsBackStaysOnThePlaylists() {
+		// "‹ Playlists" sits where the section tabs are (Search, then Liked songs, then Playlists): the double-click's
+		// second click, after the first closed the playlist, landed on Search or Liked songs instead
+		int[] tabs = {47, 75, 66};
+		int left = 10;
+		long now = 0;
+		assertEquals(-1, LibraryKeys.sectionAt(30, left, tabs, 4, now + 120_000_000L), "the second click of the double-click");
+		assertEquals(-1, LibraryKeys.sectionAt(70, left, tabs, 4, now + 120_000_000L), "on Liked songs too");
+		// a click of its own, later, picks the tab
+		assertEquals(0, LibraryKeys.sectionAt(30, left, tabs, 4, LibraryKeys.DOUBLE_CLICK_NS));
+		assertEquals(1, LibraryKeys.sectionAt(70, left, tabs, 4, LibraryKeys.DOUBLE_CLICK_NS));
+	}
+
+	@Test
+	void aSectionTabIsPickedWhereItIsDrawn() {
+		int[] tabs = {47, 75, 66};
+		long never = Long.MAX_VALUE / 2;
+		assertEquals(0, LibraryKeys.sectionAt(10, 10, tabs, 4, never));
+		assertEquals(0, LibraryKeys.sectionAt(56.9, 10, tabs, 4, never));
+		assertEquals(-1, LibraryKeys.sectionAt(58, 10, tabs, 4, never), "the gap between two tabs");
+		assertEquals(1, LibraryKeys.sectionAt(61, 10, tabs, 4, never));
+		assertEquals(2, LibraryKeys.sectionAt(140, 10, tabs, 4, never));
+		assertEquals(-1, LibraryKeys.sectionAt(206, 10, tabs, 4, never), "after the last tab");
+		assertEquals(-1, LibraryKeys.sectionAt(9.5, 10, tabs, 4, never), "before the first");
+	}
 }

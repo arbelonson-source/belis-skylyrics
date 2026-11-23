@@ -80,6 +80,8 @@ public final class LibraryScreen extends Screen {
 	private boolean searchDirty;
 	/** When a click last opened a playlist; its double-click's second click must not land on the songs that just appeared. */
 	private long openedAtNs = Long.MIN_VALUE / 2;
+	/** When "‹ Playlists" last closed a playlist; its double-click's second click must not land on the section tabs in its place. */
+	private long closedAtNs = Long.MIN_VALUE / 2;
 	/** Set when a pressed Space already did something; the typed space that follows it must not start a search. */
 	private boolean swallowSpace;
 
@@ -1597,16 +1599,18 @@ public final class LibraryScreen extends Screen {
 				closeOpened();
 				restorePlace();
 				sayNewSection = true;
+				closedAtNs = System.nanoTime();
 			}
-		} else {
-			int x = px + TABS_LEFT;
-			for (Section s : sections()) {
-				int w = font.width(sectionName(s)) + TAB_PAD;
-				if (Ui.inside(mx, my, x, y, w, 14)) {
-					showSection(s);
-					return true;
-				}
-				x += w + TAB_GAP;
+		} else if (my >= y && my < y + 14) {
+			Section[] all = sections();
+			int[] widths = new int[all.length];
+			for (int i = 0; i < all.length; i++) {
+				widths[i] = font.width(sectionName(all[i])) + TAB_PAD;
+			}
+			int hit = LibraryKeys.sectionAt(mx, px + TABS_LEFT, widths, TAB_GAP, System.nanoTime() - closedAtNs);
+			if (hit >= 0) {
+				showSection(all[hit]);
+				return true;
 			}
 		}
 		if (opened == null && section == Section.SEARCH && query.isBlank()) {
