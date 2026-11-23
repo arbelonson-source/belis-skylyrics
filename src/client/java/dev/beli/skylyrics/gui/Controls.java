@@ -443,10 +443,24 @@ final class Controls {
 		@Override
 		boolean key(KeyEvent event) {
 			if (event.isLeft() || event.isRight()) {
-				apply(get.getAsDouble() + (event.isRight() ? step : -step));
+				set.accept(stepped(get.getAsDouble(), event.isRight()));
 				return true;
 			}
 			return false;
+		}
+
+		/**
+		 * The step next to {@code value} going right ({@code up}) or left, within the slider's ends. From a value between
+		 * two steps (a hand-edited settings file) that is the step on that side: adding a step and rounding to the nearest
+		 * skipped it (+0.12 s went left to +0.05 s). A float's rounding (0.35 read back as 0.3499999940395355) counts as on the step.
+		 */
+		private double stepped(double value, boolean up) {
+			if (!Double.isFinite(value)) {
+				return min;
+			}
+			double at = (value - min) / step;
+			double next = up ? Math.floor(at + 1e-4) + 1 : Math.ceil(at - 1e-4) - 1;
+			return Mth.clamp(next * step + min, min, max);
 		}
 
 		private void apply(double value) {

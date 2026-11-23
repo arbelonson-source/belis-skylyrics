@@ -36,8 +36,10 @@ import dev.beli.skylyrics.media.DemoSource;
  * rate over that long), {@code key <NAME> [ctrl] [shift] [alt]} (a key press and release on the open screen, plus the
  * typed character for letters, digits and space; names: A-Z, 0-9, F1-F25, TAB, ENTER, SPACE, ESCAPE, UP, DOWN, LEFT,
  * RIGHT, PAGE_UP, PAGE_DOWN, HOME, END, BACKSPACE, INSERT, DELETE; before 1.21.9 Ctrl/Shift/Alt only reach code that
- * reads the real keyboard state, so they have no effect there), {@code type <text>} (typed characters on the open screen)
- * and {@code hover <x> <y>} (moves the mouse over the open screen, in scaled GUI pixels). These three do nothing but log
+ * reads the real keyboard state, so they have no effect there), {@code keydown <NAME> [mods]} and {@code keyup <NAME> [mods]}
+ * (only the press or only the release: two keydowns with a sleep between are a held key and its repeat),
+ * {@code type <text>} (typed characters on the open screen)
+ * and {@code hover <x> <y>} (moves the mouse over the open screen, in scaled GUI pixels). These do nothing but log
  * when no screen is open.
  * <p>
  * {@code use} presses the Use key (right click) once, as a click would: with the player looking at a bed at night they
@@ -834,6 +836,40 @@ public final class DevTestHook {
 						screen.keyReleased(code, 0, mods);
 						*///?}
 						SkyLyricsClient.LOG.info("Test hook: sent key {} to {}", arg, screen.getClass().getSimpleName());
+					}
+				}
+				case "keydown", "keyup" -> {
+					// Half a key press: "keydown enter", a sleep, "keydown enter" again is a held key and the repeat the computer
+					// sends after its repeat delay (the game hands repeats to a screen as more presses); "keyup enter" lets go
+					boolean down = parts[0].equals("keydown");
+					DevKeys.Key key = DevKeys.parse(arg);
+					Screen screen = currentScreen(client);
+					if (screen == null) {
+						SkyLyricsClient.LOG.info("Test hook: no screen is open, key not sent");
+					} else {
+						int code = keyCode(key.name());
+						//? if >=26.3 {
+						/*var event = new net.minecraft.client.input.KeyEvent(code, DevKeys.sdlKeycode(key, code), DevKeys.sdlModifiers(key));
+						if (down) {
+							screen.keyPressed(event);
+						} else {
+							screen.keyReleased(event);
+						}
+						*///?} else if >=1.21.9 {
+						var event = new net.minecraft.client.input.KeyEvent(code, 0, DevKeys.glfwModifiers(key));
+						if (down) {
+							screen.keyPressed(event);
+						} else {
+							screen.keyReleased(event);
+						}
+						//?} else {
+						/*if (down) {
+							screen.keyPressed(code, 0, DevKeys.glfwModifiers(key));
+						} else {
+							screen.keyReleased(code, 0, DevKeys.glfwModifiers(key));
+						}
+						*///?}
+						SkyLyricsClient.LOG.info("Test hook: sent key {} {} to {}", parts[0], arg, screen.getClass().getSimpleName());
 					}
 				}
 				case "type" -> {
