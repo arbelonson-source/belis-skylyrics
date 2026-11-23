@@ -280,6 +280,7 @@
 - **Nothing looked up while Lyrics is off.** With **Lyrics** turned off, the mod no longer sends each new song's title, artist, album and length to the lyrics sites (LRCLIB, and NetEase as the backup), and no longer downloads its album cover; the **Music** tab's Lyrics row says "Lyrics off" meanwhile, its **Now playing** card shows no cover for that song (not the last song's), and **Retry** waits until **Lyrics** is on and then asks the lyrics sites again. Turning **Lyrics** back on looks up the song playing then.
 - **Your name in the game log.** When the Spotify sign-in file can't be read, saved or removed (for example while Windows, an antivirus or OneDrive holds it) or Windows can't make it readable by you alone, or the Windows music reader can't be set up in the game folder, the line in the game log no longer shows your home folder, which on Windows carries your user name.
 - **The search key with the Narrator on a Mac.** On a Mac, the Narrator's hint in the settings now says Cmd+F opens the search, instead of Ctrl+F, which does nothing there.
+- **A proxy that asks for a password.** On a work or school network whose proxy wants a password, the **Music** tab no longer says "No lyrics found for this song" and stops asking: it says the lyrics sites can't be reached and keeps trying, so the lyrics come as soon as the proxy lets SkyLyrics through. Nothing is saved for the song meanwhile.
 
 ### Faster
 
