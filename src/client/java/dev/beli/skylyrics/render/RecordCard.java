@@ -65,12 +65,19 @@ public final class RecordCard {
 	/** One turn every 1.8 seconds, a little faster than a real record so it reads as turning when small. */
 	private static final float TURNS_PER_SECOND = 1 / 1.8f;
 	private static final float TEXT_SCALE = 0.75f;
-	private static final int FILL = 0x181523;
+	static final int FILL = 0x181523;
+	/** The fill's alpha at full Background: the world shows through a little. */
+	static final int FILL_ALPHA = 235;
 	private static final int BORDER = 0x4B4665;
 	private static final int VINYL = 0x0E0D12;
 	private static final int GROOVE = 0x24222C;
 	private static final int TITLE = 0xFCF8FF;
-	private static final int SUB = 0x8C879E;
+	static final int SUB = 0x8C879E;
+	/**
+	 * The lines before and after the current one, in the artist line's grey a little faded: 4.5:1 on the card over a
+	 * dark world, 3.7:1 with snow behind it (at 110 they were 2:1, hard to make out).
+	 */
+	static final int SIDE_ALPHA = 230;
 	private static final int NO_ART = 0x3A2E5C;
 
 	private final MediaTracker tracker;
@@ -174,7 +181,7 @@ public final class RecordCard {
 			float r = Math.round(8 * s);
 			NowPlayingHud.roundRect(g, px, py, pw, ph, r, ARGB.color(Math.round(alpha * 255), BORDER));
 			NowPlayingHud.roundRect(g, px + b, py + b, pw - 2 * b, ph - 2 * b, r - b,
-					ARGB.color(Math.round(alpha * 235 * cfg.barBackground), FILL));
+					ARGB.color(Math.round(alpha * FILL_ALPHA * cfg.barBackground), FILL));
 			drawRecord(g, px + Math.round(PAD * s), py + Math.round((H - DISC) / 2 * s), Math.round(DISC * s));
 		} finally {
 			g.pose().popMatrix();
@@ -251,7 +258,7 @@ public final class RecordCard {
 			return;
 		}
 		float lineW = LyricsFont.cachedWidth(font, style, lyric) * scale;
-		int color = ARGB.color(Math.max(4, Math.round(a * 255)), SkyLyricsClient.get().renderer().color());
+		int color = ARGB.color(Math.max(4, Math.round(a * 255)), lyricColor(SkyLyricsClient.get().renderer().color()));
 		if (lineW <= room) {
 			text(g, font, style, lyric, x + (W - lineW) / 2, midY, scale, color);
 			return;
@@ -269,6 +276,17 @@ public final class RecordCard {
 		}
 	}
 
+	/**
+	 * The current line's colour on the card for the lyrics colour {@code rgb}: a dark one (a deep blue album colour) is
+	 * lifted towards white just enough to read on the card, even with snow showing through it.
+	 */
+	static int lyricColor(int rgb) {
+		return Contrast.lighten(rgb, SNOW_BEHIND, Contrast.FLOOR);
+	}
+
+	/** The card at full Background with snow behind it: the brightest it gets. */
+	private static final int SNOW_BEHIND = Contrast.over(FILL_ALPHA << 24 | FILL, 0xFFFFFF);
+
 	/** A line before or after the current one: dimmed, smaller, centred, and cut with "…" when too long. */
 	private void dimLine(GuiGraphics g, Font font, Style style, String line, float x, float midY, float scale, float left, float room, float a) {
 		if (line == null || line.isEmpty()) {
@@ -276,7 +294,7 @@ public final class RecordCard {
 		}
 		String cut = NowPlayingHud.clip(font, style, line, room / scale);
 		float w = LyricsFont.cachedWidth(font, style, cut) * scale;
-		text(g, font, style, cut, x + (W - w) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * 110)), SUB));
+		text(g, font, style, cut, x + (W - w) / 2, midY, scale, ARGB.color(Math.max(4, Math.round(a * SIDE_ALPHA)), SUB));
 	}
 
 	/**
