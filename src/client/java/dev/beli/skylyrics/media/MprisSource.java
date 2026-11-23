@@ -158,12 +158,22 @@ public final class MprisSource implements MediaSource {
 			} catch (Exception e) {
 				connectFailures++;
 				retryAt = nanos.getAsLong() + retryDelayNs(connectFailures);
-				IOException failure = new IOException(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
+				IOException failure = new BusFailure(busFailureMessage(System.getenv(), Files.exists(Path.of("/.flatpak-info"))), e);
 				lastConnectFailure = failure;
 				throw failure; // the local: close() may clear the field in between
 			}
 		}
 		return connection;
+	}
+
+	/**
+	 * The session bus couldn't be opened. Never the internet's fault, though the library's failure can hold a
+	 * java.net.ConnectException ("Connection refused" from a bus socket nobody listens on any more).
+	 */
+	static final class BusFailure extends IOException {
+		BusFailure(String message, Throwable cause) {
+			super(message, cause);
+		}
 	}
 
 	/**
