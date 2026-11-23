@@ -203,8 +203,9 @@ class SpotifyWebSourceTest {
 	void anIdleConnectionDoesNotEndTheSignIn(@TempDir Path dir) throws Exception {
 		SpotifyWebSource source = new SpotifyWebSource(() -> ID, dir.resolve("login.json"));
 		try (ServerSocket server = freeServer(); Socket idle = new Socket(InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), server.getLocalPort())) {
-			// Short on purpose: this test is about the idle limit; still long enough for the follow-up request below
-			Thread t = wait(source, server, 2000);
+			// Short on purpose: this test is about the idle limit. The follow-up request below is written the moment it
+			// connects, so it needs far less than this
+			Thread t = wait(source, server, 500);
 			// Wait until the server has dropped the idle connection, which is when its idle limit has passed
 			// (the old loop gave up the whole sign-in here)
 			idle.setSoTimeout(30_000);
