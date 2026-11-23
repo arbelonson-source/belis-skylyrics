@@ -281,6 +281,7 @@
 - **Your name in the game log.** When the Spotify sign-in file can't be read, saved or removed (for example while Windows, an antivirus or OneDrive holds it) or Windows can't make it readable by you alone, or the Windows music reader can't be set up in the game folder, the line in the game log no longer shows your home folder, which on Windows carries your user name.
 - **The search key with the Narrator on a Mac.** On a Mac, the Narrator's hint in the settings now says Cmd+F opens the search, instead of Ctrl+F, which does nothing there.
 - **A proxy that asks for a password.** On a work or school network whose proxy wants a password, the **Music** tab no longer says "No lyrics found for this song" and stops asking: it says the lyrics sites can't be reached and keeps trying, so the lyrics come as soon as the proxy lets SkyLyrics through. Nothing is saved for the song meanwhile.
+- **Spotify answers that stop halfway.** With Spotify signed in, an answer from Spotify that stops halfway (hotel Wi-Fi dropping for a moment, a phone hotspot or a proxy stalling) is now given up after 20 seconds and asked again, with "Can't reach the internet or Spotify" meanwhile. Before, the lyrics could stay on that song and play, pause and skip did nothing until you restarted the game.
 
 ### Faster
 
