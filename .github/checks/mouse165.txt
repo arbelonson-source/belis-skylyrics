@@ -1,0 +1,105 @@
+# Mouse and trackpad fixes in the song library and the settings (fix/mouse165), with the demo's made-up library.
+# Minecraft 1.21.11, 1280x720 (the default size), GUI scale 3 = 427x240; the mouse rests in the middle of the window.
+# Run it on the branch, and with -f mod_ref=main for the old code, and compare each shot:
+#   gh workflow run screenshots.yml --ref fix/mouse165 -f version=1.21.11 -f script=.github/checks/mouse165.txt
+#   gh workflow run screenshots.yml --ref fix/mouse165 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/mouse165.txt
+# Lines next to each other run in the same tick: eight "scroll -0.25" are one trackpad swipe of two notches' worth, two
+# "click" lines are a double-click. "scroll -1 0" is a sideways scroll to the right (1.21.11 gives left as above 0).
+#
+# - mouse165-carousel-start: the carousel on Liked songs, the first song in the middle. The same on both.
+# - mouse165-carousel-trackpad: after the small-steps swipe. Branch: the THIRD song in the middle (two notches' worth,
+#   two covers). Main: the NINTH song (one cover for each small step, eight).
+# - mouse165-carousel-sideways: after three sideways scrolls to the right. Branch: three covers on, the SIXTH song in the
+#   middle. Main: nothing moved, still the ninth.
+# - mouse165-shelf-hover: the shelf on Liked songs, the mouse on the third cover, its name under the shelf. The same on both.
+# - mouse165-shelf-wheel: the wheel slid the shelf one cover left under the still mouse. Branch: the cover now under the
+#   mouse (the fourth) is the lifted one with ITS name under the shelf. Main: the third song's name stays, and two covers
+#   are lifted (the third, which slid left, and the fourth under the mouse, which a click would play).
+# - mouse165-shelf-sideways: after three sideways scrolls to the right. Branch: the shelf slid one more cover left, the
+#   fifth cover under the mouse and named. Main: the shelf didn't move (the same picture as mouse165-shelf-wheel).
+# - mouse165-playlist-open: the playlist "Late-night building" open, "‹ Playlists" at the top left. The same on both.
+# - mouse165-back-double-click: after a double-click on "‹ Playlists". Branch: the Playlists grid. Main: the Search
+#   section (its tab highlighted, the search box waiting for typing), where the second click landed.
+# - mouse165-reset-before: the settings' Lyrics tab with Layout on Lines, the footer's "Reset all". The same on both.
+# - mouse165-reset-double-click: after a double-click on Reset all. Branch: the button reads "Click again to reset" and
+#   Layout is still Lines. Main: every setting was reset at once: Layout is back on World and the button reads "Reset all".
+# Not in the pictures: on a Mac, Ctrl+click no longer acts as a left click (it needs a real Mac and mouse button; unit tested).
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 6
+guiscale 3
+
+set libraryView CAROUSEL
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot mouse165-carousel-start
+scroll -0.25
+scroll -0.25
+scroll -0.25
+scroll -0.25
+scroll -0.25
+scroll -0.25
+scroll -0.25
+scroll -0.25
+sleep 2
+shot mouse165-carousel-trackpad
+scroll -1 0
+scroll -1 0
+scroll -1 0
+sleep 2
+shot mouse165-carousel-sideways
+close
+sleep 1
+
+set libraryView SHELF
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+hover 213 120
+sleep 1
+shot mouse165-shelf-hover
+scroll -3
+sleep 2
+shot mouse165-shelf-wheel
+scroll -1 0
+scroll -1 0
+scroll -1 0
+sleep 2
+shot mouse165-shelf-sideways
+close
+sleep 1
+
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+# Liked songs -> Playlists, the first playlist, open it (as lib113)
+key tab
+sleep 1
+key right
+sleep 0.5
+key enter
+sleep 2
+shot mouse165-playlist-open
+click 30 46
+click 30 46
+sleep 2
+shot mouse165-back-double-click
+close
+sleep 1
+
+set layout LINES
+gui 0
+sleep 3
+shot mouse165-reset-before
+click 124 215
+click 124 215
+sleep 1
+shot mouse165-reset-double-click
+# Main's reset turned the demo song off: the test game keeps it
+set demoMode true
+set layout WORLD
+close
+guiscale 0

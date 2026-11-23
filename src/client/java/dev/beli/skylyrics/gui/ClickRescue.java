@@ -43,6 +43,22 @@ final class ClickRescue {
 		return !replaying;
 	}
 
+	/**
+	 * A press of {@code button} reached the screen. Returns false when the screen must drop it (see {@link #pressed()}).
+	 * Another button counts as the game delivering the click too: on a Mac it turns Ctrl+click into a right click, so the
+	 * left button is down while the screen gets a right press, and replaying that as a left click would make Ctrl+click
+	 * flip a switch or play a song.
+	 */
+	boolean pressed(int button) {
+		if (button == left()) {
+			return pressed();
+		}
+		if (!inside) {
+			sawPress = true;
+		}
+		return true;
+	}
+
 	/** A left release reached the screen. Returns false when this replays the click instead (and then its release too). */
 	boolean released() {
 		if (inside) {

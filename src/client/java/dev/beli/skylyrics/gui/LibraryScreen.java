@@ -80,6 +80,8 @@ public final class LibraryScreen extends Screen {
 	private boolean searchDirty;
 	/** When a click last opened a playlist; its double-click's second click must not land on the songs that just appeared. */
 	private long openedAtNs = Long.MIN_VALUE / 2;
+	/** When "‹ Playlists" last closed a playlist; its double-click's second click must not land on the section tabs in its place. */
+	private long closedAtNs = Long.MIN_VALUE / 2;
 	/** Set when a pressed Space already did something; the typed space that follows it must not start a search. */
 	private boolean swallowSpace;
 
@@ -91,6 +93,8 @@ public final class LibraryScreen extends Screen {
 	private @Nullable LibraryPlaylist openedList;
 	/** The last input was a key, not a click. */
 	private boolean keyboardLast;
+	/** The wheel scrolled the shelf since the last key: the cover under the mouse is the chosen one even while the mouse stays put. */
+	private boolean wheelPick;
 	/** Brings the card the keys picked back into view when the window is resized. */
 	private final PickInView picks = new PickInView();
 	/** A recent search was just picked, so the Narrator says how many results it found; any later key or click ends that. */
@@ -139,6 +143,7 @@ public final class LibraryScreen extends Screen {
 	private int shelfRows, shelfStride;
 	/** Carousel view: where the glide has got to, in item places. */
 	private float carPos;
+	private final ScrollSteps carouselSteps = new ScrollSteps();
 	private String tip = "";
 
 	public LibraryScreen(@Nullable Screen parent) {
@@ -584,6 +589,16 @@ public final class LibraryScreen extends Screen {
 			}
 			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget, 0, maxScroll(shelf));
 			shelf.scroll = Ui.approach(shelf.scroll, shelf.scrollTarget, dt, 18);
+			if (view() == SkyLyricsConfig.LibraryView.SHELF && Ui.inside(mouseX, mouseY, viewX, viewY, viewW, viewH)) {
+				// The wheel slides the shelf under a mouse that stays put: the cover now under it is chosen, as if it had moved there
+				int hit = shelfHitAt(shelf, mouseX, mouseY);
+				int was = selected;
+				selected = LibraryKeys.afterShelfFrame(selected, hit, wheelPick);
+				if (selected != was) {
+					footer = false;
+					picks.scrolledAway();
+				}
+			}
 			boolean nearEnd = switch (view()) {
 				case SHELF -> shelf.scrollTarget + shelfStride * 2 > maxScroll(shelf);
 				case CAROUSEL -> selected >= shelf.items.size() - 6;
@@ -1551,7 +1566,7 @@ public final class LibraryScreen extends Screen {
 		sayResults = false;
 		stop = -1;
 		footer = false;
-		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
+		if (!rescue.pressed(event.button())) {
 			return true;
 		}
 		double mx = event.x();
@@ -1596,16 +1611,18 @@ public final class LibraryScreen extends Screen {
 				closeOpened();
 				restorePlace();
 				sayNewSection = true;
+				closedAtNs = System.nanoTime();
 			}
-		} else {
-			int x = px + TABS_LEFT;
-			for (Section s : sections()) {
-				int w = font.width(sectionName(s)) + TAB_PAD;
-				if (Ui.inside(mx, my, x, y, w, 14)) {
-					showSection(s);
-					return true;
-				}
-				x += w + TAB_GAP;
+		} else if (my >= y && my < y + 14) {
+			Section[] all = sections();
+			int[] widths = new int[all.length];
+			for (int i = 0; i < all.length; i++) {
+				widths[i] = font.width(sectionName(all[i])) + TAB_PAD;
+			}
+			int hit = LibraryKeys.sectionAt(mx, px + TABS_LEFT, widths, TAB_GAP, System.nanoTime() - closedAtNs);
+			if (hit >= 0) {
+				showSection(all[hit]);
+				return true;
 			}
 		}
 		if (opened == null && section == Section.SEARCH && query.isBlank()) {
@@ -1757,14 +1774,19 @@ public final class LibraryScreen extends Screen {
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
 		picks.scrolledAway();
 		Shelf shelf = shelf();
+		// The shelf and the carousel run sideways: a sideways swipe moves them too
+		double along = ScrollSteps.along(scrollX, scrollY, ScrollSteps.RIGHT_IS_POSITIVE);
 		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
-			if (!shelf.items.isEmpty() && scrollY != 0) {
-				selected = Mth.clamp(Math.max(0, selected) + (scrollY > 0 ? -1 : 1), 0, shelf.items.size() - 1);
+			int step = carouselSteps.step(along);
+			if (!shelf.items.isEmpty() && step != 0) {
+				selected = Mth.clamp(Math.max(0, selected) + step, 0, shelf.items.size() - 1);
 			}
 			return true;
 		}
 		if (shelf != null) {
-			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) scrollY * 30, 0, maxScroll(shelf));
+			wheelPick = view() == SkyLyricsConfig.LibraryView.SHELF;
+			double amount = view() == SkyLyricsConfig.LibraryView.SHELF ? along : scrollY;
+			shelf.scrollTarget = Mth.clamp(shelf.scrollTarget - (float) amount * 30, 0, maxScroll(shelf));
 			return true;
 		}
 		return super.mouseScrolled(mx, my, scrollX, scrollY);
@@ -1775,6 +1797,7 @@ public final class LibraryScreen extends Screen {
 	//?}
 	public boolean keyPressed(KeyEvent event) {
 		keyboardLast = true;
+		wheelPick = false;
 		picks.keyPicked();
 		sayNewSection = false;
 		sayResults = false;
