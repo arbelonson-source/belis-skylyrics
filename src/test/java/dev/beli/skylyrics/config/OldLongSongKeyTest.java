@@ -91,4 +91,33 @@ class OldLongSongKeyTest {
 		assertEquals(250, open().songOffset(t));
 		assertEquals(SkyLyricsConfig.makeKey(t), open().songOffsets.keySet().iterator().next());
 	}
+
+	@Test
+	void aLongNameWithADottedCapitalIKeepsItsTiming() throws Exception {
+		// Lower case makes the Turkish "\u0130" two letters (i and a combining dot), so an artist credit cut at 500 letters
+		// gives a key whose artist side is longer than 500: it is still today's key and must not be cut again
+		String credit = String.join(", ", Collections.nCopies(30, "\u0130pek Singer Name"));
+		Track t = playing("Long Song", credit);
+		assertTrue(t.artist().length() <= Track.MAX_TEXT && SkyLyricsConfig.makeKey(t).indexOf(" - ") > Track.MAX_TEXT);
+		SkyLyricsConfig seed = new SkyLyricsConfig();
+		seed.setSongOffset(t, 250);
+		seed.save(file());
+		assertEquals(250, open().songOffset(t), Files.readString(file()));
+		SkyLyricsConfig c = open();
+		c.setSongOffset(t, 0); // reset: it must not come back
+		c.save(file());
+		assertEquals(0, open().songOffset(t), Files.readString(file()));
+		assertEquals(0, open().songOffsets.size(), Files.readString(file()));
+	}
+
+	@Test
+	void a080TimingForALongCreditWithADottedCapitalIIsFound() throws Exception {
+		// v0.8.0 lower-cased the whole credit (each "\u0130" two letters); today's key is the credit cut, then lower-cased
+		String credit = String.join(", ", Collections.nCopies(30, "\u0130pek Singer Name"));
+		assertTrue(credit.length() > Track.MAX_TEXT);
+		Config080 old = new Config080();
+		old.setSongOffset("Long Song", credit, 400);
+		Files.writeString(file(), old.toJson());
+		assertEquals(400, open().songOffset(playing("Long Song", credit)), Files.readString(file()));
+	}
 }
