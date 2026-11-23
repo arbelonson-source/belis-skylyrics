@@ -1123,6 +1123,7 @@ public final class SkyLyricsScreen extends Screen {
 		long now = System.nanoTime();
 		if (now < resetArmedUntil && !resetConfirms(now, resetArmedUntil)) {
 			// The second click of a double-click: it keeps asking
+			announcement = resetSaid(false);
 			return;
 		}
 		if (resetConfirms(now, resetArmedUntil)) {
@@ -1130,10 +1131,19 @@ public final class SkyLyricsScreen extends Screen {
 			resetArmedUntil = 0;
 			dirty = true;
 			mod.tracker().refresh();
-			announcement = Tr.t("Settings reset");
+			announcement = resetSaid(true);
 		} else {
 			resetArmedUntil = now + RESET_CONFIRM_NS;
+			announcement = resetSaid(false);
 		}
+	}
+
+	/**
+	 * What the Narrator says after a press of Reset all, by keyboard or click: that the settings were reset, or that it asks
+	 * for another press. Only the keyboard on it said the second, by its new name, so a click that asked said nothing.
+	 */
+	static String resetSaid(boolean reset) {
+		return reset ? Tr.t("Settings reset") : Narration.button(Tr.t("Click again to reset"), Tr.t("button"));
 	}
 
 	/**

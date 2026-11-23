@@ -1,5 +1,6 @@
 package dev.beli.skylyrics.gui;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,5 +28,12 @@ class ResetAllTest {
 		assertTrue(SkyLyricsScreen.resetConfirms(armedAt + 2 * SECOND, until));
 		assertFalse(SkyLyricsScreen.resetConfirms(until, until), "after 3 seconds it asks again");
 		assertFalse(SkyLyricsScreen.resetConfirms(armedAt, 0), "a first press only asks");
+	}
+
+	@Test
+	void aPressThatAsksAgainSaysSoAlsoWhenClicked() {
+		// With the keyboard on Reset all its new name was said; a click (the keyboard elsewhere) said nothing until the reset
+		assertEquals("Click again to reset, button", SkyLyricsScreen.resetSaid(false));
+		assertEquals("Settings reset", SkyLyricsScreen.resetSaid(true));
 	}
 }
