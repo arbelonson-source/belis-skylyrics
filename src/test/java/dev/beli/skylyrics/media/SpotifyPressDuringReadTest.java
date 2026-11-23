@@ -108,8 +108,10 @@ class SpotifyPressDuringReadTest {
 		SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
 		source.useHttp(net);
 		source.poll(); // fetching the access token asks for one more reading at once, as after a sign-in
+		// "Not due yet" is checked against a time taken before the ask, so a slow machine's lost seconds can't make it due
+		long asked = System.nanoTime();
 		assertTrue(askAgain(source).track().isNone());
-		assertFalse(source.pollDue(System.nanoTime() + SEC, true), "nothing playing: asked every 4 s");
+		assertFalse(source.pollDue(asked + SEC, true), "nothing playing: asked every 4 s");
 
 		// The reader's next read goes out, and while it waits for Spotify the player starts a song in the song library
 		net.holdNext.set(true);
@@ -138,7 +140,8 @@ class SpotifyPressDuringReadTest {
 		askAgain(source);
 		assertTrue(source.pollDue(System.nanoTime() + 3 * SEC / 2, true),
 				"and once more a second after that: the read sent before the press was counted as one after it");
+		asked = System.nanoTime();
 		askAgain(source);
-		assertFalse(source.pollDue(System.nanoTime() + 3 * SEC / 2, true), "then back to every 4 s");
+		assertFalse(source.pollDue(asked + 3 * SEC / 2, true), "then back to every 4 s");
 	}
 }

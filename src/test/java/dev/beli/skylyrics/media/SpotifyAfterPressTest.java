@@ -127,8 +127,10 @@ class SpotifyAfterPressTest {
 	void afterPlayIsPressedWhilePausedSpotifyIsAskedEverySecondUntilItSaysSo(@TempDir Path dir) throws Exception {
 		Net net = new Net(what -> what.startsWith("GET") ? new Reply(200, PAUSED) : new Reply(204, ""));
 		SpotifyWebSource source = signedIn(dir, net);
+		// "Not due yet" is checked against a time taken before the ask, so a slow machine's lost seconds can't make it due
+		long asked = System.nanoTime();
 		assertFalse(settled(source).playing());
-		assertFalse(source.pollDue(System.nanoTime() + 2 * SEC, true), "paused: asked every 4 s");
+		assertFalse(source.pollDue(asked + 2 * SEC, true), "paused: asked every 4 s");
 
 		source.playPause();
 		assertTrue(net.requests.contains("PUT /v1/me/player/play"), net.requests.toString());
@@ -138,8 +140,9 @@ class SpotifyAfterPressTest {
 
 		// A few quick asks in all; if it really stays paused, the idle pace comes back
 		askAgain(source);
+		asked = System.nanoTime();
 		askAgain(source);
-		assertFalse(source.pollDue(System.nanoTime() + 3 * SEC / 2, true), "back to every 4 s");
+		assertFalse(source.pollDue(asked + 3 * SEC / 2, true), "back to every 4 s");
 		assertTrue(source.pollDue(System.nanoTime() + 5 * SEC, true));
 	}
 
@@ -150,16 +153,18 @@ class SpotifyAfterPressTest {
 		settled(source);
 		source.playPause(); // a device Spotify won't let us control
 		assertTrue(source.pollDue(System.nanoTime(), true), "the result is still read at once");
+		long asked = System.nanoTime();
 		source.poll();
-		assertFalse(source.pollDue(System.nanoTime() + 3 * SEC / 2, true));
+		assertFalse(source.pollDue(asked + 3 * SEC / 2, true));
 	}
 
 	@Test
 	void aSongStartedFromTheLibraryWhileNothingPlaysIsAskedForAtOnce(@TempDir Path dir) throws Exception {
 		Net net = new Net(what -> new Reply(204, ""));
 		SpotifyWebSource source = signedIn(dir, net);
+		long asked = System.nanoTime();
 		assertTrue(settled(source).track().isNone());
-		assertFalse(source.pollDue(System.nanoTime() + SEC, true), "nothing playing: asked every 4 s");
+		assertFalse(source.pollDue(asked + SEC, true), "nothing playing: asked every 4 s");
 
 		assertEquals("", new SpotifyLibrary(source).play(SONG, List.of()).get(10, TimeUnit.SECONDS));
 		assertTrue(net.requests.contains("PUT /v1/me/player/play"), net.requests.toString());
@@ -174,8 +179,9 @@ class SpotifyAfterPressTest {
 		// Spotify's servers know no device, so the library hands the song to the Spotify app here instead
 		Net net = new Net(what -> what.startsWith("PUT") ? new Reply(404, "") : new Reply(204, ""));
 		SpotifyWebSource source = signedIn(dir, net);
+		long asked = System.nanoTime();
 		settled(source);
-		assertFalse(source.pollDue(System.nanoTime(), true));
+		assertFalse(source.pollDue(asked, true));
 		assertEquals("", new SpotifyLibrary(source, uri -> true).play(SONG, List.of()).get(10, TimeUnit.SECONDS));
 		assertTrue(source.pollDue(System.nanoTime(), true));
 	}

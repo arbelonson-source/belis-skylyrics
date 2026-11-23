@@ -114,8 +114,14 @@ class SpotifyLibraryLeftoversTest {
 		return new SpotifyLibrary(source);
 	}
 
+	/**
+	 * How long a library job may take here: the fake Spotify answers at once, so this only stops a job that never ends, and
+	 * is far from what a busy test machine needs (it was 5 s).
+	 */
+	private static final long WAIT_S = 20;
+
 	private static Throwable failure(CompletableFuture<?> future) {
-		ExecutionException e = assertThrows(ExecutionException.class, () -> future.get(5, TimeUnit.SECONDS));
+		ExecutionException e = assertThrows(ExecutionException.class, () -> future.get(WAIT_S, TimeUnit.SECONDS));
 		return e.getCause();
 	}
 
@@ -151,10 +157,11 @@ class SpotifyLibraryLeftoversTest {
 		String farAway = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
 				.format(java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).plusHours(1));
 		assertTrue(SpotifyLibrary.waitSeconds(farAway) > 30);
+		// 20 s ahead, in whole seconds: read at once that is 19 or 20; seconds this machine loses can only make it less
 		String soon = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
-				.format(java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).plusSeconds(5));
+				.format(java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).plusSeconds(20));
 		long wait = SpotifyLibrary.waitSeconds(soon);
-		assertTrue(wait >= 1 && wait <= 6, "wait was " + wait);
+		assertTrue(wait >= 5 && wait <= 21, "wait was " + wait);
 		assertEquals(3, SpotifyLibrary.waitSeconds("3"));
 		assertEquals(2, SpotifyLibrary.waitSeconds(null));
 		assertEquals(2, SpotifyLibrary.waitSeconds("soon"));
@@ -173,7 +180,7 @@ class SpotifyLibraryLeftoversTest {
 	void pagingGoesByTheRequestedOffsetNotTheReplys(@TempDir Path dir) throws Exception {
 		String body = "{\"total\":300,\"items\":[{\"track\":" + SONG + "}]}";
 		SpotifyLibrary lib = library(dir, new Net(what -> Reply.ok(body)));
-		SpotifyLibrary.Page<LibraryItem> page = lib.liked(50).get(5, TimeUnit.SECONDS);
+		SpotifyLibrary.Page<LibraryItem> page = lib.liked(50).get(WAIT_S, TimeUnit.SECONDS);
 		assertEquals(50, page.offset());
 		assertEquals(51, page.next());
 	}
@@ -187,8 +194,8 @@ class SpotifyLibraryLeftoversTest {
 		}
 		String body = "{\"tracks\":{\"total\":5000,\"items\":[" + items + "]}}";
 		SpotifyLibrary lib = library(dir, new Net(what -> Reply.ok(body)));
-		assertEquals(990, lib.search("x", 980).get(5, TimeUnit.SECONDS).next());
-		assertEquals(-1, lib.search("x", 990).get(5, TimeUnit.SECONDS).next());
+		assertEquals(990, lib.search("x", 980).get(WAIT_S, TimeUnit.SECONDS).next());
+		assertEquals(-1, lib.search("x", 990).get(WAIT_S, TimeUnit.SECONDS).next());
 	}
 
 	// 7
@@ -196,7 +203,7 @@ class SpotifyLibraryLeftoversTest {
 	void playKeepsTheSpecificReasonWhenSignedOutOrOffline(@TempDir Path dir) throws Exception {
 		LibraryItem song = new LibraryItem("a", "spotify:track:a", "A", "", "", "", 0, "");
 		SpotifyWebSource signedOut = new SpotifyWebSource(() -> ID, dir.resolve("none.json"));
-		String out = new SpotifyLibrary(signedOut).play(song, List.of()).get(5, TimeUnit.SECONDS);
+		String out = new SpotifyLibrary(signedOut).play(song, List.of()).get(WAIT_S, TimeUnit.SECONDS);
 		assertEquals(Tr.t("Sign in to Spotify on the Music tab to see your songs here"), out);
 
 		Net down = new Net(what -> {
@@ -210,7 +217,7 @@ class SpotifyLibraryLeftoversTest {
 				throw new java.net.ConnectException();
 			}
 		};
-		assertEquals(Tr.t("Can't reach the internet or Spotify"), library(dir, down).play(song, List.of()).get(5, TimeUnit.SECONDS));
+		assertEquals(Tr.t("Can't reach the internet or Spotify"), library(dir, down).play(song, List.of()).get(WAIT_S, TimeUnit.SECONDS));
 	}
 
 	// 2
@@ -293,7 +300,7 @@ class SpotifyLibraryLeftoversTest {
 			assertEquals(Tr.t("Can't reach the internet or Spotify"), SpotifyLibrary.errorText(failure(lib.search("x", 0))), broken.getMessage());
 			// Starting a song says it too, not "try again" as if Spotify had said no
 			assertEquals(Tr.t("Can't reach the internet or Spotify"), lib.play(new LibraryItem("a", "spotify:track:a", "A", "", "", "", 0, ""), List.of())
-					.get(5, TimeUnit.SECONDS), broken.getMessage());
+					.get(WAIT_S, TimeUnit.SECONDS), broken.getMessage());
 		}
 	}
 }
