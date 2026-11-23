@@ -517,7 +517,8 @@ public final class CoverCache {
 			return null;
 		}
 		try {
-			BufferedImage image = decodeSmall(bytes, SIZE);
+			// The same size limit as a download, read from the header: a bigger picture was never saved by the mod
+			BufferedImage image = dimensionsOk(bytes) ? decodeSmall(bytes, SIZE) : null;
 			if (image != null) {
 				file.toFile().setLastModified(System.currentTimeMillis());
 				if (bytes.length > SHRINK_OVER_BYTES && file.getParent() != null) {
