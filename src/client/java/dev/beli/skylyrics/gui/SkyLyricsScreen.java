@@ -1746,6 +1746,11 @@ public final class SkyLyricsScreen extends Screen {
 		if (!rescue.pressed(event.button())) {
 			return true;
 		}
+		if (secondClickOfOpening(System.nanoTime() - shownAtNs)) {
+			// The other half of a double-click on the button that brought these settings up (the intro's All settings):
+			// it would flip the switch that happens to be under the mouse here
+			return true;
+		}
 		double mx = event.x();
 		double my = event.y();
 		if (preview) {
@@ -1933,6 +1938,19 @@ public final class SkyLyricsScreen extends Screen {
 
 	/** The settings key was still down when this opened (it opened from that key): its repeats must not close it again. */
 	private boolean closeKeyHeld;
+
+	/** When the game last put this screen up: opened, or come back to from the song library, the key list or a link. */
+	private long shownAtNs = Long.MIN_VALUE / 2;
+
+	/**
+	 * Whether a press {@code sinceShownNs} after the game put the settings up is the second click of a double-click whose
+	 * first click, on the screen before, brought them up: the intro's All settings button, or a button of the song
+	 * library's Spotify card. It lands on whatever is under the mouse here, and every click on a switch's row flips it, so
+	 * a double-click on All settings turned on Lazy follow or View lock. As quick as the song library's double-click.
+	 */
+	static boolean secondClickOfOpening(long sinceShownNs) {
+		return LibraryKeys.tooSoonAfterOpen(sinceShownNs);
+	}
 
 	//? if >=1.21.9 {
 	@Override
@@ -2138,6 +2156,7 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	public void added() {
 		try {
+			shownAtNs = System.nanoTime();
 			fault.shown();
 		} catch (RuntimeException | LinkageError e) {
 			fault.failed("opening", e);
