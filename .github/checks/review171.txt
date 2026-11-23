@@ -1,0 +1,67 @@
+# Minecraft's joke and made-up languages: numbers and the clock, fix/review171 (Minecraft 1.21.11, 1280x720, GUI scale 3,
+# the demo song). The test game runs on Java 25 on a computer set to English, so the bar's clock in English is the
+# "9:07 PM" style. Java 25 has data for "English in Portugal" (en-PT), which is the code of Minecraft's Pirate Speak, and
+# has no times at all for LOLCAT (lol_us) or Klingon (tlh_aa). Each shot, the branch against main:
+# - review171-pirate-bar: the top bar's clock left of the bar (the time is the runner's own, so only its form counts).
+#   Branch: the computer's "9:07 PM" style, as before batch 135. Main: 24 hours ("21:07" style), Portugal's.
+# - review171-pirate-lyrics: the Lyrics tab, Position card: Size reads "1.00×" and the Floating Distance "10.7 blocks"
+#   on the branch (the mod's texts are English in Pirate Speak); main "1,00×" and "10,7 blocks".
+# - review171-pirate-timing: the settings searched for the Timing row (Timing set to +0.25 s): "+0.25 s" on the branch,
+#   "+0,25 s" on main.
+# - review171-pirate-key: the message above the hotbar after one press of Lyrics are late: a decimal point on the
+#   branch, a comma on main.
+# - review171-lolcat-bar, review171-klingon-bar: the clock: "9:07 PM" style on the branch, 24 hours on main.
+# - review171-de-bar, review171-de-lyrics: German, for comparison: the same on both (24 hours, "1,00×", "10,7 Blöcke").
+# Run it, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/review171 -f version=1.21.11 -f script=.github/checks/review171.txt
+#   gh workflow run screenshots.yml --ref fix/review171 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/review171.txt
+
+cmd weather clear
+cmd time set noon
+look 0 -20
+guiscale 3
+sleep 8
+set placement FLOATING
+set syncOffsetMs 250
+bind skylyrics.lyrics_late period
+bind skylyrics.lyrics_early comma
+sleep 1
+
+shot review171-en-bar
+
+lang en_pt
+sleep 15
+shot review171-pirate-bar
+gui 0
+sleep 2
+shot review171-pirate-lyrics
+search Timing
+sleep 2
+shot review171-pirate-timing
+close
+sleep 1
+hold skylyrics.lyrics_late 60
+sleep 0.6
+shot review171-pirate-key
+hold skylyrics.lyrics_early 60
+sleep 3
+
+lang lol_us
+sleep 15
+shot review171-lolcat-bar
+
+lang tlh_aa
+sleep 15
+shot review171-klingon-bar
+
+lang de_de
+sleep 15
+shot review171-de-bar
+gui 0
+sleep 2
+shot review171-de-lyrics
+close
+sleep 1
+
+lang en_us
+sleep 15
