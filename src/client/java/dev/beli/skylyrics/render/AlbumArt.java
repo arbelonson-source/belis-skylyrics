@@ -140,6 +140,8 @@ public final class AlbumArt {
 	private volatile long songStartGen = 0;
 	private @Nullable DynamicTexture texture;
 	private String loadedUrl = "";
+	/** A {@link #loadedUrl} no cover address is, not even a song's missing one (""): whatever comes next is loaded. */
+	private static final String RELOAD = "\0";
 	private String loadedSong = "";
 	/** Closes a cover that arrived for a song we already left; replaced in tests to see it happen. */
 	java.util.function.Consumer<NativeImage> closeStale = NativeImage::close;
@@ -214,7 +216,10 @@ public final class AlbumArt {
 			if (generation.get() == gen && parked == null) {
 				parked = track;
 				anyParked = true;
-				loadedUrl = ""; // so the same address is loaded again, not taken as already there
+				// So the same address is loaded again, not taken as already there. Not "": that is a song with no cover,
+				// and the song's first cover may still be on show (this was its corrected one), so a coverless song next
+				// must drop it, not take it as its own
+				loadedUrl = RELOAD;
 			}
 		}
 	}

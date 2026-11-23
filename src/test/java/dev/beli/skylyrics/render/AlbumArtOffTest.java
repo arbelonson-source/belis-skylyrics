@@ -191,6 +191,37 @@ class AlbumArtOffTest {
 		assertTrue(art.hasTexture(), "T's cover is on show again");
 	}
 
+	/**
+	 * A song's corrected cover (another address for the same song: a player sending a bigger picture a moment later) that
+	 * couldn't download yet, and whose retry came while Lyrics were off: the song's first cover stays on show meanwhile.
+	 * A song with no cover at all (a file on the PC) that starts then must not keep it, nor its colour, once Lyrics are on.
+	 */
+	@Test
+	void aSongWithNoCoverAfterACorrectedCoverWaitedForLyricsShowsNoCover() {
+		on.set(true);
+		AlbumArt art = art();
+		art.fetcher = url -> {
+			fetched.add(url);
+			if (url.endsWith("-large.jpg")) {
+				throw new java.net.ConnectException("offline");
+			}
+			return red();
+		};
+		shown(art, song("T", "https://img.example/a.jpg"));
+		art.load(song("T", "https://img.example/a-large.jpg"));
+		assertEquals(1, scheduled.size(), "the corrected cover waits for a retry");
+		assertTrue(art.hasTexture(), "T's first cover stays on show meanwhile");
+		on.set(false);
+		scheduled.get(0).run(); // finds Lyrics off: T waits for them
+		art.load(song("U", ""));
+		assertFalse(art.hasTexture(), "U has no cover: T's is not shown beside U's title");
+		assertEquals(AlbumArt.FALLBACK_COLOR, art.color(), "nor T's colour");
+		on.set(true);
+		art.wake();
+		assertFalse(art.hasTexture(), "nor once Lyrics are on");
+		assertEquals(AlbumArt.FALLBACK_COLOR, art.color());
+	}
+
 	@Test
 	void aRetryDueWhileLyricsAreOffWaitsForThemToBeOn() {
 		on.set(true);
