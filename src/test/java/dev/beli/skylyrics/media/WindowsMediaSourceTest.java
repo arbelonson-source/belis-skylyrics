@@ -73,6 +73,15 @@ class WindowsMediaSourceTest {
 	}
 
 	@Test
+	void playersWithTheirOwnSpellingKeepIt() {
+		assertEquals("iTunes", WindowsMediaSource.prettyName(WindowsMediaSource.playerKey("iTunes.exe")));
+		assertEquals("iTunes", WindowsMediaSource.prettyName(WindowsMediaSource.playerKey("C:\\Program Files\\iTunes\\iTunes.exe")));
+		assertEquals("iTunes", WindowsMediaSource.prettyName(WindowsMediaSource.playerKey("AppleInc.iTunes_nzyj5cx40ttqa!iTunes")));
+		assertEquals("foobar2000", WindowsMediaSource.prettyName(WindowsMediaSource.playerKey("foobar2000.exe")));
+		assertEquals("foobar2000", WindowsMediaSource.prettyName(WindowsMediaSource.playerKey("C:\\Program Files\\foobar2000\\foobar2000.exe")));
+	}
+
+	@Test
 	void pathsAreQuotedForPowerShell() {
 		assertEquals("'C:\\Users\\O''Brien\\[modpack] 1.21'", WindowsMediaSource.quote(Path.of("C:\\Users\\O'Brien\\[modpack] 1.21")));
 		// PowerShell ends a single-quoted string at curly quotes too, so a folder like "Beli’s Pack" needs them doubled

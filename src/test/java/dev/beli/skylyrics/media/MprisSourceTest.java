@@ -345,7 +345,7 @@ class MprisSourceTest {
 
 			@Override
 			public MprisSource.Reading read(String busName) {
-				return null; // what read() gives for a Stopped player
+				return null; // what read() gives for a player with no song data
 			}
 		});
 		try {
