@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.sun.management.ThreadMXBean;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.management.ManagementFactory;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -73,5 +76,27 @@ class FrameKeyGarbageTest {
 		long used = bytes(() -> NowPlayingHud.actionBarShowing(0, text));
 		System.out.println("actionBar idle bytes per 10000: " + used);
 		assertTrue(used < 100_000, "allocated " + used + " bytes for 10000 idle checks");
+	}
+
+	/**
+	 * The top bar's clock changes once a minute: a frame in between builds nothing, not even the time of day to see whether
+	 * the minute changed (it asked for one every frame, twice with debug lines pinned).
+	 */
+	@Test
+	void theClockBuildsNothingWhileTheMinuteLasts() throws Throwable {
+		NowPlayingHud hud = new NowPlayingHud(null, null, null);
+		MethodHandle clock = MethodHandles.privateLookupIn(NowPlayingHud.class, MethodHandles.lookup())
+				.findVirtual(NowPlayingHud.class, "clock", MethodType.methodType(String.class));
+		String[] shown = new String[1];
+		long used = bytes(() -> {
+			try {
+				shown[0] = (String) clock.invokeExact(hud);
+			} catch (Throwable e) {
+				throw new AssertionError(e);
+			}
+		});
+		System.out.println("clock bytes per 10000 frames: " + used);
+		assertFalse(shown[0].isEmpty());
+		assertTrue(used < 100_000, "allocated " + used + " bytes for 10000 frames of the clock");
 	}
 }

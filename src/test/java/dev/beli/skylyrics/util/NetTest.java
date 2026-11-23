@@ -7,13 +7,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.sun.net.httpserver.HttpServer;
@@ -196,5 +204,54 @@ class NetTest {
 	void textOverTheCapIsAnError() throws Exception {
 		assertEquals("abc", Net.readText(new java.io.ByteArrayInputStream("abc".getBytes()), 3));
 		assertThrows(IOException.class, () -> Net.readText(new java.io.ByteArrayInputStream("abcd".getBytes()), 3));
+	}
+
+	/**
+	 * An answer that came in whole is not kept until its time limit would have run out: Spotify is asked every second
+	 * while a song plays, with 20 s for each answer, and each finished one stayed in memory for those 20 s.
+	 */
+	@Test
+	void anAnswerThatCameInIsNotKeptForItsTimeLimit() throws Exception {
+		HttpResponse.BodyHandler<String> within = Net.bodyWithin(HttpResponse.BodyHandlers.ofString(), Duration.ofMinutes(10));
+		WeakReference<String> answer = answer(within);
+		for (int i = 0; i < 200 && answer.get() != null; i++) {
+			System.gc();
+			Thread.sleep(25);
+		}
+		assertTrue(answer.get() == null, "the answer is kept until its time limit runs out");
+	}
+
+	/** An answer that comes in whole through {@code handler}, as the game's HTTP client hands it over; only the answer is kept, weakly. */
+	private static WeakReference<String> answer(HttpResponse.BodyHandler<String> handler) throws Exception {
+		HttpResponse.BodySubscriber<String> body = handler.apply(new HttpResponse.ResponseInfo() {
+			@Override
+			public int statusCode() {
+				return 200;
+			}
+
+			@Override
+			public HttpHeaders headers() {
+				return HttpHeaders.of(Map.of(), (name, value) -> true);
+			}
+
+			@Override
+			public HttpClient.Version version() {
+				return HttpClient.Version.HTTP_1_1;
+			}
+		});
+		body.onSubscribe(new Flow.Subscription() {
+			@Override
+			public void request(long n) {
+			}
+
+			@Override
+			public void cancel() {
+			}
+		});
+		body.onNext(List.of(ByteBuffer.wrap("{\"is_playing\":true}".repeat(2000).getBytes(StandardCharsets.UTF_8))));
+		body.onComplete();
+		String text = body.getBody().toCompletableFuture().get(10, TimeUnit.SECONDS);
+		assertEquals(38_000, text.length());
+		return new WeakReference<>(text);
 	}
 }
