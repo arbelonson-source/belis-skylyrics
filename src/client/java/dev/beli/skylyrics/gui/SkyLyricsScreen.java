@@ -1662,7 +1662,7 @@ public final class SkyLyricsScreen extends Screen {
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
 		announcement = null;
 		picks.scrolledAway();
-		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
+		if (!rescue.pressed(event.button())) {
 			return true;
 		}
 		double mx = event.x();

@@ -1552,7 +1552,7 @@ public final class LibraryScreen extends Screen {
 		sayResults = false;
 		stop = -1;
 		footer = false;
-		if (event.button() == ClickRescue.left() && !rescue.pressed()) {
+		if (!rescue.pressed(event.button())) {
 			return true;
 		}
 		double mx = event.x();
