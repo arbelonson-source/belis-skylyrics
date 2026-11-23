@@ -1,9 +1,12 @@
 package dev.beli.skylyrics.update;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,6 +18,7 @@ import java.util.function.UnaryOperator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +48,11 @@ class UpdaterNoticeLanguageTest {
 		memory = dir.resolve("cache").resolve("update-refused.json");
 	}
 
+	@AfterEach
+	void noNoticeLeft() throws Exception {
+		notice().set(null, null);
+	}
+
 	private static UnaryOperator<String> running() {
 		return id -> Map.of("minecraft", "1.21.11", "fabric-api", "0.139.0", "fabricloader", "0.17.2", "java", "21").get(id);
 	}
@@ -67,6 +76,12 @@ class UpdaterNoticeLanguageTest {
 		return Updater.update(Updates.INSTALL, net, old, new UpdateCheck.Release("0.2.0", List.of(asset)), asset, memory, running());
 	}
 
+	private static Field notice() throws NoSuchFieldException {
+		Field f = Updater.class.getDeclaredField("notice");
+		f.setAccessible(true);
+		return f;
+	}
+
 	@Test
 	void whatTheUpdateNeedsIsInTheLanguageThePopUpIsShownIn() throws Exception {
 		// The check finishes while the game still speaks English (its language before the loading screen ends)
@@ -86,5 +101,19 @@ class UpdaterNoticeLanguageTest {
 		Updater.Notice n = check(net); // a later start, after switching the game to English
 		assertEquals(0, net.requests.size(), "still remembered: nothing downloaded again");
 		assertEquals("Fabric API 0.140.0 or newer", n.needs());
+	}
+
+	@Test
+	void aNoticeThatArrivesDuringTheLoadingScreenWaitsForThePlayersLanguage() throws Exception {
+		Updater.start(Updates.OFF, "0.1.0+1.21.11"); // the mod starts while the game still has its start-up language
+		notice().set(null, new Updater.Notice("0.2.0", false)); // the check in the background is done
+		assertNull(Updater.takeNotice(), "not told yet: every word of it would be English for a German player");
+		assertNull(Updater.takeNotice());
+		try (InLanguage de = InLanguage.of("de_de")) { // the loading screen is over: the player's language is in
+			Updater.Notice n = Updater.takeNotice();
+			assertNotNull(n, "told now");
+			assertEquals("0.2.0", n.version());
+			assertNull(Updater.takeNotice(), "and only once");
+		}
 	}
 }

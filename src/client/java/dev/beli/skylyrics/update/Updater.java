@@ -28,6 +28,7 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Updates;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
+import net.minecraft.locale.Language;
 
 /** Looks for a newer release once at start and, if asked to, swaps the mod's jar for it. Never blocks the game. */
 public final class Updater {
@@ -74,18 +75,30 @@ public final class Updater {
 	}
 
 	private static volatile Notice notice;
+	/**
+	 * The game's language when the mod started, or null when the player's own was already loaded then. The mod starts
+	 * before the loading screen, which loads the player's language only at its end, while the update check is often done
+	 * in a second or two: until the language changes, a notice is kept back, or all its words would be English.
+	 */
+	private static volatile Language startLanguage;
 
 	private Updater() {
 	}
 
-	/** The message to show, once. Null when there is nothing to say. */
+	/** The message to show, once. Null when there is nothing to say, or not yet: while the player's language is still loading. */
 	public static Notice takeNotice() {
+		Language start = startLanguage;
+		if (start != null && Language.getInstance() == start) {
+			return null;
+		}
 		Notice n = notice;
 		notice = null;
 		return n;
 	}
 
 	public static void start(Updates mode, String runningVersion) {
+		Language now = Language.getInstance();
+		startLanguage = now instanceof net.minecraft.client.resources.language.ClientLanguage ? null : now;
 		if (mode == Updates.OFF) {
 			return;
 		}

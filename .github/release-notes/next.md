@@ -280,7 +280,7 @@
 - **Nothing looked up while Lyrics is off.** With **Lyrics** turned off, the mod no longer sends each new song's title, artist, album and length to the lyrics sites (LRCLIB, and NetEase as the backup), and no longer downloads its album cover; the **Music** tab's Lyrics row says "Lyrics off" meanwhile. Turning **Lyrics** back on looks up the song playing then.
 - **Your name in the game log.** When the Spotify sign-in file can't be read, saved or removed (for example while Windows, an antivirus or OneDrive holds it), or the Windows music reader can't be set up in the game folder, the line in the game log no longer shows your home folder, which on Windows carries your user name.
 - **The search key with the Narrator on a Mac.** On a Mac, the Narrator's hint in the settings now says Cmd+F opens the search, instead of Ctrl+F, which does nothing there.
-- **Update pop-up in your language.** When a new SkyLyrics needs a newer Fabric API (or Minecraft, Fabric Loader or Java) than you have, the pop-up and the chat line no longer show the "0.140.0 or newer" part in English (or in the language you had when the update was first checked) while the rest is in your language.
+- **Update pop-up in your language.** The pop-up and chat line saying a new SkyLyrics is out, downloaded, or needs something newer could be all in English when the game is set to another language: the update check is often done in a second or two, before the loading screen has loaded your language. They now wait for the loading screen to end. And when a new SkyLyrics needs a newer Fabric API (or Minecraft, Fabric Loader or Java) than you have, the "0.140.0 or newer" part is no longer left in English, or in the language you had when the update was first checked.
 
 ### Faster
 
