@@ -953,6 +953,11 @@ public final class SpotifyWebSource implements MediaSource {
 	private final java.util.concurrent.atomic.AtomicBoolean writing = new java.util.concurrent.atomic.AtomicBoolean();
 	/** The tests' way to hold a save, or a sign-out's removal, on its way to the disk (a slow or network drive). */
 	volatile Runnable beforeSave = () -> { };
+	/**
+	 * Whether a save is forced onto the disk before it replaces the sign-in ({@link dev.beli.skylyrics.util.SafeFile#writeDurably}).
+	 * Always in the game; only the fuzz tests turn it off, as their hundreds of saves are about Spotify's answers.
+	 */
+	volatile boolean forceSaves = true;
 
 	/** Call with the main lock held. */
 	private String snapshotJson() {
@@ -1021,7 +1026,7 @@ public final class SpotifyWebSource implements MediaSource {
 				if (Files.getFileAttributeView(tmp, java.nio.file.attribute.PosixFileAttributeView.class) == null) {
 					dev.beli.skylyrics.util.PrivateFile.restrictToOwner(tmp);
 				}
-				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, text);
+				dev.beli.skylyrics.util.SafeFile.writeDurably(tmp, text, forceSaves);
 				dev.beli.skylyrics.util.SafeFile.replace(tmp, target);
 				done = true;
 			} finally {

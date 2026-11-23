@@ -149,6 +149,15 @@ public final class SafeFile {
 	 * survive a crash or power cut as a zero-length file. For files whose loss would hurt (settings, sign-in); not for caches.
 	 */
 	public static void writeDurably(Path tmp, String text) throws IOException {
+		writeDurably(tmp, text, true);
+	}
+
+	/**
+	 * As {@link #writeDurably(Path, String)}, forced to the disk only when {@code force} is true. Always true in the game;
+	 * false is for tests that save hundreds of times to check something else, where a slow or busy disk (a shared Windows
+	 * build machine) made each forced write take long enough to run the test out of time.
+	 */
+	public static void writeDurably(Path tmp, String text, boolean force) throws IOException {
 		byte[] bytes = text.getBytes(java.nio.charset.StandardCharsets.UTF_8);
 		try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(tmp,
 				java.nio.file.StandardOpenOption.WRITE, java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -156,7 +165,9 @@ public final class SafeFile {
 			while (buffer.hasRemaining()) {
 				channel.write(buffer);
 			}
-			channel.force(true);
+			if (force) {
+				channel.force(true);
+			}
 		}
 	}
 
