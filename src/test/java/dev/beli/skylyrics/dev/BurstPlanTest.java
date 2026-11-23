@@ -53,6 +53,22 @@ class BurstPlanTest {
 	}
 
 	@Test
+	void filesAreNumberedWithPlainDigitsInEveryLanguage() {
+		java.util.Locale was = java.util.Locale.getDefault();
+		java.util.Locale wasFormat = java.util.Locale.getDefault(java.util.Locale.Category.FORMAT);
+		java.util.Locale wasDisplay = java.util.Locale.getDefault(java.util.Locale.Category.DISPLAY);
+		try {
+			java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar-EG-u-nu-arab"));
+			assertEquals("flash_07", BurstPlan.fileName("flash", 7));
+		} finally {
+			// setDefault(Locale) set the formatting and display languages too: each goes back as it was, for the tests after
+			java.util.Locale.setDefault(was);
+			java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, wasFormat);
+			java.util.Locale.setDefault(java.util.Locale.Category.DISPLAY, wasDisplay);
+		}
+	}
+
+	@Test
 	void aNewLineIsASharpDropOfTheClock() {
 		assertTrue(BurstPlan.lineChanged(3.2f, 0.02f));
 		assertFalse(BurstPlan.lineChanged(3.2f, 3.25f), "clock still running");

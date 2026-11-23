@@ -31,6 +31,11 @@ class WindowsMediaSourceTest {
 	 * Minecraft version at once, so four start together; the game uses 20 s and 4 s.
 	 */
 	private static final long START_MS = 150_000, REPLY_MS = 15_000;
+	/**
+	 * The wait for a question a stand-in helper never answers. However long it is, it ends the same way, without an
+	 * answer, so the tests that count missed answers keep it short.
+	 */
+	private static final long UNANSWERED_MS = 50;
 
 	@TempDir
 	Path dir;
@@ -244,7 +249,7 @@ class WindowsMediaSourceTest {
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
 			starts[0]++;
 			return List.of("/bin/sh", "-c", body);
-		}, START_MS, 300);
+		}, START_MS, UNANSWERED_MS);
 		try {
 			assertThrows(IOException.class, source::poll);
 			assertThrows(IOException.class, source::poll); // two misses on the first helper
@@ -271,7 +276,7 @@ class WindowsMediaSourceTest {
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
 			starts[0]++;
 			return List.of("/bin/sh", "-c", body);
-		}, START_MS, 300);
+		}, START_MS, UNANSWERED_MS);
 		try {
 			for (int i = 0; i < 3; i++) {
 				assertThrows(IOException.class, source::poll); // three questions without an answer: stuck, stopped
@@ -305,16 +310,18 @@ class WindowsMediaSourceTest {
 				+ "printf '{\"seq\":%s,\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\",\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}\\n' \"$n\"; "
 				+ "while read l; do :; done";
 		// The answers it gives must come within the wait, and on a busy test machine 300 ms was close for a shell to
-		// answer; the questions it never answers are over any wait
+		// answer; the questions it never answers end the same way after any wait, so only those get a short one
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
 			starts[0]++;
 			return List.of("/bin/sh", "-c", body);
 		}, START_MS, 3_000);
 		try {
 			assertEquals("Song", source.poll().track().title());
+			source.replyTimeoutMs = UNANSWERED_MS;
 			for (int i = 0; i < 3; i++) {
 				assertThrows(IOException.class, source::poll);
 			}
+			source.replyTimeoutMs = 3_000;
 			assertEquals("Song", source.poll().track().title(), "a fresh helper, started straight away");
 			assertEquals(2, starts[0]);
 			assertEquals(0, source.failuresInARow());
