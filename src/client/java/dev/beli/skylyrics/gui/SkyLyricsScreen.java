@@ -26,6 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
 
+import dev.beli.skylyrics.Formats;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
@@ -134,7 +135,7 @@ public final class SkyLyricsScreen extends Screen {
 			return String.valueOf(Math.round(LyricsRenderer.skyDistance((float) value, renderChunks, reach)));
 		}
 		// Past 64 a slider step moves under 0.1 block, so it needs the second decimal to read differently
-		return String.format(Locale.ROOT, value > 64 ? "%.2f" : "%.1f", LyricsRenderer.floatingDistance((float) value));
+		return Formats.number(value > 64 ? "%.2f" : "%.1f", LyricsRenderer.floatingDistance((float) value));
 	}
 
 	/** {@link LyricsRenderer#skyReach} for the lyrics as they are set now and the game's view and window. */
@@ -366,15 +367,15 @@ public final class SkyLyricsScreen extends Screen {
 				.when(() -> cfg.layout != Layout.WORLD);
 		// World words float at a mix of distances, so their setting is times the usual instead of blocks
 		Row worldDistance = new Slider(Tr.t("Distance"), Tr.t("How far away they float"), 0.5, 2, 0.05,
-				() -> cfg.worldDistance, v -> cfg.worldDistance = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v))
+				() -> cfg.worldDistance, v -> cfg.worldDistance = (float) v, SkyLyricsScreen::times)
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row size = new Slider(Tr.t("Size"), null, 0.3, 3, 0.05,
-				() -> cfg.size, v -> cfg.size = (float) v, v -> String.format(Locale.ROOT, "%.2f×", v));
+				() -> cfg.size, v -> cfg.size = (float) v, SkyLyricsScreen::times);
 		Row worldWords = new Slider(Tr.t("Words at once"), Tr.t("How many words float around you"), 1, 10, 1,
 				() -> cfg.worldWords, v -> cfg.worldWords = (int) Math.round(v), v -> String.valueOf(Math.round(v)))
 				.when(() -> cfg.layout == Layout.WORLD && !(cfg.worldFlow && cfg.worldHold));
 		Row linger = new Slider(Tr.t("Linger"), Tr.t("How slowly sung words fade"), 0.8, 6, 0.1,
-				() -> cfg.worldFade, v -> cfg.worldFade = (float) v, v -> String.format(Locale.ROOT, "%.1f s", v))
+				() -> cfg.worldFade, v -> cfg.worldFade = (float) v, v -> Formats.number("%.1f s", v))
 				.when(() -> cfg.layout == Layout.WORLD);
 		Row tilt = new Slider(Tr.t("Tilt"), Tr.t("How much the words turn and lean, 0 faces you"), 0, 2, 0.05,
 				() -> cfg.worldTilt, v -> cfg.worldTilt = (float) v, v -> Math.round(v * 100) + "%")
@@ -726,8 +727,14 @@ public final class SkyLyricsScreen extends Screen {
 		return mod.tracker();
 	}
 
+	/** A timing as the Timing sliders and the timing keys' message show it: "+0.25 s", "-1.50 s" (with a comma in German). */
 	public static String seconds(double ms) {
-		return Math.abs(ms) < 5 ? "0 s" : String.format(Locale.ROOT, "%+.2f s", ms / 1000);
+		return Math.abs(ms) < 5 ? "0 s" : Formats.number("%+.2f s", ms / 1000);
+	}
+
+	/** A Size or World distance setting: "1.25×" (with a comma in German). */
+	static String times(double value) {
+		return Formats.number("%.2f×", value);
 	}
 
 	private List<Card> displayTab() {
