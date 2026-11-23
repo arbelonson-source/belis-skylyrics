@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.sun.management.ThreadMXBean;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -105,5 +108,44 @@ class GuardTest {
 			}
 		});
 		assertFalse(loud.attempt("x", GuardTest::boom));
+	}
+
+	@Test
+	void aBodyGivenTwoValuesGetsThemAndKeepsTheSameRules() {
+		// The sky's and the hat's shapes the game draws later run this way: logged once, then muted for five seconds
+		List<String> got = new ArrayList<>();
+		BiConsumer<String, Integer> body = (s, n) -> got.add(s + n);
+		BiConsumer<String, Integer> broken = (s, n) -> boom();
+		assertTrue(guard.attempt("sky", body, "a", 1));
+		assertFalse(guard.attempt("sky", broken, "b", 2));
+		now.addAndGet(Guard.MUTE_NANOS - 1);
+		assertFalse(guard.attempt("sky", body, "c", 3));
+		assertEquals(List.of("a1"), got, "still muted");
+		now.addAndGet(1);
+		assertFalse(guard.attempt("sky", broken, "d", 4));
+		now.addAndGet(Guard.MUTE_NANOS);
+		assertTrue(guard.attempt("sky", body, "e", 5));
+		assertEquals(List.of("a1", "e5"), got);
+		assertEquals(List.of("first sky boom"), log, "only the first error in full");
+	}
+
+	@Test
+	void aBodyGivenTwoValuesMakesNoObjectPerCall() {
+		// A body kept from frame to frame, as the sky keeps its layers: running it must not make anything each frame
+		int[] sum = {0};
+		BiConsumer<int[], Integer> body = (s, n) -> s[0] += n;
+		Integer one = 1;
+		ThreadMXBean mx = (ThreadMXBean) ManagementFactory.getThreadMXBean();
+		long id = Thread.currentThread().getId();
+		for (int i = 0; i < 200_000; i++) {
+			guard.attempt("frame", body, sum, one);
+		}
+		long before = mx.getThreadAllocatedBytes(id);
+		for (int i = 0; i < 10_000; i++) {
+			guard.attempt("frame", body, sum, one);
+		}
+		long used = mx.getThreadAllocatedBytes(id) - before;
+		assertEquals(210_000, sum[0]);
+		assertTrue(used < 50_000, "allocated " + used + " bytes for 10000 calls");
 	}
 }
