@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +27,14 @@ class StoppingSaveTest {
 
 	private Consumer<Runnable> oldWriter;
 	private Consumer<Runnable> oldMain;
+	/** Until this opens the disk doesn't answer, so a save can't be written however slow this machine is. */
+	private final CountDownLatch diskAnswers = new CountDownLatch(1);
+
+	/**
+	 * How long the game is given to wait for the writer here: far over the slow disk's moment, so a busy test machine can't
+	 * run out of it (the game's own 2 s are not what these tests are about).
+	 */
+	private static final long WAIT_MS = 60_000;
 
 	@BeforeEach
 	void slowDisk() {
@@ -35,6 +44,7 @@ class StoppingSaveTest {
 		SkyLyricsConfig.writerExec = task -> {
 			Thread t = new Thread(() -> {
 				try {
+					diskAnswers.await();
 					Thread.sleep(300);
 				} catch (InterruptedException e) {
 					return;
@@ -57,7 +67,8 @@ class StoppingSaveTest {
 	void aSettingSavedAfterTheGameStartedStoppingIsOnDiskBeforeTheGameGoesOn() throws Exception {
 		Path file = dir.resolve("skylyrics.json");
 		SkyLyricsConfig c = SkyLyricsConfig.load(file, SafeFile::readText);
-		assertTrue(c.close(5_000)); // the stopping event: nothing was waiting yet
+		diskAnswers.countDown(); // slowly
+		assertTrue(c.close(WAIT_MS)); // the stopping event: nothing was waiting yet
 		c.glow = 0.3f; // changed in the settings screen, which Minecraft closes next
 		c.saveLater(file);
 		// The game exits right after closing the screen
@@ -72,7 +83,8 @@ class StoppingSaveTest {
 		c.glow = 0.3f;
 		c.saveLater(file);
 		assertFalse(Files.exists(file), "a save while playing must not wait for the disk");
-		assertTrue(c.close(5_000));
+		diskAnswers.countDown(); // slowly
+		assertTrue(c.close(WAIT_MS));
 		assertEquals(0.3f, SkyLyricsConfig.load(file, SafeFile::readText).glow, 1e-6f);
 	}
 }

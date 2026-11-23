@@ -53,7 +53,7 @@ class LyricsOffTest {
 	}
 
 	private static void waitFor(java.util.function.BooleanSupplier done, String what) throws InterruptedException {
-		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
 		while (!done.getAsBoolean()) {
 			assertTrue(System.nanoTime() < until, "timed out waiting for " + what);
 			Thread.sleep(5);
@@ -96,10 +96,11 @@ class LyricsOffTest {
 		waitFor(() -> asked.size() >= 2, "a retry");
 		on.set(false);
 		int before = asked.size();
-		Thread.sleep(400); // retries every 30 ms while on
-		assertTrue(asked.size() <= before + 1, "at most the try already on its way, then none: " + asked.size() + " after " + before);
+		// The next try finds Lyrics off and waits for them (IDLE), instead of a guess at how long that takes here
+		waitFor(() -> service.state() == LyricsService.State.IDLE, "the retries to stop");
 		int parked = asked.size();
-		Thread.sleep(200);
+		assertTrue(parked <= before + 1, "at most the try already on its way, then none: " + parked + " after " + before);
+		Thread.sleep(200); // retries every 30 ms while on
 		assertEquals(parked, asked.size(), "no more tries while Lyrics are off");
 		failures.set(0);
 		on.set(true);

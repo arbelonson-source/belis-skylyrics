@@ -635,11 +635,12 @@ class SpotifyWebSourceTest {
 		FakeHttp http = new FakeHttp(200);
 		http.tokenBadBody = "<html>captive portal</html>";
 		SpotifyWebSource source = signedIn(dir, http);
+		long asked = System.nanoTime();
 		IOException e = assertThrows(IOException.class, source::poll);
 		assertEquals("Spotify didn't answer, try again", e.getMessage());
 		assertSame(e, source.failing());
-		// The failure counted: the next poll is held back
-		assertFalse(source.pollDue(System.nanoTime() + SEC / 2, true));
+		// The failure counted: the next poll is held back (from before the ask, so lost seconds can't make it due)
+		assertFalse(source.pollDue(asked + SEC / 2, true));
 	}
 
 	@Test
@@ -692,12 +693,15 @@ class SpotifyWebSourceTest {
 		long now = System.nanoTime();
 		assertTrue(source.pollDue(now + 3 * SEC / 2, true), "a second later, not 4");
 		// the next few empty answers keep the quick pace, then the idle pace takes over
+		long asked = 0;
 		for (int i = 0; i < 3; i++) {
 			assertTrue(source.pollDue(System.nanoTime() + 3 * SEC / 2, true), "ask " + i);
 			source.settle(System.nanoTime() - 10 * SEC);
+			asked = System.nanoTime();
 			assertTrue(source.poll().track().isNone());
 		}
-		assertFalse(source.pollDue(System.nanoTime() + 3 * SEC / 2, true));
+		// from before the last ask, so a slow machine's lost seconds can't make it due
+		assertFalse(source.pollDue(asked + 3 * SEC / 2, true));
 		assertTrue(source.pollDue(System.nanoTime() + 5 * SEC, true));
 	}
 

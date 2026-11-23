@@ -77,14 +77,16 @@ class SpotifyOddNumbersTest {
 			SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
 			SpotifyTokenCacheTest.Net net = new SpotifyTokenCacheTest.Net(odd);
 			source.useHttp(net);
+			long asked = 0; // when the last poll began: "not due yet" is checked against it, so lost seconds can't make it due
 			for (int i = 0; i < 2; i++) {
 				source.settle(System.nanoTime() - 60_000_000_000L);
+				asked = System.nanoTime();
 				IOException e = assertThrows(IOException.class, source::poll, "expires_in " + odd);
 				assertEquals("Couldn't read your music player", MediaTracker.failureText(e), "expires_in " + odd);
 			}
 			assertNotNull(source.failing(), "expires_in " + odd);
 			// Two failures in a row wait 8 s, longer than the 4 s an idle poll waits
-			assertFalse(source.pollDue(System.nanoTime() + 5_000_000_000L, true), "expires_in " + odd);
+			assertFalse(source.pollDue(asked + 5_000_000_000L, true), "expires_in " + odd);
 			assertEquals(2, net.tokenCalls, "expires_in " + odd);
 		}
 	}

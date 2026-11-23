@@ -109,14 +109,23 @@ class SpotifyLibraryQueueTest {
 
 	private static final LibraryItem SONG = new LibraryItem("a", "spotify:track:a", "A", "", "", "", 0, "");
 
+	/**
+	 * Behind the searches Play would wait their 30 s Retry-After twice: clearly longer than the 20 s it is given, which in
+	 * turn is far more than starting a song takes on any test machine.
+	 */
 	@Test
 	void playDoesNotWaitBehindARateLimitedSearch(@TempDir Path dir) throws Exception {
-		Net net = new Net(what -> what.startsWith("GET") ? new Reply(429, 5, "") : new Reply(204, -1, ""));
+		Net net = new Net(what -> what.startsWith("GET") ? new Reply(429, 30, "") : new Reply(204, -1, ""));
 		SpotifyLibrary library = new SpotifyLibrary(signedIn(dir, net));
-		library.search("one", 0); // sleeps out its 5 s Retry-After on the search thread
-		library.search("two", 0);
-		CompletableFuture<String> play = library.play(SONG, List.of());
-		assertEquals("", play.get(2, TimeUnit.SECONDS));
+		CompletableFuture<?> one = library.search("one", 0); // sleeps out its Retry-After on the search thread
+		CompletableFuture<?> two = library.search("two", 0);
+		try {
+			CompletableFuture<String> play = library.play(SONG, List.of());
+			assertEquals("", play.get(20, TimeUnit.SECONDS));
+		} finally {
+			one.cancel(true); // a dropped search's wait ends at once
+			two.cancel(true);
+		}
 	}
 
 	@Test
@@ -141,7 +150,7 @@ class SpotifyLibraryQueueTest {
 		CompletableFuture<?> kept = library.search("third", 0);
 		dropped.cancel(true);
 		release.countDown();
-		kept.get(5, TimeUnit.SECONDS);
+		kept.get(20, TimeUnit.SECONDS);
 		assertTrue(net.requests.stream().anyMatch(r -> r.contains("q=third")));
 		assertFalse(net.requests.stream().anyMatch(r -> r.contains("q=second")), net.requests.toString());
 	}
@@ -154,7 +163,7 @@ class SpotifyLibraryQueueTest {
 			opened.set(true);
 			return true;
 		});
-		assertEquals("", library.play(SONG, List.of()).get(5, TimeUnit.SECONDS));
+		assertEquals("", library.play(SONG, List.of()).get(20, TimeUnit.SECONDS));
 		assertTrue(opened.get());
 	}
 }
