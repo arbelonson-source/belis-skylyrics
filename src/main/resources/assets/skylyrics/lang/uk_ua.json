@@ -562,5 +562,6 @@
   "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "У моді немає модуля читання музики для Windows. Завантажте SkyLyrics ще раз",
   "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify вимагає Premium на акаунті, який створив ваш застосунок Spotify",
   "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "Якщо Spotify показує INVALID_CLIENT, перевірте Client ID і чи вказано у вашому застосунку Redirect URI вище, точно як показано",
-  "skylyrics.ui.ctrl_f": "Ctrl+F"
+  "skylyrics.ui.ctrl_f": "Ctrl+F",
+  "skylyrics.ui.local_files_and_podcasts_don_t_show_here": "Локальні файли й подкасти тут не показуються"
 }

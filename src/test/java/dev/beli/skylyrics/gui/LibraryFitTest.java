@@ -103,6 +103,35 @@ class LibraryFitTest {
 	}
 
 	@Test
+	void whyAnOpenPlaylistShowsNothingShowsEveryWordInsideTheView() throws IOException {
+		Map<String, Map<String, String>> all = languages();
+		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> Math.max(0, width(Character.toString(cp))));
+		// A playlist opens from the Spotify list, which never has the sign-in strip above it
+		int middle = LibraryScreen.viewHeight(240, 0) / 2;
+		List<String> cut = new ArrayList<>();
+		int measured = 0;
+		for (int screenW : new int[] {SMALLEST, SMALL}) {
+			int room = LibraryScreen.errorRoom(LibraryScreen.viewWidth(LibraryScreen.panelW(screenW)));
+			for (String lang : all.keySet()) {
+				for (String text : List.of(shown(all, lang, "Local files and podcasts don't show here"), shown(all, lang, "This playlist is empty"))) {
+					if (width(text) < 0) {
+						continue;
+					}
+					measured++;
+					List<String> lines = LibraryScreen.errorLines(splitter, text, room);
+					String said = String.join("", lines).replaceAll("\\s", "");
+					boolean fits = lines.stream().allMatch(l -> width(l) <= room);
+					if (!said.equals(text.replaceAll("\\s", "")) || !fits || LibraryScreen.errorTop(middle, lines.size()) < 0) {
+						cut.add(screenW + " wide, " + lang + " \"" + String.join(" / ", lines) + "\" (" + width(text) + " for " + room + ")");
+					}
+				}
+			}
+		}
+		assertTrue(measured >= 30, "only " + measured + " texts measured");
+		assertTrue(cut.isEmpty(), cut.size() + " open playlist texts are cut short, like: " + cut.subList(0, Math.min(8, cut.size())));
+	}
+
+	@Test
 	void theSignInStripAboveTheSongsHeardLatelyShowsEveryWord() throws IOException {
 		Map<String, Map<String, String>> all = languages();
 		net.minecraft.client.StringSplitter splitter = new net.minecraft.client.StringSplitter((cp, style) -> Math.max(0, width(Character.toString(cp))));
