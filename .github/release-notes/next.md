@@ -305,6 +305,7 @@
 - **Album covers in odd picture formats.** An album cover is whatever picture your music app hands over (one inside a song file, a podcast's or a radio station's), and one in a picture format album covers don't come in is no longer opened: a small file of that kind could make the game set aside a great deal of memory at once, enough to stall or even crash it. Covers in the usual formats (JPEG, PNG, GIF and BMP) show as before.
 - **Album covers that took ages to load.** A specially made album cover picture can no longer keep your computer busy for minutes, or hours, while it loads, with no other covers loading meanwhile: it now takes no longer than an ordinary cover of its size.
 - **iTunes and foobar2000 on Windows.** Where SkyLyrics names the player (the Music tab's **Status** line, "Following …", and the bar for a song with no artist), these two are now spelled their own way, "iTunes" and "foobar2000", instead of "Itunes" and "Foobar2000".
+- **Rainbow colour on a computer that stays on.** The **Rainbow** colour and the Rainbow tile under **Themes** now flow smoothly however long the computer has been on since it was last restarted. Before, the colour changed in small jumps instead of every frame after a few days: after a month, five jumps a second on the lyrics and bigger, coarser ones on the tile.
 
 ### Faster
 

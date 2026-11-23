@@ -1,0 +1,36 @@
+# The Rainbow colour, fix/long189 (Minecraft 1.21.11, the workflow's usual 1280x720, GUI scale 3, the demo song). The
+# colour is now worked out from the clock's remainder in whole nanoseconds instead of from the clock as a float. The bug
+# only showed on a computer that had been on for days (System.nanoTime() counts from when it started), and a GitHub runner
+# has only been up a short while, so this is a check that nothing else changed: main and the branch look the same.
+# Run it, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/long189 -f version=1.21.11 -f script=.github/checks/long189.txt
+#   gh workflow run screenshots.yml --ref fix/long189 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/long189.txt
+#
+# What to look for (the same on both):
+# 1. long189-rainbow_00.._07: the Floating lyrics in Rainbow, half a second apart (3.5 s in all). The colour moves on
+#    a little from each frame to the next, the same way round, about a fifth of the way round the colours over the
+#    eight frames (a full turn takes 16 s). No frame jumps back or skips far ahead. Both runs start at another point of
+#    the turn, so compare how far it moves, not the colour itself.
+# 2. long189-themes: the Look tab searched for "Pick a look": the Rainbow tile's name shows a rainbow across its letters,
+#    each letter a little further round than the one before, as before; the other tiles as on main.
+# Not in a game here: a computer that has been on for days (the unit test RainbowCycleTest counts the colours a second
+# gets at 2 to 52 days).
+
+cmd weather clear
+cmd time set noon
+look 0 -20
+guiscale 3
+sleep 8
+set placement FLOATING
+set colorMode RAINBOW
+sleep 2
+burst long189-rainbow 8 500
+wait burst long189-rainbow wrote
+sleep 1
+
+gui 0
+search Pick a look
+sleep 2
+shot long189-themes
+close
+sleep 1

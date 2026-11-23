@@ -2499,11 +2499,14 @@ public final class LyricsRenderer {
 		return sunUp(sunHeight) * (1 - 0.5f * Mth.clamp(rainLevel, 0, 1));
 	}
 
+	/** How long the Rainbow colour takes to go round all the colours once. */
+	static final long RAINBOW_NS = 16_000_000_000L;
+
 	private void updateColor(SkyLyricsConfig cfg, float dt, long now, int line) {
 		int target = switch (cfg.colorMode) {
 			case ALBUM -> art.color();
 			case FIXED -> cfg.color;
-			case RAINBOW -> java.awt.Color.HSBtoRGB((now / 1e9f / 16f) % 1f, 0.55f, 1f) & 0xFFFFFF;
+			case RAINBOW -> java.awt.Color.HSBtoRGB(SkyClock.cycle(now, RAINBOW_NS), 0.55f, 1f) & 0xFFFFFF;
 			case TIME -> timeOfDay(sunlight);
 			case EACH_LINE -> lineColor(line);
 		};
