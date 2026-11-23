@@ -293,9 +293,10 @@ public final class LyricsService {
 	/** A lyrics site busy or down, too many requests, a timeout or no network: worth asking again soon. */
 	static boolean temporary(Exception e) {
 		if (e instanceof LrclibClient.StatusException s) {
-			// 3xx: a hotspot login page redirecting an https call; 403: a proxy or the site pushing back
+			// 3xx: a hotspot login page redirecting an https call; 403: a proxy or the site pushing back; 407: a work or
+			// school proxy that wants a password (Java hands its answer back as it is), which says nothing about the song
 			int status = s.status();
-			return status / 100 == 3 || status == 403 || status == 408 || status == 429 || status >= 500;
+			return status / 100 == 3 || status == 403 || status == 407 || status == 408 || status == 429 || status >= 500;
 		}
 		return e instanceof IOException || e instanceof JsonParseException;
 	}

@@ -73,6 +73,10 @@ public final class SpotifyWebSource implements MediaSource {
 	static final long REQUEST_DEADLINE_NS = 10_000_000_000L;
 	/** How long a connection may stay silent before it is dropped. */
 	static final int SOCKET_TIMEOUT_MS = 5000;
+	/** The most an answer may take to come in once its headers are here, like the lyrics sites' and the covers'. */
+	static final Duration BODY_LIMIT = Duration.ofSeconds(20);
+	/** {@link #BODY_LIMIT}; a seam for tests. */
+	Duration bodyLimit = BODY_LIMIT;
 	private static final int MAX_CONNECTIONS = 8;
 	/** Asked for the access token a little early, so it never runs out halfway through a request. */
 	private static final long EARLY_NS = 60_000_000_000L;
@@ -1146,7 +1150,9 @@ public final class SpotifyWebSource implements MediaSource {
 	/** Sends one request to Spotify; when no answer comes back at all, the failure says so in words (see {@link Unreachable}). */
 	private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
 		try {
-			return http().send(request, HttpResponse.BodyHandlers.ofString());
+			// The request's own time limit ends at the headers: an answer that stops half way (Wi-Fi dropped, a stalled proxy)
+			// would hold this thread, and with it every song change and button, until the server gave up, or for ever
+			return http().send(request, dev.beli.skylyrics.util.Net.bodyWithin(HttpResponse.BodyHandlers.ofString(), bodyLimit));
 		} catch (IOException e) {
 			throw new Unreachable(e);
 		}

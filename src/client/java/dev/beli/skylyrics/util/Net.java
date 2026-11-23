@@ -197,6 +197,70 @@ public final class Net {
 		return in;
 	}
 
+	/**
+	 * The handler's body, but one that hasn't all come in {@code limit} after the headers fails the request (an
+	 * {@link java.net.http.HttpTimeoutException}) and drops the connection. A request's own time limit ends when its headers
+	 * are in, so for a body read whole (ofString) a connection that goes quiet half way (Wi-Fi dropped, a stalled proxy)
+	 * would hold the caller until the server gave up, or for ever.
+	 */
+	public static <T> HttpResponse.BodyHandler<T> bodyWithin(HttpResponse.BodyHandler<T> handler, Duration limit) {
+		return info -> new Within<>(handler.apply(info), limit);
+	}
+
+	private static final class Within<T> implements HttpResponse.BodySubscriber<T> {
+		private final HttpResponse.BodySubscriber<T> inner;
+		private final CompletableFuture<T> body = new CompletableFuture<>();
+		private volatile java.util.concurrent.Flow.@org.jspecify.annotations.Nullable Subscription subscription;
+
+		Within(HttpResponse.BodySubscriber<T> inner, Duration limit) {
+			this.inner = inner;
+			inner.getBody().whenComplete((value, failure) -> {
+				if (failure != null) {
+					body.completeExceptionally(failure);
+				} else {
+					body.complete(value);
+				}
+			});
+			CompletableFuture.delayedExecutor(limit.toMillis(), TimeUnit.MILLISECONDS).execute(() -> {
+				if (body.completeExceptionally(new java.net.http.HttpTimeoutException("The answer didn't come in within " + limit.toMillis() + " ms"))) {
+					java.util.concurrent.Flow.Subscription s = subscription;
+					if (s != null) {
+						s.cancel(); // closes the connection
+					}
+				}
+			});
+		}
+
+		@Override
+		public java.util.concurrent.CompletionStage<T> getBody() {
+			return body;
+		}
+
+		@Override
+		public void onSubscribe(java.util.concurrent.Flow.Subscription s) {
+			subscription = s;
+			inner.onSubscribe(s);
+			if (body.isCompletedExceptionally()) {
+				s.cancel(); // the time ran out before the body even started
+			}
+		}
+
+		@Override
+		public void onNext(java.util.List<java.nio.ByteBuffer> item) {
+			inner.onNext(item);
+		}
+
+		@Override
+		public void onError(Throwable failure) {
+			inner.onError(failure);
+		}
+
+		@Override
+		public void onComplete() {
+			inner.onComplete();
+		}
+	}
+
 	/** The whole stream as text; a reply over {@code max} bytes is an IOException, like a dropped connection. */
 	public static String readText(InputStream in, int max) throws IOException {
 		byte[] bytes = in.readNBytes(max + 1);

@@ -152,6 +152,46 @@ class NetTest {
 		assertTrue(closed.await(30, java.util.concurrent.TimeUnit.SECONDS), "the stream was never closed");
 	}
 
+	/** A body that stops half way fails the request soon after the limit; one that comes in whole arrives as it is. */
+	@Test
+	void aBodyThatStopsHalfWayFailsTheRequestAfterTheLimit() throws Exception {
+		CountDownLatch end = new CountDownLatch(1);
+		HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+		s.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
+		s.createContext("/stall", ex -> {
+			ex.sendResponseHeaders(200, 1000);
+			ex.getResponseBody().write("{\"half".getBytes());
+			ex.getResponseBody().flush();
+			try {
+				end.await(60, java.util.concurrent.TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			ex.close();
+		});
+		s.createContext("/whole", ex -> {
+			byte[] bytes = "{\"whole\":true}".getBytes();
+			ex.sendResponseHeaders(200, bytes.length);
+			try (java.io.OutputStream out = ex.getResponseBody()) {
+				out.write(bytes);
+			}
+		});
+		s.start();
+		try {
+			String base = "http://127.0.0.1:" + s.getAddress().getPort();
+			HttpClient http = client();
+			HttpResponse.BodyHandler<String> within = Net.bodyWithin(HttpResponse.BodyHandlers.ofString(), Duration.ofMillis(300));
+			assertEquals("{\"whole\":true}", http.send(java.net.http.HttpRequest.newBuilder(URI.create(base + "/whole")).build(), within).body());
+			long start = System.nanoTime();
+			assertThrows(java.net.http.HttpTimeoutException.class,
+					() -> http.send(java.net.http.HttpRequest.newBuilder(URI.create(base + "/stall")).build(), within));
+			assertTrue(System.nanoTime() - start < 10_000_000_000L, "the request waited for the server to give up");
+		} finally {
+			end.countDown();
+			s.stop(0);
+		}
+	}
+
 	@Test
 	void textOverTheCapIsAnError() throws Exception {
 		assertEquals("abc", Net.readText(new java.io.ByteArrayInputStream("abc".getBytes()), 3));
