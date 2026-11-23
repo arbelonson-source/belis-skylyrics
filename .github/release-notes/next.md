@@ -293,6 +293,7 @@
 - **Top bar highlight in light colours.** With a light accent colour on the top bar (any of the colours to pick, a pale album colour with **Accent colour** set to **Album**, or the lyrics colour with **Lyrics**), the two sung words on the highlight were white on almost white and hard to read. The highlight now turns a deeper shade of that colour, just enough for the words to stand out. The default violet looks as before.
 - **Top bar clock and FPS on a bright sky.** The clock and the frame rate beside the top bar now have the game's text shadow, like its own words over the world, so they no longer vanish against a bright sky, clouds or snow.
 - **Record card's lines before and after.** With **Card lines** at **3 lines**, the lines before and after the one being sung were faded so far on the **Record card** that they were hard to make out. They are now just a little dimmer than the artist's name.
+- **Record card in deep blue album colours.** With the lyrics in the album's colour, a deep blue or violet album no longer leaves the line being sung on the **Record card** too dark to read on the dark card: there it is lightened just enough to stand out (the lyrics in the sky keep the album's colour).
 
 ### Faster
 

@@ -258,7 +258,7 @@ public final class RecordCard {
 			return;
 		}
 		float lineW = LyricsFont.cachedWidth(font, style, lyric) * scale;
-		int color = ARGB.color(Math.max(4, Math.round(a * 255)), SkyLyricsClient.get().renderer().color());
+		int color = ARGB.color(Math.max(4, Math.round(a * 255)), lyricColor(SkyLyricsClient.get().renderer().color()));
 		if (lineW <= room) {
 			text(g, font, style, lyric, x + (W - lineW) / 2, midY, scale, color);
 			return;
@@ -275,6 +275,17 @@ public final class RecordCard {
 			g.disableScissor();
 		}
 	}
+
+	/**
+	 * The current line's colour on the card for the lyrics colour {@code rgb}: a dark one (a deep blue album colour) is
+	 * lifted towards white just enough to read on the card, even with snow showing through it.
+	 */
+	static int lyricColor(int rgb) {
+		return Contrast.lighten(rgb, SNOW_BEHIND, Contrast.FLOOR);
+	}
+
+	/** The card at full Background with snow behind it: the brightest it gets. */
+	private static final int SNOW_BEHIND = Contrast.over(FILL_ALPHA << 24 | FILL, 0xFFFFFF);
 
 	/** A line before or after the current one: dimmed, smaller, centred, and cut with "…" when too long. */
 	private void dimLine(GuiGraphics g, Font font, Style style, String line, float x, float midY, float scale, float left, float room, float a) {
