@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -50,6 +51,7 @@ import net.minecraft.world.scores.Scoreboard;
 //? if >=26.2
 /*import net.minecraft.world.scores.TeamColor;*/
 
+import dev.beli.skylyrics.Formats;
 import dev.beli.skylyrics.Tr;
 import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
@@ -137,7 +139,6 @@ public final class NowPlayingHud {
 
 	/** How long the last line counts as being sung, for keeping the bar up. */
 	private static final long LAST_LINE_MS = 8_000;
-	private static final DateTimeFormatter CLOCK_FORMAT = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT);
 
 	private final MediaTracker tracker;
 	private final LyricsService service;
@@ -170,6 +171,7 @@ public final class NowPlayingHud {
 	/** The spinning cover's angle (radians) and speed (0 to 1, see {@link TopBarLayout#spinSpeed}). */
 	private float spin, spinSpeed;
 	private int clockMinute = -1;
+	private Locale clockLocale = Locale.ROOT;
 	private String clockText = "";
 	/** The last few lines laid out (the one sung, the one fading out, one spare); see {@link LineKey}. */
 	private final SmallCache<LineKey, Laid> laid = new SmallCache<>(3);
@@ -919,16 +921,27 @@ public final class NowPlayingHud {
 		return shown == 0 ? 5 : 12 + 19 * (shown - 1) + 5 + 4;
 	}
 
-	/** The time as the computer's language writes it, e.g. "21:07" or "9:07 PM". */
 	private String clock() {
 		LocalTime time = LocalTime.now();
 		int minute = time.getHour() * 60 + time.getMinute();
-		if (minute != clockMinute) {
+		Locale locale = Formats.clockLocale();
+		if (minute != clockMinute || !locale.equals(clockLocale)) {
 			clockMinute = minute;
-			// Some languages put a narrow no-break space before AM/PM, which the fonts don't have
-			clockText = CLOCK_FORMAT.format(time).replace(' ', ' ').replace(' ', ' ');
+			clockLocale = locale;
+			clockText = clockText(time, locale);
 		}
 		return clockText;
+	}
+
+	/** The time as the game's language writes it, e.g. "21:07" or "9:07 PM" (see {@link Formats#clockLocale}). */
+	static String clockText(LocalTime time) {
+		return clockText(time, Formats.clockLocale());
+	}
+
+	private static String clockText(LocalTime time, Locale locale) {
+		// Some languages put a narrow no-break space before AM/PM and a no-break one inside it ("p. m."), which the fonts lack
+		return DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale).format(time).replace('\u202f', ' ')
+				.replace('\u00a0', ' ');
 	}
 
 	/** The capsule, its border, the cover and the equaliser, drawn in real pixels so round edges stay smooth. */
