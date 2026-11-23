@@ -351,20 +351,31 @@ public final class SpotifyWebSource implements MediaSource {
 
 	/**
 	 * For the game closing (and tests): waits, at most {@code timeoutMs}, until what a sign-out handed to its thread is on
-	 * the disk, so signing out just before quitting still leaves the next game signed out. True when it is.
+	 * the disk, so signing out just before quitting still leaves the next game signed out. True when it is. A save already
+	 * on its way on another thread (a renewed sign-in on the music reader's, a new one on the browser's) writes the
+	 * removal after its own (see {@link #flush}), so that writer is waited for too.
 	 */
 	public boolean awaitSaved(long timeoutMs) {
-		java.util.concurrent.Future<?> done;
+		long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(Math.max(0, timeoutMs));
+		java.util.concurrent.Future<?> done = null;
 		try {
 			done = saver.submit(() -> { });
 		} catch (java.util.concurrent.RejectedExecutionException e) {
-			return true;
+			// no thread of its own any more: only another writer can be left
 		}
 		try {
-			done.get(Math.max(0, timeoutMs), java.util.concurrent.TimeUnit.MILLISECONDS);
+			if (done != null) {
+				done.get(Math.max(0, deadline - System.nanoTime()), java.util.concurrent.TimeUnit.NANOSECONDS);
+			}
+			while (fileChanging()) {
+				if (System.nanoTime() - deadline >= 0) {
+					throw new java.util.concurrent.TimeoutException();
+				}
+				Thread.sleep(5);
+			}
 			return true;
 		} catch (java.util.concurrent.TimeoutException e) {
-			LOG.warn("The Spotify sign-out was still being saved after {} ms; closing without waiting longer", timeoutMs);
+			LOG.warn("The Spotify sign-in file was still being saved after {} ms; closing without waiting longer", timeoutMs);
 			return false;
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
@@ -372,6 +383,19 @@ public final class SpotifyWebSource implements MediaSource {
 		} catch (java.util.concurrent.ExecutionException e) {
 			return true; // an empty task doesn't fail
 		}
+	}
+
+	/**
+	 * Whether a change is waiting for a writer, or a thread is writing the login file. In that order: a writer takes the
+	 * change only while it counts as writing, so a change seen gone has been written once nobody is writing.
+	 */
+	private boolean fileChanging() {
+		synchronized (this) {
+			if (pendingWrite != null) {
+				return true;
+			}
+		}
+		return writing.get();
 	}
 
 	/** The in-memory half of a sign-out; the file goes through {@link #flush} once the lock is free. */

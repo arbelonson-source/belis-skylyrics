@@ -71,11 +71,13 @@ public final class Formats {
 	/**
 	 * The languages Java has times for, found the first time a game language other than a placeless English asks. For any
 	 * other (LOLCAT, Shakespearean English, Klingon, Quenya and Minecraft's other made-up languages, and a few real ones
-	 * like Classical Chinese) Java falls back to a plain "21:07", which says nothing of how the player reads the time.
+	 * like Classical Chinese) Java falls back to a plain "21:07", which says nothing of how the player reads the time. So
+	 * does the root locale's, which Java lists too: a resource pack's language whose code names no language ("x_custom")
+	 * becomes it.
 	 */
 	private static final class JavaTimes {
 		private static final Set<String> LANGUAGES = Arrays.stream(DateFormat.getAvailableLocales()).map(Locale::getLanguage)
-				.collect(Collectors.toUnmodifiableSet());
+				.filter(language -> !language.isEmpty()).collect(Collectors.toUnmodifiableSet());
 
 		static boolean has(Locale locale) {
 			return LANGUAGES.contains(locale.getLanguage());
