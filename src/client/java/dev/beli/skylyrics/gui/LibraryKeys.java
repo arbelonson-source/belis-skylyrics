@@ -26,12 +26,42 @@ final class LibraryKeys {
 		return hit >= 0 ? hit : selected;
 	}
 
+	/**
+	 * The chosen cover on the shelf after a frame, {@code hit} being the one under the mouse (-1 for none) and
+	 * {@code wheeled} whether the wheel has scrolled the shelf since the last key. Once the wheel has slid the shelf under
+	 * a mouse that stays put, the cover under it is chosen (its name shows), as if the mouse had moved there
+	 * ({@link #afterHover}); before that a still mouse leaves the keyboard's choice alone.
+	 */
+	static int afterShelfFrame(int selected, int hit, boolean wheeled) {
+		return wheeled ? afterHover(selected, hit) : selected;
+	}
+
 	/** How long after a click opened a playlist a second click is still part of the same double-click. */
 	static final long DOUBLE_CLICK_NS = 400_000_000L;
 
 	/** The search shelf still shows the answer to an older query while a new one is being typed: it can't be chosen. */
 	static boolean staleResults(boolean searchView, boolean searchDirty) {
 		return searchView && searchDirty;
+	}
+
+	/**
+	 * Which section tab a click at {@code mx} on the tabs' line picks: the tabs are {@code widths} wide, the first at
+	 * {@code left} and each {@code gap} from the next; -1 for none. None either for the second click of a double-click on
+	 * "‹ Playlists", which sits where the first tabs are: {@code sinceBackNs} after that button closed the playlist, the
+	 * click is still the same double-click (see {@link #tooSoonAfterOpen}), so it stays on the playlists.
+	 */
+	static int sectionAt(double mx, int left, int[] widths, int gap, long sinceBackNs) {
+		if (tooSoonAfterOpen(sinceBackNs)) {
+			return -1;
+		}
+		int x = left;
+		for (int i = 0; i < widths.length; i++) {
+			if (mx >= x && mx < x + widths[i]) {
+				return i;
+			}
+			x += widths[i] + gap;
+		}
+		return -1;
 	}
 
 	/** A click this soon after one opened a playlist is the double-click's second half and must not pick a song of it. */
