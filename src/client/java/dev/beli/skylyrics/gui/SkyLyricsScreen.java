@@ -862,10 +862,18 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private String lyricsStatus() {
-		if (mod.tracker().track() == Track.NONE) {
+		return lyricsStatus(mod.tracker().track(), mod.lyrics().snapshot(), cfg.enabled);
+	}
+
+	/** What the Music tab's Lyrics row says (the Narrator reads it too) for the song playing, its lookup and the Lyrics switch. */
+	static String lyricsStatus(Track playing, LyricsService.Snapshot snap, boolean lyricsOn) {
+		if (playing == Track.NONE) {
 			return Tr.t("Waiting for a song");
 		}
-		LyricsService.Snapshot snap = mod.lyrics().snapshot();
+		if (!lyricsOn && snap.state() == LyricsService.State.IDLE) {
+			// Nothing is looked up while Lyrics is off: the song waits for the switch, it isn't missing (the toggle key's own words)
+			return net.minecraft.network.chat.Component.translatable("skylyrics.lyrics.off").getString();
+		}
 		Lyrics lyrics = snap.lyrics();
 		return switch (snap.state()) {
 			case IDLE -> Tr.t("Waiting for a song");

@@ -807,7 +807,7 @@ public final class SpotifyWebSource implements MediaSource {
 				}
 			}
 		} catch (IOException e) {
-			LOG.warn("Couldn't read the Spotify sign-in: {}", e.toString());
+			LOG.warn("Couldn't read the Spotify sign-in: {}", dev.beli.skylyrics.util.LogText.of(e));
 		}
 		return null;
 	}
@@ -838,7 +838,7 @@ public final class SpotifyWebSource implements MediaSource {
 		} catch (java.nio.charset.CharacterCodingException e) {
 			damagedLogin("it isn't valid text");
 		} catch (IOException e) {
-			LOG.warn("Couldn't read the Spotify sign-in: {}", e.toString());
+			LOG.warn("Couldn't read the Spotify sign-in: {}", dev.beli.skylyrics.util.LogText.of(e));
 		}
 	}
 
@@ -904,7 +904,7 @@ public final class SpotifyWebSource implements MediaSource {
 						try {
 							Files.deleteIfExists(loginFile);
 						} catch (IOException e) {
-							LOG.warn("Couldn't remove the Spotify sign-in: {}", e.toString());
+							LOG.warn("Couldn't remove the Spotify sign-in: {}", dev.beli.skylyrics.util.LogText.of(e));
 						}
 					} else {
 						beforeSave.run();
@@ -948,7 +948,7 @@ public final class SpotifyWebSource implements MediaSource {
 				}
 			}
 		} catch (IOException e) {
-			LOG.warn("Couldn't save the Spotify sign-in: {}", e.toString());
+			LOG.warn("Couldn't save the Spotify sign-in: {}", dev.beli.skylyrics.util.LogText.of(e));
 		}
 	}
 
