@@ -134,7 +134,7 @@ Yes, you don't need the mouse. **Tab** or **Up** and **Down** move from row to r
 
 Yes. With Minecraft's **Narrator** on (**Narrates All** or **Narrates System**), each settings row reads out its name, the kind of control and its value (like "Layout, choice, Arc, 1 of 3"), and, as the keyboard lands on it, its place among the settings that show, in Minecraft's own words ("Selected list row 3 out of 12"). With nothing playing, the **Now playing** card on the **Music** tab also says where to play a song when the keyboard reaches it. A press of **Reset all** says "Click again to reset", and the second one "Settings reset". The song library reads out the song you are on and its place in the whole list ("50 of 300"), which song is playing now, how many songs a list has once it has loaded, each section with its place ("Liked songs, 2 of 3"), the buttons, the search box, how many songs a search found, and what Enter does. The intro tour reads its page too.
 
-It also reads what the mod writes above the hotbar when you press one of its keys (lyrics on or off, a song's timing, the view lock), its pop-ups (a new version, or that it can't read your music player) and its line in chat about a new version.
+It also reads what the mod writes above the hotbar when you press one of its keys (lyrics on or off, a song's timing, the view lock), its pop-ups (a new version, that it can't read your music player, or that something went wrong in one of its screens) and its line in chat about a new version.
 
 ## Can I change the keys?
 
@@ -191,7 +191,7 @@ Two Minecraft games open at once can share one folder: when one saves, it keeps 
 
 ## Can two Minecraft versions share one folder?
 
-Yes. If two games (for example 1.21.11 and a newer version) use the same Minecraft folder, they share one settings file. Each keeps the settings the other one saved, so they don't undo each other. The same goes when you go back to an older SkyLyrics: it leaves the settings it doesn't know alone, and your per-song timings stay. See "Two Minecraft games open at once" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#two-minecraft-games-open-at-once).
+Yes. If two games (for example 1.21.11 and a newer version) use the same Minecraft folder, they share one settings file. Each keeps the settings the other one saved, so they don't undo each other. Going back to SkyLyrics 0.8.0 keeps your per-song timings, but 0.8.0 and older versions don't know the settings added after it: once one of them saves (when you change something in it), those settings are back at their defaults when you update again. See "Two Minecraft games open at once" in [TROUBLESHOOTING.md](TROUBLESHOOTING.md#two-minecraft-games-open-at-once).
 
 ## Is this the Neon Lyrics mod?
 
