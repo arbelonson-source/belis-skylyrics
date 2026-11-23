@@ -16,7 +16,8 @@ import net.minecraft.util.FormattedCharSequence;
 
 /**
  * The game set to one of the mod's languages for a test, so {@link Tr#t} answers from that lang file as it does in
- * game. Read the same way the game reads it. Close it to put the game's own language back.
+ * game, and {@link Formats} writes numbers and times as that language does. Read the same way the game reads it. Close
+ * it to put the game's own language back.
  */
 public final class InLanguage implements AutoCloseable {
 	private static final Path LANG = Path.of("src/main/resources/assets/skylyrics/lang");
@@ -27,6 +28,7 @@ public final class InLanguage implements AutoCloseable {
 	/** 1.21.x keep a copy of the language in I18n too, which is what {@link Tr} asks there; null where there is none. */
 	private final Field i18n;
 	private final Object i18nBefore;
+	private final String formatsBefore = Formats.testLanguage;
 
 	/** Sets the game to {@code code}, like "de_de". */
 	public static InLanguage of(String code) throws IOException {
@@ -74,6 +76,7 @@ public final class InLanguage implements AutoCloseable {
 		i18nBefore = old;
 		Language.inject(fake);
 		set(fake);
+		Formats.testLanguage = code;
 	}
 
 	/**
@@ -100,5 +103,6 @@ public final class InLanguage implements AutoCloseable {
 	public void close() {
 		Language.inject(before);
 		set(i18nBefore);
+		Formats.testLanguage = formatsBefore;
 	}
 }
