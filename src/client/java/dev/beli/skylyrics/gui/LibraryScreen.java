@@ -2233,6 +2233,16 @@ public final class LibraryScreen extends Screen {
 		ScreenFault.leave(this, parent);
 	}
 
+	/** Coming back to the library (from the settings it opened) draws it again, also after an error it hit meanwhile. */
+	@Override
+	public void added() {
+		try {
+			fault.shown();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("opening", e);
+		}
+	}
+
 	@Override
 	public void onClose() {
 		try {

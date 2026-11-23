@@ -63,6 +63,15 @@ public final class ScreenFault {
 		return true;
 	}
 
+	/**
+	 * The screen is put up again (the game calls {@code added()} each time it shows a screen). An error that came while
+	 * another screen was already in front of it (one it opened) had nothing to close; still remembered, it would keep the
+	 * screen from being drawn or read out when that other screen closes back to it.
+	 */
+	void shown() {
+		failed = false;
+	}
+
 	/** The screen threw while it was being closed: logged only, since it is leaving already. */
 	void failedClosing(Throwable error) {
 		if (failed) {

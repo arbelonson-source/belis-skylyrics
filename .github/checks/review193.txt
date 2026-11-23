@@ -1,0 +1,50 @@
+# Coming back to the settings and the song library from a screen they opened, fix/review193 (Minecraft 1.21.11,
+# 1280x720, GUI scale 3 (426x240), the demo song). The branch clears a screen's remembered error each time the game puts it
+# up again (added()), so an error that came while another screen was in front no longer leaves the settings or the library
+# blank when you come back to them. A test game can't make that error; this checks that in a working game coming back looks
+# exactly as before. Every shot is the SAME on the branch and on main, and the branch's game log has no "Error in the
+# settings" or "Error in the song library" line (no pop-up in any shot).
+# - review193-settings: the settings on the Look tab (gui 1).
+# - review193-library-over-settings: the song library (grid) opened from them.
+# - review193-settings-again: Esc: back on the settings, the Look tab, drawn whole.
+# - review193-settings-over-library: the library again, and the settings opened from it (the tab they were last on).
+# - review193-library-again: Esc: back on the library, drawn whole.
+# - review193-settings-last: Esc: back on the first settings.
+# - review193-closed: Esc: the world, no screen.
+# Run it on the branch, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/review193 -f version=1.21.11 -f script=.github/checks/review193.txt
+#   gh workflow run screenshots.yml --ref fix/review193 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/review193.txt
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 6
+guiscale 3
+set libraryView GRID
+
+gui 1
+sleep 2
+shot review193-settings
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+shot review193-library-over-settings
+key escape
+sleep 2
+shot review193-settings-again
+
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+screen dev.beli.skylyrics.gui.SkyLyricsScreen
+sleep 2
+shot review193-settings-over-library
+key escape
+sleep 4
+shot review193-library-again
+key escape
+sleep 2
+shot review193-settings-last
+key escape
+sleep 2
+shot review193-closed
