@@ -242,7 +242,9 @@ public final class MediaTracker {
 				if (setupPending(failure)) {
 					LOG.debug("The music player isn't set up yet: {}", error); // waiting for the player to do a step, not a problem
 				} else {
-					LOG.warn("Couldn't read the music player: {}{}", error, rawDetail(failure, error));
+					// The reader's sentence can name a file in the game folder (the Windows reader's), so the home folder is cut from it too
+					LOG.warn("Couldn't read the music player: {}{}", dev.beli.skylyrics.util.LogText.redact(error, System.getProperty("user.home")),
+							rawDetail(failure, error));
 				}
 				loggedError = true;
 				outageWarnings++;
