@@ -358,6 +358,8 @@ public final class MprisSource implements MediaSource {
 
 	/** How long poll() waits for the players to answer before going on with the ones that did. */
 	static final long ANSWER_WAIT_MS = 750;
+	/** The wait poll() uses: {@link #ANSWER_WAIT_MS}, shorter in tests. */
+	long answerWaitMs = ANSWER_WAIT_MS;
 	/** How long the last good reading of a player that doesn't answer is still believed. */
 	static final long KEEP_READING_MS = 5000;
 
@@ -448,7 +450,7 @@ public final class MprisSource implements MediaSource {
 				fresh.add(name);
 			}
 		}
-		long deadline = System.nanoTime() + ANSWER_WAIT_MS * 1_000_000;
+		long deadline = System.nanoTime() + answerWaitMs * 1_000_000;
 
 		List<Reading> readings = new ArrayList<>();
 		// When each reading's position was true: the moment its read asked (a read that was pending from an
