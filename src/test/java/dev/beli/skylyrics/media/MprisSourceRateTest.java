@@ -58,7 +58,8 @@ class MprisSourceRateTest {
 				}
 				assertEquals("Made Up Song", first.track().title());
 				busy.set(true);
-				Thread.sleep(700);
+				// Long enough that a reading that doesn't move (or moves back) is far outside the 100 ms allowed below
+				Thread.sleep(300);
 				Snapshot carried = source.poll();
 				assertEquals("Made Up Song", carried.track().title(), "kept while the player doesn't answer");
 				// Where the first reading's clock (at its rate) says the song is at the carried reading's time

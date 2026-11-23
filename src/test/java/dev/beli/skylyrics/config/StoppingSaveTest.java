@@ -41,11 +41,12 @@ class StoppingSaveTest {
 		oldWriter = SkyLyricsConfig.writerExec;
 		oldMain = SkyLyricsConfig.mainThread;
 		// The writer gets to each save a moment later, on its own thread, as on a slow disk or with an antivirus scanning
+		// (100 ms: the file is looked at right after the call that must wait, far sooner than that)
 		SkyLyricsConfig.writerExec = task -> {
 			Thread t = new Thread(() -> {
 				try {
 					diskAnswers.await();
-					Thread.sleep(300);
+					Thread.sleep(100);
 				} catch (InterruptedException e) {
 					return;
 				}

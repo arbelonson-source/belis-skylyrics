@@ -11,11 +11,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.Locale;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntToLongFunction;
 import java.util.regex.Pattern;
@@ -82,7 +83,7 @@ public final class LyricsService {
 	private final IntToLongFunction retryDelayMs;
 	/** Whether lyrics may be looked up now: false while the player has Lyrics turned off. */
 	private final java.util.function.BooleanSupplier lookUp;
-	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
+	private final ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, r -> {
 		Thread t = new Thread(r, "SkyLyrics lyrics");
 		t.setDaemon(true);
 		return t;
@@ -656,5 +657,30 @@ public final class LyricsService {
 	boolean shutdownAndWait(long timeout, TimeUnit unit) throws InterruptedException {
 		executor.shutdownNow();
 		return executor.awaitTermination(timeout, unit);
+	}
+
+	/**
+	 * For tests: waits until the worker has nothing running, queued or scheduled (a retry waiting counts), so a test can
+	 * see that nothing more happens without guessing how long that would take. False if it is still busy at the limit.
+	 */
+	boolean awaitIdle(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException {
+		long until = System.nanoTime() + unit.toNanos(timeout);
+		while (true) {
+			try {
+				// Looked at on the worker itself, so nothing else runs meanwhile; a cancelled retry is no work
+				if (executor.submit(() -> {
+					executor.purge();
+					return executor.getQueue().isEmpty();
+				}).get(Math.max(0, until - System.nanoTime()), TimeUnit.NANOSECONDS)) {
+					return true;
+				}
+			} catch (TimeoutException e) {
+				return false;
+			}
+			if (System.nanoTime() - until > 0) {
+				return false;
+			}
+			Thread.sleep(1);
+		}
 	}
 }

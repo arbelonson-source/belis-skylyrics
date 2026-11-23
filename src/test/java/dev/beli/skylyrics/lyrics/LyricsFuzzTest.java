@@ -85,7 +85,7 @@ class LyricsFuzzTest {
 					int stamps = f.random.nextInt(4);
 					for (int s = 0; s < stamps; s++) {
 						b.append(switch (f.random.nextInt(6)) {
-							case 0 -> String.format("[%02d:%02d.%02d]", f.random.nextInt(100), f.random.nextInt(100), f.random.nextInt(100));
+							case 0 -> String.format(java.util.Locale.ROOT, "[%02d:%02d.%02d]", f.random.nextInt(100), f.random.nextInt(100), f.random.nextInt(100));
 							case 1 -> "[" + (f.random.nextBoolean() ? "-" : "") + f.random.nextInt(1000) + ":" + f.random.nextInt(100) + "." + "9".repeat(f.random.nextInt(30)) + "]";
 							case 2 -> "[" + f.random.nextInt(100) + ":" + f.random.nextInt(1000) + ":" + f.random.nextInt(100) + ".5]";
 							case 3 -> "[offset:" + (f.random.nextBoolean() ? "-" : "+") + "9".repeat(1 + f.random.nextInt(25)) + "]";

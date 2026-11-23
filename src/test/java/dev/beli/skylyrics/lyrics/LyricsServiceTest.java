@@ -75,9 +75,10 @@ class LyricsServiceTest {
 	}
 
 	@AfterEach
-	void stop() {
+	void stop() throws InterruptedException {
 		release.countDown();
-		service.shutdown();
+		// Waits for the worker: a cache file it still had open would keep Windows from deleting the test's folder
+		service.shutdownAndWait(10, TimeUnit.SECONDS);
 		server.stop(0);
 	}
 
@@ -129,6 +130,14 @@ class LyricsServiceTest {
 			assertTrue(System.nanoTime() < until, "timed out");
 			Thread.sleep(10);
 		}
+	}
+
+	/**
+	 * Lets everything the worker has running, queued or scheduled run out, so a check that nothing more happens needs no
+	 * guess at how long that would take. A worker that never goes idle (a retry loop) shows in the checks that follow.
+	 */
+	private void settle() throws Exception {
+		service.awaitIdle(10, TimeUnit.SECONDS);
 	}
 
 	private long askedAbout(String title) {
@@ -220,7 +229,7 @@ class LyricsServiceTest {
 	}
 
 	@Test
-	void skippingASongDoesNotWaitForTheSlowRequestBeforeIt() throws InterruptedException {
+	void skippingASongDoesNotWaitForTheSlowRequestBeforeIt() throws Exception {
 		getAnswer = "{\"syncedLyrics\":\"" + SYNCED + "\"}";
 		holdFirst = true;
 		service.load(track("Song One", 200_000));
@@ -235,9 +244,9 @@ class LyricsServiceTest {
 		assertEquals(LyricsService.State.READY, service.state(), "Song Two queued behind the slow Song One");
 		assertEquals("Song Two", service.track().title());
 
-		// the cancelled fetch finishing late must not show an error or replace the lyrics
+		// the cancelled fetch finishing late must not show an error or replace the lyrics (nor a retry it left behind)
 		release.countDown();
-		Thread.sleep(300);
+		settle();
 		assertEquals(LyricsService.State.READY, service.state());
 		assertEquals("Song Two", service.track().title());
 	}
@@ -384,7 +393,7 @@ class LyricsServiceTest {
 		service.load(OLD_SONG);
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		waitFor(() -> !Files.exists(file));
-		Thread.sleep(300);
+		settle();
 		// this play keeps what it shows
 		assertEquals(LyricsService.State.READY, service.state());
 		assertFalse(service.lyrics().isEmpty());
@@ -419,7 +428,7 @@ class LyricsServiceTest {
 		}, cache, attempt -> 30);
 		service.load(OLD_SONG);
 		waitFor(() -> asks.get() == 1);
-		Thread.sleep(300);
+		settle();
 		assertEquals(before, readFile(file));
 		assertEquals(LyricsService.State.READY, service.state());
 		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
@@ -480,7 +489,7 @@ class LyricsServiceTest {
 			if ((boolean) c[1]) {
 				waitFor(() -> savedAt(file) != 1000); // the stamp is written after the ask returns
 			} else {
-				Thread.sleep(500); // a failed ask writes nothing: give a stray write time to show
+				settle(); // a failed ask writes nothing: a stray write would have happened by the time the worker is idle
 			}
 			service.shutdownAndWait(5, TimeUnit.SECONDS);
 			assertTrue(readFile(file).contains("Only plain words"));
@@ -522,7 +531,7 @@ class LyricsServiceTest {
 				waitFor(() -> asks.get() == 1);
 				waitFor(() -> savedAt(file) > System.currentTimeMillis() - 60_000); // the ask finished and stamped the file
 			} else {
-				Thread.sleep(500); // time for a recheck to run, if one were going to
+				settle(); // a recheck, if one were going to run, has run by the time the worker is idle
 			}
 			service.shutdownAndWait(5, TimeUnit.SECONDS);
 			assertEquals(c[1], asks.get(), c[0] + " days old");
@@ -642,7 +651,7 @@ class LyricsServiceTest {
 		}, cache);
 		service.load(OLD_SONG);
 		waitFor(() -> service.state() == LyricsService.State.READY);
-		Thread.sleep(300);
+		settle();
 		assertEquals(0, asks.get());
 	}
 
@@ -657,7 +666,7 @@ class LyricsServiceTest {
 		}, cache);
 		service.load(OLD_SONG);
 		waitFor(() -> asks.get() == 1);
-		Thread.sleep(300);
+		settle();
 		assertEquals(before, readFile(file), "not stamped, so a later play asks again");
 		assertTrue(service.lyrics().lines().get(0).text().contains("Backup version"));
 	}
@@ -670,7 +679,7 @@ class LyricsServiceTest {
 		waitFor(() -> service.state() == LyricsService.State.READY);
 		Lyrics shown = service.lyrics();
 		waitFor(() -> readFile(file).contains("\"v\":3"));
-		Thread.sleep(100);
+		settle();
 		assertTrue(shown == service.lyrics(), "the same lyrics were applied again");
 	}
 
@@ -685,7 +694,7 @@ class LyricsServiceTest {
 		}, cache, attempt -> 30);
 		service.load(OLD_SONG);
 		waitFor(() -> asks.get() == 1);
-		Thread.sleep(300);
+		settle();
 		assertEquals(1, asks.get(), "no retry loop");
 		assertEquals(before, readFile(file));
 		assertEquals(LyricsService.State.READY, service.state());
@@ -726,9 +735,9 @@ class LyricsServiceTest {
 		assertTrue(skipSeen.await(10, TimeUnit.SECONDS));
 		go.countDown();
 		waitFor(() -> readFile(file).contains("Main version"));
-		// the single worker is now stuck in Song Two's lookup, so only the stale check could have changed the lyrics
+		// the single worker is now stuck in Song Two's lookup, so only the stale check could have changed the lyrics, and it
+		// has run to its end: Song Two's lookup was queued behind it
 		assertTrue(songTwoAsked.await(10, TimeUnit.SECONDS));
-		Thread.sleep(200);
 		assertEquals("Song Two", service.track().title());
 		assertTrue(service.lyrics().isEmpty(), "the skipped song's lyrics must not show while Song Two is still loading");
 		assertFalse(service.state() == LyricsService.State.READY);
@@ -747,12 +756,12 @@ class LyricsServiceTest {
 	}
 
 	@Test
-	void realNotFoundIsSavedAndNotRetried() throws InterruptedException, IOException {
+	void realNotFoundIsSavedAndNotRetried() throws Exception {
 		fastRetries();
 		service.load(track("Song One", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
 		int before = asked.size();
-		Thread.sleep(300);
+		settle(); // a retry would be scheduled 30 ms on, and the worker isn't idle while one waits
 		assertEquals(before, asked.size(), asked.toString());
 		try (var files = Files.list(cache)) {
 			assertEquals(1, files.count());
@@ -760,19 +769,19 @@ class LyricsServiceTest {
 	}
 
 	@Test
-	void badRequestIsNotRetried() throws InterruptedException {
+	void badRequestIsNotRetried() throws Exception {
 		fastRetries();
 		failCode = 400;
 		failures.set(1_000);
 		service.load(track("Song One", 200_000));
 		// The site answered: that is "no lyrics", not "check your internet"
 		waitFor(() -> service.state() == LyricsService.State.NOT_FOUND);
-		Thread.sleep(300);
+		settle();
 		assertEquals(1, asked.size(), asked.toString());
 	}
 
 	@Test
-	void songChangeStopsTheRetries() throws InterruptedException {
+	void songChangeStopsTheRetries() throws Exception {
 		fastRetries();
 		getAnswer = "{\"syncedLyrics\":\"" + SYNCED + "\"}";
 		failOnly = "Song One";
@@ -782,19 +791,14 @@ class LyricsServiceTest {
 
 		service.load(track("Song Two", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.READY);
-		// let a request that was already in flight when the song changed land, then nothing more may come
-		long before;
-		do {
-			before = askedAbout("Song One");
-			Thread.sleep(150);
-		} while (askedAbout("Song One") != before);
-		Thread.sleep(300);
-		assertEquals(before, askedAbout("Song One"), asked.toString());
+		// a request that was already in flight when the song changed may land; then nothing more may come, so the worker
+		// has nothing running, queued or scheduled (Song One's tries come every 30 ms while they go on)
+		assertTrue(service.awaitIdle(10, TimeUnit.SECONDS), "Song One is still being asked about: " + asked);
 		assertEquals("Song Two", service.track().title());
 	}
 
 	@Test
-	void lateCoverDoesNotBlankTheLyrics() throws InterruptedException {
+	void lateCoverDoesNotBlankTheLyrics() throws Exception {
 		getAnswer = "{\"syncedLyrics\":\"" + SYNCED + "\"}";
 		service.load(track("Song One", 200_000));
 		waitFor(() -> service.state() == LyricsService.State.READY);
@@ -805,7 +809,7 @@ class LyricsServiceTest {
 		assertEquals(LyricsService.State.READY, service.state());
 		assertFalse(service.lyrics().isEmpty());
 		assertEquals(withCover, service.track());
-		Thread.sleep(300); // a lookup queued on the worker would show up by now
+		settle(); // a lookup queued on the worker has asked by the time it is idle
 		assertEquals(LyricsService.State.READY, service.state());
 		assertEquals(before, asked.size(), asked.toString());
 	}

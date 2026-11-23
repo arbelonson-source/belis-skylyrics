@@ -4,7 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Polar meshes and the eclipse corona drop segments the camera can't see, and never one it can. */
@@ -130,9 +132,11 @@ class SkyWedgeTest {
 					next++;
 					kept += shape.inRegion(cut.corners.get(i)) ? 1 : 0;
 				}
+				// Looked up in a set: a list's contains made this check take seconds
+				Set<String> drawn = new HashSet<>(cut.quads);
 				for (int i = 0; i < all.quads.size(); i++) {
 					if (shape.inRegion(all.corners.get(i)) && onScreen(all.corners.get(i), yaw, pitch)) {
-						assertTrue(cut.quads.contains(all.quads.get(i)), "dropped a visible quad at view " + yaw + "/" + pitch);
+						assertTrue(drawn.contains(all.quads.get(i)), "dropped a visible quad at view " + yaw + "/" + pitch);
 					}
 				}
 				sawPartial[0] |= kept > 0 && kept < whole;

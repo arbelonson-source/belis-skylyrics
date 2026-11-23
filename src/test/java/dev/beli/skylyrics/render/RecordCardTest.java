@@ -98,11 +98,16 @@ class RecordCardTest {
 	@Test
 	void timesKeepPlainDigitsInEveryLanguage() {
 		java.util.Locale was = java.util.Locale.getDefault();
+		java.util.Locale wasFormat = java.util.Locale.getDefault(java.util.Locale.Category.FORMAT);
+		java.util.Locale wasDisplay = java.util.Locale.getDefault(java.util.Locale.Category.DISPLAY);
 		try {
 			java.util.Locale.setDefault(java.util.Locale.forLanguageTag("ar-EG-u-nu-arab"));
 			assertEquals("3:07", RecordCard.clock(187_000));
 		} finally {
+			// setDefault(Locale) set the formatting and display languages too: each goes back as it was, for the tests after
 			java.util.Locale.setDefault(was);
+			java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, wasFormat);
+			java.util.Locale.setDefault(java.util.Locale.Category.DISPLAY, wasDisplay);
 		}
 	}
 

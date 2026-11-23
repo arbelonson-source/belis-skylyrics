@@ -215,7 +215,7 @@ class TextLayoutFuzzTest {
 		assertTimeoutPreemptively(BOUND, () -> Fuzz.cases(55, 300, CASE, (f, i) -> {
 			StringBuilder lrc = new StringBuilder();
 			for (int k = 0; k < 20; k++) {
-				lrc.append(String.format("[%02d:%02d.%02d]", f.random.nextInt(100), f.random.nextInt(60), f.random.nextInt(100))).append(f.nasty(30)).append('\n');
+				lrc.append(String.format(java.util.Locale.ROOT, "[%02d:%02d.%02d]", f.random.nextInt(100), f.random.nextInt(60), f.random.nextInt(100))).append(f.nasty(30)).append('\n');
 			}
 			Lyrics l = LrcParser.parseSynced(lrc.toString());
 			for (int k = 0; k < l.lines().size(); k++) {
