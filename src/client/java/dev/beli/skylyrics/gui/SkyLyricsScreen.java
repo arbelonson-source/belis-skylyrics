@@ -1123,6 +1123,7 @@ public final class SkyLyricsScreen extends Screen {
 		long now = System.nanoTime();
 		if (now < resetArmedUntil && !resetConfirms(now, resetArmedUntil)) {
 			// The second click of a double-click: it keeps asking
+			announcement = resetSaid(false);
 			return;
 		}
 		if (resetConfirms(now, resetArmedUntil)) {
@@ -1130,10 +1131,19 @@ public final class SkyLyricsScreen extends Screen {
 			resetArmedUntil = 0;
 			dirty = true;
 			mod.tracker().refresh();
-			announcement = Tr.t("Settings reset");
+			announcement = resetSaid(true);
 		} else {
 			resetArmedUntil = now + RESET_CONFIRM_NS;
+			announcement = resetSaid(false);
 		}
+	}
+
+	/**
+	 * What the Narrator says after a press of Reset all, by keyboard or click: that the settings were reset, or that it asks
+	 * for another press. Only the keyboard on it said the second, by its new name, so a click that asked said nothing.
+	 */
+	static String resetSaid(boolean reset) {
+		return reset ? Tr.t("Settings reset") : Narration.button(Tr.t("Click again to reset"), Tr.t("button"));
 	}
 
 	/**
@@ -2055,6 +2065,15 @@ public final class SkyLyricsScreen extends Screen {
 		return font.width(hint) > idleHintRoom(rowW) ? hint : "";
 	}
 
+	/** What the Narrator says for the Now playing card: the song, or with nothing playing, the card's {@code idleHint} on where to play one. */
+	static String nowPlayingNarration(Track track, boolean playing, String idleHint) {
+		if (track == Track.NONE) {
+			// The line under it too, as it shows: without it a Narrator user heard there was no song but not how to start one
+			return Narration.join(Tr.t("Now playing"), Tr.t("Nothing playing"), idleHint);
+		}
+		return Narration.join(Tr.t("Now playing"), track.title(), track.artist(), playing ? Tr.t("Playing") : Tr.t("Paused"), Tr.t("button"));
+	}
+
 	private final class NowPlayingRow extends Row {
 		private static final int COVER = NOW_PLAYING_COVER;
 
@@ -2181,12 +2200,7 @@ public final class SkyLyricsScreen extends Screen {
 		@Override
 		String narration() {
 			MediaTracker tracker = mod.tracker();
-			Track track = tracker.track();
-			if (track == Track.NONE) {
-				return Narration.join(Tr.t("Now playing"), Tr.t("Nothing playing"));
-			}
-			return Narration.join(Tr.t("Now playing"), track.title(), track.artist(),
-					tracker.playing() ? Tr.t("Playing") : Tr.t("Paused"), Tr.t("button"));
+			return nowPlayingNarration(tracker.track(), tracker.playing(), idleHint());
 		}
 
 		@Override

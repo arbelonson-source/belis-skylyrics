@@ -220,4 +220,17 @@ class NarrationTest {
 		// Enter pressed: the page is being tried again
 		assertEquals("Loading", Narration.footer(true, "Loading", "", "Try again", "button"));
 	}
+
+	@Test
+	void theEmptyNowPlayingCardSaysWhereToPlayASongAsItShows() {
+		// Under "Nothing playing" the card shows where a song can come from; the Narrator said only "Nothing playing"
+		String hint = dev.beli.skylyrics.media.MediaTracker.idleHint(true, false, false);
+		assertEquals("Now playing, Nothing playing, " + hint,
+				SkyLyricsScreen.nowPlayingNarration(dev.beli.skylyrics.media.Track.NONE, false, hint));
+		// Before the player is read the card shows no hint, and none is said
+		assertEquals("Now playing, Nothing playing", SkyLyricsScreen.nowPlayingNarration(dev.beli.skylyrics.media.Track.NONE, false, ""));
+		// A song playing is said as before
+		dev.beli.skylyrics.media.Track song = new dev.beli.skylyrics.media.Track("Glow", "Lumen", "", 1000, "", "test");
+		assertEquals("Now playing, Glow, Lumen, Paused, button", SkyLyricsScreen.nowPlayingNarration(song, false, hint));
+	}
 }

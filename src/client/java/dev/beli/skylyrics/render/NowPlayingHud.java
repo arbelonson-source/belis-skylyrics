@@ -61,6 +61,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.BarAccent;
 import dev.beli.skylyrics.config.SkyLyricsConfig.BarPosition;
 import dev.beli.skylyrics.gui.ClipBox;
 import dev.beli.skylyrics.gui.SkyLyricsScreen;
+import dev.beli.skylyrics.gui.ToastTime;
 import dev.beli.skylyrics.lyrics.LyricLine;
 import dev.beli.skylyrics.lyrics.Lyrics;
 import dev.beli.skylyrics.lyrics.LyricsService;
@@ -312,6 +313,24 @@ public final class NowPlayingHud {
 		this.art = art;
 	}
 
+	/**
+	 * Whether the song's name still shows {@code sinceNs} after a song change or the Now playing key, with Song name only
+	 * on change: {@link #SHOW_NS} times Minecraft's Notification Display Time ({@code notices}).
+	 */
+	static boolean songNameUp(long sinceNs, double notices) {
+		return sinceNs < noticeNs(SHOW_NS, notices);
+	}
+
+	/** Whether the bar has shown the song's name long enough, {@code sinceNs} after the change, to move on to the line being sung. */
+	static boolean titleDone(long sinceNs, double notices) {
+		return sinceNs >= noticeNs(TITLE_NS, notices);
+	}
+
+	/** {@code ns} times Notification Display Time, as Minecraft's own music pop-up stays up for it (it stayed the same whatever the option said). */
+	private static long noticeNs(long ns, double notices) {
+		return (long) (ToastTime.shownFor(ns / 1e9f, notices) * 1e9);
+	}
+
 	/** Shows the song's name for a few seconds (called on song change and when the key is pressed). */
 	public void flash() {
 		shownAt = System.nanoTime();
@@ -346,7 +365,8 @@ public final class NowPlayingHud {
 		Content line = cfg.barLyrics ? currentLine(cfg, snap.lyrics()) : null;
 		float[][] pinned = pinnedLines(mc, now);
 		// Once the singing has started the bar stays, showing the song in the gaps instead of blinking off and on
-		boolean info = forced || !cfg.hudOnlyOnChange || now - shownAt < SHOW_NS || cfg.barLyrics && singing(snap.lyrics(), lyricsTime(cfg));
+		double notices = ToastTime.multiplier();
+		boolean info = forced || !cfg.hudOnlyOnChange || songNameUp(now - shownAt, notices) || cfg.barLyrics && singing(snap.lyrics(), lyricsTime(cfg));
 		//? if >=26.2 {
 		/*boolean want = cfg.enabled && cfg.nowPlayingHud && !track.equals(Track.NONE) && !mc.gui.hud.isHidden()
 		*///?} else {
@@ -378,7 +398,7 @@ public final class NowPlayingHud {
 		}
 
 		// Fading out, the bar keeps what it shows (the stopped music's empty reading would say "Unknown song")
-		Content next = TopBarLayout.keptWhileFading(want, content, line != null && now - shownAt >= TITLE_NS ? line : songInfo(track, snap.state()));
+		Content next = TopBarLayout.keptWhileFading(want, content, line != null && titleDone(now - shownAt, notices) ? line : songInfo(track, snap.state()));
 		shownReading = TopBarLayout.keptWhileFading(want, shownReading, tracker.snapshot());
 		if (content == null || !content.key().equals(next.key())) {
 			old = content;
