@@ -2131,6 +2131,19 @@ public final class SkyLyricsScreen extends Screen {
 		ScreenFault.leave(this, parent);
 	}
 
+	/**
+	 * Coming back to the settings (from the song library or Minecraft's Controls they opened) draws them again, also after
+	 * an error they hit meanwhile.
+	 */
+	@Override
+	public void added() {
+		try {
+			fault.shown();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("opening", e);
+		}
+	}
+
 	@Override
 	public void onClose() {
 		try {
