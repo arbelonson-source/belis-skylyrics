@@ -92,6 +92,43 @@ class SpotifySignOutDiskTest {
 	}
 
 	@Test
+	void quittingWhileANewSignInIsStillBeingSavedWaitsForTheSignOutBehindIt() throws Exception {
+		// Spotify renews the sign-in (or the browser finishes one) and its thread is still saving it on a slow drive when the
+		// player clicks Sign out and quits. The sign-out's thread finds that save running and leaves the removal to it, as
+		// one writer does every change in order; the quit has to wait for that writer too, or the game closes with the
+		// renewed sign-in on the disk and the next game starts signed in
+		Path login = dir.resolve("spotify-login.json");
+		SpotifyWebSource source = signedIn(login);
+		CountDownLatch disk = new CountDownLatch(1);
+		CountDownLatch saving = new CountDownLatch(1);
+		source.beforeSave = () -> {
+			saving.countDown();
+			try {
+				disk.await(30, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		};
+		JsonObject renewed = new JsonObject();
+		renewed.addProperty("access_token", "a2");
+		renewed.addProperty("refresh_token", "r2");
+		renewed.addProperty("expires_in", 3600);
+		Thread reader = new Thread(() -> source.acceptAndSave(ID, renewed), "stand-in music reader thread");
+		reader.setDaemon(true);
+		reader.start();
+		try {
+			assertTrue(saving.await(10, TimeUnit.SECONDS), "the renewed sign-in is on its way to the disk");
+			source.signOut();
+			assertFalse(source.awaitSaved(300), "the quit said the sign-out was on the disk while the save before it still ran");
+		} finally {
+			disk.countDown();
+		}
+		assertTrue(source.awaitSaved(30_000), "the quit waits for the save on its way and the removal after it");
+		assertFalse(Files.exists(login), "the next game starts signed out");
+		reader.join(10_000);
+	}
+
+	@Test
 	void aDiskThatNeverAnswersDoesNotKeepTheGameOpen() throws Exception {
 		Path login = dir.resolve("spotify-login.json");
 		SpotifyWebSource source = signedIn(login);
