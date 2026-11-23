@@ -1,0 +1,39 @@
+# Arc layout at a big Size, fix/layout198 (Minecraft 1.21.11, 1280x720, the usual FOV 70, the demo song): a long line cut
+# into rows that fit across the screen can be taller than the screen. Main centres it on its spot (a little above the
+# crosshair), so its top row, the first words sung, reaches over the screen's top edge; the branch scrolls it, like a line
+# of more than about nine rows already did, so the words being sung stay near the crosshair. Row counts are worked out
+# from the layout's geometry with the font's widths guessed at about 6 units a letter, so take them as rough.
+# Each shot, the branch against main:
+# - layout198-size1 (Size 1, the 28-word test line, most words out): the same on both, about three rows well inside.
+# - layout198-size25-start (Size 2.5, the same line 2 s in, its first words out): main: the top row runs into or past the
+#   top edge, the first words cut or out of sight; branch: the first words a little above the crosshair, the block below
+#   them reaching under the bottom edge (those words come later).
+# - layout198-size25-late (Size 2.5, most words out): main: as before, top row at or past the top edge; branch: scrolled
+#   up so the newest words are near the crosshair, the first rows above the top edge (already sung).
+# - layout198-short25 (Size 2.5, the short line "Glow on"): one row inside the screen on both.
+# Run it, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/layout198 -f version=1.21.11 -f script=.github/checks/layout198.txt
+#   gh workflow run screenshots.yml --ref fix/layout198 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/layout198.txt
+
+cmd weather clear
+cmd time set midnight
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+set layout ARC
+look 0 -20
+sleep 6
+fastlines 20000 Lanterns drifting over the sleepy town below us all night while paper boats keep sailing down the silver river past the quiet mill and every window hums along | Glow on
+set size 1
+seek 10.4
+sleep 1.4
+shot layout198-size1
+set size 2.5
+seek 0.6
+sleep 1.4
+shot layout198-size25-start
+seek 10.4
+sleep 1.4
+shot layout198-size25-late
+seek 21
+sleep 1.4
+shot layout198-short25
