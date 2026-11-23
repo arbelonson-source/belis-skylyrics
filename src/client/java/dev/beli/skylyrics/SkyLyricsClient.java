@@ -174,8 +174,10 @@ public final class SkyLyricsClient implements ClientModInitializer {
 				windows() || mac() ? HeardLibrary.NO_OPENER : HeardLibrary.MPRIS);
 		MediaSource music = new ChosenSource(musicSource(cache), spotify, () -> SkyLyricsConfig.get().preferredPlayer);
 		tracker = new MediaTracker(music, () -> SkyLyricsConfig.get().demoMode);
-		lyrics = new LyricsService(new FallbackSource(new LrclibClient(version), new NeteaseClient(version)), cache);
-		art = new AlbumArt();
+		// With Lyrics off nothing shows them or a cover, so no song goes to the lyrics sites or a cover server meanwhile
+		lyrics = new LyricsService(new FallbackSource(new LrclibClient(version), new NeteaseClient(version)), cache,
+				() -> SkyLyricsConfig.get().enabled);
+		art = new AlbumArt(() -> SkyLyricsConfig.get().enabled);
 		covers = new CoverCache(cache.resolve("covers"));
 		renderer = new LyricsRenderer(tracker, lyrics, art);
 		hud = new NowPlayingHud(tracker, lyrics, art);
@@ -408,6 +410,9 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		*///?} else {
 		ViewLock.tick(client.screen != null);
 		//?}
+		// Lyrics just turned back on (key, settings, or the file): the song that came while they were off is looked up now
+		lyrics.wake();
+		art.wake();
 		art.upload();
 		// The update check runs in the background; its answer pops up straight away, and is told in chat once a world is open
 		Updater.Notice update = Updater.takeNotice();
