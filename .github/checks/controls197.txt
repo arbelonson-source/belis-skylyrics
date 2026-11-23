@@ -1,0 +1,119 @@
+# The settings' own widgets, fix/controls197 (Minecraft 1.21.11, 1280x720, GUI scale 3 = 427x240, the demo song). Each
+# shot, the branch against main:
+# - controls197-intro-last: the welcome tour's last page, All settings in the middle at the bottom (the same on both).
+# - controls197-intro-double: a double-click on All settings (two clicks 0.15 s apart, the Arc layout picked). The
+#   settings' Lyrics tab: Lazy follow (the 5th row) stays off on the branch; on main the second click landed on its row and
+#   turned it on.
+# - controls197-timing-left: Timing set to +0.12 s by hand, searched for ("Early") and Left pressed once: +0.10 s on the
+#   branch, +0.05 s on main (a step and a half). controls197-timing-right: then set to +0.13 s and Right pressed once:
+#   +0.15 s on the branch, +0.20 s on main.
+# - controls197-reset-held: the Lyrics switch (sidebar, bottom left) turned off, then Enter held on Reset all (a press,
+#   then the repeats a held key sends, 0.8 s and 0.9 s later). Branch: the switch stays off and the button reads "Click
+#   again to reset". Main has no keydown command, so its run presses nothing here (on main a held Enter reset every
+#   setting, the switch back on).
+# - controls197-preview-held: Enter held on Preview: the preview shows (settings hidden, the hint at the bottom) and its
+#   repeat doesn't hide it again. controls197-preview-back: let go and pressed again, the settings are back.
+# - controls197-preview-esc: Esc held in the preview: the settings show again and stay open (main: no keydown, see above).
+# The keydown and keyup commands are new on this branch; the rest runs on main too.
+# Run it, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/controls197 -f version=1.21.11 -f script=.github/checks/controls197.txt
+#   gh workflow run screenshots.yml --ref fix/controls197 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/controls197.txt
+
+cmd weather clear
+cmd time set noon
+look 0 -20
+guiscale 3
+sleep 8
+set layout ARC
+set placement SKY
+set direction FOLLOW
+set lazyFollow false
+set viewLock false
+sleep 1
+
+# The tour, Next four times to its last page (Next at 291-351 x 187-207, All settings at 163-263)
+screen dev.beli.skylyrics.gui.IntroScreen
+sleep 2
+click 321 197
+sleep 0.5
+click 321 197
+sleep 0.5
+click 321 197
+sleep 0.5
+click 321 197
+sleep 1
+shot controls197-intro-last
+click 213 205
+sleep 0.15
+click 213 205
+sleep 1.5
+shot controls197-intro-double
+close
+sleep 1
+set lazyFollow false
+
+# Timing between two steps
+set syncOffsetMs 120
+gui 2
+sleep 2
+search Early
+sleep 1
+key down
+sleep 0.5
+key left
+sleep 1
+shot controls197-timing-left
+set syncOffsetMs 130
+sleep 0.5
+key right
+sleep 1
+shot controls197-timing-right
+close
+sleep 1
+set syncOffsetMs 0
+
+# Enter held on Reset all
+set enabled false
+gui 1
+sleep 2
+key tab shift
+key tab shift
+sleep 0.5
+keydown enter
+sleep 0.8
+keydown enter
+sleep 0.1
+keydown enter
+sleep 0.4
+shot controls197-reset-held
+keyup enter
+sleep 3.5
+
+# Enter held on Preview (Tab from Reset all: Done, the Lyrics switch, Preview)
+key tab
+key tab
+key tab
+sleep 0.5
+keydown enter
+sleep 0.8
+keydown enter
+sleep 0.3
+shot controls197-preview-held
+keyup enter
+sleep 0.3
+key enter
+sleep 1
+shot controls197-preview-back
+
+# Esc held in the preview
+preview
+sleep 1
+keydown escape
+sleep 0.8
+keydown escape
+sleep 0.3
+shot controls197-preview-esc
+keyup escape
+close
+sleep 1
+set enabled true
