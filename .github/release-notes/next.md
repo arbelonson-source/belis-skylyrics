@@ -291,6 +291,7 @@
 - **Sideways scrolling in the song library.** The shelf and the carousel, which run sideways, now also move with a sideways scroll: a trackpad swiped left or right, a mouse wheel that tilts, or Shift and the wheel on a Mac. Before, only scrolling up and down moved them.
 - **Scrolling the shelf under the mouse.** In the song library's shelf, scrolling with the mouse resting on the covers now chooses the cover that slides under it, so the name shown is the one a click plays. Before, the name of the cover the mouse was on before the scroll stayed, while a click played the new one.
 - **Clock in the game's language.** The top bar's clock now follows the language you play Minecraft in, not your computer's: in German, French, Russian, Ukrainian, Hebrew, Portuguese or the Spanish of Spain it shows 24 hours ("21:07") even on a computer set to American English, where it said "9:07 PM". Each language writes the time its own way (Canadian French "21 h 07"). In American English, the game's default, the clock still follows your computer.
+- **Decimal commas.** In German, French, Russian, Ukrainian, Portuguese and Spanish (but not Mexican Spanish), the settings' numbers now have a decimal comma like the rest of the text: **Size** reads "1,25×", **Timing** "+0,25 s", **Linger** "1,2 s" and the Floating **Distance** "10,7 blocks", and so does the message above the hotbar when you press a timing key. English, Swiss German, Mexican Spanish and Hebrew keep the point.
 
 ### Faster
 

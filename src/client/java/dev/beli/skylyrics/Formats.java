@@ -1,5 +1,6 @@
 package dev.beli.skylyrics;
 
+import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
 import org.jspecify.annotations.Nullable;
@@ -9,13 +10,13 @@ import net.minecraft.client.resources.language.LanguageManager;
 
 /**
  * Numbers and times as the game's language writes them, which is the language the player picked in Minecraft and not
- * the computer's: a player in German on an English computer reads "21:07" like the German words around it.
+ * the computer's: a player in German on an English computer reads "1,50×" and "21:07" like the German words around it.
  */
 public final class Formats {
 	/** The game's language code a test plays in (see the tests' InLanguage), or null to ask the game. */
 	static volatile @Nullable String testLanguage;
 
-	private record Picked(String code, Locale locale) {
+	private record Picked(String code, Locale locale, char decimalMark) {
 	}
 
 	private static volatile @Nullable Picked last;
@@ -39,7 +40,10 @@ public final class Formats {
 		String code = gameLanguage();
 		Picked now = last;
 		if (now == null || !now.code().equals(code)) {
-			now = new Picked(code, locale(code));
+			Locale locale = locale(code);
+			// Only a comma or a point: another mark (Arabic's ٫) may be missing from the fonts
+			char mark = DecimalFormatSymbols.getInstance(locale).getDecimalSeparator() == ',' ? ',' : '.';
+			now = new Picked(code, locale, mark);
 			last = now;
 		}
 		return now;
@@ -48,6 +52,17 @@ public final class Formats {
 	/** The Java locale of a Minecraft language code: "de_de" is German in Germany, "pt_br" Portuguese in Brazil. */
 	static Locale locale(String code) {
 		return Locale.forLanguageTag(code.replace('_', '-'));
+	}
+
+	/**
+	 * {@link String#format} for a number shown to the player: plain digits, with the game language's decimal mark ("1.50×"
+	 * in English, "1,50×" in German, French, Russian, Ukrainian, Portuguese and most Spanish). The pattern itself must have
+	 * no other dot.
+	 */
+	public static String number(String pattern, Object... args) {
+		String text = String.format(Locale.ROOT, pattern, args);
+		char mark = picked().decimalMark();
+		return mark == '.' ? text : text.replace('.', mark);
 	}
 
 	/**
