@@ -300,6 +300,7 @@
 - **Signing out of Spotify.** Clicking **Sign out** on the Music tab no longer makes the game pause while the saved sign-in is removed (it could on a slow or network drive, or a game folder OneDrive keeps). Signing out just before you quit still leaves the next game signed out, also when Spotify had just renewed the sign-in and it was still being saved.
 - **Hide in the Nether and the End on servers.** **Hide in the Nether** and **Hide in the End** now also work in the extra Nether and End worlds many servers make (a resource Nether, or worlds made with Multiverse on Paper and Spigot), and in a data pack's or mod's world of the Nether's or the End's kind. Before, the lyrics, the top bar and the **Record card** stayed up there, because only the main Nether and End counted.
 - **Album covers in odd picture formats.** An album cover is whatever picture your music app hands over (one inside a song file, a podcast's or a radio station's), and one in a picture format album covers don't come in is no longer opened: a small file of that kind could make the game set aside a great deal of memory at once, enough to stall or even crash it. Covers in the usual formats (JPEG, PNG, GIF and BMP) show as before.
+- **Album covers that took ages to load.** A specially made album cover picture can no longer keep your computer busy for minutes, or hours, while it loads, with no other covers loading meanwhile: it now takes no longer than an ordinary cover of its size.
 
 ### Faster
 

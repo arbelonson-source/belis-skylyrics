@@ -374,6 +374,20 @@ public final class CoverCache {
 	}
 
 	/**
+	 * The most scans of a progressive JPEG that are decoded. Encoders write about ten, each one a finer pass over the whole
+	 * picture; one that adds nothing takes a few dozen bytes, and the decoder still goes over the whole picture for it, so
+	 * a cover made of thousands of them kept a cover thread busy for minutes (one of the 8 MB allowed, for hours).
+	 */
+	static final int MAX_PASSES = 32;
+
+	/** How every cover is read: at most {@link #MAX_PASSES} passes. */
+	private static javax.imageio.ImageReadParam limited(javax.imageio.ImageReader reader) {
+		javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
+		param.setSourceProgressivePasses(0, MAX_PASSES);
+		return param;
+	}
+
+	/**
 	 * Decodes a cover no bigger than needed: the reader skips pixels while reading (source subsampling), so a huge
 	 * cover never sits whole on the heap. The result's longer side lands in [2 * target, 4 * target] (and the
 	 * shorter one stays at least {@code target} where the picture allows); pictures up to 4 * target decode as they are.
@@ -389,7 +403,7 @@ public final class CoverCache {
 			try {
 				reader.setInput(in, true, true);
 				int step = subsampling(reader.getWidth(0), reader.getHeight(0), target);
-				javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
+				javax.imageio.ImageReadParam param = limited(reader);
 				param.setSourceSubsampling(step, step, 0, 0);
 				BufferedImage image = reader.read(0, param);
 				if (image != null) {
@@ -408,7 +422,7 @@ public final class CoverCache {
 			}
 			try {
 				reader.setInput(in, true, true);
-				return reader.read(0, reader.getDefaultReadParam());
+				return reader.read(0, limited(reader));
 			} finally {
 				reader.dispose();
 			}
