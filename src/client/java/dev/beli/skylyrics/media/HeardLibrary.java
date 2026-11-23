@@ -449,6 +449,11 @@ public final class HeardLibrary implements Library {
 		if (!songs.isJsonArray()) {
 			throw new IllegalStateException("\"songs\" is not a list");
 		}
+		// The songs taken so far: every save reads the file, and comparing each song with all the ones before it was most of a save's work
+		java.util.Set<String> keys = new java.util.HashSet<>();
+		for (Entry x : out) {
+			keys.add(x.key());
+		}
 		for (JsonElement e : songs.getAsJsonArray()) {
 			try {
 				if (!e.isJsonObject()) {
@@ -461,7 +466,7 @@ public final class HeardLibrary implements Library {
 				}
 				Entry entry = new Entry(title, text(o, "artist"), text(o, "album"), Math.max(0, number(o, "lengthMs")),
 						text(o, "cover"), text(o, "uri"), text(o, "player"));
-				if (out.stream().noneMatch(x -> x.key().equals(entry.key())) && out.size() < CAP) {
+				if (out.size() < CAP && keys.add(entry.key())) {
 					out.add(entry);
 				}
 			} catch (RuntimeException bad) {
