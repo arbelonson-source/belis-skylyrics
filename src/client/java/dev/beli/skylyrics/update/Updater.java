@@ -234,6 +234,11 @@ public final class Updater {
 			LOG.info("Update {} not installed: the mod's jar is not a plain file in the mods folder, telling the player instead", release.version());
 			mode = Updates.NOTIFY;
 		}
+		if (jar != null && mode == Updates.INSTALL && packwizKeeps(jar)) {
+			LOG.info("Update {} not installed: the modpack's installer (packwiz) keeps {} and would put it back next to the new one, telling the player instead",
+					release.version(), jar.getFileName());
+			mode = Updates.NOTIFY;
+		}
 		return update(mode, http, jar, release, asset, memory, running);
 	}
 
@@ -306,6 +311,49 @@ public final class Updater {
 			}
 		}
 		return gameDir.resolve("mods");
+	}
+
+	/** packwiz-installer's manifest, in the folder it installs a modpack into: every file it put there, each with its place. */
+	static final String PACKWIZ_MANIFEST = "packwiz.json";
+	private static final long MAX_PACKWIZ_MANIFEST = 4L * 1024 * 1024;
+
+	/**
+	 * True when a modpack's packwiz-installer put this jar here. It runs before every launch (a pre-launch command in Prism,
+	 * MultiMC or ATLauncher) and downloads any file of its manifest that is missing again, so after a swap the old jar would
+	 * be back next to the new one. Its manifest is in the pack folder, the game folder holding the mods folder, and gives
+	 * each file's place relative to it ("cachedLocation", like "mods/x.jar"). A manifest that can't be read counts as none.
+	 */
+	static boolean packwizKeeps(Path jar) {
+		Path mods = jar.getParent();
+		Path pack = mods == null ? null : mods.getParent();
+		if (pack == null) {
+			return false;
+		}
+		Path manifest = pack.resolve(PACKWIZ_MANIFEST);
+		try {
+			if (!Files.isRegularFile(manifest) || Files.size(manifest) > MAX_PACKWIZ_MANIFEST) {
+				return false;
+			}
+			var root = JsonParser.parseString(Files.readString(manifest, StandardCharsets.UTF_8));
+			if (!root.isJsonObject() || !(root.getAsJsonObject().get("cachedFiles") instanceof JsonObject files)) {
+				return false;
+			}
+			Path own = jar.toAbsolutePath().normalize();
+			for (var entry : files.entrySet()) {
+				if (entry.getValue() instanceof JsonObject file && string(file, "cachedLocation") instanceof String at) {
+					try {
+						if (pack.resolve(at).toAbsolutePath().normalize().equals(own)) {
+							return true;
+						}
+					} catch (java.nio.file.InvalidPathException e) {
+						// not a place on this computer
+					}
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			LOG.info("Could not read the modpack's {}: {}", PACKWIZ_MANIFEST, LogText.of(e));
+		}
+		return false;
 	}
 
 	/** The first of the paths that is a real .jar inside the mods folder (links followed), or null. */

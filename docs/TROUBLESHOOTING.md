@@ -219,6 +219,8 @@ Other reasons for the notice: the download failed (a slow connection, say; one t
 
 If you launch with a launcher that links the `mods` or instance folder to somewhere else, updates still work.
 
+**A packwiz modpack.** If SkyLyrics came with a modpack that packwiz keeps up to date each time you press Play, the mod only tells you about a new version: the pack's installer would put the old jar back next to the new one. The pack's maker updates SkyLyrics in the pack. If you added SkyLyrics to the pack yourself, it still updates itself.
+
 ## Settings or Spotify sign-in not saved on Windows
 
 Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for a moment. The mod tries again for up to about a second before giving up, for the settings, the Spotify sign-in, saved album covers and the Windows music reader's helper file. When the game starts, it also tries reading the settings and the Spotify sign-in again, so you don't start signed out of Spotify because the file was held. If a setting still won't stick, update to the newest version first.
