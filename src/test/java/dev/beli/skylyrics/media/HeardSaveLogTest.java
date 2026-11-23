@@ -40,6 +40,7 @@ class HeardSaveLogTest {
 					}
 					Files.move(from, to, options);
 				});
+		heard.savePauseMs = 0; // still all of SafeFile's tries, without its pauses between them (775 ms for each refused save)
 		try (LogCapture log = new LogCapture()) {
 			for (int i = 1; i <= 3; i++) {
 				heard.record(song("Song " + i));

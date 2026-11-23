@@ -49,7 +49,10 @@ class MprisDeadBusTest {
 			try (ServerSocketChannel server = ServerSocketChannel.open(StandardProtocolFamily.UNIX)) {
 				server.bind(UnixDomainSocketAddress.of(socket)); // closing leaves the socket file with nobody behind it
 			}
-			Throwable failure = pollFailure(() -> DBusConnectionBuilder.forAddress("unix:path=" + socket).withShared(false).build());
+			// The library tries a refused socket again every 500 ms until its time-out (10 s by default: 20 tries, 9.5 s of
+			// waiting) and then throws the last try's failure; a 500 ms time-out is one try, failing the same way at once
+			Throwable failure = pollFailure(() -> DBusConnectionBuilder.forAddress("unix:path=" + socket).withShared(false)
+					.transportConfig().withTimeout(500).back().build());
 			assertFalse(MediaTracker.networkFailure(failure), "a dead session bus counted as no internet: " + failure);
 			assertEquals(BUS_SENTENCE, MediaTracker.failureText(failure));
 		} finally {

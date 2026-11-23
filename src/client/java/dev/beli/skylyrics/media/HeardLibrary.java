@@ -118,6 +118,8 @@ public final class HeardLibrary implements Library {
 	private volatile boolean blockedLogged;
 	/** A save that fails is logged once (a read-only game folder fails on every song), again only after one works. */
 	private final dev.beli.skylyrics.util.OnceGate saveLog = new dev.beli.skylyrics.util.OnceGate();
+	/** The first pause between a save's tries: {@link SafeFile#PAUSE_MS}, none in tests whose every try is refused. */
+	volatile long savePauseMs = SafeFile.PAUSE_MS;
 
 	public HeardLibrary(Path file, BooleanSupplier enabled, Opener opener) {
 		this(file, enabled, opener, SafeFile::readText);
@@ -303,7 +305,7 @@ public final class HeardLibrary implements Library {
 			return;
 		}
 		List<Entry> copy = snapshot();
-		if (!write(file, copy, mover, saveLog)) {
+		if (!write(file, copy, mover, saveLog, savePauseMs)) {
 			return; // the file kept its old songs, so the baseline must too: what we removed stays removed on the next save
 		}
 		saveLog.reset();
@@ -320,18 +322,18 @@ public final class HeardLibrary implements Library {
 
 	/** False when it couldn't be written (after SafeFile's retries); the file is then as it was. */
 	static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover) {
-		return write(file, entries, mover, new dev.beli.skylyrics.util.OnceGate());
+		return write(file, entries, mover, new dev.beli.skylyrics.util.OnceGate(), SafeFile.PAUSE_MS);
 	}
 
 	/** Like {@link #write(Path, List, SafeFile.Mover)}; a failure is logged only when {@code log} lets it. */
-	private static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover, dev.beli.skylyrics.util.OnceGate log) {
+	private static boolean write(Path file, List<Entry> entries, SafeFile.Mover mover, dev.beli.skylyrics.util.OnceGate log, long pauseMs) {
 		try {
 			Files.createDirectories(file.toAbsolutePath().getParent());
 			Path target = SafeFile.writeTarget(file.toAbsolutePath()); // a list shared through a link stays linked
 			Path tmp = Files.createTempFile(target.getParent(), file.getFileName() + ".", ".tmp");
 			try {
 				SafeFile.writeDurably(tmp, toJson(entries));
-				SafeFile.replace(tmp, target, mover, SafeFile.TRIES, SafeFile.PAUSE_MS);
+				SafeFile.replace(tmp, target, mover, SafeFile.TRIES, pauseMs);
 			} finally {
 				Files.deleteIfExists(tmp);
 			}
