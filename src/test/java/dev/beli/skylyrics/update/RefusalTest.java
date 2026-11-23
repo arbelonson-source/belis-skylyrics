@@ -120,6 +120,21 @@ class RefusalTest {
 	}
 
 	@Test
+	void aMemoryFromAnEarlierVersionHoldingOnlyTheWordsIsCheckedOnceMoreAndThenRememberedAgain() throws Exception {
+		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
+		Files.createDirectories(memory.getParent());
+		Files.writeString(memory, "{\"asset\":\"" + NAME + "\",\"sha256\":\"" + asset(data).sha256() + "\",\"running\":{\"minecraft\":\"1.21.11\","
+				+ "\"fabric-api\":\"0.139.0\",\"fabricloader\":\"0.17.2\",\"java\":\"21\"},\"name\":\"Fabric API\",\"needs\":\"0.140.0 oder neuer\"}");
+		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(data);
+		assertRefusal(check(net, asset(data), running("0.139.0")));
+		assertEquals(1, net.requests.size(), "the old words can't be told in today's language: checked once more");
+		assertRefusal(check(net, asset(data), running("0.139.0")));
+		assertEquals(1, net.requests.size(), "remembered again, the new way");
+		assertEquals("0.140.0 or newer", com.google.gson.JsonParser.parseString(Files.readString(memory)).getAsJsonObject().get("needs").getAsString(),
+				"an earlier version sharing the folder still reads the words");
+	}
+
+	@Test
 	void aReleaseWithoutAChecksumIsNeverRemembered() throws Exception {
 		byte[] data = jar("{\"fabric-api\":\">=0.140.0\"}");
 		UpdateCheck.Asset noDigest = new UpdateCheck.Asset(NAME, URL, null);

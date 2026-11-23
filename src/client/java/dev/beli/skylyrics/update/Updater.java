@@ -43,10 +43,23 @@ public final class Updater {
 	/** How long an update check's reply body may take after its headers. */
 	private static final Duration REPLY_TIMEOUT = Duration.ofSeconds(60);
 
-	/** What to tell the player: a new version is out, or it is already downloaded and needs a restart. */
-	public record Notice(String version, boolean downloaded, String needs, String what) {
+	/**
+	 * What to tell the player: a new version is out, it is already downloaded and needs a restart, or it needs something
+	 * newer than this game has ({@code unmet}, null when not).
+	 */
+	public record Notice(String version, boolean downloaded, Needs.Unmet unmet) {
 		public Notice(String version, boolean downloaded) {
-			this(version, downloaded, null, null);
+			this(version, downloaded, null);
+		}
+
+		/** What the new version needs, like "Fabric API 0.137.0 or newer", in the game's language as it is now; null when nothing. */
+		public String needs() {
+			return unmet == null ? null : unmet.text();
+		}
+
+		/** The thing to update, like "Fabric API"; null when nothing. */
+		public String what() {
+			return unmet == null ? null : unmet.name();
 		}
 	}
 
@@ -230,7 +243,7 @@ public final class Updater {
 			Refusal known = Refusal.read(memory);
 			if (known != null && known.matches(asset, running)) {
 				LOG.info("Update {} not downloaded again: it needs {}", release.version(), known.unmet().text());
-				return new Notice(release.version(), false, known.unmet().text(), known.unmet().name());
+				return new Notice(release.version(), false, known.unmet());
 			}
 			try {
 				installed = install(http, jar, asset, running);
@@ -238,7 +251,7 @@ public final class Updater {
 			} catch (Incompatible e) {
 				LOG.info("Update {} not installed: it needs {}", release.version(), e.unmet.text());
 				Refusal.of(asset, running, e.unmet).write(memory);
-				return new Notice(release.version(), false, e.unmet.text(), e.unmet.name());
+				return new Notice(release.version(), false, e.unmet);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			} catch (Exception e) {
