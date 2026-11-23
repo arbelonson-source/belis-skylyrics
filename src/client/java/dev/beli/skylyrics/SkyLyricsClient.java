@@ -414,7 +414,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		lyrics.wake();
 		art.wake();
 		art.upload();
-		// The update check runs in the background; its answer pops up straight away, and is told in chat once a world is open
+		// The update check runs in the background; its answer pops up once the player's language is loaded (after the loading
+		// screen), and is told in chat once a world is open
 		Updater.Notice update = Updater.takeNotice();
 		if (update != null) {
 			boolean blocked = update.needs() != null;

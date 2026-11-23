@@ -28,6 +28,7 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Updates;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
+import net.minecraft.locale.Language;
 
 /** Looks for a newer release once at start and, if asked to, swaps the mod's jar for it. Never blocks the game. */
 public final class Updater {
@@ -43,10 +44,23 @@ public final class Updater {
 	/** How long an update check's reply body may take after its headers. */
 	private static final Duration REPLY_TIMEOUT = Duration.ofSeconds(60);
 
-	/** What to tell the player: a new version is out, or it is already downloaded and needs a restart. */
-	public record Notice(String version, boolean downloaded, String needs, String what) {
+	/**
+	 * What to tell the player: a new version is out, it is already downloaded and needs a restart, or it needs something
+	 * newer than this game has ({@code unmet}, null when not).
+	 */
+	public record Notice(String version, boolean downloaded, Needs.Unmet unmet) {
 		public Notice(String version, boolean downloaded) {
-			this(version, downloaded, null, null);
+			this(version, downloaded, null);
+		}
+
+		/** What the new version needs, like "Fabric API 0.137.0 or newer", in the game's language as it is now; null when nothing. */
+		public String needs() {
+			return unmet == null ? null : unmet.text();
+		}
+
+		/** The thing to update, like "Fabric API"; null when nothing. */
+		public String what() {
+			return unmet == null ? null : unmet.name();
 		}
 	}
 
@@ -61,18 +75,30 @@ public final class Updater {
 	}
 
 	private static volatile Notice notice;
+	/**
+	 * The game's language when the mod started, or null when the player's own was already loaded then. The mod starts
+	 * before the loading screen, which loads the player's language only at its end, while the update check is often done
+	 * in a second or two: until the language changes, a notice is kept back, or all its words would be English.
+	 */
+	private static volatile Language startLanguage;
 
 	private Updater() {
 	}
 
-	/** The message to show, once. Null when there is nothing to say. */
+	/** The message to show, once. Null when there is nothing to say, or not yet: while the player's language is still loading. */
 	public static Notice takeNotice() {
+		Language start = startLanguage;
+		if (start != null && Language.getInstance() == start) {
+			return null;
+		}
 		Notice n = notice;
 		notice = null;
 		return n;
 	}
 
 	public static void start(Updates mode, String runningVersion) {
+		Language now = Language.getInstance();
+		startLanguage = now instanceof net.minecraft.client.resources.language.ClientLanguage ? null : now;
 		if (mode == Updates.OFF) {
 			return;
 		}
@@ -208,6 +234,11 @@ public final class Updater {
 			LOG.info("Update {} not installed: the mod's jar is not a plain file in the mods folder, telling the player instead", release.version());
 			mode = Updates.NOTIFY;
 		}
+		if (jar != null && mode == Updates.INSTALL && packwizKeeps(jar)) {
+			LOG.info("Update {} not installed: the modpack's installer (packwiz) keeps {} and would put it back next to the new one, telling the player instead",
+					release.version(), jar.getFileName());
+			mode = Updates.NOTIFY;
+		}
 		return update(mode, http, jar, release, asset, memory, running);
 	}
 
@@ -230,7 +261,7 @@ public final class Updater {
 			Refusal known = Refusal.read(memory);
 			if (known != null && known.matches(asset, running)) {
 				LOG.info("Update {} not downloaded again: it needs {}", release.version(), known.unmet().text());
-				return new Notice(release.version(), false, known.unmet().text(), known.unmet().name());
+				return new Notice(release.version(), false, known.unmet());
 			}
 			try {
 				installed = install(http, jar, asset, running);
@@ -238,7 +269,7 @@ public final class Updater {
 			} catch (Incompatible e) {
 				LOG.info("Update {} not installed: it needs {}", release.version(), e.unmet.text());
 				Refusal.of(asset, running, e.unmet).write(memory);
-				return new Notice(release.version(), false, e.unmet.text(), e.unmet.name());
+				return new Notice(release.version(), false, e.unmet);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			} catch (Exception e) {
@@ -280,6 +311,49 @@ public final class Updater {
 			}
 		}
 		return gameDir.resolve("mods");
+	}
+
+	/** packwiz-installer's manifest, in the folder it installs a modpack into: every file it put there, each with its place. */
+	static final String PACKWIZ_MANIFEST = "packwiz.json";
+	private static final long MAX_PACKWIZ_MANIFEST = 4L * 1024 * 1024;
+
+	/**
+	 * True when a modpack's packwiz-installer put this jar here. It runs before every launch (a pre-launch command in Prism,
+	 * MultiMC or ATLauncher) and downloads any file of its manifest that is missing again, so after a swap the old jar would
+	 * be back next to the new one. Its manifest is in the pack folder, the game folder holding the mods folder, and gives
+	 * each file's place relative to it ("cachedLocation", like "mods/x.jar"). A manifest that can't be read counts as none.
+	 */
+	static boolean packwizKeeps(Path jar) {
+		Path mods = jar.getParent();
+		Path pack = mods == null ? null : mods.getParent();
+		if (pack == null) {
+			return false;
+		}
+		Path manifest = pack.resolve(PACKWIZ_MANIFEST);
+		try {
+			if (!Files.isRegularFile(manifest) || Files.size(manifest) > MAX_PACKWIZ_MANIFEST) {
+				return false;
+			}
+			var root = JsonParser.parseString(Files.readString(manifest, StandardCharsets.UTF_8));
+			if (!root.isJsonObject() || !(root.getAsJsonObject().get("cachedFiles") instanceof JsonObject files)) {
+				return false;
+			}
+			Path own = jar.toAbsolutePath().normalize();
+			for (var entry : files.entrySet()) {
+				if (entry.getValue() instanceof JsonObject file && string(file, "cachedLocation") instanceof String at) {
+					try {
+						if (pack.resolve(at).toAbsolutePath().normalize().equals(own)) {
+							return true;
+						}
+					} catch (java.nio.file.InvalidPathException e) {
+						// not a place on this computer
+					}
+				}
+			}
+		} catch (IOException | RuntimeException e) {
+			LOG.info("Could not read the modpack's {}: {}", PACKWIZ_MANIFEST, LogText.of(e));
+		}
+		return false;
 	}
 
 	/** The first of the paths that is a real .jar inside the mods folder (links followed), or null. */
