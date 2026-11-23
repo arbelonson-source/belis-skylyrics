@@ -202,13 +202,19 @@ class SpotifyFuzzTest {
 
 	private static final long SEC = 1_000_000_000L;
 
-	/** Polls a signed-in source a few times against damaged answers: each poll gives a song, nothing, or an IOException. */
+	/**
+	 * Polls a signed-in source a few times against damaged answers: each poll gives a song, nothing, or an IOException.
+	 * Most cases save a new sign-in: the save is not forced onto the disk here (it is in the game), and each case has
+	 * its own time limit, so a slow or stalling disk (twice on GitHub's Windows machines) can't run the test out of time.
+	 */
 	@Test
 	void anySignInOrPlayingAnswerIsAReadingOrAFailedRead(@TempDir Path dir) {
-		assertTimeoutPreemptively(Duration.ofSeconds(40), () -> Fuzz.cases(24, 400, (f, i) -> {
+		Fuzz.cases(24, 400, BOUND, (f, i) -> {
 			Path login = dir.resolve("login" + i + ".json");
 			Files.writeString(login, "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"r\",\"scopes\":\"\"}");
 			SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
+			assertTrue(source.forceSaves, "the game's saves are forced onto the disk");
+			source.forceSaves = false;
 			FakeSpotify net = new FakeSpotify();
 			String token = f.random.nextBoolean() ? TOKEN : f.damagedText(TOKEN, 0.3);
 			int tokenStatus = f.random.nextInt(5) == 0 ? new int[] {400, 401, 429, 500}[f.random.nextInt(4)] : 200;
@@ -232,18 +238,19 @@ class SpotifyFuzzTest {
 				}
 			}
 			assertTrue(net.tokenCalls <= 2 * polls, "token asked " + net.tokenCalls + " times in " + polls + " polls");
-		}));
+		});
 	}
 
+	/** Each case has its own time limit: a slow or stalling disk can't run the test out of time, a case that hangs still fails. */
 	@Test
 	void aDamagedLoginFileIsSignedOutOrSignedIn(@TempDir Path dir) {
 		String good = "{\"clientId\":\"" + ID + "\",\"refreshToken\":\"r\",\"scopes\":\"user-read-playback-state\"}";
-		assertTimeoutPreemptively(BOUND, () -> Fuzz.cases(25, 300, (f, i) -> {
+		Fuzz.cases(25, 300, BOUND, (f, i) -> {
 			Path login = dir.resolve("login" + i + ".json");
 			Files.write(login, f.random.nextInt(4) == 0 ? f.bytes(500) : f.damagedText(good, 0.3).getBytes(StandardCharsets.UTF_8));
 			SpotifyWebSource source = new SpotifyWebSource(() -> ID, login);
 			source.account();
 			source.canBrowse();
-		}));
+		});
 	}
 }

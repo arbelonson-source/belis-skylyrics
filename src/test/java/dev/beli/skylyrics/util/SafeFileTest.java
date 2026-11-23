@@ -208,6 +208,16 @@ class SafeFileTest {
 		assertEquals("h\u00e9llo \u4e16\u754c".getBytes(java.nio.charset.StandardCharsets.UTF_8).length, Files.size(tmp));
 	}
 
+	/** The tests' way round the forced write (a slow disk) still writes the same bytes, so what those tests read back is real. */
+	@Test
+	void writeDurablyWithoutForcingWritesTheSameBytes() throws IOException {
+		Path tmp = dir.resolve("d.tmp");
+		Files.writeString(tmp, "a much longer old text than the new one");
+		SafeFile.writeDurably(tmp, "héllo 世界", false);
+		assertEquals("héllo 世界", Files.readString(tmp));
+		assertEquals("héllo 世界".getBytes(java.nio.charset.StandardCharsets.UTF_8).length, Files.size(tmp));
+	}
+
 	@Test
 	void writeDurablyThenReplaceLeavesOnlyTheTarget() throws IOException {
 		Path target = dir.resolve("t.json");
