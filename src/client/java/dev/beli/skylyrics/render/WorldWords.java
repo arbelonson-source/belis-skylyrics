@@ -255,6 +255,10 @@ final class WorldWords {
 		Vec3 slide = Vec3.ZERO, slid = Vec3.ZERO;
 		/** When you last hit it, which way it was knocked, and how far and which way it spins. */
 		long hitAt = -1;
+		/** When the white flash of a hit on it began, or -1: a hit doesn't start one when one began a moment ago (see {@link #flashStarts}). */
+		long hitFlashAt = -1;
+		/** Whether it landed with the white flash: not when one began less than a third of a second before (see {@link #flashStarts}). */
+		boolean flashes = true;
 		Vec3 knock = Vec3.ZERO;
 		float spin;
 		/** How far along its line it comes, from 0 at the first word to 1 at the last (for the Two-tone colour). */
@@ -330,6 +334,8 @@ final class WorldWords {
 	private @Nullable Style shadowBase, shadowStyle;
 
 	private final List<Card> cards = new ArrayList<>();
+	/** When the last white flash of a word landing or being hit began (see {@link #flashStarts}); long ago at first. */
+	private long flashAt = Long.MIN_VALUE / 2;
 	/** Reused for each card's turn while drawing, which only happens on the render thread. */
 	private static final Quaternionf TURN = new Quaternionf();
 	/** Reused for each card's middle while drawing; the checks that get it only read it. */
@@ -986,6 +992,35 @@ final class WorldWords {
 		return FLASH * (1 - t) * (1 - t);
 	}
 
+	/** {@link #flash} for a card that landed with the white flash ({@code flashes}), none for one that didn't. */
+	static float landingFlash(boolean flashes, float seconds) {
+		return flashes ? flash(seconds) : 0;
+	}
+
+	/** How far towards white a hit word still is at {@code now}, from the hit's white flash that began at {@code flashAt} (-1: none). */
+	static float hitFlash(long flashAt, long now) {
+		return flashAt < 0 ? 0 : (float) Math.exp(-KNOCK_FLASH * (now - flashAt) / 1e9f);
+	}
+
+	/** A new card goes up, with the white flash if one may begin now ({@link #flashStarts}). */
+	void land(Card card, long now) {
+		card.flashes = flashStarts(now);
+		cards.add(card);
+	}
+
+	/**
+	 * Whether a white flash (a word landing, a word you hit) may begin at {@code now}: at most three a second, like the
+	 * line-start flashes ({@link Calm#flashDue}), however fast the words come or you click. Cards that go up together (a
+	 * title and its artist, the pieces caught up after a jump) flash together, as one flash.
+	 */
+	boolean flashStarts(long now) {
+		if (now != flashAt && !Calm.flashDue(flashAt, now)) {
+			return false;
+		}
+		flashAt = now;
+		return true;
+	}
+
 	/** How far short of its place a flowing word still is, {@code seconds} after it appeared: it glides in and settles. */
 	static float slideIn(float seconds) {
 		float t = Mth.clamp(seconds / SLIDE_TIME, 0, 1);
@@ -1355,7 +1390,7 @@ final class WorldWords {
 		Card c = new Card(d, at, camera.position().add(dir.scale(distance)), yaw, 0, 0,
 				fitTitle(SIZE * size * away, at[at.length - 1], wordScale, distance), now);
 		c.title = true;
-		cards.add(c);
+		land(c, now);
 	}
 
 	/** A title card's size, scaled down if its text of {@code textWidth} would look wider than {@link #TITLE_MAX_DEGREES}. */
@@ -1597,7 +1632,7 @@ final class WorldWords {
 		card.lift = shrink;
 		int nth = lineChunks.indexOf(chunk);
 		card.along = nth < 0 || lineChunks.size() < 2 ? 0 : nth / (float) (lineChunks.size() - 1);
-		cards.add(card);
+		land(card, now);
 		int kept = 0;
 		for (int k = cards.size() - 1; k >= 0; k--) {
 			Card c = cards.get(k);
@@ -2622,6 +2657,10 @@ final class WorldWords {
 		}
 		if (best != null) {
 			best.hitAt = now;
+			// Hit again a moment after a flash began, it is knocked again but its flash runs on instead of starting over
+			if (flashStarts(now)) {
+				best.hitFlashAt = now;
+			}
 			// It flies up and off to one side, a bit further the further away it is, so the hit reads from where you stand
 			Vec3 to = best.pos.add(best.slid).subtract(eye);
 			Vec3 away = to.normalize(), side = new Vec3(-away.z, 0, away.x).normalize();
@@ -2812,10 +2851,10 @@ final class WorldWords {
 			int shown = shownLetters(c.display.logical(), flow || !popping, age);
 			float typed = arrival == WorldArrival.TYPE ? age : -1;
 			int own = c.title ? rgb : toned(rgb, toneRgb, c.along);
-			int colour = c.goneAt < 0 ? mix(own, 0xFFFFFF, flash(age) * flashing)
+			int colour = c.goneAt < 0 ? mix(own, 0xFFFFFF, landingFlash(c.flashes, age) * flashing)
 					: paled(keptColour(c, own), gone);
 			if (shove > 0) {
-				colour = mix(colour, 0xFFFFFF, (float) Math.exp(-KNOCK_FLASH * hit) * flashing);
+				colour = mix(colour, 0xFFFFFF, hitFlash(c.hitFlashAt, now) * flashing);
 			}
 			pose.pushPose();
 			pose.translate(x, y, z);
