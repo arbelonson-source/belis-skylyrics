@@ -95,6 +95,8 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private AlbumArt art;
 	private CoverCache covers;
 	private LyricsRenderer renderer;
+	/** A world left on any thread, let go of on the game thread. */
+	private WorldLeave leaving;
 	private boolean attackHeld;
 	// Held keys repeat their click; how each of our keys takes that (see KeyPresses.of)
 	private final java.util.Map<KeyMapping, KeyPresses> presses = new java.util.HashMap<>();
@@ -180,6 +182,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		art = new AlbumArt(() -> SkyLyricsConfig.get().enabled);
 		covers = new CoverCache(cache.resolve("covers"));
 		renderer = new LyricsRenderer(tracker, lyrics, art);
+		leaving = new WorldLeave(renderer::onLeaveWorld);
 		hud = new NowPlayingHud(tracker, lyrics, art);
 		card = new RecordCard(tracker, art, hud);
 
@@ -269,14 +272,17 @@ public final class SkyLyricsClient implements ClientModInitializer {
 			}
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(this::tick);
-		// A locked view pins wherever you look first in a new world, never a stale spot from the last one
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+		// A locked view pins wherever you look first in a new world, never a stale spot from the last one. A leave the game
+		// thread hasn't applied yet goes first, so it can't clear the new world's fresh state
+		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> leaving.joined(() -> {
 			ViewLock.joined();
 			renderer.onJoinWorld();
 			sky.onJoinWorld();
-		});
-		// Don't keep the old world's level alive on the title screen
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> renderer.onLeaveWorld());
+		}));
+		// Don't keep the old world's level alive on the title screen. Fabric calls this on the network thread when the
+		// connection closes or drops, while a frame may still be drawing the old world's words and stars, and just before
+		// Minecraft empties the game thread's task queue: it is only noted here, and the next tick lets go (WorldLeave)
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> leaving.left());
 		if (DevTestHook.enabled()) {
 			testHook = new DevTestHook();
 			ClientTickEvents.END_CLIENT_TICK.register(testHook::tick);
@@ -400,16 +406,21 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	private Component updateLine;
 
 	private void tick(Minecraft client) {
+		// Its own part, so a paused client tick doesn't keep the old world in memory meanwhile
+		Guard.run("leaving a world", leaving::apply);
 		Guard.run("client tick", () -> doTick(client));
 	}
 
 	private void doTick(Minecraft client) {
-		// First, so nothing failing below can leave a joined world counted as still loading (it holds the World title back)
 		//? if >=26.2 {
-		/*ViewLock.tick(client.gui.screen() != null);
+		/*Screen screen = client.gui.screen();
 		*///?} else {
-		ViewLock.tick(client.screen != null);
+		Screen screen = client.screen;
 		//?}
+		// First, so nothing failing below can leave a joined world counted as still loading (it holds the World title back),
+		// or the song readers' threads with an old answer to whether a song screen is open
+		ViewLock.tick(screen != null);
+		songScreen(isSongScreen(screen));
 		// Lyrics just turned back on (key, settings, or the file): the song that came while they were off is looked up now
 		lyrics.wake();
 		art.wake();
@@ -575,17 +586,28 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	 * render thread; a stale read only costs one poll.
 	 */
 	private static boolean anyoneLooking() {
-		net.minecraft.client.gui.screens.Screen screen = screenOpen();
-		return SpotifyPace.looking(SkyLyricsConfig.get().enabled, screen instanceof dev.beli.skylyrics.gui.SkyLyricsScreen
-				|| screen instanceof dev.beli.skylyrics.gui.LibraryScreen || screen instanceof dev.beli.skylyrics.gui.IntroScreen);
+		return looking(SkyLyricsConfig.get().enabled);
 	}
 
-	private static net.minecraft.client.gui.screens.@org.jspecify.annotations.Nullable Screen screenOpen() {
-		//? if >=26.2 {
-		/*return Minecraft.getInstance().gui.screen();
-		*///?} else {
-		return Minecraft.getInstance().screen;
-		//?}
+	/**
+	 * The same for a given Lyrics setting. The readers ask on their own thread, so the screen is the one the last game tick
+	 * saw ({@link #songScreen}), never the game's own: the first read runs as the mod starts, and on 26.2 and later the
+	 * game builds the GUI that holds its screen only after that.
+	 */
+	static boolean looking(boolean lyricsOn) {
+		return SpotifyPace.looking(lyricsOn, songScreenOpen);
+	}
+
+	/** Whether one of the mod's screens (settings, song library, tour) was open at the last game tick; see {@link #looking}. */
+	private static volatile boolean songScreenOpen;
+
+	/** Called on the game thread each tick, with whether one of the mod's screens is open. */
+	static void songScreen(boolean open) {
+		songScreenOpen = open;
+	}
+
+	private static boolean isSongScreen(@org.jspecify.annotations.Nullable Screen screen) {
+		return screen instanceof SkyLyricsScreen || screen instanceof LibraryScreen || screen instanceof IntroScreen;
 	}
 
 	public SpotifyWebSource spotify() {
