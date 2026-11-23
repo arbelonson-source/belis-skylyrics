@@ -14,6 +14,7 @@ import dev.beli.skylyrics.config.SkyLyricsConfig.ColorMode;
 import dev.beli.skylyrics.config.Themes;
 import dev.beli.skylyrics.config.Themes.Theme;
 import dev.beli.skylyrics.render.LyricsFont;
+import dev.beli.skylyrics.render.SkyClock;
 
 final class ThemePicker extends Controls.Row {
 	private static final int COLS = 3;
@@ -127,7 +128,7 @@ final class ThemePicker extends Controls.Row {
 			return Component.literal(name).withStyle(style.withColor(look.color));
 		}
 		MutableComponent out = Component.empty();
-		float t = System.nanoTime() / 1e9f / 4f;
+		float t = SkyClock.cycle(System.nanoTime(), 4_000_000_000L);
 		int n = name.length();
 		for (int i = 0; i < n; i++) {
 			int rgb = java.awt.Color.HSBtoRGB((t + i / (float) Math.max(1, n)) % 1f, 0.55f, 1f) & 0xFFFFFF;
