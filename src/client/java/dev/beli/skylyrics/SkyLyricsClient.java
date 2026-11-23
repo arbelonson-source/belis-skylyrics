@@ -558,6 +558,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 		tracker.shutdown();
 		lyrics.shutdown();
 		heard.flush(2000); // a write stuck on a network drive must not keep the game open
+		spotify.awaitSaved(2000); // a Sign out just before quitting still removes the sign-in file
 		// A save still waiting for the writer, and the open settings screen's, which Minecraft closes after this event
 		SkyLyricsConfig.get().close(2000);
 		art.close();

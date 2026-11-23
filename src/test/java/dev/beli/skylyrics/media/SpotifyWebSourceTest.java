@@ -158,6 +158,7 @@ class SpotifyWebSourceTest {
 		id[0] = ID;
 		source.signOut();
 		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
+		assertTrue(source.awaitSaved(30_000)); // the file goes on the sign-out's own thread
 		assertFalse(Files.exists(login));
 	}
 
@@ -864,6 +865,7 @@ class SpotifyWebSourceTest {
 			media.join(30_000);
 		}
 		assertFalse(media.isAlive());
+		assertTrue(source.awaitSaved(30_000));
 		assertFalse(Files.exists(dir.resolve("login.json")), "no tokens on disk after Sign out");
 		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
 	}
