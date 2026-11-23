@@ -23,20 +23,26 @@ public final class UpdateCheck {
 	/** The latest-release answer from the GitHub API, or null when it is not a usable release. */
 	public static Release parse(String json) {
 		try {
-			JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+			// Checked, never getAsJsonObject() or getAsBoolean() on an element that may be something else: on Minecraft 1.21.1
+			// to 1.21.10 (older Gson) their error writes the element out, or unwraps a list, by recursion, so an answer nested
+			// thousands of lists deep was a StackOverflowError, which ended the update thread instead of counting as no release
+			if (!(JsonParser.parseString(json) instanceof JsonObject root)) {
+				return null;
+			}
 			String tag = string(root, "tag_name");
 			if (tag != null) {
 				// The version is shown to the player: no control characters and no § (a Minecraft formatting code)
 				tag = tag.replaceAll("[\\p{Cntrl}\u00a7]", "");
 			}
-			if (tag == null || root.has("draft") && root.get("draft").getAsBoolean()
-					|| root.has("prerelease") && root.get("prerelease").getAsBoolean()) {
+			if (tag == null || !unset(root, "draft") || !unset(root, "prerelease")) {
 				return null;
 			}
 			List<Asset> assets = new ArrayList<>();
 			if (root.has("assets") && root.get("assets").isJsonArray()) {
 				for (JsonElement e : root.getAsJsonArray("assets")) {
-					JsonObject a = e.getAsJsonObject();
+					if (!(e instanceof JsonObject a)) {
+						continue;
+					}
 					String name = string(a, "name");
 					String url = string(a, "browser_download_url");
 					if (name == null || url == null) {
@@ -52,6 +58,12 @@ public final class UpdateCheck {
 		} catch (RuntimeException e) {
 			return null;
 		}
+	}
+
+	/** True when the flag is missing or a plain false; anything else (true, null, a list) isn't a published release. */
+	private static boolean unset(JsonObject o, String key) {
+		JsonElement e = o.get(key);
+		return e == null || e instanceof com.google.gson.JsonPrimitive p && !p.getAsBoolean();
 	}
 
 	private static String string(JsonObject o, String key) {

@@ -96,7 +96,7 @@ class SpotifyStalledAnswerTest {
 	}
 
 	/** Sends Spotify's requests to the server here instead, through a real HttpClient, so Java's own reading of the answer runs. */
-	private static final class ToLocal extends HttpClient {
+	static final class ToLocal extends HttpClient {
 		private final HttpClient real = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
 		private final int port;
 
