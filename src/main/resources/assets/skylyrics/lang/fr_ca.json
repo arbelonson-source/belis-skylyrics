@@ -227,7 +227,7 @@
   "skylyrics.ui.percent": "pour cent",
   "skylyrics.ui.degrees": "degrés",
   "skylyrics.ui.times": "fois",
-  "skylyrics.ui.tab_or_up_and_down_to_move_left_and_right_to_cha": "Tab ou les flèches haut et bas pour vous déplacer, gauche et droite pour modifier, Entrée pour valider, Page précédente et Page suivante pour défiler, Ctrl+Tab pour l'onglet suivant, Ctrl+F pour rechercher",
+  "skylyrics.ui.tab_or_up_and_down_to_move_left_and_right_to_cha": "Tab ou les flèches haut et bas pour vous déplacer, gauche et droite pour modifier, Entrée pour valider, Page précédente et Page suivante pour défiler, Ctrl+Tab pour l'onglet suivant, %s pour rechercher",
   "skylyrics.ui.nothing_is_playing_turn_on_the_demo_song_on_the": "Rien en lecture. Activez la chanson démo dans l'onglet Musique pour essayer.",
   "skylyrics.ui.previewing_click_or_press_any_key_to_go_back": "Aperçu. Cliquez ou appuyez sur une touche pour revenir.",
   "skylyrics.ui.play_a_song_in_spotify_a_browser_or_any_player": "Lancez une chanson dans Spotify, un navigateur ou un lecteur",
@@ -561,5 +561,6 @@
   "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify reçoit trop de demandes, patientez un instant",
   "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "La détection de musique Windows manque dans le mod. Téléchargez SkyLyrics à nouveau",
   "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify exige Premium sur le compte qui a créé votre app Spotify",
-  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "Si Spotify affiche INVALID_CLIENT, vérifiez le Client ID et que votre app a bien la Redirect URI ci-dessus, exactement telle quelle"
+  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "Si Spotify affiche INVALID_CLIENT, vérifiez le Client ID et que votre app a bien la Redirect URI ci-dessus, exactement telle quelle",
+  "skylyrics.ui.ctrl_f": "Ctrl+F"
 }

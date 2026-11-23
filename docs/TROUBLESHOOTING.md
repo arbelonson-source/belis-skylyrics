@@ -146,7 +146,7 @@ The top bar and **Record card** show the cover your player gives. If it is a web
 
 ## The flashes or motion stopped, or seem gone
 
-Check Minecraft's **Accessibility** settings. **Hide Lightning Flashes** on turns off the lyrics' flashes (glow pulse, crosshair flash, hat flare, sky pulse and the World words' white flash), and **Distortion Effects** at 0 keeps the line pop, the World words' sway, the hat's wobble and spin and the spinning record still. The World words then only fade when they leave, fall, slide in or make room for each other. Turn the flashes back on, or raise **Distortion Effects**, to get them back.
+Check Minecraft's **Accessibility** settings. **Hide Sky Flashes** (called **Hide Lightning Flashes** on 1.21.8 and older) on turns off the lyrics' flashes (glow pulse, crosshair flash, hat flare, sky pulse and the World words' white flash), and **Distortion Effects** at 0 keeps the line pop, the World words' sway, the hat's wobble and spin and the spinning record still. The World words then only fade when they leave, fall, slide in or make room for each other. Turn the flashes back on, or raise **Distortion Effects**, to get them back.
 
 ## Lyrics vanish in caves
 
@@ -189,11 +189,11 @@ The song bar sits at the top centre of the screen, where Jade and WTHIT show wha
 
 ## The Record card moves or fades
 
-The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and a card fades while the chat's messages cover it: in the bottom left most often, and in the other corners too in a small window or at a big GUI scale (not when chat is set to Hidden). A card in a top corner moves down below your potion effect icons when they reach it. A card in a top corner hides while the debug screen (F3) is open, and one in the bottom left does too when it is tall enough to reach F3's text (on a small window or a big GUI scale). This is on purpose; it comes back when the other thing goes away.
+The **Record card** steps out of the way of other things on screen. On the right it moves above or below the scoreboard sidebar, and fades if there is no room. In the bottom right it moves up above the subtitles while some show. While the chat is open, both bottom cards sit above its text box, and a card fades while the chat's messages cover it: in the bottom left most often, and in the other corners too in a small window or at a big GUI scale (not when chat is set to Hidden). A card in a top corner moves down below your potion effect icons when they reach it. A card in a top corner hides while the debug screen (F3) is open. A card in a bottom corner hides only while F3's text or one of F3's charts along the bottom of the screen reaches it (on a small window or at a big GUI scale, say). On Minecraft 1.21.9 and later, F3 lines you set to show always (in the debug options, F3 + F6) push a card in a top corner down below them, and it hides when they reach too far down. This is on purpose; it comes back when the other thing goes away.
 
 ## The top bar and the player list (Tab)
 
-While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays. The same happens while the debug screen (F3) is open.
+While you hold **Tab** on a server, the top bar and a **Record card** in a top corner fade out so the player list shows clearly, and they come back when you let go. A bar at the bottom stays. The same happens while the debug screen (F3) is open, except that a bar at the bottom hides too while F3's text or one of its charts reaches it. On Minecraft 1.21.9 and later, F3 lines you set to show always move the top bar down below them instead (it hides when they reach too far down).
 
 ## Spotify sign-in doesn't start
 
@@ -202,6 +202,7 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 - **"Can't reach the internet or Spotify"**: your internet (or Spotify) isn't answering. Check that a web page opens, then try again.
 - **"Spotify no longer accepts your Client ID, check it and sign in again"**: your Spotify app was deleted or reset, so you are signed out. Check the Client ID in your app on the Spotify dashboard (or make a new app), paste it, and press **Sign in**.
 - **"Sign-in timed out"**: the Spotify page in your browser wasn't answered within 5 minutes. Press **Sign in** again.
+- **"If Spotify shows INVALID_CLIENT, check the Client ID and that your app has the Redirect URI above, exactly as shown"**: the Music tab says this while the Spotify page is open in your browser. If that page says INVALID_CLIENT ("Invalid redirect URI", say), Spotify never sends you back to the game. On the Spotify dashboard, check that your app's Client ID is the one you pasted and that the app has the Redirect URI exactly as the settings show it (press **Copy** next to **Redirect URI** and paste it again). Then press **Cancel** and **Sign in** again.
 - **Spotify is busy**: when Spotify says there are too many requests, the mod waits as long as Spotify asks before trying again. Usually no message shows; if it happens while you sign in or the sign-in is renewed, it says "Spotify is getting too many requests, wait a moment". There is nothing for you to do but wait.
 - **"Spotify is having problems right now"**: Spotify's own servers are failing. The mod keeps trying by itself; to sign in, press **Sign in** again a little later.
 - **"Sign-in failed: Something went wrong, try again"**: Spotify didn't take this sign-in, or sent an answer the mod couldn't read. Press **Sign in** again. What Spotify said is in the game log, which helps if you [ask for help](#still-stuck).

@@ -227,7 +227,7 @@
   "skylyrics.ui.percent": "אחוז",
   "skylyrics.ui.degrees": "מעלות",
   "skylyrics.ui.times": "פעמים",
-  "skylyrics.ui.tab_or_up_and_down_to_move_left_and_right_to_cha": "Tab או חצים למעלה ולמטה לתנועה, חצים ימינה ושמאלה לשינוי, Enter ללחיצה, Page Up ו-Page Down לגלילה, Ctrl+Tab ללשונית הבאה, Ctrl+F לחיפוש",
+  "skylyrics.ui.tab_or_up_and_down_to_move_left_and_right_to_cha": "Tab או חצים למעלה ולמטה לתנועה, חצים ימינה ושמאלה לשינוי, Enter ללחיצה, Page Up ו-Page Down לגלילה, Ctrl+Tab ללשונית הבאה, %s לחיפוש",
   "skylyrics.ui.nothing_is_playing_turn_on_the_demo_song_on_the": "אין מוזיקה. הפעילו את שיר ההדגמה בלשונית \"מוזיקה\".",
   "skylyrics.ui.previewing_click_or_press_any_key_to_go_back": "תצוגה מקדימה. לחצו או הקישו על מקש כלשהו כדי לחזור.",
   "skylyrics.ui.play_a_song_in_spotify_a_browser_or_any_player": "נגנו שיר בספוטיפיי, בדפדפן או בכל נגן",
@@ -561,5 +561,6 @@
   "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "ספוטיפיי מקבל כרגע יותר מדי בקשות, חכו רגע",
   "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "קורא המוזיקה של Windows חסר במוד. הורידו את SkyLyrics מחדש",
   "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "ספוטיפיי דורש פרימיום בחשבון שיצר את אפליקציית הספוטיפיי שלכם",
-  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "אם ספוטיפיי מציג INVALID_CLIENT, בדקו את ה-Client ID ושבאפליקציה שלכם מוגדר ה-Redirect URI שלמעלה, בדיוק כפי שהוא מופיע"
+  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "אם ספוטיפיי מציג INVALID_CLIENT, בדקו את ה-Client ID ושבאפליקציה שלכם מוגדר ה-Redirect URI שלמעלה, בדיוק כפי שהוא מופיע",
+  "skylyrics.ui.ctrl_f": "Ctrl+F"
 }

@@ -58,7 +58,7 @@ Yes, with **Spotify Web**. The mod then follows your Spotify account instead of 
 4. On the dashboard, copy only your app's Client ID (32 letters and numbers). In the settings, press **Paste** next to **Client ID**. **Sign in** stays greyed out until it looks right.
 5. Press **Sign in**, confirm the link in the game, then agree on the Spotify page that opens in your browser. The settings then say "Signed in". **Sign out** is in the same place.
 
-If Spotify says it blocked the app, open the app's **User Management** on the dashboard and add your own Spotify account. If the mod says another program is using the sign-in port, close the other game or app and try again.
+If Spotify says it blocked the app, open the app's **User Management** on the dashboard and add your own Spotify account. If the mod says Spotify needs Premium on the account that created your Spotify app, the account you made the app with has no Premium: log in to the dashboard with your Premium account, make the app there, and paste its Client ID. If the mod says another program is using the sign-in port, close the other game or app and try again.
 
 ## Where do the lyrics come from?
 
@@ -94,7 +94,7 @@ The mod runs, but it follows the music on your PC right now, not the music from 
 
 ## Can I calm the flashes and the motion?
 
-Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Lightning Flashes** turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. At 0 the World words also just fade when they leave, fall, join a flowing line or make room for each other, with no rising, falling, sliding or gliding. The mod also never starts more than three flashes in one second.
+Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Sky Flashes** (called **Hide Lightning Flashes** on 1.21.8 and older) turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. At 0 the World words also just fade when they leave, fall, join a flowing line or make room for each other, with no rising, falling, sliding or gliding. The mod also never starts more than three flashes in one second.
 
 ## Does it work with Distant Horizons?
 
@@ -112,7 +112,7 @@ The **World** layout puts its words in the world around you, so with **See throu
 
 ## In the World layout, a long line keeps starting over at the top. Is that a bug?
 
-No. With **Flowing line** on (World layout, Lyrics tab), a long line is written in rows. It starts over at the top, and its old words fade out, when it runs into a hillside, when a word finds no clear spot, or when its next row would run off the bottom of the screen. That last check follows where you look and your field of view, and keeps clear of the hotbar. If you look steeply down (bridging, digging), the line starts a little above where you look, so it stays in view. In a tunnel or right by a wall it carries on instead, lifted out of the rock. For fewer restarts, turn **Size** down.
+No. With **Flowing line** on (World layout, Lyrics tab), a long line is written in rows. It starts over at the top, and its old words fade out, when it runs into a hillside, when a word finds no clear spot, or when its next row would run off the bottom of the screen. That last check follows where you look and your field of view, and keeps clear of the hotbar. If you look steeply down (bridging, digging), the line starts a little above where you look, so it stays in view. In a tunnel or right by a wall it carries on instead, lifted out of the rock where there is room. For fewer restarts, turn **Size** down.
 
 ## Can I pin the lyrics in one place?
 

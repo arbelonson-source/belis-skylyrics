@@ -227,7 +227,7 @@
   "skylyrics.ui.percent": "Prozent",
   "skylyrics.ui.degrees": "Grad",
   "skylyrics.ui.times": "mal",
-  "skylyrics.ui.tab_or_up_and_down_to_move_left_and_right_to_cha": "Tab oder die Pfeiltasten hoch und runter zum Wechseln, links und rechts zum Ändern, die Eingabetaste zum Auslösen, Bild auf und Bild ab zum Blättern, Strg+Tab für den nächsten Reiter, Strg+F zum Suchen",
+  "skylyrics.ui.tab_or_up_and_down_to_move_left_and_right_to_cha": "Tab oder die Pfeiltasten hoch und runter zum Wechseln, links und rechts zum Ändern, die Eingabetaste zum Auslösen, Bild auf und Bild ab zum Blättern, Strg+Tab für den nächsten Reiter, %s zum Suchen",
   "skylyrics.ui.nothing_is_playing_turn_on_the_demo_song_on_the": "Es läuft nichts. Schalte im Reiter Musik den Demo-Song ein, um es auszuprobieren.",
   "skylyrics.ui.previewing_click_or_press_any_key_to_go_back": "Vorschau. Klicke oder drücke eine beliebige Taste, um zurückzukehren.",
   "skylyrics.ui.play_a_song_in_spotify_a_browser_or_any_player": "Spiel einen Song in Spotify, im Browser oder einem Player ab",
@@ -561,5 +561,6 @@
   "skylyrics.ui.spotify_is_getting_too_many_requests_wait_a_mome": "Spotify bekommt gerade zu viele Anfragen, warte einen Moment",
   "skylyrics.ui.the_windows_music_reader_is_missing_from_the_mod": "Die Windows-Musikerkennung fehlt in der Mod. Lade SkyLyrics neu herunter",
   "skylyrics.ui.spotify_needs_premium_on_the_account_that_create": "Spotify verlangt Premium für das Konto, das deine Spotify-App erstellt hat",
-  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "Wenn Spotify INVALID_CLIENT anzeigt, prüfe die Client-ID und ob deine App genau die Redirect-URI oben eingetragen hat"
+  "skylyrics.ui.if_spotify_shows_invalid_client_check_the_client": "Wenn Spotify INVALID_CLIENT anzeigt, prüfe die Client-ID und ob deine App genau die Redirect-URI oben eingetragen hat",
+  "skylyrics.ui.ctrl_f": "Strg+F"
 }
