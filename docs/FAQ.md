@@ -94,7 +94,7 @@ The mod runs, but it follows the music on your PC right now, not the music from 
 
 ## Can I calm the flashes and the motion?
 
-Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Lightning Flashes** turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. At 0 the World words also just fade when they leave, fall, join a flowing line or make room for each other, with no rising, falling, sliding or gliding. The mod also never starts more than three flashes in one second.
+Yes, with Minecraft's own **Accessibility** settings. Turning on **Hide Sky Flashes** (called **Hide Lightning Flashes** on 1.21.8 and older) turns off the glow pulse, the crosshair flash, the hat flare, the sky pulse and the white flash when World words appear. **Distortion Effects** calms the motion: at 0 the line pop, the World words' sway, knock and arrival bounce, the hat's wobble and spin, and the spinning record stay still, and in between they are slower or smaller. At 0 the World words also just fade when they leave, fall, join a flowing line or make room for each other, with no rising, falling, sliding or gliding. The mod also never starts more than three flashes in one second.
 
 ## Does it work with Distant Horizons?
 
