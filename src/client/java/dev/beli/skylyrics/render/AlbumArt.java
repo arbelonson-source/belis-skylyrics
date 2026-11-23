@@ -64,11 +64,16 @@ public final class AlbumArt {
 	private @Nullable Future<?> job;
 
 	public AlbumArt() {
+		this(() -> true);
+	}
+
+	/** @param wanted false while the player has Lyrics turned off: then no cover is downloaded (see {@link #wake}) */
+	public AlbumArt(java.util.function.BooleanSupplier wanted) {
 		this(Executors.newSingleThreadExecutor(r -> {
 			Thread t = new Thread(r, "SkyLyrics album art");
 			t.setDaemon(true);
 			return t;
-		}));
+		}), null, wanted);
 	}
 
 	AlbumArt(ExecutorService executor) {
@@ -76,9 +81,17 @@ public final class AlbumArt {
 	}
 
 	AlbumArt(ExecutorService executor, @Nullable Scheduler scheduler) {
+		this(executor, scheduler, () -> true);
+	}
+
+	AlbumArt(ExecutorService executor, @Nullable Scheduler scheduler, java.util.function.BooleanSupplier wanted) {
 		this.executor = executor;
 		this.scheduler = scheduler != null ? scheduler : this::scheduleLater;
+		this.wanted = wanted;
 	}
+
+	/** Whether covers may be downloaded now: false while the player has Lyrics turned off. */
+	private final java.util.function.BooleanSupplier wanted;
 
 	/** Runs something after a delay; replaced in tests. */
 	interface Scheduler {
@@ -154,7 +167,59 @@ public final class AlbumArt {
 		uploadedGen = gen;
 	}
 
+	/*
+	 * Locks: accept guards the song change (show, the parked song) and the hand-over of a finished cover. It may be held
+	 * while this is taken (booking a retry on the timer, the HTTP client made on first use), never the other way round:
+	 * nothing holding this may wait for accept, or a song change and a failing download lock each other up.
+	 */
+
+	/** The song whose cover waits for Lyrics to be turned on, or null. Guarded by {@link #accept}. */
+	private @Nullable Track parked;
+	/** Whether {@link #parked} holds a song, read without the lock by {@link #wake} on every tick. */
+	private volatile boolean anyParked;
+
+	/** Lyrics were turned back on: loads the cover of the song that started while they were off. Cheap enough for every tick. */
+	public void wake() {
+		if (!anyParked || !wanted.getAsBoolean()) {
+			return;
+		}
+		synchronized (accept) {
+			Track t = parked;
+			parked = null;
+			anyParked = false;
+			if (t != null) {
+				show(t);
+			}
+		}
+	}
+
+	/** The song changed (or its cover did). While Lyrics are off nothing shows a cover, so none is downloaded until {@link #wake}. */
 	public void load(Track track) {
+		synchronized (accept) {
+			if (!wanted.getAsBoolean()) {
+				parked = track;
+				anyParked = true;
+				return;
+			}
+			parked = null;
+			anyParked = false;
+			show(track);
+		}
+	}
+
+	/** A cover task found Lyrics off: the song waits for {@link #wake}, which starts its cover again. */
+	private void parkAgain(Track track, long gen) {
+		synchronized (accept) {
+			if (generation.get() == gen && parked == null) {
+				parked = track;
+				anyParked = true;
+				loadedUrl = ""; // so the same address is loaded again, not taken as already there
+			}
+		}
+	}
+
+	/** Called with {@link #accept} held (and never with this held, see the lock note above). */
+	private void show(Track track) {
 		String url = track.artUrl();
 		String song = track.title() + "\n" + track.artist();
 		if (url.equals(loadedUrl)) {
@@ -192,13 +257,17 @@ public final class AlbumArt {
 				stale.image().close();
 			}
 			if (!url.isEmpty()) {
-				job = executor.submit(task(url, gen, 0, keepOnFail)); // submit doesn't block, so job is set before any later load() looks
+				job = executor.submit(task(track, url, gen, 0, keepOnFail)); // submit doesn't block, so job is set before any later load() looks
 			}
 		}
 	}
 
-	private Runnable task(String url, long gen, int failures, boolean keepOnFail) {
+	private Runnable task(Track track, String url, long gen, int failures, boolean keepOnFail) {
 		return () -> {
+			if (!wanted.getAsBoolean()) {
+				parkAgain(track, gen); // Lyrics were turned off while this waited (a retry, say): nothing is asked
+				return;
+			}
 			try {
 				BufferedImage image = fetcher.read(url);
 				if (generation.get() != gen) {
@@ -247,7 +316,7 @@ public final class AlbumArt {
 						}
 						// No network at song start must not mean no cover for the whole song
 						if (e instanceof Exception && failures < CoverRetry.MAX_RETRIES && CoverRetry.temporary(e)) {
-							retryLater(url, gen, failures + 1, keepOnFail);
+							retryLater(track, url, gen, failures + 1, keepOnFail);
 						}
 					}
 				}
@@ -256,7 +325,7 @@ public final class AlbumArt {
 	}
 
 	/** Called with {@link #accept} held. Keeps at most one retry pending, and only for the song it was scheduled for. */
-	private void retryLater(String url, long gen, int failures, boolean keepOnFail) {
+	private void retryLater(Track track, String url, long gen, int failures, boolean keepOnFail) {
 		Future<?> old = retry;
 		if (old != null) {
 			old.cancel(false);
@@ -267,7 +336,7 @@ public final class AlbumArt {
 					return;
 				}
 				retry = null;
-				job = executor.submit(task(url, gen, failures, keepOnFail));
+				job = executor.submit(task(track, url, gen, failures, keepOnFail));
 			}
 		}, CoverRetry.delayMs(failures));
 	}

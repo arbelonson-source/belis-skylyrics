@@ -80,6 +80,8 @@ public final class LyricsService {
 	private final LyricsSource client;
 	private final Path cacheDir;
 	private final IntToLongFunction retryDelayMs;
+	/** Whether lyrics may be looked up now: false while the player has Lyrics turned off. */
+	private final java.util.function.BooleanSupplier lookUp;
 	private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(r -> {
 		Thread t = new Thread(r, "SkyLyrics lyrics");
 		t.setDaemon(true);
@@ -115,13 +117,23 @@ public final class LyricsService {
 	private final Object fetchLock = new Object();
 
 	public LyricsService(LyricsSource client, Path cacheDir) {
-		this(client, cacheDir, LyricsService::retryDelayMs);
+		this(client, cacheDir, () -> true);
+	}
+
+	/** @param lookUp false while the player has Lyrics turned off: then no song is looked up (see {@link #wake}) */
+	public LyricsService(LyricsSource client, Path cacheDir, java.util.function.BooleanSupplier lookUp) {
+		this(client, cacheDir, LyricsService::retryDelayMs, lookUp);
 	}
 
 	LyricsService(LyricsSource client, Path cacheDir, IntToLongFunction retryDelayMs) {
+		this(client, cacheDir, retryDelayMs, () -> true);
+	}
+
+	LyricsService(LyricsSource client, Path cacheDir, IntToLongFunction retryDelayMs, java.util.function.BooleanSupplier lookUp) {
 		this.client = client;
 		this.cacheDir = cacheDir;
 		this.retryDelayMs = retryDelayMs;
+		this.lookUp = lookUp;
 		executor.execute(() -> tidyDisk(cacheDir, DISK_FILES));
 	}
 
@@ -177,6 +189,11 @@ public final class LyricsService {
 				current = new Snapshot(newTrack, filledIn && demo.sameAs(now.lyrics) ? now.lyrics : demo, State.READY);
 				return;
 			}
+			if (!lookUp.getAsBoolean()) {
+				// Lyrics are off, so nothing shows them: the song goes to no lyrics site until wake() finds them on again
+				current = new Snapshot(newTrack, Lyrics.NONE, State.IDLE);
+				return;
+			}
 			current = filledIn && found(now.lyrics) ? new Snapshot(newTrack, now.lyrics, now.state)
 					: new Snapshot(newTrack, Lyrics.NONE, State.LOADING);
 			pendingFetch = executor.submit(() -> fetch(newTrack, gen, false, 0));
@@ -193,12 +210,47 @@ public final class LyricsService {
 				&& (old.album().equals(fresh.album()) || old.album().isEmpty() || fresh.album().isEmpty());
 	}
 
+	/**
+	 * Lyrics were turned back on: looks up the song that started while they were off, or whose retry they stopped. Cheap
+	 * enough for every tick: only a known song waiting with nothing asked yet ({@link State#IDLE}) is looked up.
+	 */
+	public void wake() {
+		Snapshot now = current;
+		if (now.state != State.IDLE || now.track.isNone() || !lookUp.getAsBoolean()) {
+			return;
+		}
+		synchronized (fetchLock) {
+			now = current;
+			Track t = now.track;
+			if (now.state != State.IDLE || t.isNone()) {
+				return;
+			}
+			long gen = generation.incrementAndGet();
+			cancelRetry();
+			current = new Snapshot(t, now.lyrics, State.LOADING);
+			try {
+				pendingFetch = executor.submit(() -> fetch(t, gen, false, 0));
+			} catch (RejectedExecutionException ignored) {
+				// shutting down
+			}
+		}
+	}
+
+	/** Lyrics went off before this song's lookup or retry ran: it waits, asking nothing, for {@link #wake}. */
+	private void park(long gen) {
+		synchronized (fetchLock) {
+			if (generation.get() == gen) {
+				current = new Snapshot(current.track, current.lyrics, State.IDLE);
+			}
+		}
+	}
+
 	/** Forget the cached answer for this song and ask again. */
 	public void retry() {
 		synchronized (fetchLock) {
 			Snapshot now = current;
 			Track t = now.track; // read under the lock: a load() in between can't leave us asking about the old song
-			if (t.isNone() || DemoSource.PLAYER.equals(t.player())) {
+			if (t.isNone() || DemoSource.PLAYER.equals(t.player()) || !lookUp.getAsBoolean()) {
 				return;
 			}
 			long gen = generation.incrementAndGet();
@@ -248,6 +300,10 @@ public final class LyricsService {
 	private void fetch(Track t, long gen, boolean skipCache, int failures) {
 		if (generation.get() != gen) {
 			return; // skipped past this song while it waited in the queue
+		}
+		if (!lookUp.getAsBoolean()) {
+			park(gen); // Lyrics were turned off while this waited (a retry, say)
+			return;
 		}
 		Path file = cacheFile(t);
 		try {
@@ -348,8 +404,8 @@ public final class LyricsService {
 	 * again, so that, like a failure, leaves the file as it is and the next play tries again.
 	 */
 	private void recheck(Track t, long gen, Path file, CacheEntry old) {
-		if (generation.get() != gen) {
-			return;
+		if (generation.get() != gen || !lookUp.getAsBoolean()) {
+			return; // the file stays as it is, so the next play asks
 		}
 		try {
 			LrclibClient.Result result = client.find(t);
@@ -390,8 +446,8 @@ public final class LyricsService {
 	 * as it is, so the next play tries again.
 	 */
 	private void recheckAged(Track t, long gen, Path file, CacheEntry old) {
-		if (generation.get() != gen) {
-			return;
+		if (generation.get() != gen || !lookUp.getAsBoolean()) {
+			return; // the file stays as it is, so the next play asks
 		}
 		try {
 			LrclibClient.Result result = client.find(t);
