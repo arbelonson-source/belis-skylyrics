@@ -94,10 +94,13 @@ class UpdaterNoticeLanguageTest {
 
 	@Test
 	void aRememberedRefusalIsToldInTodaysLanguageNotTheOneOfTheDayItWasRefused() throws Exception {
+		// One jar for both starts: a zip keeps the time it was made (to 2 s), so two builds a moment apart can differ and
+		// the second start would rightly not count it as the same file
+		byte[] jar = jar();
 		try (InLanguage de = InLanguage.of("de_de")) {
-			check(new UpdaterChecksTest.Net(jar())); // refused and remembered while the game was in German
+			check(new UpdaterChecksTest.Net(jar)); // refused and remembered while the game was in German
 		}
-		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(jar());
+		UpdaterChecksTest.Net net = new UpdaterChecksTest.Net(jar);
 		Updater.Notice n = check(net); // a later start, after switching the game to English
 		assertEquals(0, net.requests.size(), "still remembered: nothing downloaded again");
 		assertEquals("Fabric API 0.140.0 or newer", n.needs());
