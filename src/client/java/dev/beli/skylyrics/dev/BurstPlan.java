@@ -49,8 +49,9 @@ final class BurstPlan {
 		return elapsedNs >= (long) taken * everyMs * 1_000_000L;
 	}
 
+	/** The file name of a burst's grab, numbered with plain digits whatever the computer's language. */
 	static String fileName(String name, int index) {
-		return String.format("%s_%02d", name, index);
+		return String.format(java.util.Locale.ROOT, "%s_%02d", name, index);
 	}
 
 	/** True when the lyrics clock (seconds since the line changed) fell to a fresh value since the last frame. */
