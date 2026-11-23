@@ -2039,8 +2039,24 @@ public final class SkyLyricsScreen extends Screen {
 
 	// ---- Now playing card on the Music tab -------------------------------------------------------
 
+	/** The album cover on the Now playing card, square. */
+	private static final int NOW_PLAYING_COVER = 40;
+
+	/**
+	 * Room for the Now playing card's second line while nothing plays (where a song can come from), in a row {@code rowW}
+	 * wide: from beside the cover to 10 before the row's right edge.
+	 */
+	static int idleHintRoom(int rowW) {
+		return rowW - 14 - NOW_PLAYING_COVER - 10;
+	}
+
+	/** The whole of that line's {@code hint} when it is cut short with "…" in a row {@code rowW} wide, for its tooltip; empty when it fits. */
+	static String cutIdleHint(net.minecraft.client.gui.Font font, String hint, int rowW) {
+		return font.width(hint) > idleHintRoom(rowW) ? hint : "";
+	}
+
 	private final class NowPlayingRow extends Row {
-		private static final int COVER = 40;
+		private static final int COVER = NOW_PLAYING_COVER;
 
 		NowPlayingRow() {
 			super("", null);
@@ -2058,6 +2074,16 @@ public final class SkyLyricsScreen extends Screen {
 
 		@Override
 		void renderControl(Frame f) {
+		}
+
+		/** Where a song can come from, under "Nothing playing". */
+		private String idleHint() {
+			return MediaTracker.idleHint(mod.tracker().connected(), SkyLyricsClient.mac(), SpotifyWebSource.KEY.equals(cfg.preferredPlayer));
+		}
+
+		@Override
+		String cutValue(net.minecraft.client.gui.Font font) {
+			return mod.tracker().snapshot().track() == Track.NONE ? cutIdleHint(font, idleHint(), w) : "";
 		}
 
 		private int buttonX(int i) {
@@ -2092,9 +2118,7 @@ public final class SkyLyricsScreen extends Screen {
 			int tx = barX();
 			if (track == Track.NONE) {
 				g.drawString(font, Ui.visual(Tr.t("Nothing playing")), tx, y + 13, Ui.TEXT, false);
-				g.drawString(font, Ui.visual(Ui.clip(font, MediaTracker.idleHint(tracker.connected(), SkyLyricsClient.mac(),
-						SpotifyWebSource.KEY.equals(cfg.preferredPlayer)), w - tx + x - 10)),
-						tx, y + 25, Ui.MUTED, false);
+				g.drawString(font, Ui.visual(Ui.clip(font, idleHint(), idleHintRoom(w))), tx, y + 25, Ui.MUTED, false);
 				return;
 			}
 

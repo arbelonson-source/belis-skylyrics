@@ -1,6 +1,7 @@
 package dev.beli.skylyrics.gui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -145,6 +146,43 @@ class CutRowTooltipTest {
 			assertEquals(expected, row.cutTexts(FONT), lang);
 		}
 		assertTrue(cutNames.contains("ru_ru.json"), "measured: \"Цвет альбома\" is cut; cut: " + cutNames);
+	}
+
+	@Test
+	void theEmptyNowPlayingCardsHintCutShortShowsInFull() {
+		// The Music tab's Now playing card with nothing playing: beside the cover its second line says where a song can
+		// come from (Spotify Web, a Mac, the rest), from 14 + the cover past the row's left edge to 10 before its right
+		assertEquals(120, SkyLyricsScreen.idleHintRoom(SMALLEST_ROW));
+		List<String> cut = new ArrayList<>();
+		int measured = 0;
+		// the smallest window (1280 x 720 at GUI scale 4), 1280 x 720 at its own GUI scale 3, 1920 x 1080 at its own 4
+		for (int screenW : new int[] {320, 426, 480}) {
+			int rowW = SkyLyricsScreen.rowWidth(screenW);
+			int room = SkyLyricsScreen.idleHintRoom(rowW);
+			for (String lang : all.keySet()) {
+				for (String key : List.of("play_a_song_in_spotify_on_any_device", "play_a_song_in_spotify_or_the_music_app",
+						"play_a_song_in_spotify_a_browser_or_any_player")) {
+					String hint = text(lang, key);
+					if (hint == null) {
+						continue;
+					}
+					measured++;
+					boolean isCut = FONT.width(hint) > room;
+					if (isCut) {
+						cut.add(screenW + " " + lang + " " + key);
+					}
+					assertEquals(isCut ? hint : "", SkyLyricsScreen.cutIdleHint(FONT, hint, rowW),
+							screenW + " wide, " + lang + " \"" + hint + "\" " + FONT.width(hint) + " px in " + room);
+				}
+			}
+		}
+		assertTrue(measured >= 150, "only " + measured + " hints measured");
+		// measured: in the smallest window even the English Spotify Web hint is cut (184 px in 120); in a 1920 x 1080
+		// window the French one still is (313 px in 256), and in 1280 x 720 the German one (237 px in 226)
+		assertTrue(cut.contains("320 en_us.json play_a_song_in_spotify_on_any_device"), "cut: " + cut);
+		assertTrue(cut.contains("480 fr_fr.json play_a_song_in_spotify_on_any_device"), "cut: " + cut);
+		assertTrue(cut.contains("426 de_de.json play_a_song_in_spotify_on_any_device"), "cut: " + cut);
+		assertFalse(cut.contains("480 en_us.json play_a_song_in_spotify_a_browser_or_any_player"), "fits a full-size window: " + cut);
 	}
 
 	@Test
