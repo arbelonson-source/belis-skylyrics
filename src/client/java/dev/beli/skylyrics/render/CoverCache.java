@@ -349,33 +349,70 @@ public final class CoverCache {
 	}
 
 	/**
+	 * The picture formats covers come in. Nothing else is decoded: a cover is whatever the music app hands over (a song
+	 * file's own picture, a podcast's), and Java's TIFF decoder makes room for whatever a strip's length field says, so a
+	 * 1 KB file that claims 16 x 16 pixels had it ask for up to 2 GB at once.
+	 */
+	private static final java.util.Set<String> FORMATS = java.util.Set.of("png", "jpeg", "jpg", "gif", "bmp");
+
+	/** The decoder for these bytes when they are in one of the {@link #FORMATS}, else null (no decoder takes them, or a format covers don't come in). */
+	private static javax.imageio.@Nullable ImageReader coverReader(javax.imageio.stream.ImageInputStream in) {
+		Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
+		if (!readers.hasNext()) {
+			return null;
+		}
+		javax.imageio.ImageReader reader = readers.next();
+		try {
+			if (FORMATS.contains(reader.getFormatName().toLowerCase(java.util.Locale.ROOT))) {
+				return reader;
+			}
+		} catch (java.io.IOException | RuntimeException e) {
+			// a decoder that can't say what it reads isn't trusted with one either
+		}
+		reader.dispose();
+		return null;
+	}
+
+	/**
 	 * Decodes a cover no bigger than needed: the reader skips pixels while reading (source subsampling), so a huge
 	 * cover never sits whole on the heap. The result's longer side lands in [2 * target, 4 * target] (and the
 	 * shorter one stays at least {@code target} where the picture allows); pictures up to 4 * target decode as they are.
-	 * Falls back to a plain {@link ImageIO#read} when no reader takes the bytes or subsampling fails.
+	 * When subsampling fails it is read whole, by the same decoder. Null when no decoder takes the bytes or they are in
+	 * a format covers don't come in (see {@link #FORMATS}); covers saved on disk come through here too.
 	 */
 	static @Nullable BufferedImage decodeSmall(byte[] bytes, int target) throws java.io.IOException {
 		try (javax.imageio.stream.ImageInputStream in = new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
-			Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
-			if (readers.hasNext()) {
-				javax.imageio.ImageReader reader = readers.next();
-				try {
-					reader.setInput(in, true, true);
-					int step = subsampling(reader.getWidth(0), reader.getHeight(0), target);
-					javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
-					param.setSourceSubsampling(step, step, 0, 0);
-					BufferedImage image = reader.read(0, param);
-					if (image != null) {
-						return image;
-					}
-				} catch (java.io.IOException | RuntimeException e) {
-					LOG.debug("Subsampled cover decode failed, reading whole", e);
-				} finally {
-					reader.dispose();
+			javax.imageio.ImageReader reader = coverReader(in);
+			if (reader == null) {
+				return null;
+			}
+			try {
+				reader.setInput(in, true, true);
+				int step = subsampling(reader.getWidth(0), reader.getHeight(0), target);
+				javax.imageio.ImageReadParam param = reader.getDefaultReadParam();
+				param.setSourceSubsampling(step, step, 0, 0);
+				BufferedImage image = reader.read(0, param);
+				if (image != null) {
+					return image;
 				}
+			} catch (java.io.IOException | RuntimeException e) {
+				LOG.debug("Subsampled cover decode failed, reading whole", e);
+			} finally {
+				reader.dispose();
 			}
 		}
-		return ImageIO.read(new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes)));
+		try (javax.imageio.stream.ImageInputStream in = new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
+			javax.imageio.ImageReader reader = coverReader(in);
+			if (reader == null) {
+				return null;
+			}
+			try {
+				reader.setInput(in, true, true);
+				return reader.read(0, reader.getDefaultReadParam());
+			} finally {
+				reader.dispose();
+			}
+		}
 	}
 
 	/** Every how many pixels to read so the longer side lands in [2 * target, 4 * target] (the shrink's box filter needs a few samples per output pixel); 1 up to 4 * target. */
@@ -388,14 +425,13 @@ public final class CoverCache {
 		return Math.max(1, Math.min(step, shorter / target));
 	}
 
-	/** Checks the picture size from its header, before anything is decoded. */
+	/** Checks the picture's format and size from its header, before anything is decoded. */
 	static boolean dimensionsOk(byte[] bytes) {
 		try (javax.imageio.stream.ImageInputStream in = new javax.imageio.stream.MemoryCacheImageInputStream(new ByteArrayInputStream(bytes))) {
-			Iterator<javax.imageio.ImageReader> readers = ImageIO.getImageReaders(in);
-			if (!readers.hasNext()) {
+			javax.imageio.ImageReader reader = coverReader(in);
+			if (reader == null) {
 				return false;
 			}
-			javax.imageio.ImageReader reader = readers.next();
 			try {
 				reader.setInput(in, true, true);
 				return sizeOk(reader.getWidth(0), reader.getHeight(0));
