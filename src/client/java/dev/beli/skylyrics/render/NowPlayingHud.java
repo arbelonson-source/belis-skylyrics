@@ -1283,19 +1283,26 @@ public final class NowPlayingHud {
 			String t = LyricsFont.cachedWidth(f, k.style(), k.title()) <= room ? k.title() : clip(f, k.style(), k.title(), k.floor());
 			float used = LyricsFont.cachedWidth(f, k.style(), t);
 			String s = null;
-			if (!k.sub().isEmpty() && subFits(used, room)) {
-				s = clip(f, k.style(), dotted(k.sub()), room - used);
+			if (!k.sub().isEmpty()) {
+				String dotted = dotted(k.sub());
+				if (subFits(used, room, LyricsFont.cachedWidth(f, k.style(), dotted))) {
+					s = clip(f, k.style(), dotted, room - used);
+				}
 			}
 			return new TitleCut(t, used, s);
 		});
 	}
 
-	/** Room the sub text needs beyond the title: "  ·  " and a few characters, so it never ends up as a lone ellipsis. */
+	/** Room a cut sub text needs beyond the title: "  ·  " and a few characters, so it never ends up as a lone ellipsis. */
 	static final float SUB_MIN = 30;
 
-	/** Whether the "  ·  Artist" part is shown after a title that used {@code used} of {@code room}. */
-	static boolean subFits(float used, float room) {
-		return used < room - SUB_MIN;
+	/**
+	 * Whether the "  ·  Artist" part ({@code subW} wide, with its dot) is shown after a title that used {@code used} of
+	 * {@code room}: whole when it fits, and cut when at least {@link #SUB_MIN} is left. A short artist ("  ·  " and one or
+	 * two letters is narrower than that) fits the pill that is sized for it, so it shows.
+	 */
+	static boolean subFits(float used, float room, float subW) {
+		return used + subW <= room || used < room - SUB_MIN;
 	}
 
 	/** The room a cut is worked out for, in whole GUI units, rounded down so a cut never overflows. */

@@ -300,6 +300,7 @@
 - **Rainbow colour on a computer that stays on.** The **Rainbow** colour and the Rainbow tile under **Themes** now flow smoothly however long the computer has been on since it was last restarted. Before, the colour changed in small jumps instead of every frame after a few days: after a month, five jumps a second on the lyrics and bigger, coarser ones on the tile.
 - **Sky and hat errors on 1.21.9 and newer.** On Minecraft 1.21.9 and newer, a SkyLyrics error while drawing the sky effects or your hat no longer ends the game: that effect pauses for a few seconds and the error is written to the game log once, as on older versions.
 - **Errors in the settings, the song library and the tour.** An error in one of the mod's screens (while it is drawn, read out by the Narrator, or when you press a key or click) no longer closes Minecraft with a crash report. The screen goes back to the one you opened it from, a pop-up says "Something went wrong, try again", and the error is written to the game log. When the error comes from a screen it opened (Minecraft's Controls, say), that screen stays, and the settings or the library show as usual when you go back to them. A tour that hit an error doesn't open again over the title screen until you restart the game.
+- **Short artist names on the top bar.** When a song's artist has a very short name (one or two narrow letters), the top bar now shows it after the song's name. Before, the bar left the artist out but kept room for it, so the song's name was followed by an empty stretch.
 
 ### Faster
 
