@@ -1,6 +1,12 @@
 # Runs windows-media.ps1 against a made-up media manager, so the helper can be tested with PowerShell
 # on any system (WindowsMediaSourceTest). The players and songs here are invented.
-param([string]$Script, [string]$CoverDir, [string]$Scenario = '', [string]$Flag = '')
+param([string]$Script, [string]$CoverDir, [string]$Scenario = '', [string]$Flag = '', [string]$StartLog = '')
+
+# First of all, a line in the test's start log: a start that never wrote it is PowerShell that stopped before running
+# anything of ours (it has crashed so on a busy test machine), which the test tries again instead of failing
+if ($StartLog) {
+	[IO.File]::AppendAllText($StartLog, "started`n")
+}
 
 # A finished task, like a Windows operation that has already answered (spelled out for Windows PowerShell 5.1)
 function global:Done($value) {

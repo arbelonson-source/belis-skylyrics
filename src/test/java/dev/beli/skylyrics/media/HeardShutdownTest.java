@@ -55,6 +55,11 @@ class HeardShutdownTest {
 		}
 	}
 
+	/**
+	 * The writes still under way when the game closes are waited for. The wait's limit is far over the slow disk's moment
+	 * here: a busy test machine once took over 2 s (the game's limit) for these two writes on Windows, and how fast a disk
+	 * is belongs to the machine, not the mod; that the limit ends a write that never finishes is the test above.
+	 */
 	@Test
 	void aNormalLastWriteIsStillOnDiskWhenTheGameCloses() throws Exception {
 		Path file = dir.resolve("heard.json");
@@ -69,7 +74,7 @@ class HeardShutdownTest {
 		});
 		lib.record(song("Paper Moon"));
 		lib.record(song("Glass Harbour"));
-		assertTrue(lib.flush(2_000));
+		assertTrue(lib.flush(60_000), "the writes still under way were not waited for");
 		HeardLibrary again = new HeardLibrary(file, () -> true, HeardLibrary.NO_OPENER);
 		assertEquals(java.util.List.of("Glass Harbour", "Paper Moon"),
 				again.liked(0).join().items().stream().map(LibraryItem::title).toList());

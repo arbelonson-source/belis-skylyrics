@@ -295,10 +295,12 @@ class WindowsMediaSourceTest {
 		String body = "printf '{\"ready\":true}\\n'; read n cmd rest; "
 				+ "printf '{\"seq\":%s,\"ok\":true,\"sessions\":[{\"index\":0,\"id\":\"Spotify.exe\",\"title\":\"Song\",\"status\":\"Playing\",\"positionMs\":1000,\"startMs\":0,\"endMs\":0,\"updatedMs\":0}]}\\n' \"$n\"; "
 				+ "while read l; do :; done";
+		// The answers it gives must come within the wait, and on a busy test machine 300 ms was close for a shell to
+		// answer; the questions it never answers are over any wait
 		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir, (script, covers) -> {
 			starts[0]++;
 			return List.of("/bin/sh", "-c", body);
-		}, START_MS, 300);
+		}, START_MS, 3_000);
 		try {
 			assertEquals("Song", source.poll().track().title());
 			for (int i = 0; i < 3; i++) {
@@ -376,10 +378,11 @@ class WindowsMediaSourceTest {
 		String[] preferred = {""};
 		WindowsMediaSource source = new WindowsMediaSource(() -> preferred[0], dir, (script, covers) -> List.of(
 				shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString()), START_MS, REPLY_MS);
+				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString(),
+				"-StartLog", startLog().toString()), START_MS, REPLY_MS);
 		try {
 			long before = System.currentTimeMillis();
-			Snapshot s = source.poll();
+			Snapshot s = startingPoll(source);
 			long took = System.currentTimeMillis() - before;
 			assertEquals("Song One", s.track().title(), "follows the player that is playing");
 			assertTrue(s.playing());
@@ -406,7 +409,7 @@ class WindowsMediaSourceTest {
 
 			// The helper went away (say, killed by hand): the next poll starts a fresh one
 			source.close();
-			assertEquals("Video Song", source.poll().track().title());
+			assertEquals("Video Song", startingPoll(source).track().title());
 		} finally {
 			source.close();
 		}
@@ -418,12 +421,45 @@ class WindowsMediaSourceTest {
 	}
 
 	/** As above, with the reader's folder somewhere else. */
-	private static WindowsMediaSource fakeSource(String shell, String scenario, Path flag, long replyMs, Path readerDir) {
+	private WindowsMediaSource fakeSource(String shell, String scenario, Path flag, long replyMs, Path readerDir) {
 		Path fake = Path.of("src/test/resources/windows-media-fake.ps1").toAbsolutePath();
+		Path startLog = startLog();
 		return new WindowsMediaSource(() -> "", readerDir, (script, covers) -> List.of(
 				shell, "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
 				"-File", fake.toString(), "-Script", script.toString(), "-CoverDir", covers.toString(),
-				"-Scenario", scenario, "-Flag", flag.toString()), START_MS, replyMs);
+				"-Scenario", scenario, "-Flag", flag.toString(), "-StartLog", startLog.toString()), START_MS, replyMs);
+	}
+
+	/** Where the made-up manager writes a line as the first thing it does (short, so even the deep-folder tests can). */
+	private Path startLog() {
+		return dir.toAbsolutePath().resolve("fake-starts.log");
+	}
+
+	/** How many times PowerShell got as far as the made-up manager's first line. */
+	private long fakeStarts() throws IOException {
+		Path log = startLog();
+		return Files.exists(log) ? Files.readAllLines(log).size() : 0;
+	}
+
+	/**
+	 * A poll that starts the helper. PowerShell on a busy test machine has crashed before it ran a line of the script
+	 * (GitHub's Linux machine, 2026-11-22): a start that never reached the made-up manager's first line is tried again,
+	 * up to three starts, then the test is skipped, as it is about what the helper does once it runs. A start that got
+	 * that far fails as before, whatever went wrong after it (in the real helper script too).
+	 */
+	private Snapshot startingPoll(WindowsMediaSource source) throws Exception {
+		for (int start = 1; ; start++) {
+			long before = fakeStarts();
+			try {
+				return source.poll();
+			} catch (IOException e) {
+				if (fakeStarts() > before) {
+					throw e;
+				}
+				assumeTrue(start < 3, "PowerShell stopped " + start + " times before it ran a line of the script: " + e.getMessage());
+				source.retryNow();
+			}
+		}
 	}
 
 	/**
@@ -439,7 +475,7 @@ class WindowsMediaSourceTest {
 		assumeTrue(shell != null, "PowerShell isn't installed");
 		WindowsMediaSource source = fakeSource(shell, "slowcovers", dir.resolve("none"), 10_000);
 		try {
-			source.poll(); // the helper starts here
+			startingPoll(source); // the helper starts here
 			long end = System.currentTimeMillis() + 9_000; // long enough for every cover to be tried and given up on
 			int polls = 0;
 			while (System.currentTimeMillis() < end || polls < 3) {
@@ -464,7 +500,7 @@ class WindowsMediaSourceTest {
 		assumeTrue(shell != null, "PowerShell isn't installed");
 		WindowsMediaSource source = fakeSource(shell, "slowprops", dir.resolve("none"), REPLY_MS);
 		try {
-			assertEquals("Slow Props Song", source.poll().track().title());
+			assertEquals("Slow Props Song", startingPoll(source).track().title());
 			assertEquals("Slow Props Song", source.poll().track().title(), "late once: the last reading is kept");
 			assertSame(Snapshot.NOTHING, source.poll(), "late twice in a row: gone");
 		} finally {
@@ -482,15 +518,20 @@ class WindowsMediaSourceTest {
 		try {
 			String first = null, latest = null;
 			long end = System.currentTimeMillis() + 90_000;
-			while (System.currentTimeMillis() < end && !"new cover".equals(latest)) {
-				String art = source.poll().track().artUrl();
+			Snapshot s = startingPoll(source);
+			while (true) {
+				String art = s.track().artUrl();
 				if (!art.isEmpty()) {
 					latest = Files.readString(Path.of(java.net.URI.create(art)));
 					if (first == null) {
 						first = latest;
 					}
 				}
+				if (System.currentTimeMillis() >= end || "new cover".equals(latest)) {
+					break;
+				}
 				Thread.sleep(400);
+				s = source.poll();
 			}
 			assertEquals("old cover", first, "the first read");
 			assertEquals("new cover", latest, "the second read replaces it");
@@ -508,7 +549,7 @@ class WindowsMediaSourceTest {
 		Path flag = dir.resolve("followed-is-gone");
 		WindowsMediaSource source = fakeSource(shell, "vanish", flag, REPLY_MS);
 		try {
-			assertEquals("Followed Song", source.poll().track().title());
+			assertEquals("Followed Song", startingPoll(source).track().title());
 			Files.writeString(flag, "gone");
 			source.playPause(); // would have toggled Windows' pick, the other app
 			source.next();
@@ -559,13 +600,25 @@ class WindowsMediaSourceTest {
 		String shell = powershell();
 		assumeTrue(shell != null && !WINDOWS, "needs PowerShell on a system without the Windows media API");
 		AtomicInteger starts = new AtomicInteger();
-		// Started the way the game starts it on Windows
-		WindowsMediaSource source = new WindowsMediaSource(() -> "", dir,
-				(script, covers) -> {
-					starts.incrementAndGet();
-					return WindowsMediaSource.command(shell, script, covers);
-				}, START_MS, REPLY_MS);
-		IOException first = assertThrows(IOException.class, source::poll);
+		WindowsMediaSource source;
+		IOException first;
+		for (int start = 1; ; start++) {
+			starts.set(0);
+			// Started the way the game starts it on Windows
+			source = new WindowsMediaSource(() -> "", dir,
+					(script, covers) -> {
+						starts.incrementAndGet();
+						return WindowsMediaSource.command(shell, script, covers);
+					}, START_MS, REPLY_MS);
+			first = assertThrows(IOException.class, source::poll);
+			// Gone without a word, not even the script's own "not available": PowerShell crashed before it ran the script,
+			// as it has on a busy test machine; a broken script fails the made-up player's tests, which see it run
+			if (!first.getMessage().contains("stopped right away")) {
+				break;
+			}
+			source.close();
+			assumeTrue(start < 3, "PowerShell stopped " + start + " times before it ran the script: " + first.getMessage());
+		}
 		assertTrue(first.getMessage().contains("media controls aren't available"), first.getMessage());
 		IOException again = assertThrows(IOException.class, source::poll);
 		assertEquals(first.getMessage(), again.getMessage());
@@ -614,11 +667,11 @@ class WindowsMediaSourceTest {
 		assumeTrue(shell != null, "PowerShell isn't installed");
 		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS, deepReaderDir(dir, LONG_SCRIPT_PATH));
 		try {
-			String art = "";
+			String art = startingPoll(source).track().artUrl();
 			long end = System.currentTimeMillis() + 60_000; // the helper reads a cover once the song has played 1.5 s
 			while (System.currentTimeMillis() < end && art.isEmpty()) {
-				art = source.poll().track().artUrl();
 				Thread.sleep(400);
+				art = source.poll().track().artUrl();
 			}
 			assertFalse(art.isEmpty(), "no cover was saved");
 			String cover = Files.readString(Path.of(java.net.URI.create(art)));
@@ -654,11 +707,11 @@ class WindowsMediaSourceTest {
 		assumeTrue(shell != null, "PowerShell isn't installed");
 		WindowsMediaSource source = fakeSource(shell, "newcover", dir.resolve("none"), REPLY_MS, nonEnglishReaderDir(dir));
 		try {
-			String art = "";
+			String art = startingPoll(source).track().artUrl();
 			long end = System.currentTimeMillis() + 60_000; // the helper reads a cover once the song has played 1.5 s
 			while (System.currentTimeMillis() < end && art.isEmpty()) {
-				art = source.poll().track().artUrl();
 				Thread.sleep(400);
+				art = source.poll().track().artUrl();
 			}
 			assertFalse(art.isEmpty(), "no cover was saved");
 			// A name mangled on its way through PowerShell's output would point at a file that isn't there

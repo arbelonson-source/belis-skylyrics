@@ -27,11 +27,15 @@ class UpdaterSwapWindowsTest {
 		return Files.createDirectories(dir.resolve("\u05de\u05d5\u05d3\u2019s test & (1) 100% ^! [x]"));
 	}
 
-	/** A process id that has already exited, as the game's is when the swap runs. */
-	private static long finishedPid() throws Exception {
+	/**
+	 * A process that has already exited, as the game has when the swap runs. Its id is the game's; while the process is
+	 * held here Windows can't give that id to another program (it does once nothing holds an exited one), whose wait the
+	 * swap would then sit out.
+	 */
+	private static Process finished() throws Exception {
 		Process p = new ProcessBuilder("cmd", "/c", "exit", "0").start();
 		p.waitFor();
-		return p.pid();
+		return p;
 	}
 
 	private static java.util.Set<String> names(Path folder) throws Exception {
@@ -41,13 +45,18 @@ class UpdaterSwapWindowsTest {
 	}
 
 	private static int run(Path old, Path waiting, Path target) throws Exception {
-		ProcessBuilder builder = Updater.swapProcess(Updater.powershell(), old, waiting, target, finishedPid());
-		Process p = builder.start();
-		if (!p.waitFor(90, TimeUnit.SECONDS)) {
-			p.destroyForcibly();
-			throw new AssertionError("the swap did not finish");
+		Process game = finished();
+		try {
+			ProcessBuilder builder = Updater.swapProcess(Updater.powershell(), old, waiting, target, game.pid());
+			Process p = builder.start();
+			if (!p.waitFor(90, TimeUnit.SECONDS)) {
+				p.destroyForcibly();
+				throw new AssertionError("the swap did not finish");
+			}
+			return p.exitValue();
+		} finally {
+			java.lang.ref.Reference.reachabilityFence(game);
 		}
-		return p.exitValue();
 	}
 
 	@Test
