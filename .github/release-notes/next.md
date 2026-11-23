@@ -284,6 +284,7 @@
 - **Updates in packwiz modpacks.** In a modpack kept up to date by packwiz (its installer runs each time you press Play in Prism, MultiMC or ATLauncher), a SkyLyrics that came with the pack no longer installs its own update: the pack's installer would download the old jar again at the next launch, leaving two SkyLyrics in your mods folder. The mod now only tells you a new version is out, and the pack's maker updates it. A SkyLyrics you added to such a pack yourself still updates itself.
 - **A proxy that asks for a password.** On a work or school network whose proxy wants a password, the **Music** tab no longer says "No lyrics found for this song" and stops asking: it says the lyrics sites can't be reached and keeps trying, so the lyrics come as soon as the proxy lets SkyLyrics through. Nothing is saved for the song meanwhile.
 - **Spotify answers that stop halfway.** With Spotify signed in, an answer from Spotify that stops halfway (hotel Wi-Fi dropping for a moment, a phone hotspot or a proxy stalling) is now given up after 20 seconds and asked again, with "Can't reach the internet or Spotify" meanwhile. Before, the lyrics could stay on that song and play, pause and skip did nothing until you restarted the game.
+- **The carousel with a trackpad.** In the song library's carousel, a small swipe on a Mac trackpad or a turn of a smooth (free-spinning) mouse wheel no longer races through dozens of covers: it moves one cover for each notch's worth of scrolling, as the hotbar does. A normal mouse wheel still moves one cover a notch.
 
 ### Faster
 

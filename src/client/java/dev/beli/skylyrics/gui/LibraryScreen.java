@@ -139,6 +139,7 @@ public final class LibraryScreen extends Screen {
 	private int shelfRows, shelfStride;
 	/** Carousel view: where the glide has got to, in item places. */
 	private float carPos;
+	private final ScrollSteps carouselSteps = new ScrollSteps();
 	private String tip = "";
 
 	public LibraryScreen(@Nullable Screen parent) {
@@ -1758,8 +1759,9 @@ public final class LibraryScreen extends Screen {
 		picks.scrolledAway();
 		Shelf shelf = shelf();
 		if (shelf != null && view() == SkyLyricsConfig.LibraryView.CAROUSEL) {
-			if (!shelf.items.isEmpty() && scrollY != 0) {
-				selected = Mth.clamp(Math.max(0, selected) + (scrollY > 0 ? -1 : 1), 0, shelf.items.size() - 1);
+			int step = carouselSteps.step(scrollY);
+			if (!shelf.items.isEmpty() && step != 0) {
+				selected = Mth.clamp(Math.max(0, selected) + step, 0, shelf.items.size() - 1);
 			}
 			return true;
 		}
