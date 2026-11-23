@@ -146,6 +146,9 @@ public final class LibraryScreen extends Screen {
 	private final ScrollSteps carouselSteps = new ScrollSteps();
 	private String tip = "";
 
+	/** An error in the library closes it back to where it was opened from instead of ending the game (see {@link ScreenFault}). */
+	private final ScreenFault fault = new ScreenFault("the song library", this::leaveAfterError);
+
 	public LibraryScreen(@Nullable Screen parent) {
 		super(Component.literal(Tr.t("Song library")));
 		this.parent = parent;
@@ -160,6 +163,14 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyReleased(KeyEvent event) {
+		try {
+			return onKeyUp(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a key release", e);
+		}
+	}
+
+	private boolean onKeyUp(KeyEvent event) {
 		KeyMapping open = mod.libraryKey();
 		if (open != null && open.matches(event)) {
 			closeKeyHeld = false;
@@ -185,6 +196,14 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	protected void init() {
+		try {
+			openLibrary();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("opening", e);
+		}
+	}
+
+	private void openLibrary() {
 		// Runs again after coming back from the settings, so signing in there takes effect right away
 		SkyLyricsConfig cfg = SkyLyricsConfig.get();
 		demo = stillTrying(demo, mod.spotify().canBrowse());
@@ -517,6 +536,17 @@ public final class LibraryScreen extends Screen {
 	*///?} else {
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				drawBackdrop(g, mouseX, mouseY, partialTick);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			ScreenFault.unclip();
+			fault.failed("drawing", e);
+		}
+	}
+
+	private void drawBackdrop(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		if (minecraft.level == null) {
 			//? if >=26.1 {
 			/*super.extractBackground(g, mouseX, mouseY, partialTick);
@@ -532,6 +562,17 @@ public final class LibraryScreen extends Screen {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				drawScreen(g, mouseX, mouseY, partialTick);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			ScreenFault.unclip();
+			fault.failed("drawing", e);
+		}
+	}
+
+	private void drawScreen(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		//? if <1.21.6 {
 		/*// up to 1.21.5 the background is drawn from render() itself (which this screen replaces); 1.21.6+ draws it before calling render()
 		renderBackground(g, mouseX, mouseY, partialTick);
@@ -1560,6 +1601,14 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		try {
+			return onClick(event, doubleClick);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a click", e);
+		}
+	}
+
+	private boolean onClick(MouseButtonEvent event, boolean doubleClick) {
 		keyboardLast = false;
 		picks.scrolledAway();
 		sayNewSection = false;
@@ -1756,6 +1805,14 @@ public final class LibraryScreen extends Screen {
 	/** Hovering a cover on the shelf chooses it, so its name shows before you click. */
 	@Override
 	public void mouseMoved(double mx, double my) {
+		try {
+			onMouseMove(mx, my);
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("the mouse moving", e);
+		}
+	}
+
+	private void onMouseMove(double mx, double my) {
 		Shelf shelf = shelf();
 		if (library != null && shelf != null && view() == SkyLyricsConfig.LibraryView.SHELF
 				&& Ui.inside(mx, my, viewX, viewY, viewW, viewH)) {
@@ -1772,6 +1829,14 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+		try {
+			return onScroll(mx, my, scrollX, scrollY);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("the mouse wheel", e);
+		}
+	}
+
+	private boolean onScroll(double mx, double my, double scrollX, double scrollY) {
 		picks.scrolledAway();
 		Shelf shelf = shelf();
 		// The shelf and the carousel run sideways: a sideways swipe moves them too
@@ -1796,6 +1861,14 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyPressed(KeyEvent event) {
+		try {
+			return onKey(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a key", e);
+		}
+	}
+
+	private boolean onKey(KeyEvent event) {
 		keyboardLast = true;
 		wheelPick = false;
 		picks.keyPicked();
@@ -1994,6 +2067,14 @@ public final class LibraryScreen extends Screen {
 	@Override
 	//?}
 	public boolean charTyped(CharacterEvent event) {
+		try {
+			return onChar(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("typing", e);
+		}
+	}
+
+	private boolean onChar(CharacterEvent event) {
 		sayNewSection = false;
 		sayResults = false;
 		boolean used = handleChar(event);
@@ -2120,6 +2201,16 @@ public final class LibraryScreen extends Screen {
 
 	@Override
 	protected void updateNarrationState(NarrationElementOutput output) {
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				narrateScreen(output);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("its narration", e);
+		}
+	}
+
+	private void narrateScreen(NarrationElementOutput output) {
 		output.add(NarratedElementType.TITLE, getNarrationMessage());
 		if (library != null) {
 			// Vanilla's own hint talks about Tab and arrows moving over widgets, which this screen doesn't have
@@ -2138,23 +2229,35 @@ public final class LibraryScreen extends Screen {
 		return false;
 	}
 
+	private void leaveAfterError() {
+		ScreenFault.leave(this, parent);
+	}
+
 	@Override
 	public void onClose() {
-		closed = true;
-		//? if >=26.2 {
-		/*minecraft.gui.setScreen(parent);
-		*///?} else {
-		minecraft.setScreen(parent);
-		//?}
+		try {
+			closed = true;
+			//? if >=26.2 {
+			/*minecraft.gui.setScreen(parent);
+			*///?} else {
+			minecraft.setScreen(parent);
+			//?}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("closing", e);
+		}
 	}
 
 	@Override
 	public void removed() {
-		lastSection = section;
-		// Page loads still waiting for their turn are not wanted any more
-		shelves.values().forEach(Shelf::cancel);
-		if (opened != null) {
-			opened.cancel();
+		try {
+			lastSection = section;
+			// Page loads still waiting for their turn are not wanted any more
+			shelves.values().forEach(Shelf::cancel);
+			if (opened != null) {
+				opened.cancel();
+			}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failedClosing(e);
 		}
 	}
 }

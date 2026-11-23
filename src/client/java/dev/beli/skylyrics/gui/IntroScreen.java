@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarratedElementType;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.Nullable;
@@ -45,6 +46,13 @@ public final class IntroScreen extends Screen {
 	private @Nullable String keepFocus;
 	/** {@link #init} put the keyboard back on a button, so the screen's own first-focus step is skipped once. */
 	private boolean focusRestored;
+	/** An error in the tour closes it back to the title screen instead of ending the game (see {@link ScreenFault}). */
+	private final ScreenFault fault = new ScreenFault("the tour", this::leaveAfterError);
+	/**
+	 * Set when the tour hit an error this game: it isn't opened over the title screen again until the game restarts. It
+	 * opens by itself each time the title screen shows, so a tour that fails as it opens would go round and round.
+	 */
+	static boolean broken;
 
 	public IntroScreen(@Nullable Screen parent) {
 		super(Component.literal("Beli's SkyLyrics"));
@@ -86,9 +94,17 @@ public final class IntroScreen extends Screen {
 		return (step < 0) != rtlGame ? "<" : ">";
 	}
 
-	/** Whether to open the tour: only over the very title screen that asked, and not over a tour already open. */
+	/**
+	 * Whether to open the tour: only over the very title screen that asked, and not over a tour already open, nor after
+	 * the tour hit an error this game.
+	 */
 	public static boolean shouldOpen(@Nullable Object current, Object titleScreen) {
-		return current == titleScreen && !(current instanceof IntroScreen);
+		return !broken && current == titleScreen && !(current instanceof IntroScreen);
+	}
+
+	private void leaveAfterError() {
+		broken = true;
+		ScreenFault.leave(this, parent);
 	}
 
 	/** Where the last line of text may be drawn: above the page dots and the buttons. */
@@ -151,6 +167,14 @@ public final class IntroScreen extends Screen {
 	/** Notes which button has the keyboard before the widgets are cleared (a resize or a page change clears them, and the focus with them). */
 	@Override
 	protected void rebuildWidgets() {
+		try {
+			keepFocusAndRebuild();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("rebuilding the page", e);
+		}
+	}
+
+	private void keepFocusAndRebuild() {
 		if (keepFocus == null && getFocused() != null) {
 			for (java.util.Map.Entry<String, Button> e : buttons.entrySet()) {
 				if (e.getValue() == getFocused()) {
@@ -164,6 +188,14 @@ public final class IntroScreen extends Screen {
 	/** Builds the page and puts the keyboard back where it was, also after a resize or a GUI scale change. */
 	@Override
 	protected void init() {
+		try {
+			openPage();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("building the page", e);
+		}
+	}
+
+	private void openPage() {
 		focusRestored = false;
 		build();
 		String tag = focusAfter(keepFocus, buttons.keySet());
@@ -180,6 +212,14 @@ public final class IntroScreen extends Screen {
 	 */
 	@Override
 	protected void setInitialFocus() {
+		try {
+			firstFocus();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("the first focus", e);
+		}
+	}
+
+	private void firstFocus() {
 		if (focusRestored) {
 			focusRestored = false;
 			return;
@@ -249,12 +289,17 @@ public final class IntroScreen extends Screen {
 	 * {@code spoken} is what the Narrator calls it when the label is only a sign.
 	 */
 	private void add(String tag, String label, @Nullable String spoken, int x, int y, int w, Runnable action) {
+		// Run by the game's own click and key handling, so it catches its own errors too
 		Button.Builder builder = Button.builder(Component.literal(label), b -> {
-			if (getFocused() == b) {
-				keepFocus = tag;
+			try {
+				if (getFocused() == b) {
+					keepFocus = tag;
+				}
+				action.run();
+				afterKeyboardAction(); // say what changed
+			} catch (RuntimeException | LinkageError e) {
+				fault.failed("a button", e);
 			}
-			action.run();
-			afterKeyboardAction(); // say what changed
 		}).bounds(x, y, w, 20);
 		if (spoken != null) {
 			builder.createNarration(say -> Component.translatable("gui.narrate.button", Component.literal(spoken)));
@@ -318,11 +363,26 @@ public final class IntroScreen extends Screen {
 	/** What the Narrator says for the screen: its name, then the page's words once when the page shows. */
 	@Override
 	public Component getNarrationMessage() {
-		return Component.literal(Narration.join(getTitle().getString(), content().spoken()));
+		try {
+			return fault.hasFailed() ? CommonComponents.EMPTY : Component.literal(Narration.join(getTitle().getString(), content().spoken()));
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("its narration", e);
+			return CommonComponents.EMPTY;
+		}
 	}
 
 	@Override
 	protected void updateNarrationState(NarrationElementOutput output) {
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				narrateScreen(output);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("its narration", e);
+		}
+	}
+
+	private void narrateScreen(NarrationElementOutput output) {
 		super.updateNarrationState(output);
 		// The choice made on the page (the look, the layout) is its own line, so a change says only that
 		String chosen = content().chosen();
@@ -349,7 +409,11 @@ public final class IntroScreen extends Screen {
 
 	@Override
 	public void onClose() {
-		finish();
+		try {
+			finish();
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("closing", e);
+		}
 	}
 
 	private void setScreen(@Nullable Screen screen) {
@@ -363,11 +427,25 @@ public final class IntroScreen extends Screen {
 	@Override
 	//? if >=26.1 {
 	/*public void extractBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-		super.extractBackground(g, mouseX, mouseY, partialTick);
 	*///?} else {
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-		super.renderBackground(g, mouseX, mouseY, partialTick);
 	//?}
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				drawBackdrop(g, mouseX, mouseY, partialTick);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			ScreenFault.unclip();
+			fault.failed("drawing", e);
+		}
+	}
+
+	private void drawBackdrop(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+		//? if >=26.1 {
+		/*super.extractBackground(g, mouseX, mouseY, partialTick);
+		*///?} else {
+		super.renderBackground(g, mouseX, mouseY, partialTick);
+		//?}
 		Ui.rect(g, px, py, pw, ph, 8, Ui.PANEL);
 		Ui.outline(g, px, py, pw, ph, 8, Ui.DIVIDER);
 	}
@@ -375,11 +453,25 @@ public final class IntroScreen extends Screen {
 	@Override
 	//? if >=26.1 {
 	/*public void extractRenderState(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-		super.extractRenderState(g, mouseX, mouseY, partialTick);
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-		super.render(g, mouseX, mouseY, partialTick);
 	//?}
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				drawScreen(g, mouseX, mouseY, partialTick);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			ScreenFault.unclip();
+			fault.failed("drawing", e);
+		}
+	}
+
+	private void drawScreen(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+		//? if >=26.1 {
+		/*super.extractRenderState(g, mouseX, mouseY, partialTick);
+		*///?} else {
+		super.render(g, mouseX, mouseY, partialTick);
+		//?}
 		int cx = px + pw / 2;
 		IntroPage text = content();
 		switch (page) {
