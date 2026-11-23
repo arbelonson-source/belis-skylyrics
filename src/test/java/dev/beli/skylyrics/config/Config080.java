@@ -1,0 +1,616 @@
+package dev.beli.skylyrics.config;
+
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
+
+/**
+ * A test fixture: the settings class of the released v0.8.0 ({@code git show v0.8.0:src/client/java/dev/beli/skylyrics/config/SkyLyricsConfig.java}),
+ * copied as it is with only the disk and game parts left out (load from the config folder, save, Reset all). Its
+ * {@link #parse}, {@link #fix} and timing keys are v0.8.0's own, with v0.8.0's title cleaning ({@link #clean080}), so a
+ * test can check what a player who goes back to v0.8.0 gets from a file today's version wrote. Don't change it to match
+ * today's code: it stands for a release that can't change.
+ */
+final class Config080 {
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+
+	public enum Placement {
+		/** Huge letters high in the sky, fixed to a compass direction like the sun. */
+		SKY,
+		/** Closer, smaller text that drifts along in front of you. */
+		FLOATING
+	}
+
+	public enum Direction {
+		NORTH(180), EAST(-90), SOUTH(0), WEST(90), FOLLOW(Float.NaN);
+
+		/** Minecraft yaw that looks this way. */
+		public final float yaw;
+
+		Direction(float yaw) {
+			this.yaw = yaw;
+		}
+	}
+
+	public enum ColorMode {
+		/** A colour picked from the album cover. */
+		ALBUM,
+		/** One of the swatches, or a custom hex colour. */
+		FIXED,
+		/** Slowly cycles through the rainbow. */
+		RAINBOW,
+		/** Follows the sky: warm at sunrise and sunset, pale by day, lilac at night. */
+		TIME,
+		/** Each new line fades into the next of a few neon colours. */
+		EACH_LINE
+	}
+
+	/** How the words of a line are laid out. */
+	public enum Layout {
+		/** Only the line being sung, wrapped into rows along a gentle curve; each word tilted and sized a little differently. */
+		ARC,
+		/** The previous, current and next lines, straight and centred. */
+		LINES,
+		/** Each word or two placed in the world around you as it's sung, fading as newer ones arrive. */
+		WORLD
+	}
+
+	/** World layout: how each new word appears. */
+	public enum WorldArrival {
+		/** Scattered words pop up and type in; a flowing line's words glide in from the side. */
+		POP,
+		/** Each word drops in from above and bounces a little as it lands. */
+		DROP,
+		/** Each word grows out of nothing, just past its size, and settles. */
+		ZOOM,
+		/** Each word slowly fades in where it stands. */
+		FADE,
+		/** Each word's letters appear one by one, in reading order, as if typed. */
+		TYPE
+	}
+
+	/** World layout: how each word goes once it's been sung. */
+	public enum WorldLeave {
+		/** It fades and shrinks a little where it is, as if drifting off. */
+		SHRINK,
+		/** It floats up as it fades. */
+		FLOAT,
+		/** It blows away to the side, picking up speed like a leaf on the wind. */
+		BLOW,
+		/** It sinks down as it fades. */
+		SINK,
+		/** Its letters wink out one at a time, in no order, until nothing is left. */
+		DISSOLVE
+	}
+
+	public enum Animation {
+		WORDS, FADE, RISE, POP, TYPEWRITER,
+		/** The old line slides off to one side as the new one slides in from the other. */
+		SLIDE
+	}
+
+	public enum SkyEffect {
+		OFF,
+		AURORA,
+		NEBULA,
+		/** A purple gradient with a striped retro sun low in the sky. */
+		SYNTHWAVE,
+		/** A black sun with a glowing ring and a flare, under a faint milky way. */
+		ECLIPSE,
+		/** The aurora over a softer nebula. */
+		BOTH,
+		/** A big full moon with a soft glow over low clouds drifting round the horizon. */
+		MOONLIGHT,
+		/** A slowly turning spiral galaxy, seen at a slant up and to the left of the lyrics. */
+		GALAXY,
+		/** A bright comet low on the right of the lyrics, with a warm dust tail and a blue gas tail climbing away. */
+		COMET,
+		/** One of the other skies, a different one for each song. */
+		RANDOM
+	}
+
+	public enum BarPosition {
+		TOP,
+		BOTTOM
+	}
+
+	public enum CardCorner {
+		BOTTOM_RIGHT,
+		BOTTOM_LEFT,
+		TOP_LEFT,
+		TOP_RIGHT
+	}
+
+	public enum BarShow {
+		ALWAYS,
+		LYRICS_OUT_OF_VIEW
+	}
+
+	public enum BarAccent {
+		ALBUM,
+		LYRICS,
+		FIXED
+	}
+
+	public enum SkyColors {
+		/** The aurora's own greens and violets with a touch of the lyrics colour. */
+		CLASSIC,
+		/** Recoloured to the album cover's colour. */
+		ALBUM,
+		/** Recoloured to the lyrics colour. */
+		LYRICS
+	}
+
+	public enum SkySpeed {
+		SLOW(0.5f), NORMAL(1f), FAST(2f);
+
+		public final float factor;
+
+		SkySpeed(float factor) {
+			this.factor = factor;
+		}
+	}
+
+	public enum Effects {
+		/** Full effects, lighter while the frame rate is low. */
+		AUTO,
+		FULL,
+		/** Fewer glow copies around the letters, always. */
+		LIGHT
+	}
+
+	public enum Updates {
+		/** Download a new version and swap it in; it starts on the next launch. */
+		INSTALL,
+		/** Only say that a new version is out. */
+		NOTIFY,
+		OFF
+	}
+
+	public enum Hat {
+		NONE,
+		/** A glowing ring floating above your head. */
+		HALO,
+		HEADPHONES,
+		/** A wide straw cone. */
+		CONICAL,
+		CROWN,
+		/** Two cat ears with glowing insides. */
+		CAT_EARS,
+		/** A carved pumpkin with a glowing face. */
+		PUMPKIN,
+		/** A tall top hat with a glowing band. */
+		TOP_HAT,
+		/** Two curled red horns with glowing tips. */
+		DEVIL_HORNS,
+		/** Glowing music notes circling the head. */
+		MUSIC_NOTES,
+		/** Dark sunglasses with glowing rims. */
+		SHADES,
+		/** Two thin antennae with glowing balls that wobble. */
+		ANTENNAE,
+		/** A leafy vine round the top of the head, set with small glowing flowers. */
+		FLOWER_CROWN,
+		/** A panelled cap with a peak at the front and a little propeller on top that whirls with each new line. */
+		PROPELLER_CAP
+	}
+
+	/** Shapes for the crosshair. Every one but NORMAL is drawn in the lyrics colour with a thin dark edge. */
+	public enum Crosshair {
+		/** Minecraft's own. */
+		NORMAL,
+		DOT,
+		/** A plus with a gap round a dot in the middle. */
+		CROSS,
+		/** A small ring round a dot. */
+		CIRCLE,
+		/** Four corners like a camera frame, round a dot. */
+		CORNERS,
+		/** A music note whose round head sits on the aim. */
+		NOTE,
+		/** A small solid heart, the aim near the top of it. */
+		HEART,
+		/** A diamond outline round a dot. */
+		DIAMOND
+	}
+
+	public enum Layer {
+		/** On screen, unless blocks should hide the text and no shaders or rain would dim it. */
+		AUTO,
+		/** In the world: hills can hide the text, shaders light it. */
+		WORLD,
+		/** Drawn over the finished picture, so shaders and clouds can't dim or cover it. */
+		SCREEN
+	}
+
+	public enum LibraryView {
+		/** Rows and columns of small covers. */
+		GRID,
+		/** Big covers standing in sideways-scrolling rows. */
+		SHELF,
+		/** One big centred cover with its neighbours turned away. */
+		CAROUSEL
+	}
+
+	// Main
+	public boolean enabled = true;
+	public Placement placement = Placement.SKY;
+	public Direction direction = Direction.FOLLOW;
+	/** Follow waits until you turn away, then glides over, instead of staying right where you look. */
+	public boolean lazyFollow = false;
+	/** Pins the lyrics where you were looking when this turned on, instead of following Direction. */
+	public boolean viewLock = false;
+	public Layout layout = Layout.WORLD;
+	/** World layout: how many word groups float at once, and how many seconds sung ones take to fade away. */
+	public int worldWords = 7;
+	public float worldFade = 1.2f;
+	/** World layout: how far out the words float, times the usual 6 to 15 blocks; they grow to match, so they read the same. */
+	public float worldDistance = 1f;
+	/** World layout: how much the words turn sideways, nod and lean, times the usual; 0 has them face you straight on. */
+	public float worldTilt = 1f;
+	/** World layout: how far the words drift up as they float, times the usual; 0 keeps them still. */
+	public float worldRise = 1f;
+	/** World layout: a line's words read left to right in rows, like handwriting, instead of scattering. */
+	public boolean worldFlow = false;
+	/** World layout: how much a flowing line slopes and bends, times the usual; 0 keeps it straight. */
+	public float worldCurve = 1f;
+	/** World layout: a line's earlier words stay lit until the line is over, so you can read it whole. */
+	public boolean worldHold = true;
+	/** World layout: words that end up on top of each other glide apart. */
+	public boolean worldNudge = true;
+	/** World layout: how each new word appears. */
+	public WorldArrival worldArrival = WorldArrival.POP;
+	/** World layout: how each word goes once it's been sung. */
+	public WorldLeave worldLeave = WorldLeave.SHRINK;
+	/** World layout: letters with only their glow round them, no dark shadow or edge, like a soft neon sign. */
+	public boolean worldSoft = false;
+	/** World layout: one word in each line is drawn bigger than the rest, like a sung highlight. */
+	public boolean worldBig = true;
+	/** World layout: new words go to the side of where you look, keeping the middle of the view free for the game. */
+	public boolean worldClearMiddle = true;
+	/** World layout: words keep out of the way of other players, so they never cover someone in a fight. */
+	public boolean worldAvoidPlayers = true;
+	/** World layout: hitting a word knocks it away; it spins and springs back. */
+	public boolean worldKnock = true;
+	/** World layout: words take on a little of the sky's colour, as if lit by it. */
+	public boolean worldTint = true;
+	/** World layout: while you glide with an elytra, ride something or fly, the words travel with you instead of being left behind. */
+	public boolean worldGlide = true;
+	/** World layout: when you die, the words drop out of the sky. */
+	public boolean worldDeath = true;
+	/** World layout: a new song's name floats up in the sky for a few seconds. */
+	public boolean worldTitle = true;
+
+	// Lyrics
+	public boolean showPrevious = true;
+	public boolean showNext = true;
+	public boolean karaoke = true;
+	/** With {@link #karaoke}: the word being sung grows a little. */
+	public boolean growWord = false;
+	public boolean uppercase = false;
+	public Animation animation = Animation.WORDS;
+	/** Positive shows lyrics earlier (if they lag behind the song), in milliseconds. */
+	public int syncOffsetMs = 0;
+	/** Extra timing for single songs, on top of {@link #syncOffsetMs}. Keyed by {@link #songKey}. */
+	public Map<String, Integer> songOffsets = new LinkedHashMap<>();
+	public boolean showPlainLyrics = true;
+
+	// Style
+	public ColorMode colorMode = ColorMode.FIXED;
+	public int color = 0xC7D0F4;
+	/** The bundled smooth font; off uses Minecraft's pixel font. */
+	public boolean smoothFont = true;
+	/** With {@link #smoothFont}: handwritten letters for the sky lyrics. */
+	public boolean scriptFont = false;
+	/** With {@link #smoothFont} and not {@link #scriptFont}: the heavier Poppins Bold. */
+	public boolean boldFont = true;
+	/** With {@link #smoothFont} and not {@link #scriptFont}: the soft, rounded Nunito instead of Poppins. */
+	public boolean roundFont = false;
+	/** Solid darker and lighter copies of the letters just behind them, for a raised 3D look. */
+	public boolean depth = true;
+	public float glow = 0f;
+	/** The glow takes its own colour instead of the words'. */
+	public boolean glowPick = false;
+	public int glowColor = 0xFF8FD8;
+	/** Each line fades from its colour into this second one, from its first word to its last (the Two-tone setting). */
+	public boolean twoTone = false;
+	public int toneColor = 0xFF6EC7;
+	/** The glow flares up for a moment whenever a new line starts. */
+	public boolean pulse = true;
+	public boolean shadow = true;
+	public float opacity = 1f;
+	/** How much glow to draw: lighter costs fewer frames. */
+	public Effects effects = Effects.AUTO;
+	public SkyEffect sky = SkyEffect.AURORA;
+	public float skyStrength = 0.7f;
+	/** Star patterns joined by thin lines in the night sky. */
+	public boolean constellations = true;
+	public SkyColors skyColors = SkyColors.CLASSIC;
+	public SkySpeed skySpeed = SkySpeed.NORMAL;
+	public boolean shootingStars = false;
+	public boolean twinkle = false;
+	/** The sky effect brightens for a moment as each new line starts, and sits a little dimmer in between. */
+	public boolean skyPulse = false;
+	/** Something glowing on your head, seen in third person. Only you can see it. */
+	public Hat hat = Hat.NONE;
+	/** The hat flares up with each new line. */
+	public boolean hatPulse = true;
+	/** The crosshair's shape. The attack meter under it stays as it is. */
+	public Crosshair crosshair = Crosshair.NORMAL;
+	/** Our crosshair shapes flash brighter for a moment as each new line starts. */
+	public boolean crosshairPulse = false;
+
+	// Display
+	public float size = 1f;
+	/** Degrees above the horizon (Sky mode). */
+	public float height = 22f;
+	/** Blocks away from you. */
+	public float distance = 64f;
+	public boolean seeThroughBlocks = true;
+	public Layer layer = Layer.AUTO;
+	public boolean hideInMenus = false;
+	/** The lines around the one being sung, under the buttons of the main menu. */
+	public boolean titleScreenLyrics = true;
+	public boolean hideWhenPaused = false;
+	public boolean hideWithF1 = true;
+	public boolean hideInNether = false;
+	public boolean hideInEnd = false;
+	public boolean hideUnderwater = false;
+	/** Hide when there's no open sky above the player, like underground. */
+	public boolean hideInCaves = false;
+	/**
+	 * Arc and Lines (Draw on top: Auto) go on the screen layer while you're under cover, so rock doesn't hide them. On by default: lyrics
+	 * vanishing the moment you walk into a cave looks like a bug. Has no effect with Hide in caves on.
+	 */
+	public boolean showUnderground = true;
+	public boolean hideInMultiplayer = false;
+
+	// Now-playing card
+	public boolean nowPlayingHud = true;
+	public boolean hudOnlyOnChange = true;
+	/** The top bar also shows the line being sung, with the current word highlighted. */
+	public boolean barLyrics = true;
+	/** The time, left of the top bar. */
+	public boolean barClock = true;
+	/** Frames per second, right of the top bar. */
+	public boolean barStats = true;
+	/** Signal bars for your connection, right of the top bar; a file from before this had its own switch follows the frame rate one. */
+	public boolean barPing = true;
+	public BarShow barShow = BarShow.ALWAYS;
+	public BarPosition barPosition = BarPosition.TOP;
+	public float barSize = 1f;
+	/** How dark the bar's background is, from transparent to opaque. */
+	public float barBackground = 1f;
+	public BarAccent barAccent = BarAccent.FIXED;
+	public int barAccentColor = 0x926CDE;
+	public boolean barArt = true;
+	/** The round cover turns slowly, like a record, while the song plays. */
+	public boolean barSpin = false;
+	public boolean barEqualiser = true;
+	/** A thin line under the words that fills as the song plays. */
+	public boolean barProgress = false;
+	/** A small card in a corner with a spinning record, the song and how far along it is. */
+	public boolean recordCard = false;
+	public CardCorner cardCorner = CardCorner.BOTTOM_RIGHT;
+	/** The record card also shows the line being sung, on a strip under the record. */
+	public boolean cardLyrics = true;
+	/** How many lines the card's strip shows: 1, or 3 (the line before, the current one and the line after). */
+	public int cardLines = 1;
+
+	// Music
+	/** Part of the player name to prefer ("spotify", "firefox"…); empty = whatever is playing. */
+	public String preferredPlayer = "";
+	/** From the player's own app on the Spotify dashboard; only used when preferredPlayer is "spotify-web". */
+	public String spotifyClientId = "";
+	public boolean demoMode = false;
+
+	/** Whether the first-run tour has been shown. Settings files from before the tour count as seen. */
+	public boolean introSeen = false;
+	/** How the song library shows its covers. */
+	public LibraryView libraryView = LibraryView.GRID;
+	/** Remember the songs that play, for the "Recently heard" list in the song library. Kept on this computer only. */
+	public boolean recentSongs = true;
+
+	/** Searches in the song library that led to a song, newest first. */
+	public java.util.List<String> recentSearches = new java.util.ArrayList<>();
+
+	// Updates
+	public Updates updates = Updates.INSTALL;
+
+	/**
+	 * The result of reading a settings file: the settings, the names of the fields that couldn't be read (they keep their
+	 * defaults), and whether the whole file was unusable (not JSON, or not an object).
+	 */
+	record Parsed(Config080 config, java.util.List<String> badFields, boolean unreadable) {
+		boolean damaged() {
+			return unreadable || !badFields.isEmpty();
+		}
+
+		String describe() {
+			return unreadable ? "The file isn't valid settings JSON, using defaults." : "Reset to defaults: " + String.join(", ", badFields);
+		}
+	}
+
+	/** Gson quietly wraps or rounds 1e10 or 1.5 into an int field; a whole-number setting should get a whole number that fits, and a yes/no setting a real true or false. */
+	private static boolean wholeNumberFits(Class<?> type, com.google.gson.JsonElement value) {
+		if (type == boolean.class || type == Boolean.class) {
+			return value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean(); // Gson reads "yes" as false
+		}
+		boolean isInt = type == int.class || type == Integer.class;
+		boolean isLong = type == long.class || type == Long.class;
+		if (!(isInt || isLong) || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+			return true; // other types and wrong kinds are Gson's to judge
+		}
+		try {
+			var number = new java.math.BigDecimal(value.getAsString());
+			if (isInt) number.intValueExact(); else number.longValueExact();
+			return true;
+		} catch (ArithmeticException | NumberFormatException e) {
+			return false;
+		}
+	}
+
+	/** Reads settings from file text one field at a time, so one wrong value only resets that setting. Doesn't touch the disk. */
+	static Parsed parse(String text) {
+		Config080 config = new Config080();
+		java.util.List<String> bad = new java.util.ArrayList<>();
+		JsonObject json;
+		try {
+			json = JsonParser.parseString(text).getAsJsonObject();
+		} catch (RuntimeException e) {
+			return new Parsed(config, bad, true);
+		}
+		for (var field : Config080.class.getDeclaredFields()) {
+			int mods = field.getModifiers();
+			if (java.lang.reflect.Modifier.isStatic(mods) || java.lang.reflect.Modifier.isTransient(mods) || field.isSynthetic()) {
+				continue;
+			}
+			var value = json.get(field.getName());
+			if (value == null || value.isJsonNull()) {
+				continue; // missing or null: keep the default (fix() fills any enum or list)
+			}
+			try {
+				if (!wholeNumberFits(field.getType(), value)) {
+					throw new NumberFormatException(value.toString());
+				}
+				Object read = GSON.fromJson(value, field.getGenericType());
+				if (read != null) {
+					field.setAccessible(true);
+					field.set(config, read);
+				}
+			} catch (Exception e) {
+				bad.add(field.getName());
+			}
+		}
+		if (!json.has("barPing")) config.barPing = config.barStats;
+		if (!json.has("introSeen")) config.introSeen = true;
+		if (!json.has("worldFade")) config.worldFade = fadeFrom(json, config.worldFade);
+		config.fix();
+		return new Parsed(config, bad, false);
+	}
+
+	/**
+	 * The World fade from a file saved before it had its own name ({@code worldLinger}): one picked by hand is kept, but the
+	 * old 2.2 s default, much slower than the original mod's lines, gives way to the new one.
+	 */
+	static float fadeFrom(JsonObject json, float fallback) {
+		if (json.get("worldLinger") instanceof JsonPrimitive old && old.isNumber()) {
+			float seconds = old.getAsFloat();
+			return Math.abs(seconds - 2.2f) < 0.01f ? fallback : seconds;
+		}
+		return fallback;
+	}
+
+	/** Missing or out-of-range values from an old or hand-edited file. */
+	private void fix() {
+		Config080 d = new Config080();
+		if (placement == null) placement = d.placement;
+		if (direction == null) direction = d.direction;
+		if (colorMode == null) colorMode = d.colorMode;
+		if (animation == null) animation = d.animation;
+		if (layer == null) layer = d.layer;
+		if (sky == null) sky = d.sky;
+		if (layout == null) layout = d.layout;
+		if (barPosition == null) barPosition = d.barPosition;
+		if (cardCorner == null) cardCorner = d.cardCorner;
+		if (barAccent == null) barAccent = d.barAccent;
+		if (barShow == null) barShow = d.barShow;
+		if (skyColors == null) skyColors = d.skyColors;
+		if (skySpeed == null) skySpeed = d.skySpeed;
+		if (effects == null) effects = d.effects;
+		if (updates == null) updates = d.updates;
+		if (hat == null) hat = d.hat;
+		if (worldArrival == null) worldArrival = d.worldArrival;
+		if (worldLeave == null) worldLeave = d.worldLeave;
+		if (crosshair == null) crosshair = d.crosshair;
+		if (libraryView == null) libraryView = d.libraryView;
+		if (recentSearches == null) recentSearches = d.recentSearches;
+		if (preferredPlayer == null) preferredPlayer = "";
+		if (spotifyClientId == null) spotifyClientId = "";
+		glow = clamp(glow, 0, 1);
+		opacity = clamp(opacity, 0.2f, 1);
+		skyStrength = clamp(skyStrength, 0, 1);
+		size = clamp(size, 0.3f, 3);
+		worldWords = Math.max(1, Math.min(10, worldWords));
+		worldFade = clamp(worldFade, 0.8f, 6);
+		worldDistance = clamp(worldDistance, 0.5f, 2);
+		worldTilt = clamp(worldTilt, 0, 2);
+		worldRise = clamp(worldRise, 0, 2);
+		worldCurve = clamp(worldCurve, 0, 2);
+		cardLines = cardLines >= 3 ? 3 : 1;
+		barSize = clamp(barSize, 0.75f, 1.5f);
+		barBackground = clamp(barBackground, 0, 1);
+		height = clamp(height, -10, 80);
+		distance = clamp(distance, 8, 160);
+		syncOffsetMs = Math.max(-5000, Math.min(5000, syncOffsetMs));
+		if (songOffsets == null) {
+			songOffsets = new LinkedHashMap<>();
+		}
+		songOffsets.values().removeIf(v -> v == null || v == 0);
+		songOffsets.replaceAll((k, v) -> Math.max(-MAX_SONG_OFFSET, Math.min(MAX_SONG_OFFSET, v)));
+		color &= 0xFFFFFF;
+		barAccentColor &= 0xFFFFFF;
+		glowColor &= 0xFFFFFF;
+		toneColor &= 0xFFFFFF;
+	}
+
+	private static final int MAX_SONG_OFFSET = 5000;
+	private static final int MAX_SONGS = 500;
+
+	/** v0.8.0's Track.clean: control characters become a space, embeddings and overrides go, spaces collapse, ends trimmed. */
+	static String clean080(String s) {
+		if (s == null) {
+			return "";
+		}
+		StringBuilder b = new StringBuilder(s.length());
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			if (c >= '‪' && c <= '‮' || c >= '⁦' && c <= '⁩') {
+				continue;
+			}
+			b.append(Character.getType(c) == Character.CONTROL ? ' ' : c);
+		}
+		return b.toString().replaceAll("[\\s\\p{Z}]+", " ").strip();
+	}
+
+	/** v0.8.0's makeKey for a song whose title and artist came through v0.8.0's Track (and its TitleCleaner unchanged). */
+	static String makeKey(String title, String artist) {
+		return (clean080(artist) + " - " + clean080(title)).toLowerCase(Locale.ROOT).strip();
+	}
+
+	/** v0.8.0's songOffset for such a song. */
+	int songOffset(String title, String artist) {
+		return clean080(title).isEmpty() ? 0 : songOffsets.getOrDefault(makeKey(title, artist), 0);
+	}
+
+	/** v0.8.0's setSongOffset for such a song. */
+	void setSongOffset(String title, String artist, int ms) {
+		String key = makeKey(title, artist);
+		songOffsets.remove(key);
+		ms = Math.max(-MAX_SONG_OFFSET, Math.min(MAX_SONG_OFFSET, ms));
+		if (ms != 0) {
+			songOffsets.put(key, ms);
+		}
+		Iterator<String> oldest = songOffsets.keySet().iterator();
+		while (songOffsets.size() > MAX_SONGS && oldest.hasNext()) {
+			oldest.next();
+			oldest.remove();
+		}
+	}
+
+	private static float clamp(float v, float min, float max) {
+		return Float.isNaN(v) ? min : Math.max(min, Math.min(max, v));
+	}
+
+	/** What v0.8.0's save() writes. */
+	String toJson() {
+		return GSON.toJson(this);
+	}
+}

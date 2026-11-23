@@ -708,7 +708,7 @@ public final class SkyLyricsConfig {
 	private static Map<String, Integer> rekeyed(Map<String, Integer> old) {
 		Map<String, Integer> out = new LinkedHashMap<>();
 		for (var e : old.entrySet()) {
-			String key = Track.clean(e.getKey()).toLowerCase(Locale.ROOT).strip();
+			String key = cleanKey(e.getKey());
 			if (key.isEmpty()) {
 				continue;
 			}
@@ -718,18 +718,25 @@ public final class SkyLyricsConfig {
 		return out;
 	}
 
-	/** {@link #rekeyed(Map)} for the timings as they are in the file. */
-	private static JsonObject rekeyed(JsonObject old) {
-		JsonObject out = new JsonObject();
-		for (var e : old.entrySet()) {
-			String key = Track.clean(e.getKey()).toLowerCase(Locale.ROOT).strip();
-			if (key.isEmpty()) {
-				continue;
+	/** A saved timing key as today's title cleaning makes it (what {@link #makeKey} gives for that song now). */
+	private static String cleanKey(String saved) {
+		return Track.clean(saved).toLowerCase(Locale.ROOT).strip();
+	}
+
+	/**
+	 * Removes {@code key} from the file's {@code map} and gives the keys it was saved under, in the file's order. For the song
+	 * timings ({@code timings}) that is every spelling that cleans to the key: its own, or an older version's with direction
+	 * marks or an emoji's style selector.
+	 */
+	private static java.util.List<String> removeSpellings(JsonObject map, String key, boolean timings) {
+		java.util.List<String> found = new java.util.ArrayList<>();
+		for (String saved : map.keySet()) {
+			if (timings ? cleanKey(saved).equals(key) : saved.equals(key)) {
+				found.add(saved);
 			}
-			out.remove(key); // the later entry wins and takes the later place
-			out.add(key, e.getValue());
 		}
-		return out;
+		found.forEach(map::remove);
+		return found;
 	}
 
 	/** How many recent library searches are kept, here and when the library remembers a new one. */
@@ -1098,11 +1105,10 @@ public final class SkyLyricsConfig {
 		} catch (RuntimeException e) {
 			return null; // damaged: nothing worth keeping
 		}
-		// The file can still hold song timings under keys from before a title-cleaning change; this game's base and its own
-		// timings use the cleaned keys, so merge against cleaned keys too (else a reset timing would come back from the old key)
-		if (theirs.get("songOffsets") instanceof JsonObject offsets) {
-			theirs.add("songOffsets", rekeyed(offsets));
-		}
+		// The file can still hold song timings under keys from before a title-cleaning change (v0.8.0 kept direction marks
+		// and an emoji's style selector in them). This game's base and its own timings use the cleaned keys, so the timings
+		// are merged by cleaned key (else a reset timing would come back from the old key), but each keeps the file's
+		// spelling: v0.8.0, started again, finds a timing only under the key it made.
 		JsonObject base = baseOrNull != null ? baseOrNull : GSON.toJsonTree(new SkyLyricsConfig()).getAsJsonObject();
 		// A wrong-typed value loads as the default, so it looks unchanged and would be kept for ever: write this game's value over it.
 		// Only fields this version knows are named here, so a newer version's fields still survive.
@@ -1125,15 +1131,21 @@ public final class SkyLyricsConfig {
 			if (now.isJsonObject() && there != null && there.isJsonObject() && then != null && then.isJsonObject()) {
 				JsonObject merged = there.getAsJsonObject();
 				JsonObject before = then.getAsJsonObject();
+				boolean timings = name.equals("songOffsets");
 				for (String key : new java.util.ArrayList<>(before.keySet())) {
 					if (!now.getAsJsonObject().has(key)) {
-						merged.remove(key);
+						removeSpellings(merged, key, timings);
 					}
 				}
 				for (var e : now.getAsJsonObject().entrySet()) {
 					if (!e.getValue().equals(before.get(e.getKey()))) {
-						merged.remove(e.getKey()); // re-adding moves it to the end, like setSongOffset
-						merged.add(e.getKey(), e.getValue());
+						java.util.List<String> spellings = removeSpellings(merged, e.getKey(), timings);
+						if (spellings.isEmpty()) {
+							spellings = java.util.List.of(e.getKey());
+						}
+						for (String saved : spellings) {
+							merged.add(saved, e.getValue()); // re-adding moves it to the end, like setSongOffset
+						}
 					}
 				}
 			} else {
