@@ -10,9 +10,13 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.dimension.BuiltinDimensionTypes;
+import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.material.FogType;
 import org.jspecify.annotations.Nullable;
 
@@ -51,8 +55,8 @@ public final class Visibility {
 			return false;
 		}
 		if (cfg.hideInMultiplayer && !mc.hasSingleplayerServer()
-				|| cfg.hideInNether && Level.NETHER.equals(level.dimension())
-				|| cfg.hideInEnd && Level.END.equals(level.dimension())) {
+				|| cfg.hideInNether && nether(level.dimension(), level.dimensionTypeRegistration())
+				|| cfg.hideInEnd && end(level.dimension(), level.dimensionTypeRegistration())) {
 			return true;
 		}
 		//? if >=26.2 {
@@ -64,6 +68,21 @@ public final class Visibility {
 			return true;
 		}
 		return cfg.hideInCaves && level.dimensionType().hasSkyLight() && underground(level, camera);
+	}
+
+	/**
+	 * Whether a world counts as the Nether for Hide in the Nether: the game's own, or any other world of the Nether's
+	 * dimension type. Paper and Spigot servers (and Multiverse on them) name each world they make beyond the first three
+	 * after itself, so a resource Nether reaches the game as "minecraft:resource_nether", and by its name alone the lyrics
+	 * stayed up there.
+	 */
+	static boolean nether(ResourceKey<Level> dimension, Holder<DimensionType> type) {
+		return Level.NETHER.equals(dimension) || type.is(BuiltinDimensionTypes.NETHER);
+	}
+
+	/** The same for the End and Hide in the End (a server's "minecraft:resource_the_end"). */
+	static boolean end(ResourceKey<Level> dimension, Holder<DimensionType> type) {
+		return Level.END.equals(dimension) || type.is(BuiltinDimensionTypes.END);
 	}
 
 	/**
