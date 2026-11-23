@@ -48,7 +48,8 @@ class LrcLimitsTest {
 	void hugeSyncedFileKeepsOnlyTheLineLimit() {
 		StringBuilder b = new StringBuilder();
 		for (int i = 0; i < 100_000; i++) {
-			b.append(String.format("[%02d:%02d.00]line %d\n", i / 600, i / 10 % 60, i));
+			// Locale.ROOT: in a language written with other digits (Arabic, say) the stamps would be no stamps at all
+			b.append(String.format(java.util.Locale.ROOT, "[%02d:%02d.00]line %d\n", i / 600, i / 10 % 60, i));
 		}
 		Lyrics l = assertTimeoutPreemptively(BOUND, () -> LrcParser.parseSynced(b.toString()));
 		assertEquals(LrcParser.MAX_LINES, l.lines().size());
