@@ -299,6 +299,7 @@
 - **iTunes and foobar2000 on Windows.** Where SkyLyrics names the player (the Music tab's **Status** line, "Following …", and the bar for a song with no artist), these two are now spelled their own way, "iTunes" and "foobar2000", instead of "Itunes" and "Foobar2000".
 - **Rainbow colour on a computer that stays on.** The **Rainbow** colour and the Rainbow tile under **Themes** now flow smoothly however long the computer has been on since it was last restarted. Before, the colour changed in small jumps instead of every frame after a few days: after a month, five jumps a second on the lyrics and bigger, coarser ones on the tile.
 - **Sky and hat errors on 1.21.9 and newer.** On Minecraft 1.21.9 and newer, a SkyLyrics error while drawing the sky effects or your hat no longer ends the game: that effect pauses for a few seconds and the error is written to the game log once, as on older versions.
+- **Errors in the settings, the song library and the tour.** An error in one of the mod's screens (while it is drawn, read out by the Narrator, or when you press a key or click) no longer closes Minecraft with a crash report. The screen goes back to the one you opened it from, a pop-up says "Something went wrong, try again", and the error is written to the game log. A tour that hit an error doesn't open again over the title screen until you restart the game.
 
 ### Faster
 

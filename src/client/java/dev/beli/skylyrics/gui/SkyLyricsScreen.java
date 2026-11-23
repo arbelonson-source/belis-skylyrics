@@ -246,6 +246,8 @@ public final class SkyLyricsScreen extends Screen {
 	private final @Nullable Screen parent;
 	private final SkyLyricsConfig cfg = SkyLyricsConfig.get();
 	private final SkyLyricsClient mod = SkyLyricsClient.get();
+	/** An error in the settings closes them back to where they were opened from instead of ending the game (see {@link ScreenFault}). */
+	private final ScreenFault fault = new ScreenFault("the settings", this::leaveAfterError);
 	/** Why the last Spotify sign-in couldn't start, like the port being taken. */
 	private String spotifyError = "";
 	private final List<List<Card>> tabs = new ArrayList<>();
@@ -1223,6 +1225,14 @@ public final class SkyLyricsScreen extends Screen {
 
 	@Override
 	public void mouseMoved(double mx, double my) {
+		try {
+			onMouseMove(mx, my);
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("the mouse moving", e);
+		}
+	}
+
+	private void onMouseMove(double mx, double my) {
 		if (Double.isNaN(mouseFromX)) {
 			mouseFromX = mx;
 			mouseFromY = my;
@@ -1234,6 +1244,16 @@ public final class SkyLyricsScreen extends Screen {
 
 	@Override
 	protected void updateNarrationState(NarrationElementOutput output) {
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				narrateScreen(output);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("its narration", e);
+		}
+	}
+
+	private void narrateScreen(NarrationElementOutput output) {
 		output.add(NarratedElementType.TITLE, getNarrationMessage());
 		// Vanilla's own hint talks about Tab and arrows moving over widgets, which this screen doesn't have
 		output.add(NarratedElementType.USAGE, Component.literal(keysHint(SkyLyricsClient.mac())));
@@ -1260,6 +1280,17 @@ public final class SkyLyricsScreen extends Screen {
 	*///?} else {
 	public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				drawBackdrop(g, mouseX, mouseY, partialTick);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			ScreenFault.unclip();
+			fault.failed("drawing", e);
+		}
+	}
+
+	private void drawBackdrop(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		// In a world, leave it fully visible so changes can be seen on the real lyrics.
 		if (minecraft.level == null) {
 			//? if >=26.1 {
@@ -1276,6 +1307,17 @@ public final class SkyLyricsScreen extends Screen {
 	*///?} else {
 	public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 	//?}
+		try {
+			if (!fault.hasFailed()) { // the game may still finish the frame (or the narration) it was on
+				drawScreen(g, mouseX, mouseY, partialTick);
+			}
+		} catch (RuntimeException | LinkageError e) {
+			ScreenFault.unclip();
+			fault.failed("drawing", e);
+		}
+	}
+
+	private void drawScreen(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
 		//? if <1.21.6 {
 		/*// up to 1.21.5 the background is drawn from render() itself (which this screen replaces); 1.21.6+ draws it before calling render()
 		renderBackground(g, mouseX, mouseY, partialTick);
@@ -1691,6 +1733,14 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+		try {
+			return onClick(event, doubleClick);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a click", e);
+		}
+	}
+
+	private boolean onClick(MouseButtonEvent event, boolean doubleClick) {
 		announcement = null;
 		picks.scrolledAway();
 		if (!rescue.pressed(event.button())) {
@@ -1778,6 +1828,14 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+		try {
+			return onDrag(event, dx, dy);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a drag", e);
+		}
+	}
+
+	private boolean onDrag(MouseButtonEvent event, double dx, double dy) {
 		if (active != null) {
 			active.drag(event.x(), event.y());
 			dirty = true;
@@ -1799,6 +1857,14 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean mouseReleased(MouseButtonEvent event) {
+		try {
+			return onRelease(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a mouse release", e);
+		}
+	}
+
+	private boolean onRelease(MouseButtonEvent event) {
 		if (!ClickRescue.endsDrag(event.button(), ClickRescue.left())) {
 			return super.mouseReleased(event);
 		}
@@ -1846,6 +1912,14 @@ public final class SkyLyricsScreen extends Screen {
 	*///?}
 	@Override
 	public boolean mouseScrolled(double mx, double my, double scrollX, double scrollY) {
+		try {
+			return onScroll(mx, my, scrollX, scrollY);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("the mouse wheel", e);
+		}
+	}
+
+	private boolean onScroll(double mx, double my, double scrollX, double scrollY) {
 		if (preview || active != null) {
 			return true;
 		}
@@ -1864,6 +1938,14 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyReleased(KeyEvent event) {
+		try {
+			return onKeyUp(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a key release", e);
+		}
+	}
+
+	private boolean onKeyUp(KeyEvent event) {
 		KeyMapping open = mod.openSettingsKey();
 		if (open != null && open.matches(event)) {
 			closeKeyHeld = false;
@@ -1882,6 +1964,14 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean keyPressed(KeyEvent event) {
+		try {
+			return onKey(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("a key", e);
+		}
+	}
+
+	private boolean onKey(KeyEvent event) {
 		announcement = null; // a tab switch (set again below) is said once; after that the focused row speaks
 		picks.keyPicked();
 		if (preview) {
@@ -1991,6 +2081,14 @@ public final class SkyLyricsScreen extends Screen {
 	@Override
 	//?}
 	public boolean charTyped(CharacterEvent event) {
+		try {
+			return onChar(event);
+		} catch (RuntimeException | LinkageError e) {
+			return fault.failed("typing", e);
+		}
+	}
+
+	private boolean onChar(CharacterEvent event) {
 		if (!typing || !event.isAllowedChatCharacter()) {
 			return false;
 		}
@@ -2029,21 +2127,33 @@ public final class SkyLyricsScreen extends Screen {
 		scrollToEnd = true;
 	}
 
+	private void leaveAfterError() {
+		ScreenFault.leave(this, parent);
+	}
+
 	@Override
 	public void onClose() {
-		//? if >=26.2 {
-		/*minecraft.gui.setScreen(parent);
-		*///?} else {
-		minecraft.setScreen(parent);
-		//?}
+		try {
+			//? if >=26.2 {
+			/*minecraft.gui.setScreen(parent);
+			*///?} else {
+			minecraft.setScreen(parent);
+			//?}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failed("closing", e);
+		}
 	}
 
 	@Override
 	public void removed() {
-		lastTab = tab == SEARCH_TAB ? searchFrom : tab;
-		if (dirty) {
-			cfg.save();
-			dirty = false;
+		try {
+			lastTab = tab == SEARCH_TAB ? searchFrom : tab;
+			if (dirty) {
+				cfg.save();
+				dirty = false;
+			}
+		} catch (RuntimeException | LinkageError e) {
+			fault.failedClosing(e);
 		}
 	}
 
