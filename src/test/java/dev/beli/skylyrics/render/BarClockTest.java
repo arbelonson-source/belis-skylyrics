@@ -2,12 +2,15 @@ package dev.beli.skylyrics.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
@@ -67,5 +70,38 @@ class BarClockTest {
 		// before, and a German computer keeps its 24 hours
 		assertEquals("21:07", clock("en_us", Locale.GERMANY, EVENING));
 		assertEquals("9:07 PM", clock("en_us", Locale.US, EVENING));
+	}
+
+	/** The bar keeps its clock's text through the minute, and makes it again when the minute or the language changes. */
+	@Test
+	void theClockTurnsWithTheMinute() throws IOException {
+		Locale was = Locale.getDefault();
+		Locale wasFormat = Locale.getDefault(Locale.Category.FORMAT);
+		Locale wasDisplay = Locale.getDefault(Locale.Category.DISPLAY);
+		Locale.setDefault(Locale.US);
+		try {
+			NowPlayingHud hud = new NowPlayingHud(null, null, null);
+			// 21:07 on a winter day on this computer's clock, in milliseconds since 1970
+			long seven = LocalDate.of(2026, 1, 15).atTime(21, 7).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
+			String before = hud.clock(seven - 1);
+			assertEquals("9:06 PM", before);
+			assertSame(before, hud.clock(seven - 60_000));
+			String now = hud.clock(seven);
+			assertEquals("9:07 PM", now);
+			assertSame(now, hud.clock(seven + 59_999));
+			assertEquals("9:08 PM", hud.clock(seven + 60_000));
+			// The computer's clock set back a minute
+			assertEquals("9:07 PM", hud.clock(seven + 59_999));
+			// A day later at the same time, and the game switched to German in the same minute
+			assertEquals("9:07 PM", hud.clock(seven + 86_400_000L));
+			try (InLanguage game = InLanguage.of("de_de")) {
+				assertEquals("21:07", hud.clock(seven + 86_400_000L + 1));
+			}
+			assertEquals("9:07 PM", hud.clock(seven + 86_400_000L + 2));
+		} finally {
+			Locale.setDefault(was);
+			Locale.setDefault(Locale.Category.FORMAT, wasFormat);
+			Locale.setDefault(Locale.Category.DISPLAY, wasDisplay);
+		}
 	}
 }

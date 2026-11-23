@@ -15,7 +15,9 @@ import static dev.beli.skylyrics.render.TopBarLayout.STATS_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.TEXT_GAP;
 import static dev.beli.skylyrics.render.TopBarLayout.WORD_EXTRA;
 
+import java.time.Instant;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Comparator;
@@ -165,7 +167,8 @@ public final class NowPlayingHud {
 	private final float[] eq = new float[BARS];
 	/** The spinning cover's angle (radians) and speed (0 to 1, see {@link TopBarLayout#spinSpeed}). */
 	private float spin, spinSpeed;
-	private int clockMinute = -1;
+	/** The minute since 1970 the clock's text was made for. */
+	private long clockMinute = Long.MIN_VALUE;
 	private Locale clockLocale = Locale.ROOT;
 	private String clockText = "";
 	/** The last few lines laid out (the one sung, the one fading out, one spare); see {@link LineKey}. */
@@ -917,13 +920,21 @@ public final class NowPlayingHud {
 	}
 
 	private String clock() {
-		LocalTime time = LocalTime.now();
-		int minute = time.getHour() * 60 + time.getMinute();
+		return clock(System.currentTimeMillis());
+	}
+
+	/**
+	 * The clock's text at {@code millis} on the computer's clock, made again only when the minute or the language changes:
+	 * a frame in between builds nothing. Every time zone is a whole number of minutes off, so a new minute since 1970 is a
+	 * new minute on the clock, also when the clock is set back or the summer time starts or ends.
+	 */
+	String clock(long millis) {
+		long minute = Math.floorDiv(millis, 60_000L);
 		Locale locale = Formats.clockLocale();
 		if (minute != clockMinute || !locale.equals(clockLocale)) {
 			clockMinute = minute;
 			clockLocale = locale;
-			clockText = clockText(time, locale);
+			clockText = clockText(LocalTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault()), locale);
 		}
 		return clockText;
 	}
