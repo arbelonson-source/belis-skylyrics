@@ -1111,17 +1111,31 @@ public final class SkyLyricsScreen extends Screen {
 		}
 	}
 
-	/** The first press of Reset all asks to be pressed again; the second resets. */
+	/** The first press of Reset all asks to be pressed again; the second resets, unless it is the first one's double-click. */
 	private void pressReset() {
-		if (System.nanoTime() < resetArmedUntil) {
+		long now = System.nanoTime();
+		if (now < resetArmedUntil && !resetConfirms(now, resetArmedUntil)) {
+			// The second click of a double-click: it keeps asking
+			return;
+		}
+		if (resetConfirms(now, resetArmedUntil)) {
 			cfg.resetToDefaults();
 			resetArmedUntil = 0;
 			dirty = true;
 			mod.tracker().refresh();
 			announcement = Tr.t("Settings reset");
 		} else {
-			resetArmedUntil = System.nanoTime() + RESET_CONFIRM_NS;
+			resetArmedUntil = now + RESET_CONFIRM_NS;
 		}
+	}
+
+	/**
+	 * Whether a press of Reset all at {@code now} resets, the first press having asked for another until {@code armedUntil}:
+	 * not the second click of a double-click on it (as quick as the library's, {@link LibraryKeys#DOUBLE_CLICK_NS}), which
+	 * would reset every setting before "Click again to reset" could be read.
+	 */
+	static boolean resetConfirms(long now, long armedUntil) {
+		return now < armedUntil && now - (armedUntil - RESET_CONFIRM_NS) >= LibraryKeys.DOUBLE_CLICK_NS;
 	}
 
 	private int doneW() {
