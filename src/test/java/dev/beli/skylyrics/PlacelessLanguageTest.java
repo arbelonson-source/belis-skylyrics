@@ -74,6 +74,18 @@ class PlacelessLanguageTest {
 	}
 
 	@Test
+	void aPacksLanguageWhoseCodeNamesNoLanguageKeepsTheComputersClock() {
+		// A resource pack may add a language under any code of 1 to 16 letters. One Java can't read as a language (a private
+		// "x_" one, a single letter, digits) becomes Java's root locale: its plain "21:07" is listed among the locales with
+		// times, yet it says no more of the player's clock than Klingon does
+		for (String code : List.of("x_custom", "q", "1337")) {
+			assertEquals("", Formats.locale(code).getLanguage(), code);
+			assertEquals(Locale.US, clockLocale(code, Locale.US), code);
+			assertEquals("9:07 PM", evening(clockLocale(code, Locale.US)), code);
+		}
+	}
+
+	@Test
 	void aLanguageJavaKnowsStillHasItsOwnClock() {
 		assertEquals(Locale.forLanguageTag("de-DE"), clockLocale("de_de", Locale.US));
 		assertEquals("21:07", evening(clockLocale("de_de", Locale.US)));
