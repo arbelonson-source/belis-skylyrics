@@ -1952,6 +1952,9 @@ public final class SkyLyricsScreen extends Screen {
 		return LibraryKeys.tooSoonAfterOpen(sinceShownNs);
 	}
 
+	/** The key that last pressed Reset all or Preview (or went back from the preview) and is still down: its repeats press nothing. */
+	private final HeldKey heldKey = new HeldKey();
+
 	//? if >=1.21.9 {
 	@Override
 	//?}
@@ -1964,6 +1967,7 @@ public final class SkyLyricsScreen extends Screen {
 	}
 
 	private boolean onKeyUp(KeyEvent event) {
+		heldKey.released(event.key());
 		KeyMapping open = mod.openSettingsKey();
 		if (open != null && open.matches(event)) {
 			closeKeyHeld = false;
@@ -1992,8 +1996,15 @@ public final class SkyLyricsScreen extends Screen {
 	private boolean onKey(KeyEvent event) {
 		announcement = null; // a tab switch (set again below) is said once; after that the focused row speaks
 		picks.keyPicked();
+		if (heldKey.isRepeat(event.key())) {
+			// A key held after it pressed Reset all or Preview, or went back from the preview: the computer repeats it from its
+			// repeat delay on, and Reset all took a repeat for the second press it asks for, the preview hid and showed over
+			// and over, and Esc held to leave the preview closed the settings
+			return true;
+		}
 		if (preview) {
 			preview = false;
+			heldKey.hold(event.key());
 			return true;
 		}
 		if (typing) {
@@ -2067,6 +2078,7 @@ public final class SkyLyricsScreen extends Screen {
 		if (active == null) {
 			if (focus instanceof Chrome button && event.isSelection()) {
 				press(button);
+				heldKey.hold(event.key());
 				afterKeyboardAction();
 				return true;
 			}
