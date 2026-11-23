@@ -962,6 +962,21 @@ class SpotifyWebSourceTest {
 	}
 
 	@Test
+	void aRefusedRefreshDoesntWaitOnAPipeWhereTheSignInFileWas(@TempDir Path dir) throws Exception {
+		FakeHttp http = new FakeHttp(204);
+		SpotifyWebSource source = signedIn(dir, http);
+		http.acceptedRefresh = java.util.Set.of();
+		source.sleeper = ms -> { };
+		// Since the start, something put a pipe where the file was: the look for another game's newer sign-in read it
+		Path login = dir.resolve("login.json");
+		Files.delete(login);
+		SpotifyLoginPipeTest.pipe(login);
+		assertTrue(SpotifyLoginPipeTest.finishes(() -> assertThrows(IOException.class, source::poll), login),
+				"the poll waits on the pipe for ever");
+		assertEquals(SpotifyWebSource.Account.SIGNED_OUT, source.account());
+	}
+
+	@Test
 	void parseReadsTheTrackAddress() {
 		assertEquals("spotify:track:1", SpotifyWebSource.parse(PLAYING, 0).track().uri());
 		Snapshot ep = SpotifyWebSource.parse("{\"item\": {\"name\": \"E\", \"uri\": \"spotify:episode:9\", \"show\": {\"name\": \"S\"}}}", 0);

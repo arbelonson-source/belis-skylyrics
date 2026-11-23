@@ -878,7 +878,8 @@ public final class SpotifyWebSource implements MediaSource {
 	/** The refresh token and scopes in the saved login when it is for this Client ID and differs from {@code used}, else null. */
 	private String @Nullable [] otherLogin(String id, String used) {
 		try {
-			if (Files.exists(loginFile)) {
+			// A plain file only, like at start (see load())
+			if (Files.isRegularFile(loginFile)) {
 				JsonObject json = object(Files.readString(loginFile, StandardCharsets.UTF_8));
 				String saved = json == null ? null : string(json, "refreshToken");
 				if (saved != null && !saved.equals(used) && id.equals(string(json, "clientId"))) {
@@ -897,6 +898,12 @@ public final class SpotifyWebSource implements MediaSource {
 		}
 		try {
 			if (Files.exists(loginFile)) {
+				// Only a plain file, or a link to one (a sign-in shared between game folders): a pipe there never ends, so
+				// reading it held up the start for ever, and a link to a device can be endless too
+				if (!Files.isRegularFile(loginFile)) {
+					LOG.warn("The Spotify sign-in {} isn't a plain file, so you are signed out.", loginFile.getFileName());
+					return;
+				}
 				if (dev.beli.skylyrics.util.SafeFile.tooBig(loginFile)) {
 					damagedLogin("it is far too big to be ours");
 					return;
