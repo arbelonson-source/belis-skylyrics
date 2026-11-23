@@ -142,6 +142,15 @@ class AlbumArtRetryTest {
 		assertTrue(CoverRetry.temporary(new java.net.UnknownHostException("img.example")));
 	}
 
+	/**
+	 * A work or school proxy that wants a password (407; Java hands its answer back as it is) says nothing about the cover,
+	 * as for the lyrics: the cover is tried again, so it comes once the proxy lets SkyLyrics through.
+	 */
+	@Test
+	void aProxyWantingAPasswordIsRetriedLikeTheLyrics() {
+		assertTrue(CoverRetry.temporaryStatus(407));
+	}
+
 	@Test
 	void aCutShortPictureIsNotRetried() {
 		AlbumArt art = art();

@@ -407,7 +407,7 @@ public final class CoverCache {
 		}
 	}
 
-	/** Whether a non-2xx answer counts against the cover; one that may pass (5xx, 429, 408) is retried like network trouble instead. */
+	/** Whether a non-2xx answer counts against the cover; one that may pass (5xx, 429, 408, 407) is retried like network trouble instead. */
 	static boolean countsAsFailure(int status) {
 		return !CoverRetry.temporaryStatus(status);
 	}
