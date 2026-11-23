@@ -102,7 +102,7 @@ public final class NowPlayingHud {
 	private static final int BORDER = 0x4B4665;
 	/** The border: two screen pixels at GUI scale 3. */
 	private static final float BORDER_W = 2 / 3f;
-	private static final int SUNG = 0xFCF8FF;
+	static final int SUNG = 0xFCF8FF;
 	private static final int UPCOMING = 0x8C879E;
 	private static final int HIGHLIGHT = 0x926CDE;
 	private static final int EQ_COLOR = 0xA076F4;
@@ -1201,7 +1201,7 @@ public final class NowPlayingHud {
 				BarProbe.highlight(current, left, right, hlLeft, hlRight, x0);
 			}
 			roundRectGui(g, x0 - pad, midY - HL_H / 2f, hw + 2 * pad, HL_H, HL_RADIUS,
-					ARGB.color(Math.round(a * 255), accent(SkyLyricsConfig.get())));
+					ARGB.color(Math.round(a * 255), highlight(accent(SkyLyricsConfig.get()))));
 		}
 
 		int sung = fade(a, SUNG), upcoming = fade(a, UPCOMING);
@@ -1363,6 +1363,14 @@ public final class NowPlayingHud {
 
 	private static int fade(float a, int rgb) {
 		return ARGB.color(Math.max(4, Math.round(a * 255)), rgb);
+	}
+
+	/**
+	 * The highlight under the last two sung words for the bar's accent colour: a light accent (a pale album or lyrics
+	 * colour, most of the colours to pick) is deepened just enough for the white words on it to read.
+	 */
+	static int highlight(int accent) {
+		return Contrast.deepen(accent, SUNG, Contrast.FLOOR);
 	}
 
 	private static int accent(SkyLyricsConfig cfg) {

@@ -290,6 +290,7 @@
 - **Double-clicking Reset all.** In the settings, a double-click on **Reset all** no longer resets every setting at once: it asks "Click again to reset" as a single click does, and only a click of its own after that resets.
 - **Sideways scrolling in the song library.** The shelf and the carousel, which run sideways, now also move with a sideways scroll: a trackpad swiped left or right, a mouse wheel that tilts, or Shift and the wheel on a Mac. Before, only scrolling up and down moved them.
 - **Scrolling the shelf under the mouse.** In the song library's shelf, scrolling with the mouse resting on the covers now chooses the cover that slides under it, so the name shown is the one a click plays. Before, the name of the cover the mouse was on before the scroll stayed, while a click played the new one.
+- **Top bar highlight in light colours.** With a light accent colour on the top bar (any of the colours to pick, a pale album colour with **Accent colour** set to **Album**, or the lyrics colour with **Lyrics**), the two sung words on the highlight were white on almost white and hard to read. The highlight now turns a deeper shade of that colour, just enough for the words to stand out. The default violet looks as before.
 
 ### Faster
 
