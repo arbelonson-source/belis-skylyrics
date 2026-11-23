@@ -109,7 +109,7 @@ flatpak override --user --talk-name=org.mpris.MediaPlayer2.* org.prismlauncher.P
 
 For another Flatpak, put its own app id at the end instead of `org.prismlauncher.PrismLauncher` (the message in the game shows it). Then close the launcher completely and open it again. If you prefer a window to a terminal, the Flatseal app can do the same: pick Prism Launcher, and under **Session Bus → Talks** add `org.mpris.MediaPlayer2.*`.
 
-**No session bus.** Some containers and launchers have no desktop message bus, so there is nothing for the mod to ask. It then waits longer between tries (up to 30 seconds) and picks the music up when a bus shows up later. If you never see lyrics there, run Minecraft from your normal desktop session.
+**No session bus.** Some containers and launchers have no desktop message bus, so there is nothing for the mod to ask. Music tab **Status** then says "Can't reach your music players (no D-Bus session). Start the game from your desktop session." It says the same right away when the bus stops working (it crashed or was restarted), and the play buttons, changing **Player** and the song library don't wait for it. The mod then waits longer between tries (up to 30 seconds) and picks the music up when a bus shows up later. If you never see lyrics there, run Minecraft from your normal desktop session.
 
 ### On macOS
 
@@ -143,7 +143,7 @@ Then start Minecraft and play a song. Note that this makes macOS ask again for e
 
 ## The album cover is missing
 
-The top bar and **Record card** show the cover your player gives. If it is a web link that can't be downloaded (no internet, a busy server, a hotel Wi-Fi sign-in page, or a proxy that asks for a password), the mod tries again every so often for about half an hour, then stops for that song. A cover the game can't read (an odd colour format or a cut-off file) is given up on straight away. Play the song again to try once more.
+The top bar and **Record card** show the cover your player gives. If it is a web link that can't be downloaded (no internet, a busy server, a hotel Wi-Fi sign-in page, or a proxy that asks for a password), the mod tries again every so often for about half an hour, then stops for that song. A cover the game can't or won't read is given up on straight away: a picture format other than JPEG, PNG, GIF or BMP (WebP or TIFF, say), an odd colour format, a cut-off file, or a picture over 8 MB or more than 4096 pixels wide or tall. Play the song again to try once more.
 
 ## The flashes or motion stopped, or seem gone
 
@@ -214,7 +214,7 @@ While you hold **Tab** on a server, the top bar and a **Record card** in a top c
 
 **It needs something newer.** If the pop-up says "SkyLyrics 0.9.0 needs Fabric API 0.137.0 or newer" (or a newer Minecraft), the new version wouldn't start on what you have, so the mod doesn't install it and your working version stays. Update what it names (Fabric API, say) and the next start installs the new SkyLyrics. Until then the mod remembers the refusal, so it doesn't download the same update again on every start; a newer release, or updating Fabric API, Fabric Loader, Minecraft or Java, makes it check again. A newer Minecraft needs the SkyLyrics jar for that version from the [Releases page](https://github.com/arbelonson-source/belis-skylyrics/releases).
 
-**Windows.** The update is swapped in when you close the game, with a small PowerShell script. Any user name or folder name works: accents, Hebrew, Cyrillic, spaces, & and ’ included. The old jar is only deleted once the new one is in place, and it is put back if that fails, so you are never left without the mod. If the new version isn't there after you close and restart the game, download the new jar for your Minecraft version from the Releases page, put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.
+**Windows.** The update is swapped in when you close the game, with a small PowerShell script. Any user name or folder name works: accents, Hebrew, Cyrillic, spaces, & and ’ included. The old jar is only deleted once the new one is in place, and it is put back if that fails, so you are never left without the mod. If the path to your `mods` folder is very long (about 190 characters or more), the swap can't handle it, so the mod doesn't download the update and only tells you it is out. If the new version isn't there after you close and restart the game, download the new jar for your Minecraft version from the Releases page, put it in your `mods` folder and delete the old SkyLyrics jar. You can also set **About → Updates** to **Tell me** if you only want the notice.
 
 Other reasons for the notice: the download failed (a slow connection, say; one that stops halfway is given up after 5 minutes and the unfinished file is removed from your `mods` folder), or it wasn't accepted. The mod only uses a download from its own GitHub releases, only if it is Beli's SkyLyrics in the version it expected, and refuses one over 20 MB.
 
@@ -230,7 +230,7 @@ Antivirus, OneDrive or the Windows search indexer sometimes hold a file open for
 
 ## Two Minecraft games open at once
 
-Two games can share one Minecraft folder (two instances, or a game and a test copy). When one saves its settings or song timings it keeps what the other changed, so they don't undo each other. This also works across Minecraft versions: going back to an older SkyLyrics, or running two Minecraft versions of the mod on the same folder, no longer wipes the settings the other one saved, and your per-song timings are kept. They share one Spotify sign-in: when both renew it at the same moment, the second waits briefly for the first one's new sign-in.
+Two games can share one Minecraft folder (two instances, or a game and a test copy). When one saves its settings or song timings it keeps what the other changed, so they don't undo each other. This also works across Minecraft versions: running two Minecraft versions of the mod on the same folder doesn't wipe the settings the other one saved, and your per-song timings are kept. Going back to SkyLyrics 0.8.0 keeps your per-song timings too, but 0.8.0 and older versions don't know the settings added after 0.8.0: once one of them saves (when you change something in it), those settings are back at their defaults when you update again. They share one Spotify sign-in: when both renew it at the same moment, the second waits briefly for the first one's new sign-in.
 
 ## Hebrew or Arabic looks wrong
 
@@ -247,6 +247,16 @@ Two games can share one Minecraft folder (two instances, or a game and a test co
 - Press **J** while playing (not while another menu is open).
 - If J does nothing, another mod may use the same key. Check **Options → Controls → Key Binds → Beli's SkyLyrics → Open settings** and pick a free key.
 - With [Mod Menu](https://modrinth.com/mod/modmenu) installed you can also open them from the **Mods** list: select Beli's SkyLyrics and click its settings button.
+
+## A pop-up says "Something went wrong, try again"
+
+The mod hit an error in the settings, the song library or the welcome tour. Instead of closing Minecraft with a crash report, that screen closes, back to the game or the screen you came from, and this pop-up shows, with "Beli's SkyLyrics" or "Song library" above it. Settings you changed before the error are saved as usual. You can open the screen again (**J** or **N**); the tour doesn't open again until you restart the game. If a screen it opened was in front (Minecraft's **Key Binds**, say), that one stays open, and the settings or the library work as usual when you go back to them.
+
+Errors while drawing don't end the game either: if one comes while the mod draws the lyrics, the top bar, the **Record card**, the night sky or your hat, that part pauses for about 5 seconds and then tries again. This holds on every Minecraft version, for the night sky and the hat on 1.21.9 and newer too.
+
+Either way it is a bug in the mod. The game log (`logs/latest.log` in your Minecraft folder) has a line starting with "Error in" (such as "Error in the settings" or "Error in sky effects") with the details. Please [report it](#still-stuck) with the log, and say what you were doing.
+
+"Sign-in failed: Something went wrong, try again" on the **Music** tab is something else, about Spotify: see [Spotify sign-in doesn't start](#spotify-sign-in-doesnt-start).
 
 ## Where the files are
 
@@ -278,9 +288,11 @@ The **Recently heard** list does the same: a damaged `heard.json` is kept as `he
 
 A wrongly typed value is fixed the next time the mod saves, so it doesn't make a new `.bad` copy every time you start the game.
 
-If Windows, an antivirus or OneDrive holds the settings file when the game starts, the mod tries again. If it still can't read it, it leaves the file alone and doesn't save defaults over your settings, so closing and reopening the game once the lock is gone gets your settings back. A half-written `.tmp` file next to the settings, the Spotify sign-in, the Recently heard list or the update memory, or one left by the Windows music reader's helper, when the game was killed, is cleaned up on a later start, once it is a day old.
+If Windows, an antivirus or OneDrive holds the settings file when the game starts, the mod tries again. If it still can't read it, it leaves the file alone and doesn't save defaults over your settings. It reads the file again a few times over the next minute or so, and your settings come back as soon as it can; if the file is still held after that, closing and reopening the game once the lock is gone gets them back. A half-written `.tmp` file next to the settings, the Spotify sign-in, the Recently heard list or the update memory, or one left by the Windows music reader's helper, when the game was killed, is cleaned up on a later start, once it is a day old.
 
 To get your old values back, close Minecraft, fix the `.bad` file (or copy the values you need from it), and put it back under the original name. A damaged file is copied to `.bad`; if a `.bad` already exists it is kept and the new copy goes to `.bad.1` to `.bad.9`, and only when all ten are taken is the oldest one replaced. The same damaged file is not copied twice. A file the mod can't open at all (for example because of its permissions) is moved aside instead, as `.bad`, or `.bad.1` to `.bad.9` when that name is taken, so no earlier copy is lost.
+
+If your Minecraft folder can't be written to (a read-only folder, a full disk), your settings and the **Recently heard** list still change while you play, but they aren't saved, so the next start brings back what was saved last. The game log says so once: "Couldn't save settings" or "Couldn't save the recently heard songs".
 
 ## Still stuck?
 
