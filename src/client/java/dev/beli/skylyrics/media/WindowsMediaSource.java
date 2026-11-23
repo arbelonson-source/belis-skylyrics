@@ -81,7 +81,8 @@ public final class WindowsMediaSource implements MediaSource {
 	private final Path dir;
 	private final Launcher launcher;
 	private final long startTimeoutMs;
-	private final long replyTimeoutMs;
+	/** How long a question waits for its answer; tests shorten it for questions a stand-in helper never answers. */
+	volatile long replyTimeoutMs;
 	private final BooleanSupplier looking;
 	/** "No update time" for a count start: a steady-clock value can be zero or below, so 0 cannot mean none. */
 	static final long NO_TIME = Long.MIN_VALUE;

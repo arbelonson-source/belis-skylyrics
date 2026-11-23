@@ -63,6 +63,7 @@ class MprisSourceCloseTest {
 	 */
 	@Test
 	void aSlowPlayerIsStillReadAfterAClose() throws Exception {
+		long answerWaitMs = 100; // a poll's wait, shorter than the game's: only being slower than it counts here
 		MprisSource source = new MprisSource(() -> "", new MprisSource.Reader() {
 			@Override
 			public List<String> names() {
@@ -71,10 +72,11 @@ class MprisSourceCloseTest {
 
 			@Override
 			public MprisSource.Reading read(String busName) throws Exception {
-				Thread.sleep(MprisSource.ANSWER_WAIT_MS + 500); // answers, but after a poll has stopped waiting
+				Thread.sleep(answerWaitMs + 500); // answers, but after a poll has stopped waiting
 				return new MprisSource.Reading(busName, new Track("Song", "Band", "", 200_000, "", "x"), 0, true, "/id");
 			}
 		});
+		source.answerWaitMs = answerWaitMs;
 		source.close();
 		long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
 		Snapshot s = Snapshot.NOTHING;

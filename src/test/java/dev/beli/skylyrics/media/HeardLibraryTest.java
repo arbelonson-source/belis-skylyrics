@@ -115,6 +115,23 @@ class HeardLibraryTest {
 		assertEquals(200, lib.liked(0).join().total());
 	}
 
+	/** A file another program wrote with a song listed twice, or with too many songs, reads as each song once and the first 200. */
+	@Test
+	void aFileReadsEachSongOnceAndAtMostTwoHundred() throws IOException {
+		List<HeardLibrary.Entry> listed = new ArrayList<>();
+		listed.add(new HeardLibrary.Entry("Twice", "Band", "First", 1, "", "u", "mpv"));
+		for (int i = 0; i < 250; i++) {
+			listed.add(new HeardLibrary.Entry("Song " + i, "Band", "Album", 1, "", "u", "mpv"));
+		}
+		listed.add(2, new HeardLibrary.Entry("twice", "BAND", "Second", 1, "", "u", "mpv")); // same song, other case
+		Files.writeString(file(), HeardLibrary.toJson(listed));
+		List<HeardLibrary.Entry> read = HeardLibrary.read(file());
+		assertEquals(200, read.size());
+		assertEquals("First", read.getFirst().album(), "the first copy is kept");
+		assertEquals(List.of("Twice", "Song 0", "Song 1"), read.subList(0, 3).stream().map(HeardLibrary.Entry::title).toList());
+		assertEquals("Song 198", read.getLast().title());
+	}
+
 	@Test
 	void savedFileComesBackAsItWas() {
 		HeardLibrary lib = library();
