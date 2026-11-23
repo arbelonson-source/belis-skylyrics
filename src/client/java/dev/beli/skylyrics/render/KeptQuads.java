@@ -21,7 +21,10 @@ final class KeptQuads {
 	private final float[] cx = new float[4], cy = new float[4], cz = new float[4];
 	private final int[] cc = new int[4];
 	private int placed;
+	/** The fade the quads were placed with, once every one of them is in (see {@link #fade}). */
 	private float fade = Float.NaN;
+	/** The fade the corners being placed take. */
+	private float placing;
 	/** How many times the quads have been placed; tests check that a steady frame places none. */
 	int layouts;
 
@@ -34,7 +37,11 @@ final class KeptQuads {
 		return Float.floatToIntBits(a) == Float.floatToIntBits(b);
 	}
 
-	/** The fade below the horizon (as {@link SkyCanvas#horizonFade}) the corners were placed with; NaN before the first time. */
+	/**
+	 * The fade below the horizon (as {@link SkyCanvas#horizonFade}) the corners were placed with; NaN until the last quad of a
+	 * placing is in. What is kept is checked against it, so a placing cut short by an error is done again on the next frame
+	 * instead of half of it being kept until what places the quads changes.
+	 */
 	float fade() {
 		return fade;
 	}
@@ -49,7 +56,8 @@ final class KeptQuads {
 			colour = new int[quads * 4];
 			faded = new boolean[quads * 4];
 		}
-		fade = horizonFade;
+		fade = Float.NaN;
+		placing = horizonFade;
 		placed = 0;
 		layouts++;
 	}
@@ -73,11 +81,14 @@ final class KeptQuads {
 			z[k] = cz[from];
 			colour[k] = cc[from];
 			// As vertex fades a corner below the horizon
-			faded[k] = fade > 0 && cy[from] < 0;
+			faded[k] = placing > 0 && cy[from] < 0;
 			if (faded[k]) {
 				float below = -cy[from] / (float) Math.sqrt(cx[from] * cx[from] + cy[from] * cy[from] + cz[from] * cz[from]);
-				keep[k] = 1 - SkyColors.smooth(below / fade);
+				keep[k] = 1 - SkyColors.smooth(below / placing);
 			}
+		}
+		if (placed == quads * 4) {
+			fade = placing;
 		}
 	}
 

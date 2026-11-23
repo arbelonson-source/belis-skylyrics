@@ -7,6 +7,7 @@ import dev.beli.skylyrics.SkyLyricsClient;
 import dev.beli.skylyrics.config.SkyLyricsConfig;
 import dev.beli.skylyrics.config.SkyLyricsConfig.Hat;
 import dev.beli.skylyrics.util.Guard;
+import java.util.function.BiConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.player.PlayerModel;
 //? if <1.21.9 {
@@ -158,6 +159,27 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		return skull ? 0 : HEAD_CENTER;
 	}
 
+	/** The hat's Guard entry point: its drawing and every part it hands the game share it. */
+	private static final String GUARD = "hat";
+
+	/**
+	 * A part of the hat handed to the game to draw later in the frame. From 1.21.9 on the game draws it after the hat's own
+	 * drawing has returned, outside the hat's Guard, where an error would end the game; so it runs under that Guard itself,
+	 * and an error pauses the hat for a few seconds as on older versions (where it is drawn at once, inside the Guard).
+	 */
+	@FunctionalInterface
+	interface HatPart extends SubmitNodeCollector.CustomGeometryRenderer, BiConsumer<PoseStack.Pose, VertexConsumer> {
+		@Override
+		default void render(PoseStack.Pose pose, VertexConsumer vc) {
+			Guard.run(GUARD, this, pose, vc);
+		}
+	}
+
+	/** Hands the game one part of the hat; taking a {@link HatPart}, the lambda written here is the guarded part itself. */
+	private static void submitPart(SubmitNodeCollector out, PoseStack pose, RenderType type, HatPart part) {
+		out.submitCustomGeometry(pose, type, part);
+	}
+
 	private static RenderType paint() {
 		//? if >=26.3 {
 		/*return RenderTypes.text(WHITE);
@@ -191,7 +213,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 		/*SubmitNodeCollector out = new SubmitNodeCollector(buffers);
 		*///?}
 		float still = Calm.motion(); // Minecraft's Distortion Effects
-		Guard.run("hat", () -> {
+		Guard.run(GUARD, () -> {
 			float bright = brightness(cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 			int rgb = lyrics.color();
 			int glow = 0xFF000000 | LyricsRenderer.mix(rgb, 0xFFFFFF, 0.55f * bright);
@@ -220,30 +242,30 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 				switch (cfg.hat) {
 					case HALO -> {
 						pose.translate(0, HEAD_TOP - HALO_LIFT, 0);
-						out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, HALO_RADIUS, HALO_TUBE, 0, glow, FULL_BRIGHT));
+						submitPart(out, pose, paint(), (p, vc) -> tube(p, vc, HALO_RADIUS, HALO_TUBE, 0, glow, FULL_BRIGHT));
 						int shine = Math.round(150 * bright) << 24 | rgb;
-						out.submitCustomGeometry(pose, RenderTypes.lightning(), (p, vc) -> shine(p, vc, HALO_RADIUS, HALO_SHINE, shine));
+						submitPart(out, pose, RenderTypes.lightning(), (p, vc) -> shine(p, vc, HALO_RADIUS, HALO_SHINE, shine));
 					}
 					case HEADPHONES -> {
-						out.submitCustomGeometry(pose, paint(), (p, vc) -> headphones(p, vc, light, glow));
+						submitPart(out, pose, paint(), (p, vc) -> headphones(p, vc, light, glow));
 						for (int side = -1; side <= 1; side += 2) {
 							pose.pushPose();
 							try {
 								pose.translate(side * (CUP_OUT + 0.003f), CUP_Y, 0);
 								pose.mulPose(Axis.ZP.rotationDegrees(90));
-								out.submitCustomGeometry(pose, paint(), (p, vc) -> tube(p, vc, 0.065f, 0.011f, 0, glow, FULL_BRIGHT));
+								submitPart(out, pose, paint(), (p, vc) -> tube(p, vc, 0.065f, 0.011f, 0, glow, FULL_BRIGHT));
 							} finally {
 								pose.popPose();
 							}
 						}
 					}
-					case CONICAL -> out.submitCustomGeometry(pose, paint(), (p, vc) -> conical(p, vc, light, glow));
-					case CROWN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> crown(p, vc, light, glow));
-					case CAT_EARS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
-					case PUMPKIN -> out.submitCustomGeometry(pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
-					case TOP_HAT -> out.submitCustomGeometry(pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
-					case DEVIL_HORNS -> out.submitCustomGeometry(pose, paint(), (p, vc) -> horns(p, vc, light, glow));
-					case SHADES -> out.submitCustomGeometry(pose, paint(), (p, vc) -> shades(p, vc, light, glow));
+					case CONICAL -> submitPart(out, pose, paint(), (p, vc) -> conical(p, vc, light, glow));
+					case CROWN -> submitPart(out, pose, paint(), (p, vc) -> crown(p, vc, light, glow));
+					case CAT_EARS -> submitPart(out, pose, paint(), (p, vc) -> catEars(p, vc, light, glow));
+					case PUMPKIN -> submitPart(out, pose, paint(), (p, vc) -> pumpkin(p, vc, light, glow));
+					case TOP_HAT -> submitPart(out, pose, paint(), (p, vc) -> topHat(p, vc, light, glow));
+					case DEVIL_HORNS -> submitPart(out, pose, paint(), (p, vc) -> horns(p, vc, light, glow));
+					case SHADES -> submitPart(out, pose, paint(), (p, vc) -> shades(p, vc, light, glow));
 					case ANTENNAE -> {
 						float t = seconds();
 						// With Glow with the lyrics on, the balls swell a little as each new line starts
@@ -254,7 +276,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 								pose.translate(side * ANTENNA_X, HEAD_TOP, 0);
 								float wobble = still * ANTENNA_WOBBLE * Mth.sin(t * ANTENNA_WOBBLE_SPEED + side);
 								pose.mulPose(Axis.ZP.rotationDegrees(side * ANTENNA_LEAN + wobble));
-								out.submitCustomGeometry(pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
+								submitPart(out, pose, paint(), (p, vc) -> antenna(p, vc, light, glow, pop));
 							} finally {
 								pose.popPose();
 							}
@@ -268,7 +290,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 						// With Glow with the lyrics on, the flowers open a little wider as each new line starts
 						float pop = 1 + FLOWER_POP * (bright - REST) / FLARE;
 						int pale = 0xFF000000 | LyricsRenderer.mix(glow & 0xFFFFFF, 0xFFFFFF, 0.45f);
-						out.submitCustomGeometry(pose, paint(), (p, vc) -> flowerCrown(p, vc, light, glow, pale, spin, pop));
+						submitPart(out, pose, paint(), (p, vc) -> flowerCrown(p, vc, light, glow, pale, spin, pop));
 					}
 					case MUSIC_NOTES -> {
 						float t = seconds();
@@ -288,7 +310,7 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 								pose.translate(0, 0, NOTE_RADIUS);
 								pose.mulPose(Axis.ZP.rotation(still * NOTE_SWAY * Mth.sin(t * NOTE_SWAY_SPEED + phase)));
 								pose.scale(pop, pop, pop);
-								out.submitCustomGeometry(pose, paint(), (p, vc) -> note(p, vc, pair, glow));
+								submitPart(out, pose, paint(), (p, vc) -> note(p, vc, pair, glow));
 							} finally {
 								pose.popPose();
 							}
@@ -299,12 +321,12 @@ public final class HatLayer extends RenderLayer<AvatarRenderState, PlayerModel> 
 						propAngle = propellerTurn(propAngle, propLast == 0 ? 0 : (now - propLast) / 1e9f * still,
 								cfg.hatPulse ? lyrics.secondsSinceLineChange() : Float.NaN);
 						propLast = now;
-						out.submitCustomGeometry(pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
+						submitPart(out, pose, paint(), (p, vc) -> propellerCap(p, vc, light, glow));
 						pose.pushPose();
 						try {
 							pose.translate(0, CAP_Y - CAP_HEIGHT - MAST, 0);
 							pose.mulPose(Axis.YP.rotation(propAngle));
-							out.submitCustomGeometry(pose, paint(), (p, vc) -> blades(p, vc, light, glow));
+							submitPart(out, pose, paint(), (p, vc) -> blades(p, vc, light, glow));
 						} finally {
 							pose.popPose();
 						}

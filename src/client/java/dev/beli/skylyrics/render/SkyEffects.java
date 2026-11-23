@@ -14,6 +14,7 @@ import dev.beli.skylyrics.media.Track;
 import dev.beli.skylyrics.util.Guard;
 import java.util.Objects;
 import java.util.Random;
+import java.util.function.BiConsumer;
 //? if >=26.1 {
 /*import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 *///?} else {
@@ -88,11 +89,27 @@ public final class SkyEffects {
 	private final LyricsService service;
 	private final AlbumArt art;
 	private final MediaTracker tracker;
-	private final SubmitNodeCollector.CustomGeometryRenderer drawer = this::draw;
+	/** The Guard entry point of the sky: {@link #render} and every layer it hands the game share it, so one error pauses the lot. */
+	private static final String GUARD = "sky effects";
+
+	/**
+	 * A layer of the sky handed to the game to draw later in the frame. From 1.21.9 on the game draws it after
+	 * {@link #render} has returned, outside its Guard, where an error would end the game; so it runs under the sky's Guard
+	 * itself, and an error pauses the sky for a few seconds as on older versions (where it is drawn inside render).
+	 */
+	@FunctionalInterface
+	interface SkyLayer extends SubmitNodeCollector.CustomGeometryRenderer, BiConsumer<PoseStack.Pose, VertexConsumer> {
+		@Override
+		default void render(PoseStack.Pose pose, VertexConsumer vc) {
+			Guard.run(GUARD, this, pose, vc);
+		}
+	}
+
+	private final SkyLayer drawer = this::draw;
 	// Stored, not written as this::name where they are used, which would allocate a new object every frame
-	private final SubmitNodeCollector.CustomGeometryRenderer painter = this::drawPainted;
-	private final SubmitNodeCollector.CustomGeometryRenderer discDrawer = this::drawEclipseDisc;
-	private final SubmitNodeCollector.CustomGeometryRenderer frontDrawer = this::drawFrontFresh;
+	private final SkyLayer painter = this::drawPainted;
+	private final SkyLayer discDrawer = this::drawEclipseDisc;
+	private final SkyLayer frontDrawer = this::drawFrontFresh;
 	private final Random random = new Random();
 	private float presence;
 	private double clock;
@@ -446,7 +463,7 @@ public final class SkyEffects {
 
 	//? if >=26.1 {
 	/*public void render(LevelRenderContext context) {
-		Guard.run("sky effects", () -> {
+		Guard.run(GUARD, () -> {
 			PoseStack.Pose mark = context.poseStack().last();
 			try {
 				draw(context);
@@ -460,7 +477,7 @@ public final class SkyEffects {
 	private void draw(LevelRenderContext context) {
 	*///?} else {
 	public void render(WorldRenderContext context) {
-		Guard.run("sky effects", () -> {
+		Guard.run(GUARD, () -> {
 			PoseStack.Pose mark = context.matrices().last();
 			try {
 				draw(context);
