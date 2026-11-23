@@ -1,0 +1,68 @@
+# The mod's screens after fix/crash192, which wraps every method the game calls on them (drawing, narration, keys,
+# clicks, closing) so an error closes the screen with a "Something went wrong, try again" pop-up instead of ending the
+# game. Nothing in a working game changes: this checks that the settings, the song library and the tour still draw,
+# take keys and clicks, and close as before. Minecraft 1.21.11, 1280x720, GUI scale 3 (426x240), the demo song. Every
+# shot is the SAME on the branch and on main; the game log of the branch run must have no "Error in the settings",
+# "Error in the song library" or "Error in the tour" line (and no pop-up shows in any shot).
+# - crash192-tour-0, -1, -2: the tour's first three pages (Show me around, then Next), as tour.txt shows them.
+# - crash192-tour-closed: Esc on the tour: the world, no screen.
+# - crash192-settings-look: the settings on the Look tab (gui 1).
+# - crash192-settings-next: Ctrl+Tab: the Music tab highlighted in the sidebar.
+# - crash192-settings-search: Ctrl+F and "glow" typed: the search results for glow.
+# - crash192-settings-closed: Esc (clears the search, back on the Music tab), Esc again: the world, no screen.
+# - crash192-library: the song library (grid) after two Down presses: the same card chosen on both.
+# - crash192-library-closed: Esc: the world, no screen.
+# Run it on the branch, and with -f mod_ref=main for the old code (the script comes from --ref):
+#   gh workflow run screenshots.yml --ref fix/crash192 -f version=1.21.11 -f script=.github/checks/crash192.txt
+#   gh workflow run screenshots.yml --ref fix/crash192 -f version=1.21.11 -f mod_ref=main -f script=.github/checks/crash192.txt
+# The same script on 26.3 and 1.21.1 covers the other two ways the screens are drawn and handed keys.
+
+cmd weather clear
+cmd time set noon
+cmd gamerule doDaylightCycle false
+cmd gamerule advance_time false
+look 0 -20
+sleep 6
+guiscale 3
+
+screen dev.beli.skylyrics.gui.IntroScreen
+sleep 3
+shot crash192-tour-0
+click 290 197
+sleep 2
+shot crash192-tour-1
+click 320 197
+sleep 1
+shot crash192-tour-2
+key escape
+sleep 2
+shot crash192-tour-closed
+
+gui 1
+sleep 2
+shot crash192-settings-look
+key tab ctrl
+sleep 1
+shot crash192-settings-next
+key f ctrl
+sleep 0.5
+type glow
+sleep 1
+shot crash192-settings-search
+key escape
+sleep 0.5
+key escape
+sleep 2
+shot crash192-settings-closed
+
+set libraryView GRID
+screen dev.beli.skylyrics.gui.LibraryScreen
+sleep 4
+key down
+sleep 0.5
+key down
+sleep 1.5
+shot crash192-library
+key escape
+sleep 2
+shot crash192-library-closed

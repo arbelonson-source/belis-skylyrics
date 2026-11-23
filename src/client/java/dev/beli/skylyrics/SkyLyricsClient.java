@@ -560,7 +560,7 @@ public final class SkyLyricsClient implements ClientModInitializer {
 	 * A pop-up in the corner, also read out by the Narrator: Minecraft doesn't read pop-ups, and the one saying the music
 	 * player can't be read is told nowhere else.
 	 */
-	private static void toast(Minecraft client, Component title, Component body) {
+	public static void toast(Minecraft client, Component title, Component body) {
 		//? if >=26.2 {
 		/*SystemToast.addOrUpdate(client.gui.toastManager(), SystemToast.SystemToastId.PERIODIC_NOTIFICATION, title, body);
 		*///?} else {
